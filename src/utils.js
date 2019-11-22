@@ -1,0 +1,111 @@
+// This file defines some common utilities that Grapheme uses!
+
+// A list of all extant Grapheme Contexts
+let CONTEXTS = [];
+
+// this function takes in a variadic list of arguments and returns the first
+// one that's not undefined
+function select(opt1, ...opts) {
+  if (opts.length === 0) // if there are no other options, choose the first
+    return opt1;
+  if (opt1 === undefined) { // if the first option is undefined, proceed
+    return select(...opts);
+  }
+
+  // If the first option is valid, return it
+  return opt1;
+}
+
+// Assert that a statement is true, and throw an error if it's not
+function assert(statement, error = "Unknown error") {
+  if (!statement)
+    throw new Error(error);
+}
+
+// Check that an object is of a given type
+function checkType(obj, type) {
+  assert(obj instanceof type, "Object must be instance of " + type);
+}
+
+// Check if two objects are... deeply equal
+// https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
+function deepEquals(x, y) {
+  const ok = Object.keys, tx = typeof x, ty = typeof y;
+  return x && y && tx === 'object' && tx === ty ? (
+    ok(x).length === ok(y).length &&
+      ok(x).every(key => deepEquals(x[key], y[key]))
+  ) : (x === y);
+}
+
+// The following functions are self-explanatory.
+
+function isInteger(z) {
+  return Number.isInteger(z); // didn't know about this lol
+}
+
+function isNonnegativeInteger(z) {
+  return Number.isInteger(z) && z >= 0;
+}
+
+function isPositiveInteger(z) {
+  return Number.isInteger(z) && z > 0;
+}
+
+function isNonpositiveInteger(z) {
+  return Number.isInteger(z) && z <= 0;
+}
+
+function isNegativeInteger(z) {
+  return Number.isInteger(z) && z < 0;
+}
+
+// https://stackoverflow.com/a/34749873
+function isObject(item) {
+  return (item && typeof item === 'object' && !Array.isArray(item));
+}
+
+// This merges the characteristics of two objects, typically parameters
+// or styles or something like that
+// https://stackoverflow.com/a/34749873
+function mergeDeep(target, ...sources) {
+  if (!sources.length) return target;
+  const source = sources.shift();
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} });
+        mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
+}
+
+// Check if two numbers are within epsilon of each other
+function isApproxEqual(v, w, eps=1e-5) {
+  return Math.abs(v - w) < eps;
+};
+
+// Non-stupid mod function
+function mod(n, m) {
+  return ((n % m) + m) % m;
+}
+
+// device pixel ratio... duh
+let dpr = window.devicePixelRatio;
+function updateDPR() {
+  dpr = window.devicePixelRatio;
+
+  // Tell the babies that the device pixel ratio has changed
+  CONTEXTS.forEach(context => context._onDPRChanged());
+}
+
+// Periodically check whether the dpr has changed
+setInterval(updateDPR, 100);
+
+export { CONTEXTS, mod, _updateDPRinterval, dpr, select, getID, assert, checkType, deepEquals, roundToCanvasCoord, _ctxDrawPath, isInteger, isNonnegativeInteger,
+isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, createShaderFromSource, expandVerticesIntoTriangles, createGLProgram};

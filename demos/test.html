@@ -1,0 +1,23 @@
+<!doctype html>
+
+<html>
+<head>
+  <title>Grapheme WebGL Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body>
+
+<script src="../build/grapheme.js"></script>
+<script>
+let grapheme_context = new Grapheme.Context();
+let grapheme_window = grapheme_context.createWindow();
+
+grapheme_window.autoResize = true;
+
+document.body.appendChild(grapheme_window.domElement);
+</script>
+
+</body>
+
+</html>
