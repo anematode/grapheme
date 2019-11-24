@@ -181,5 +181,25 @@ function createGLProgram(gl, vertShader, fragShader) {
   }
 }
 
-export { createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual };
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function deleteBuffersNamed(bufferNames) {
+  if (Array.isArray(bufferNames)) {
+    for (let i = 0; i < bufferNames.length; ++i)
+      deleteBuffersNamed(bufferNames[i]);
+
+    return;
+  }
+
+  CONTEXTS.forEach(context => {
+    context.glResourceManager.deleteBuffer(bufferNames);
+  });
+}
+
+export { generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, deleteBuffersNamed };

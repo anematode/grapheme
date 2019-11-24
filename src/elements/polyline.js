@@ -47,39 +47,13 @@ function nextPowerOfTwo(x) {
   return 2 ** Math.ceil(Math.log2(x));
 }
 
-// retrieve and/or build the polyline shader for a grapheme context
-function retrievePolylineShader(graphemeContext) {
-  if (graphemeContext.glPrograms.polylineShader)
-    return graphemeContext.glPrograms.polylineShader;
-
-  let gl = graphemeContext.glContext;
-
-  let vertShad = utils.createShaderFromSource(gl /* rendering context */,
-    gl.VERTEX_SHADER /* enum for vertex shader type */,
-    vertexShaderSource /* source of the vertex shader*/ );
-
-  // create the frag shader
-  let fragShad = utils.createShaderFromSource(gl /* rendering context */,
-    gl.FRAGMENT_SHADER /* enum for vertex shader type */,
-    fragmentShaderSource /* source of the vertex shader*/ );
-
-  // create the program. we set _polylineShader in the parent Context so that
-  // any future gridlines in this Context will use the already-compiled shader
-  let program = utils.createGLProgram(gl, vertShad, fragShad);
-
-  return graphemeContext.glPrograms.polylineShader = {
-    program,
-    colorLoc: gl.getUniformLocation(program, "line_color"),
-    vertexLoc: gl.getAttribLocation(program, "v_position"),
-    xyScale: gl.getUniformLocation(program, "xy_scale")
-  };
-}
-
 const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
 
 // Parameters for the expanding/contracting float array for polyline
 const MIN_SIZE = 16;
 const MAX_SIZE = 2 ** 24;
+
+const POLYLINE_PROGRAM_NAME = "polyline-shader";
 
 /**
 PolylineElement draws a sequence of line segments connecting points. Put the points
@@ -91,7 +65,6 @@ class PolylineElement extends GraphemeElement {
     super(window, params);
 
     this.vertices = utils.select(params.vertices, []);
-    this.glBuffer = this.context.glContext.createBuffer();
 
     this.color = utils.select(params.color, new Color(0,0,0,255));
     this.thickness = 2; // thickness of the polyline in pixels
@@ -288,7 +261,8 @@ class PolylineElement extends GraphemeElement {
           scale = th * v1l / (b1_x * v1y - b1_y * v1x);
 
           if (this.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
-            // if the length of the miter is massive and we're in dynamic mode, we exit this if statement and do a rounded join
+            // if the length of the miter is massive and we're in dynamic mode,
+            // we exit this if statement and do a rounded join
             if (scale === Infinity || scale === -Infinity)
               scale = 1;
 
@@ -406,53 +380,62 @@ class PolylineElement extends GraphemeElement {
     if (!this.useNative) {
       this._calculateTriangles();
     } else {
-      // use native LINE_STRIP for xtreme speed
       this._calculateNativeLines();
     }
   }
 
-  render(elementInfo) {
+  render(renderInfo) {
+    // Calculate the vertices
     this.calculateVertices();
 
-    let glInfo = retrievePolylineShader(this.context);
-    let gl = this.context.glContext;
-
+    // Potential early exit
     let vertexCount = this._glTriangleStripVerticesTotal;
     if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return;
 
+    let gl = renderInfo.gl;
+    let glManager = renderInfo.glResourceManager;
+
+    // If there is no polyline program yet, compile one!
+    if (!glManager.hasProgram(POLYLINE_PROGRAM_NAME)) {
+      glManager.compileProgram(POLYLINE_PROGRAM_NAME,
+        vertexShaderSource, fragmentShaderSource,
+        ["v_position"], ["xy_scale", "line_color"]);
+    }
+
+    let polylineInfo = glManager.getProgram(POLYLINE_PROGRAM_NAME);
+
+    this.addUsedBufferName(this.uuid);
+    let glBuffer = glManager.getBuffer(this.uuid);
+
+    // gl, glResourceManager, width, height, text, textCanvas
+
     // tell webgl to start using the polyline program
-    gl.useProgram(glInfo.program);
+    gl.useProgram(polylineInfo.program);
 
     // bind our webgl buffer to gl.ARRAY_BUFFER access point
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.glBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
 
+    // Get the desired color of our line
     let color = this.color.glColor();
 
     // set the vec4 at colorLocation to (r, g, b, a)
-    gl.uniform4f(glInfo.colorLoc, color.r, color.g, color.b, color.a);
+    gl.uniform4f(polylineInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
 
     // set the scaling factors
-    gl.uniform2f(glInfo.xyScale, 2 / elementInfo.width, -2 / elementInfo.height);
+    gl.uniform2f(polylineInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
 
     // copy our vertex data to the GPU
-    gl.bufferData(gl.ARRAY_BUFFER, this._glTriangleStripVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+    gl.bufferData(gl.ARRAY_BUFFER, this._glTriangleStripVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */ );
 
     // enable the vertices location attribute to be used in the program
-    gl.enableVertexAttribArray(glInfo.vertexLoc);
+    gl.enableVertexAttribArray(polylineInfo.attribs.v_position);
 
     // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
     // that it shouldn't normalize floats, and something i don't understand
-    gl.vertexAttribPointer(glInfo.vertexLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(polylineInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
 
     // draw the vertices as triangle strip
     gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
-  }
-
-  destroy() {
-    super.destroy();
-
-    // Clean up the GL buffer this was using
-    this.context.glContext.deleteBuffer(this.glBuffer);
   }
 }
 

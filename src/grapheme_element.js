@@ -1,4 +1,3 @@
-import { Window as GraphemeWindow } from "./grapheme_window";
 import * as utils from "./utils";
 
 /**
@@ -6,29 +5,46 @@ A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
 (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
 */
 class GraphemeElement {
-  constructor(window, params={}) {
-    utils.checkType(window, GraphemeWindow)
-
-    this.window = window;
-    this.context = window.context;
-
+  constructor(params={}) {
     // precedence is a number from -Infinity to Infinity.
     this.precedence = utils.select(params.precedence, 0);
 
-    this.window.addElement(this);
+    this.uuid = utils.generateUUID();
+    this.visible = utils.select(params.visible, true);
+
+    this.usedBufferNames = [];
+    this.parent = null;
+    this.lastRenderTime = 0;
+  }
+
+  addUsedBufferName(bufferName) {
+    if (this.usedBufferNames.indexOf(bufferName) === -1) {
+      this.usedBufferNames.push(bufferName);
+    }
+  }
+
+  removeUsedBufferName(bufferName) {
+    let index = this.usedBufferNames.indexOf(bufferName);
+    if (index !== -1) {
+      this.usedBufferNames.splice(index, 1);
+    }
+  }
+
+  orphanize() {
+    if (this.parent) {
+      this.parent.remove(this);
+    }
   }
 
   render(elementInfo) {
-
+    this.lastRenderTime = Date.now();
   }
 
   destroy() {
-    let elements = this.context.elements;
-    let index = elements.indexOf(this);
-
-    if (index !== -1) {
-      elements.splice(index, 1);
-    }
+    if (this.usedBufferNames)
+      utils.deleteBuffersNamed(this.usedBufferNames);
+    
+    this.orphanize();
   }
 }
 
