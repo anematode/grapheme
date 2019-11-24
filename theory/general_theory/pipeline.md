@@ -8,13 +8,13 @@ WebAssembly will likely play a role in the future, but not for now because trans
 
 ### Context
 
-Associated with each Grapheme.Context are two [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) instances, each of the same size. One (context.internalglCanvas) is used for WebGL funkiness, and the other is used for 2D Canvas funkiness, principally text (context.internal2dCanvas). Both canvases have the same height and width (namely, context.internalCanvasHeight and context.internalCanvasWidth).
+Associated with each Grapheme.Context is one [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) instance (context.internalglCanvas), used for WebGL funkiness. This is because most of the heavy duty graphics of Grapheme will be done using WebGL, while text and other decorations will be placed on top in Grapheme.Window. Also, having only one WebGL context means that multiple windows can be created, since the number of WebGL contexts is capped by the browser.
 
 When a Grapheme.Window desires to be drawn, it calls for its parent Grapheme.Context: "O Context, how I desire to be drawn! I have many methods to describe my drawing! Please, fatten your canvases if I am too large, then let me get to work."
 
 In other words, if window.height > context.internalCanvasHeight || window.width > context.internalCanvasWidth, the context must fatten itself.
 
-Grapheme.Window says, "thank you dear parent." It lets the parent know in what region it will want to draw (setting variables context.internalViewportHeight and context.internalViewportWidth), and the parent will set the viewport to that size. Then, Grapheme.Window gets to work, using the mother's gl context (context.internalglContext) to draw various things. Then, the window copies the gl canvas to the 2D canvas using drawImage (this is optional). It proceeds to draw text and whatever paraphernalia on the 2D canvas. Then, this is copied into the Window canvas, which is merely an ImageBitmap canvas.
+Grapheme.Window says, "thank you dear parent." It lets the parent know in what region it will want to draw (setting variables context.internalViewportHeight and context.internalViewportWidth), and the parent will set the viewport to that size. Then, Grapheme.Window gets to work, using the mother's gl context (context.internalglContext) to draw various things. Then, the window copies the desired section of the internalglCanvas to its own glCanvas. It proceeds to draw text and whatever paraphernalia on its own 2D canvas.
 
 GL shaders and such for classes should (usually) be compiled and put in context.glShaders . Hopefully TWGL will make this easier.
 

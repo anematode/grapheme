@@ -1,0 +1,15 @@
+.grapheme-canvas {
+  z-index: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+}
+
+.grapheme-text-canvas {
+  z-index: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+}

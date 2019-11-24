@@ -4,6 +4,11 @@
 <head>
   <title>Grapheme WebGL Test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      margin: 0;
+    }
+  </style>
 </head>
 
 <body>
@@ -15,7 +20,16 @@ let grapheme_window = grapheme_context.createWindow();
 
 grapheme_window.autoResize = true;
 
+grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
+
+function render() {
+  grapheme_window.render();
+
+  requestAnimationFrame(render);
+}
+
+render();
 </script>
 
 </body>

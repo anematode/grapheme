@@ -98,14 +98,33 @@ function mod(n, m) {
 // device pixel ratio... duh
 let dpr = window.devicePixelRatio;
 function updateDPR() {
-  dpr = window.devicePixelRatio;
+  if (dpr !== window.devicePixelRatio) {
+    dpr = window.devicePixelRatio;
 
-  // Tell the babies that the device pixel ratio has changed
-  CONTEXTS.forEach(context => context._onDPRChanged());
+    // Tell the babies that the device pixel ratio has changed
+    CONTEXTS.forEach(context => context._onDPRChanged());
+  }
 }
 
 // Periodically check whether the dpr has changed
 setInterval(updateDPR, 100);
 
-export { CONTEXTS, mod, _updateDPRinterval, dpr, select, getID, assert, checkType, deepEquals, roundToCanvasCoord, _ctxDrawPath, isInteger, isNonnegativeInteger,
-isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, createShaderFromSource, expandVerticesIntoTriangles, createGLProgram};
+// Import the Grapheme CSS file for canvas styling
+function importGraphemeCSS() {
+  try {
+    let link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = '../build/grapheme.css'; // oof, must change l8r
+
+    document.getElementsByTagName('HEAD')[0].appendChild(link);
+  } catch (e) {
+    console.error("Could not import Grapheme CSS");
+    throw e;
+  }
+}
+
+importGraphemeCSS();
+
+export { CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual };
