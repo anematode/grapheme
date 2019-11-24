@@ -126,5 +126,60 @@ function importGraphemeCSS() {
 
 importGraphemeCSS();
 
-export { CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+// This function takes in a GL rendering context, a type of shader (fragment/vertex),
+// and the GLSL source code for that shader, then returns the compiled shader
+function createShaderFromSource(gl, shaderType, shaderSourceText) {
+  // create an (empty) shader of the provided type
+  let shader = gl.createShader(shaderType);
+
+  // set the source of the shader to the provided source
+  gl.shaderSource(shader, shaderSourceText);
+
+  // compile the shader!! piquant
+  gl.compileShader(shader);
+
+  // get whether the shader compiled properly
+  let succeeded = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+
+  if (succeeded)
+    return shader; // return it if it compiled properly
+  else {
+    // throw an error with the details of why the compilation failed
+    throw new Error(gl.getShaderInfoLog(shader));
+
+    // delete the shader to free it from memory
+    gl.deleteShader(shader);
+  }
+}
+
+// This function takes in a GL rendering context, the fragment shader, and the vertex shader,
+// and returns a compiled program.
+function createGLProgram(gl, vertShader, fragShader) {
+  // create an (empty) GL program
+  let program = gl.createProgram();
+
+  // link the vertex shader
+  gl.attachShader(program, vertShader);
+
+  // link the fragment shader
+  gl.attachShader(program, fragShader);
+
+  // compile the program
+  gl.linkProgram(program);
+
+  // get whether the program compiled properly
+  let succeeded = gl.getProgramParameter(program, gl.LINK_STATUS);
+
+  if (succeeded)
+    return program;
+  else {
+    // throw an error with the details of why the compilation failed
+    throw new Error(gl.getProgramInfoLog(program));
+
+    // delete the program to free it from memory
+    gl.deleteProgram(program);
+  }
+}
+
+export { createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
 isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual };

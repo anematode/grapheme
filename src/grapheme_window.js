@@ -32,10 +32,19 @@ class GraphemeWindow {
     this.clearColor = rgba(0,0,0,0);
 
     this.elements = [];
+    this.elementInfo = {
+      context: this.context,
+      text: this.textCanvasContext,
+      textCanvas: this.textCanvas
+    };
 
     graphemeContext.windows.push(this);
 
     this.setSize(640, 480);
+  }
+
+  addElement(element) {
+    this.elements.push(element);
   }
 
   setSize(width, height) {
@@ -110,7 +119,7 @@ class GraphemeWindow {
     // color.r, color.g, color.b, color.a
     let glColor = color.glColor();
 
-    let gl = this.context.internalglContext;
+    let gl = this.context.glContext;
 
     gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -124,12 +133,14 @@ class GraphemeWindow {
     this.context.activeWindow = this;
     let err;
 
-    let gl = this.context.gl;
-    let glCanvas = this.context.internalglCanvas;
+    let gl = this.context.glContext;
+    let glCanvas = this.context.glCanvas;
+
+    let width = this.canvasWidth, height = this.canvasHeight;
 
     try {
       // Set the viewport to this canvas's size
-      this.context.setViewport(this.canvasWidth, this.canvasHeight);
+      this.context.setViewport(width, height);
 
       // clear the canvas
       this.clearToColor();
@@ -137,13 +148,14 @@ class GraphemeWindow {
       // sort our elements by drawing precedence
       this.sortElementsByPrecedence();
 
-      let elementInfo = {gl, glCanvas, text: this.textCanvasContext, textCanvas: this.textCanvas};
+      this.elementInfo.width = width;
+      this.elementInfo.height = height;
 
       // draw each element
       for (let i = 0; i < this.elements.length; ++i) {
         let element = this.elements[i];
 
-        element.render(elementInfo);
+        element.render(this.elementInfo);
       }
 
       // Copy the canvas to this canvas

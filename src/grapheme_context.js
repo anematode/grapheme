@@ -3,18 +3,19 @@ import * as utils from "./utils";
 
 class GraphemeContext {
   constructor(params={}) {
-    this.internalglCanvas = new OffscreenCanvas(256, 256);
-    let gl = this.internalglContext = this.internalglCanvas.getContext("webgl") || this.internalglCanvas.getContext("experimental-webgl");
+    this.glCanvas = new OffscreenCanvas(256, 256);
+    let gl = this.glContext = this.glCanvas.getContext("webgl") || this.glCanvas.getContext("experimental-webgl");
 
     utils.assert(gl, "Grapheme requires WebGL to run; please get a competent browser");
 
     this.windows = [];
+    this.elements = [];
 
     this.glInfo = {
       version: gl.getParameter(gl.VERSION)
     };
 
-    this.glShaders = {};
+    this.glPrograms = {};
     this.currentViewport = {x: 0, y: 0, width: this.internalCanvasWidth, height: this.internalCanvasHeight};
 
     utils.CONTEXTS.push(this);
@@ -31,38 +32,38 @@ class GraphemeContext {
     this.currentViewport.width = width;
     this.currentViewport.height = height;
 
-    let gl = this.internalglContext;
+    let gl = this.glContext;
 
     gl.viewport(x, y, width, height);
 
     if (setScissor) {
       gl.enable(gl.SCISSOR_TEST);
-      this.internalglContext.scissor(x, y, width, height);
+      this.glContext.scissor(x, y, width, height);
     } else {
       gl.disable(gl.SCISSOR_TEST);
     }
   }
 
   get internalCanvasHeight() {
-    return this.internalglCanvas.height;
+    return this.glCanvas.height;
   }
 
   get internalCanvasWidth() {
-    return this.internalglCanvas.width;
+    return this.glCanvas.width;
   }
 
   set internalCanvasHeight(x) {
     x = Math.round(x);
 
     utils.assert(utils.isPositiveInteger(x) && x < 16384, "canvas height must be in range [1,16383]");
-    this.internalglCanvas.height = x;
+    this.glCanvas.height = x;
   }
 
   set internalCanvasWidth(x) {
     x = Math.round(x);
 
     utils.assert(utils.isPositiveInteger(x) && x < 16384, "canvas width must be in range [1,16383]");
-    this.internalglCanvas.width = x;
+    this.glCanvas.width = x;
   }
 
   _onDPRChanged() {

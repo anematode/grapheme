@@ -8,12 +8,12 @@ function isValidColorComponent(x) {
 }
 
 class Color {
-  constructor(params) {
-    this.r = utils.select(params.r, 0);
-    this.g = utils.select(params.g, 0);
-    this.b = utils.select(params.b, 0);
-    this.a = utils.select(params.a, 255);
-
+  constructor({r=0, g=0, b=0, a=255}) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+    
     utils.assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), "Invalid color component");
   }
 
