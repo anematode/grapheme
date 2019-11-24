@@ -447,6 +447,13 @@ class PolylineElement extends GraphemeElement {
     // draw the vertices as triangle strip
     gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
   }
+
+  destroy() {
+    super.destroy();
+
+    // Clean up the GL buffer this was using
+    this.context.glContext.deleteBuffer(this.glBuffer);
+  }
 }
 
 export { PolylineElement };
