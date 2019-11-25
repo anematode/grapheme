@@ -1,77 +1,75 @@
-import {Element as GraphemeElement} from "./grapheme_element";
-import * as utils from "./utils";
+import { Element as GraphemeElement } from './grapheme_element'
+import * as utils from './utils'
 
 class GraphemeGroup extends GraphemeElement {
-  constructor(params={}) {
-    super(params);
+  constructor (params = {}) {
+    super(params)
 
-    this.children = [];
+    this.children = []
   }
 
-  sortChildrenByPrecedence() {
+  sortChildrenByPrecedence () {
     // Sort the children by their precedence value
-    this.children.sort((x,y) => x.precedence - y.precedence);
+    this.children.sort((x, y) => x.precedence - y.precedence)
   }
 
-  render(renderInfo) {
-    this.sortChildrenByPrecedence();
+  render (renderInfo) {
+    this.sortChildrenByPrecedence()
 
-    this.children.forEach(child => child.render(renderInfo));
+    this.children.forEach((child) => child.render(renderInfo))
   }
 
-  isChild(element) {
-    return this.hasChild(element, false);
+  isChild (element) {
+    return this.hasChild(element, false)
   }
 
-  hasChild(element, recursive=true) {
+  hasChild (element, recursive = true) {
     if (recursive) {
-      if (this.hasChild(element, false))
-        return true;
-      if (this.children.some(child => child.hasChild(element, recursive)))
-        return true;
-      return false;
+      if (this.hasChild(element, false)) return true
+      if (this.children.some((child) => child.hasChild(element, recursive))) return true
+      return false
     }
 
-    let index = this.children.indexOf(element);
-    return (index !== -1);
+    const index = this.children.indexOf(element)
+    return (index !== -1)
   }
 
-  add(element, ...elements) {
-    utils.checkType(element, GraphemeElement);
+  add (element, ...elements) {
+    utils.checkType(element, GraphemeElement)
 
     if (element.parent !== null) {
-      throw new Error("Element is already a child");
+      throw new Error('Element is already a child')
     }
 
-    utils.assert(!this.hasChild(element, true), "Element is already a child of this group...");
+    utils.assert(!this.hasChild(element, true), 'Element is already a child of this group...')
 
-    element.parent = this;
-    this.children.push(element);
+    element.parent = this
+    this.children.push(element)
 
     if (elements.length > 0) {
-      this.add(elements);
+      this.add(elements)
     }
   }
 
-  remove(element, ...elements) {
-    utils.checkType(element, GraphemeElement);
+  remove (element, ...elements) {
+    utils.checkType(element, GraphemeElement)
     if (this.hasChild(element, false)) {
       // if element is an immediate child
-      let index = this.children.indexOf(element);
-      this.children.splice(index, 1);
-      element.parent = null;
+      const index = this.children.indexOf(element)
+      this.children.splice(index, 1)
+      element.parent = null
     }
 
     if (elements.length > 0) {
-      this.remove(elements);
+      this.remove(elements)
     }
   }
 
-  destroy() {
-    this.children.forEach(child => child.destroy());
+  destroy () {
+    this.children.forEach((child) => child.destroy())
 
-    super.destroy();
+    super.destroy()
   }
 }
 
-export {GraphemeGroup as Group};
+export { GraphemeGroup as Group }

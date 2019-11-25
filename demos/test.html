@@ -40,6 +40,11 @@ function render() {
 }
 
 render();
+
+grapheme_window.domElement.onclick = (evt) => {
+  polyline.vertices.push(evt.clientX * 2);
+  polyline.vertices.push(evt.clientY * 2);
+};
 </script>
 
 </body>

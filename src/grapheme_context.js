@@ -1,151 +1,152 @@
-import {Window as GraphemeWindow} from "./grapheme_window";
-import {GLResourceManager} from "./gl_manager";
-import * as utils from "./utils";
+import { Window as GraphemeWindow } from './grapheme_window'
+import { GLResourceManager } from './gl_manager'
+import * as utils from './utils'
 
 class GraphemeContext {
-  constructor(params={}) {
+  constructor (params = {}) {
     // Creates an offscreen canvas to draw to, with an initial size of 1x1
-    this.glCanvas = new OffscreenCanvas(1, 1);
+    this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1,1) : document.createElement('canvas');
 
     // Create the webgl context!
-    let gl = this.glContext = this.glCanvas.getContext("webgl") || this.glCanvas.getContext("experimental-webgl");
+    const gl = this.glContext = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl')
 
     // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
-    utils.assert(gl, "Grapheme requires WebGL to run; please get a competent browser");
+    utils.assert(gl, 'Grapheme requires WebGL to run; please get a competent browser')
 
     // The gl resource manager for this context
-    this.glResourceManager = new GLResourceManager(gl);
+    this.glResourceManager = new GLResourceManager(gl)
 
     // The list of windows that this context has jurisdiction over
-    this.windows = [];
+    this.windows = []
 
     // The portion of the glCanvas being used
-    this.currentViewport = {x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height};
+    this.currentViewport = {
+      x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height
+    }
 
     // Add this to the list of contexts to receive event updates and such
-    utils.CONTEXTS.push(this);
+    utils.CONTEXTS.push(this)
   }
 
   // Set the drawing viewport on glCanvas
-  setViewport(width, height, x=0, y=0, setScissor=true) {
-    let gl = this.glContext;
+  setViewport (width, height, x = 0, y = 0, setScissor = true) {
+    const gl = this.glContext
 
     // Check to make sure the viewport dimensions are acceptable
     utils.assert(utils.isPositiveInteger(width) && utils.isPositiveInteger(height) &&
       utils.isNonnegativeInteger(x) && utils.isNonnegativeInteger(y),
-      "x, y, width, height must be integers greater than 0 (or = for x,y)");
-    utils.assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, "viewport must be within canvas bounds");
+    'x, y, width, height must be integers greater than 0 (or = for x,y)')
+    utils.assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, 'viewport must be within canvas bounds')
 
     // Set this.currentViewport to the desired viewport
-    this.currentViewport.x = x;
-    this.currentViewport.y = y;
-    this.currentViewport.width = width;
-    this.currentViewport.height = height;
+    this.currentViewport.x = x
+    this.currentViewport.y = y
+    this.currentViewport.width = width
+    this.currentViewport.height = height
 
     // Set the gl viewport accordingly
-    gl.viewport(x, y, width, height);
+    gl.viewport(x, y, width, height)
 
     // If desired, enable scissoring over that rectangle
     if (setScissor) {
-      gl.enable(gl.SCISSOR_TEST);
-      this.glContext.scissor(x, y, width, height);
+      gl.enable(gl.SCISSOR_TEST)
+      this.glContext.scissor(x, y, width, height)
     } else {
-      gl.disable(gl.SCISSOR_TEST);
+      gl.disable(gl.SCISSOR_TEST)
     }
   }
 
-  get canvasHeight() {
-    return this.glCanvas.height;
+  get canvasHeight () {
+    return this.glCanvas.height
   }
 
-  get canvasWidth() {
-    return this.glCanvas.width;
+  get canvasWidth () {
+    return this.glCanvas.width
   }
 
-  set canvasHeight(x) {
-    x = Math.round(x);
+  set canvasHeight (x) {
+    x = Math.round(x)
 
-    utils.assert(utils.isPositiveInteger(x) && x < 16384, "canvas height must be in range [1,16383]");
-    this.glCanvas.height = x;
+    utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]')
+    this.glCanvas.height = x
   }
 
-  set canvasWidth(x) {
-    x = Math.round(x);
+  set canvasWidth (x) {
+    x = Math.round(x)
 
-    utils.assert(utils.isPositiveInteger(x) && x < 16384, "canvas width must be in range [1,16383]");
-    this.glCanvas.width = x;
+    utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]')
+    this.glCanvas.width = x
   }
 
-  _onDPRChanged() {
-    this.windows.forEach(window => window._onDPRChanged());
+  _onDPRChanged () {
+    this.windows.forEach((window) => window._onDPRChanged())
   }
 
-  isDestroyed() {
-    return utils.CONTEXTS.indexOf(this) === -1;
+  isDestroyed () {
+    return utils.CONTEXTS.indexOf(this) === -1
   }
 
   // Destroy this context
-  destroy() {
-    if (this.isDestroyed()) return;
+  destroy () {
+    if (this.isDestroyed()) return
 
     // Remove from lists of contexts
-    let index = utils.CONTEXTS.indexOf(this);
-    index !== -1 && utils.CONTEXTS.splice(index, 1);
+    const index = utils.CONTEXTS.indexOf(this)
+    index !== -1 && utils.CONTEXTS.splice(index, 1)
 
     // Destroy all children
-    this.windows.forEach(window => window.destroy());
+    this.windows.forEach((window) => window.destroy())
 
     // destroy resource manager
-    this.glResourceManager.destroy();
+    this.glResourceManager.destroy()
 
     // Free up canvas space immediately
-    this.canvasWidth = 1;
-    this.canvasHeight = 1;
+    this.canvasWidth = 1
+    this.canvasHeight = 1
 
     // Delete references to various stuff
-    delete this.glResourceManager;
-    delete this.glCanvas;
-    delete this.glContext;
+    delete this.glResourceManager
+    delete this.glCanvas
+    delete this.glContext
   }
 
   // Create a window using this context
-  createWindow() {
-    return new GraphemeWindow(this);
+  createWindow () {
+    return new GraphemeWindow(this)
   }
 
   // Remove a window from this context
-  _removeWindow(window) {
-    let allWindows = this.context.windows;
-    let thisIndex = allWindows.indexOf(window);
+  _removeWindow (window) {
+    const allWindows = this.context.windows
+    const thisIndex = allWindows.indexOf(window)
 
-    if (thisIndex !== -1)
-      allWindow.splice(thisIndex, 1);
+    if (thisIndex !== -1) allWindows.splice(thisIndex, 1)
   }
 
-  destroyWindow(window) {
-    window.destroy();
+  destroyWindow (window) {
+    window.destroy()
   }
 
   // Update the size of this context based on the maximum size of its windows
-  updateSize() {
-    let maxWidth = 1;
-    let maxHeight = 1;
+  updateSize () {
+    let maxWidth = 1
+    let maxHeight = 1
 
     // Find the max width and height (independently)
-    this.windows.forEach(window => {
+    this.windows.forEach((window) => {
       if (window.canvasWidth > maxWidth) {
-        maxWidth = window.canvasWidth;
+        maxWidth = window.canvasWidth
       }
 
       if (window.canvasHeight > maxHeight) {
-        maxHeight = window.canvasHeight;
+        maxHeight = window.canvasHeight
       }
-    });
+    })
 
     // Set the canvas size accordingly
-    this.canvasHeight = maxHeight;
-    this.canvasWidth = maxWidth;
+    this.canvasHeight = maxHeight
+    this.canvasWidth = maxWidth
   }
 }
 
-export {GraphemeContext as Context};
+export { GraphemeContext as Context }

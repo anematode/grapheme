@@ -4,59 +4,59 @@ var Grapheme = (function (exports) {
   // This file defines some common utilities that Grapheme uses!
 
   // A list of all extant Grapheme Contexts
-  let CONTEXTS = [];
+  const CONTEXTS = [];
 
   // this function takes in a variadic list of arguments and returns the first
   // one that's not undefined
-  function select(opt1, ...opts) {
-    if (opts.length === 0) // if there are no other options, choose the first
-      return opt1;
+  function select (opt1, ...opts) {
+    if (opts.length === 0) { // if there are no other options, choose the first
+      return opt1
+    }
     if (opt1 === undefined) { // if the first option is undefined, proceed
-      return select(...opts);
+      return select(...opts)
     }
 
     // If the first option is valid, return it
-    return opt1;
+    return opt1
   }
 
   // Assert that a statement is true, and throw an error if it's not
-  function assert(statement, error = "Unknown error") {
-    if (!statement)
-      throw new Error(error);
+  function assert (statement, error = 'Unknown error') {
+    if (!statement) throw new Error(error)
   }
 
   // Check that an object is of a given type
-  function checkType(obj, type) {
-    assert(obj instanceof type, "Object must be instance of " + type);
+  function checkType (obj, type) {
+    assert(obj instanceof type, `Object must be instance of ${type}`);
   }
 
   // The following functions are self-explanatory.
 
-  function isInteger(z) {
-    return Number.isInteger(z); // didn't know about this lol
+  function isInteger (z) {
+    return Number.isInteger(z) // didn't know about this lol
   }
 
-  function isNonnegativeInteger(z) {
-    return Number.isInteger(z) && z >= 0;
+  function isNonnegativeInteger (z) {
+    return Number.isInteger(z) && z >= 0
   }
 
-  function isPositiveInteger(z) {
-    return Number.isInteger(z) && z > 0;
+  function isPositiveInteger (z) {
+    return Number.isInteger(z) && z > 0
   }
 
   // Non-stupid mod function
-  function mod(n, m) {
-    return ((n % m) + m) % m;
+  function mod (n, m) {
+    return ((n % m) + m) % m
   }
 
   // device pixel ratio... duh
   let dpr = window.devicePixelRatio;
-  function updateDPR() {
+  function updateDPR () {
     if (dpr !== window.devicePixelRatio) {
       dpr = window.devicePixelRatio;
 
       // Tell the babies that the device pixel ratio has changed
-      CONTEXTS.forEach(context => context._onDPRChanged());
+      CONTEXTS.forEach((context) => context._onDPRChanged());
     }
   }
 
@@ -64,17 +64,17 @@ var Grapheme = (function (exports) {
   setInterval(updateDPR, 100);
 
   // Import the Grapheme CSS file for canvas styling
-  function importGraphemeCSS() {
+  function importGraphemeCSS () {
     try {
-      let link = document.createElement('link');
+      const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.type = 'text/css';
       link.href = '../build/grapheme.css'; // oof, must change l8r
 
       document.getElementsByTagName('HEAD')[0].appendChild(link);
     } catch (e) {
-      console.error("Could not import Grapheme CSS");
-      throw e;
+      console.error('Could not import Grapheme CSS');
+      throw e
     }
   }
 
@@ -82,9 +82,9 @@ var Grapheme = (function (exports) {
 
   // This function takes in a GL rendering context, a type of shader (fragment/vertex),
   // and the GLSL source code for that shader, then returns the compiled shader
-  function createShaderFromSource(gl, shaderType, shaderSourceText) {
+  function createShaderFromSource (gl, shaderType, shaderSourceText) {
     // create an (empty) shader of the provided type
-    let shader = gl.createShader(shaderType);
+    const shader = gl.createShader(shaderType);
 
     // set the source of the shader to the provided source
     gl.shaderSource(shader, shaderSourceText);
@@ -93,24 +93,24 @@ var Grapheme = (function (exports) {
     gl.compileShader(shader);
 
     // get whether the shader compiled properly
-    let succeeded = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    const succeeded = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
 
-    if (succeeded)
-      return shader; // return it if it compiled properly
-    else {
-      // throw an error with the details of why the compilation failed
-      throw new Error(gl.getShaderInfoLog(shader));
-
-      // delete the shader to free it from memory
-      gl.deleteShader(shader);
+    if (succeeded) {
+      return shader // return it if it compiled properly
     }
+
+    // delete the shader to free it from memory
+    gl.deleteShader(shader);
+
+    // throw an error with the details of why the compilation failed
+    throw new Error(gl.getShaderInfoLog(shader))
   }
 
   // This function takes in a GL rendering context, the fragment shader, and the vertex shader,
   // and returns a compiled program.
-  function createGLProgram(gl, vertShader, fragShader) {
+  function createGLProgram (gl, vertShader, fragShader) {
     // create an (empty) GL program
-    let program = gl.createProgram();
+    const program = gl.createProgram();
 
     // link the vertex shader
     gl.attachShader(program, vertShader);
@@ -122,35 +122,37 @@ var Grapheme = (function (exports) {
     gl.linkProgram(program);
 
     // get whether the program compiled properly
-    let succeeded = gl.getProgramParameter(program, gl.LINK_STATUS);
+    const succeeded = gl.getProgramParameter(program, gl.LINK_STATUS);
 
-    if (succeeded)
-      return program;
-    else {
-      // throw an error with the details of why the compilation failed
-      throw new Error(gl.getProgramInfoLog(program));
-
-      // delete the program to free it from memory
-      gl.deleteProgram(program);
+    if (succeeded) {
+      return program
     }
+
+    // delete the program to free it from memory
+    gl.deleteProgram(program);
+
+    // throw an error with the details of why the compilation failed
+    throw new Error(gl.getProgramInfoLog(program))
   }
 
-  function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+  function generateUUID () {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0; const
+        v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16)
+    })
   }
 
-  function deleteBuffersNamed(bufferNames) {
+  // Delete buffers with the given name from all Grapheme contexts
+  function deleteBuffersNamed (bufferNames) {
     if (Array.isArray(bufferNames)) {
-      for (let i = 0; i < bufferNames.length; ++i)
+      for (let i = 0; i < bufferNames.length; ++i) {
         deleteBuffersNamed(bufferNames[i]);
-
-      return;
+      }
+      return
     }
 
-    CONTEXTS.forEach(context => {
+    CONTEXTS.forEach((context) => {
       context.glResourceManager.deleteBuffer(bufferNames);
     });
   }
@@ -160,7 +162,7 @@ var Grapheme = (function (exports) {
   (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
   */
   class GraphemeElement {
-    constructor(params={}) {
+    constructor (params = {}) {
       // precedence is a number from -Infinity to Infinity.
       this.precedence = select(params.precedence, 0);
 
@@ -172,80 +174,77 @@ var Grapheme = (function (exports) {
       this.lastRenderTime = 0;
     }
 
-    addUsedBufferName(bufferName) {
+    addUsedBufferName (bufferName) {
       if (this.usedBufferNames.indexOf(bufferName) === -1) {
         this.usedBufferNames.push(bufferName);
       }
     }
 
-    removeUsedBufferName(bufferName) {
-      let index = this.usedBufferNames.indexOf(bufferName);
+    removeUsedBufferName (bufferName) {
+      const index = this.usedBufferNames.indexOf(bufferName);
       if (index !== -1) {
         this.usedBufferNames.splice(index, 1);
       }
     }
 
-    orphanize() {
+    orphanize () {
       if (this.parent) {
         this.parent.remove(this);
       }
     }
 
-    render(elementInfo) {
+    render (elementInfo) {
       this.lastRenderTime = Date.now();
     }
 
-    destroy() {
-      if (this.usedBufferNames)
-        deleteBuffersNamed(this.usedBufferNames);
-      
+    destroy () {
+      if (this.usedBufferNames) deleteBuffersNamed(this.usedBufferNames);
+
       this.orphanize();
     }
   }
 
   class GraphemeGroup extends GraphemeElement {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
       this.children = [];
     }
 
-    sortChildrenByPrecedence() {
+    sortChildrenByPrecedence () {
       // Sort the children by their precedence value
-      this.children.sort((x,y) => x.precedence - y.precedence);
+      this.children.sort((x, y) => x.precedence - y.precedence);
     }
 
-    render(renderInfo) {
+    render (renderInfo) {
       this.sortChildrenByPrecedence();
 
-      this.children.forEach(child => child.render(renderInfo));
+      this.children.forEach((child) => child.render(renderInfo));
     }
 
-    isChild(element) {
-      return this.hasChild(element, false);
+    isChild (element) {
+      return this.hasChild(element, false)
     }
 
-    hasChild(element, recursive=true) {
+    hasChild (element, recursive = true) {
       if (recursive) {
-        if (this.hasChild(element, false))
-          return true;
-        if (this.children.some(child => child.hasChild(element, recursive)))
-          return true;
-        return false;
+        if (this.hasChild(element, false)) return true
+        if (this.children.some((child) => child.hasChild(element, recursive))) return true
+        return false
       }
 
-      let index = this.children.indexOf(element);
-      return (index !== -1);
+      const index = this.children.indexOf(element);
+      return (index !== -1)
     }
 
-    add(element, ...elements) {
+    add (element, ...elements) {
       checkType(element, GraphemeElement);
 
       if (element.parent !== null) {
-        throw new Error("Element is already a child");
+        throw new Error('Element is already a child')
       }
 
-      assert(!this.hasChild(element, true), "Element is already a child of this group...");
+      assert(!this.hasChild(element, true), 'Element is already a child of this group...');
 
       element.parent = this;
       this.children.push(element);
@@ -255,11 +254,11 @@ var Grapheme = (function (exports) {
       }
     }
 
-    remove(element, ...elements) {
+    remove (element, ...elements) {
       checkType(element, GraphemeElement);
       if (this.hasChild(element, false)) {
         // if element is an immediate child
-        let index = this.children.indexOf(element);
+        const index = this.children.indexOf(element);
         this.children.splice(index, 1);
         element.parent = null;
       }
@@ -269,8 +268,8 @@ var Grapheme = (function (exports) {
       }
     }
 
-    destroy() {
-      this.children.forEach(child => child.destroy());
+    destroy () {
+      this.children.forEach((child) => child.destroy());
 
       super.destroy();
     }
@@ -279,41 +278,47 @@ var Grapheme = (function (exports) {
   // Implementation of basic color functions
   // Could use a library, but... good experience for me too
 
-  function isValidColorComponent(x) {
-    return (0 <= x && x <= 255);
+  function isValidColorComponent (x) {
+    return (x >= 0 && x <= 255)
   }
 
   class Color {
-    constructor({r=0, g=0, b=0, a=255}) {
+    constructor ({
+      r = 0, g = 0, b = 0, a = 255
+    }) {
       this.r = r;
       this.g = g;
       this.b = b;
       this.a = a;
-      
-      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), "Invalid color component");
+
+      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
     }
 
-    rounded() {
+    rounded () {
       return {
         r: Math.round(this.r),
         g: Math.round(this.g),
         b: Math.round(this.b),
         a: Math.round(this.a)
-      };
+      }
     }
 
-    hex() {
-      let rnd = this.rounded();
-      return "#" + [rnd.r, rnd.g, rnd.b, rnd.a].map(x => x.toString(16)).join();
+    hex () {
+      const rnd = this.rounded();
+      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
     }
 
-    glColor() {
-      return {r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255};
+    glColor () {
+      return {
+        r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
+      }
     }
   }
 
-  function rgba(r,g,b,a=255) {
-    return new Color({r,g,b,a});
+  function rgba (r, g, b, a = 255) {
+    return new Color({
+      r, g, b, a
+    })
   }
 
   const DEFAULT_SIZE = [640, 480];
@@ -330,32 +335,32 @@ var Grapheme = (function (exports) {
   textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
   */
   class GraphemeWindow extends GraphemeGroup {
-    constructor(graphemeContext, params={}) {
+    constructor (graphemeContext, params = {}) {
       super(params);
 
       // Grapheme context this window is a child of
       this.context = graphemeContext;
 
       // Element to be put into the webpage
-      this.domElement = document.createElement("div");
+      this.domElement = document.createElement('div');
 
       // The two canvases of a GraphemeWindow
-      this.mainCanvas = document.createElement("canvas");
+      this.mainCanvas = document.createElement('canvas');
       this.domElement.appendChild(this.mainCanvas);
-      this.textCanvas = document.createElement("canvas");
+      this.textCanvas = document.createElement('canvas');
       this.domElement.appendChild(this.textCanvas);
 
       // CSS stuffs
-      this.mainCanvas.classList.add("grapheme-canvas");
-      this.textCanvas.classList.add("grapheme-text-canvas");
-      this.domElement.classList.add("grapheme-window");
+      this.mainCanvas.classList.add('grapheme-canvas');
+      this.textCanvas.classList.add('grapheme-text-canvas');
+      this.domElement.classList.add('grapheme-window');
 
       // Get the contexts
-      this.mainCanvasContext = this.mainCanvas.getContext("bitmaprenderer");
-      this.textCanvasContext = this.textCanvas.getContext("2d");
+      this.mainCanvasContext = this.mainCanvas.getContext('bitmaprenderer');
+      this.textCanvasContext = this.textCanvas.getContext('2d');
 
       // The color of the background
-      this.backgroundColor = rgba(0,0,0,0);
+      this.backgroundColor = rgba(0, 0, 0, 0);
 
       // Add this window to the context's list of window
       graphemeContext.windows.push(this);
@@ -366,7 +371,7 @@ var Grapheme = (function (exports) {
 
     // Set the size of this window (including adjusting the canvas size)
     // Note that this width and height are in
-    setSize(width, height) {
+    setSize (width, height) {
       // cssWidth and cssHeight are in CSS pixels
       this.cssWidth = width;
       this.cssHeight = height;
@@ -375,9 +380,9 @@ var Grapheme = (function (exports) {
       this._updateCanvasSize();
 
       // Set the canvas CSS size using CSS
-      [this.mainCanvas, this.textCanvas].forEach(canvas => {
-        canvas.style.width = width + "px";
-        canvas.style.height = height + "px";
+      [this.mainCanvas, this.textCanvas].forEach((canvas) => {
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
       });
 
       // Update the parent context, in case it needs to be resized as well to fit
@@ -386,47 +391,47 @@ var Grapheme = (function (exports) {
     }
 
     // Set the actual canvas pixel size based on the desired width and the DPR
-    _updateCanvasSize() {
+    _updateCanvasSize () {
       this.canvasWidth = this.cssWidth * dpr;
       this.canvasHeight = this.cssHeight * dpr;
     }
 
     // Returns the pixel width of the canvas
-    get canvasWidth() {
-      return this.mainCanvas.width;
+    get canvasWidth () {
+      return this.mainCanvas.width
     }
 
     // Returns the pixel height of the canvas
-    get canvasHeight() {
-      return this.mainCanvas.height;
+    get canvasHeight () {
+      return this.mainCanvas.height
     }
 
     // Sets the pixel width of the canvas
-    set canvasWidth(x) {
+    set canvasWidth (x) {
       // Round it to an integer and make sure it's in a reasonable range
       x = Math.round(x);
-      assert(isPositiveInteger(x) && x < 16384, "canvas width must be in range [1,16383]");
+      assert(isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]');
 
       this.mainCanvas.width = x;
       this.textCanvas.width = x;
     }
 
     // Sets the pixel height of the canvas
-    set canvasHeight(x) {
+    set canvasHeight (x) {
       x = Math.round(x);
-      assert(isPositiveInteger(x) && x < 16384, "canvas height must be in range [1,16383]");
+      assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
 
       this.mainCanvas.height = x;
       this.textCanvas.height = x;
     }
 
     // Event triggered when the device pixel ratio changes
-    _onDPRChanged() {
+    _onDPRChanged () {
       this._updateCanvasWidth();
     }
 
     // Destroy this window.
-    destroy() {
+    destroy () {
       // Destroy the domElement
       try {
         this.domElement.parentNode.remove(this.domElement);
@@ -449,38 +454,40 @@ var Grapheme = (function (exports) {
       delete this.textCanvasContext;
     }
 
-    isActive() {
-      return (this.context.activeWindow === this);
+    isActive () {
+      return (this.context.activeWindow === this)
     }
 
-    clearToColor(color=this.backgroundColor) {
-      assert(this.isActive(), "Window is not currently being rendered");
+    clearToColor (color = this.backgroundColor) {
+      assert(this.isActive(), 'Window is not currently being rendered');
 
       // color.r, color.g, color.b, color.a
-      let glColor = color.glColor();
+      const glColor = color.glColor();
 
-      let gl = this.context.glContext;
+      const gl = this.context.glContext;
 
       gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
-    render() {
+    render () {
       // Set the active window to this window, since this is the window being rendered
       this.context.activeWindow = this;
 
       let err; // potential error in try {...} catch
-      let glCanvas = this.context.glCanvas;
+      const { glCanvas } = this.context;
 
-      let width = this.canvasWidth, height = this.canvasHeight;
+      const width = this.canvasWidth; const
+        height = this.canvasHeight;
 
       // Render information to be given to elements
-      let renderInfo = {
+      const renderInfo = {
         gl: this.context.glContext,
         glResourceManager: this.context.glResourceManager,
         text: this.textCanvasContext,
         textCanvas: this.textCanvas,
-        width, height
+        width,
+        height
       };
 
       try {
@@ -496,7 +503,7 @@ var Grapheme = (function (exports) {
         super.render(renderInfo);
 
         // Copy the canvas to this canvas
-        let glBitmap = glCanvas.transferToImageBitmap();
+        const glBitmap = glCanvas.transferToImageBitmap();
         this.mainCanvasContext.transferFromImageBitmap(glBitmap);
       } catch (e) {
         err = e;
@@ -504,7 +511,7 @@ var Grapheme = (function (exports) {
         this.context.activeWindow = null;
       }
 
-      if (err) throw err;
+      if (err) throw err
     }
   }
 
@@ -519,60 +526,63 @@ var Grapheme = (function (exports) {
   class GLResourceManager {
     // Compiled programs and created buffers
 
-    constructor(gl) {
+    constructor (gl) {
       this.gl = gl;
       this.programs = {};
       this.buffers = {};
     }
 
     // Compile a program and store it in this.programs
-    compileProgram(programName, vertexShaderSource, fragmentShaderSource, vertexAttributeNames=[], uniformNames=[]) {
-      if (this.hasProgram(programName)) // if this program name is already taken, delete the old one
+    compileProgram (programName, vertexShaderSource, fragmentShaderSource,
+      vertexAttributeNames = [], uniformNames = []) {
+      if (this.hasProgram(programName)) {
+        // if this program name is already taken, delete the old one
         this.deleteProgram(programName);
+      }
 
-      let gl = this.gl;
+      const { gl } = this;
 
       // The actual gl program itself
-      let glProgram = createGLProgram(gl,
+      const glProgram = createGLProgram(gl,
         createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
         createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
 
       // pairs of uniform names and their respective locations
-      let uniforms = {};
+      const uniforms = {};
       for (let i = 0; i < uniformNames.length; ++i) {
-        let uniformName = uniformNames[i];
+        const uniformName = uniformNames[i];
 
         uniforms[uniformName] = gl.getUniformLocation(glProgram, uniformName);
       }
 
       // pairs of vertex attribute names and their respective locations
-      let vertexAttribs = {};
+      const vertexAttribs = {};
       for (let i = 0; i < vertexAttributeNames.length; ++i) {
-        let vertexAttribName = vertexAttributeNames[i];
+        const vertexAttribName = vertexAttributeNames[i];
 
         vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
       }
 
-      let programInfo = {program: glProgram, uniforms, attribs: vertexAttribs};
+      const programInfo = { program: glProgram, uniforms, attribs: vertexAttribs };
       this.programs[programName] = programInfo;
     }
 
     // Return whether this has a program with that name
-    hasProgram(programName) {
-      return !!this.programs[programName];
+    hasProgram (programName) {
+      return !!this.programs[programName]
     }
 
     // Retrieve a program to use
-    getProgram(programName) {
-      return this.programs[programName];
+    getProgram (programName) {
+      return this.programs[programName]
     }
 
     // Delete a program
-    deleteProgram(programName) {
-      if (!this.hasProgram(programName)) return;
+    deleteProgram (programName) {
+      if (!this.hasProgram(programName)) return
 
       {
-        let programInfo = this.programs[programName];
+        const programInfo = this.programs[programName];
         this.gl.deleteProgram(programInfo.program);
       }
 
@@ -581,30 +591,29 @@ var Grapheme = (function (exports) {
     }
 
     // Create a buffer with the given name
-    _createBuffer(bufferName) {
-      if (this.hasBuffer(bufferName)) return;
+    createBuffer (bufferName) {
+      if (this.hasBuffer(bufferName)) return
 
-      let gl = this.gl;
+      const { gl } = this;
 
       // Create a new buffer
-      let buffer = gl.createBuffer();
+      const buffer = gl.createBuffer();
 
       this.buffers[bufferName] = buffer;
     }
 
-    hasBuffer(bufferName) {
-      return !!this.buffers[bufferName];
+    hasBuffer (bufferName) {
+      return !!this.buffers[bufferName]
     }
 
-    getBuffer(bufferName) {
-      if (!this.hasBuffer(bufferName))
-        this._createBuffer(bufferName);
-      return this.buffers[bufferName];
+    getBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName);
+      return this.buffers[bufferName]
     }
 
-    deleteBuffer(bufferName) {
-      if (!this.hasBuffer(bufferName)) return;
-      let buffer = this.getBuffer(bufferName);
+    deleteBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) return
+      const buffer = this.getBuffer(bufferName);
 
       // Delete the buffer from GL memory
       this.gl.deleteBuffer(buffer);
@@ -613,15 +622,15 @@ var Grapheme = (function (exports) {
   }
 
   class GraphemeContext {
-    constructor(params={}) {
+    constructor (params = {}) {
       // Creates an offscreen canvas to draw to, with an initial size of 1x1
-      this.glCanvas = new OffscreenCanvas(1, 1);
+      this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1,1) : document.createElement('canvas');
 
       // Create the webgl context!
-      let gl = this.glContext = this.glCanvas.getContext("webgl") || this.glCanvas.getContext("experimental-webgl");
+      const gl = this.glContext = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl');
 
       // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
-      assert(gl, "Grapheme requires WebGL to run; please get a competent browser");
+      assert(gl, 'Grapheme requires WebGL to run; please get a competent browser');
 
       // The gl resource manager for this context
       this.glResourceManager = new GLResourceManager(gl);
@@ -630,21 +639,23 @@ var Grapheme = (function (exports) {
       this.windows = [];
 
       // The portion of the glCanvas being used
-      this.currentViewport = {x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height};
+      this.currentViewport = {
+        x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height
+      };
 
       // Add this to the list of contexts to receive event updates and such
       CONTEXTS.push(this);
     }
 
     // Set the drawing viewport on glCanvas
-    setViewport(width, height, x=0, y=0, setScissor=true) {
-      let gl = this.glContext;
+    setViewport (width, height, x = 0, y = 0, setScissor = true) {
+      const gl = this.glContext;
 
       // Check to make sure the viewport dimensions are acceptable
       assert(isPositiveInteger(width) && isPositiveInteger(height) &&
         isNonnegativeInteger(x) && isNonnegativeInteger(y),
-        "x, y, width, height must be integers greater than 0 (or = for x,y)");
-      assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, "viewport must be within canvas bounds");
+      'x, y, width, height must be integers greater than 0 (or = for x,y)');
+      assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, 'viewport must be within canvas bounds');
 
       // Set this.currentViewport to the desired viewport
       this.currentViewport.x = x;
@@ -664,46 +675,46 @@ var Grapheme = (function (exports) {
       }
     }
 
-    get canvasHeight() {
-      return this.glCanvas.height;
+    get canvasHeight () {
+      return this.glCanvas.height
     }
 
-    get canvasWidth() {
-      return this.glCanvas.width;
+    get canvasWidth () {
+      return this.glCanvas.width
     }
 
-    set canvasHeight(x) {
+    set canvasHeight (x) {
       x = Math.round(x);
 
-      assert(isPositiveInteger(x) && x < 16384, "canvas height must be in range [1,16383]");
+      assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
       this.glCanvas.height = x;
     }
 
-    set canvasWidth(x) {
+    set canvasWidth (x) {
       x = Math.round(x);
 
-      assert(isPositiveInteger(x) && x < 16384, "canvas width must be in range [1,16383]");
+      assert(isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]');
       this.glCanvas.width = x;
     }
 
-    _onDPRChanged() {
-      this.windows.forEach(window => window._onDPRChanged());
+    _onDPRChanged () {
+      this.windows.forEach((window) => window._onDPRChanged());
     }
 
-    isDestroyed() {
-      return CONTEXTS.indexOf(this) === -1;
+    isDestroyed () {
+      return CONTEXTS.indexOf(this) === -1
     }
 
     // Destroy this context
-    destroy() {
-      if (this.isDestroyed()) return;
+    destroy () {
+      if (this.isDestroyed()) return
 
       // Remove from lists of contexts
-      let index = CONTEXTS.indexOf(this);
+      const index = CONTEXTS.indexOf(this);
       index !== -1 && CONTEXTS.splice(index, 1);
 
       // Destroy all children
-      this.windows.forEach(window => window.destroy());
+      this.windows.forEach((window) => window.destroy());
 
       // destroy resource manager
       this.glResourceManager.destroy();
@@ -719,30 +730,29 @@ var Grapheme = (function (exports) {
     }
 
     // Create a window using this context
-    createWindow() {
-      return new GraphemeWindow(this);
+    createWindow () {
+      return new GraphemeWindow(this)
     }
 
     // Remove a window from this context
-    _removeWindow(window) {
-      let allWindows = this.context.windows;
-      let thisIndex = allWindows.indexOf(window);
+    _removeWindow (window) {
+      const allWindows = this.context.windows;
+      const thisIndex = allWindows.indexOf(window);
 
-      if (thisIndex !== -1)
-        allWindow.splice(thisIndex, 1);
+      if (thisIndex !== -1) allWindows.splice(thisIndex, 1);
     }
 
-    destroyWindow(window) {
+    destroyWindow (window) {
       window.destroy();
     }
 
     // Update the size of this context based on the maximum size of its windows
-    updateSize() {
+    updateSize () {
       let maxWidth = 1;
       let maxHeight = 1;
 
       // Find the max width and height (independently)
-      this.windows.forEach(window => {
+      this.windows.forEach((window) => {
         if (window.canvasWidth > maxWidth) {
           maxWidth = window.canvasWidth;
         }
@@ -760,16 +770,16 @@ var Grapheme = (function (exports) {
 
   // list of endcap types
   const ENDCAP_TYPES = {
-    "NONE": 0,
-    "ROUND": 1
+    NONE: 0,
+    ROUND: 1
   };
 
   // list of join types
   const JOIN_TYPES = {
-    "NONE": 0,
-    "ROUND": 1,
-    "MITER": 2,
-    "DYNAMIC": 3
+    NONE: 0,
+    ROUND: 1,
+    MITER: 2,
+    DYNAMIC: 3
   };
 
   // this vertex shader is used for the polylines
@@ -795,373 +805,469 @@ void main() {
 }
 `;
 
-  function integerInRange(x, min, max) {
-    return isInteger(x) && min <= x && x <= max;
+  // Check whether x is an integer in the range [min, max]
+  function integerInRange (x, min, max) {
+    return isInteger(x) && min <= x && x <= max
   }
 
-  function nextPowerOfTwo(x) {
-    return 2 ** Math.ceil(Math.log2(x));
+  // Find the next power of two after x
+  function nextPowerOfTwo (x) {
+    return 2 ** Math.ceil(Math.log2(x))
   }
 
-  const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
+  // minimum angle in radians between roundings in a polyline
+  const MIN_RES_ANGLE = 0.05;
 
   // Parameters for the expanding/contracting float array for polyline
   const MIN_SIZE = 16;
   const MAX_SIZE = 2 ** 24;
 
-  const POLYLINE_PROGRAM_NAME = "polyline-shader";
+  // Name of the polyline program stored in GLResourceManager
+  const POLYLINE_PROGRAM_NAME = 'polyline-shader';
 
   /**
   PolylineElement draws a sequence of line segments connecting points. Put the points
   as ordered pairs, in CANVAS COORDINATES, in polyline.vertices. To disconnect
   points, intersperse them with two consecutive NaNs.
+
+  For example, [100, 100, 500, 500, 505, 500, NaN, NaN, 100, 150, 500, 150] draws
+  a line from (100,100)->(500,500)->(505,500), then from (100,150)->(500,150).
+
+  Other parameters:
   */
   class PolylineElement extends GraphemeElement {
-    constructor(window, params={}) {
+    constructor (window, params = {}) {
       super(window, params);
 
+      // Array (or FloatArray) storing the pairs of vertices which are to be connected.
+      // To prevent a join, put two NaNs in a row.
       this.vertices = select(params.vertices, []);
 
-      this.color = select(params.color, new Color(0,0,0,255));
-      this.thickness = 2; // thickness of the polyline in pixels
+      // Color of the polyline
+      this.color = select(params.color, new Color(0, 0, 0, 255));
 
-      this.endcapType = 1; // refer to ENDCAP enum
-      this.endcapRes = 0.4; // angle in radians between consecutive roundings
-      this.joinType = 3; // refer to ENDCAP enum
-      this.joinRes = 0.4; // angle in radians between consecutive roundings
+      // Thickness in canvas pixels
+      this.thickness = select(params.thickness, 2);
 
-      this.useNative = false;
+      // The type of endcap to be used (refer to the ENDCAPS enum)
+      this.endcapType = select(params.endcapType, 1);
+
+      // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
+      this.endcapRes = select(params.endcapRes, 0.4);
+
+      // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)
+      this.joinType = select(params.joinType, 3);
+
+      // angle in radians between consecutive roundings, including in dynamic mode
+      this.joinRes = select(params.joinRes, 0.4);
+
+      // Whether or not to use native GL.LINE_STRIP
+      this.useNative = select(params.useNative, false);
+
+      // Whether to recalculate the vertices every time render() is called
+      this.alwaysRecalculate = true;
 
       // used internally for gl vertices
-      this._glTriangleStripVertices = null;
-      this._glTriangleStripVerticesTotal = 0;
+      this.glVertices = null;
+      this.glVerticesCount = 0;
     }
 
-    static get ENDCAP_TYPES() {
-      return ENDCAP_TYPES;
+    static get ENDCAP_TYPES () {
+      return ENDCAP_TYPES
     }
 
-    static get JOIN_TYPES() {
-      return JOIN_TYPES;
+    static get JOIN_TYPES () {
+      return JOIN_TYPES
     }
 
-    _calculateTriangles() {
-      if (this.thickness <= 0 ||
-        !integerInRange(this.endcapType, 0, 1) ||
-        !integerInRange(this.joinType, 0, 3) ||
-        this.endcapRes < MIN_RES_ANGLE ||
-        this.joinRes < MIN_RES_ANGLE ||
-        this.vertices.length <= 3) {
-
-        this._glTriangleStripVerticesTotal = 0; // pretend there are no vertices ^_^
-        return;
-      }
-
-      let triStripVertices = this._glTriangleStripVertices;
-
-      if (!triStripVertices)
-        triStripVertices = this._glTriangleStripVertices = new Float32Array(MIN_SIZE);
-
-      let glTriStripI = 0;
-      let that = this; // ew
-      let triStripVerticesThreshold = triStripVertices.length - 2;
-
-      function addVertex(x, y) {
-        if (glTriStripI > triStripVerticesThreshold) {
-          // not enough space!!!!
-
-          let newFloatArray = new Float32Array(2 * triStripVertices.length);
-          newFloatArray.set(triStripVertices);
-
-          triStripVertices = that._glTriangleStripVertices = newFloatArray;
-          triStripVerticesThreshold = triStripVertices.length - 2;
-        }
-
-        triStripVertices[glTriStripI++] = x;
-        triStripVertices[glTriStripI++] = y;
-
-        if (needToDupeVertex) {
-          needToDupeVertex = false;
-          addVertex(x, y);
-        }
-      }
-
-      function duplicateVertex() {
-        addVertex(triStripVertices[glTriStripI - 2], triStripVertices[glTriStripI - 1]);
-      }
-
-      let vertices = this.vertices;
-      let origVertexCount = vertices.length / 2;
-
-      let th = this.thickness;
-      let needToDupeVertex = false;
-
-      let maxMiterLength = th / Math.cos(this.joinRes / 2);
-
-      let x1,x2,x3,y1,y2,y3;
-      let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, nu_x, nu_y, pu_x, pu_y, dis;
-
-      for (let i = 0; i < origVertexCount; ++i) {
-        x1 = (i !== 0) ? vertices[2 * i - 2] : NaN; // Previous vertex
-        x2 = vertices[2 * i]; // Current vertex
-        x3 = (i !== origVertexCount - 1) ? vertices[2 * i + 2] : NaN; // Next vertex
-
-        y1 = (i !== 0) ? vertices[2 * i - 1] : NaN; // Previous vertex
-        y2 = vertices[2 * i + 1]; // Current vertex
-        y3 = (i !== origVertexCount - 1) ? vertices[2 * i + 3] : NaN; // Next vertex
-
-        if (isNaN(x1) || isNaN(y1)) { // starting endcap
-          let nu_x = x3 - x2;
-          let nu_y = y3 - y2;
-          let dis = Math.hypot(nu_x, nu_y);
-
-          if (dis === 0) {
-            nu_x = 1;
-            nu_y = 0;
-          } else {
-            nu_x /= dis;
-            nu_y /= dis;
-          }
-
-          if (isNaN(nu_x) || isNaN(nu_y))
-            continue; // undefined >:(
-
-          if (this.endcapType === 1) {
-            // rounded endcap
-            let theta = Math.atan2(nu_y, nu_x) + Math.PI / 2;
-            let steps_needed = Math.ceil(Math.PI / this.endcapRes);
-
-            let o_x = x2 - th * nu_y, o_y = y2 + th * nu_x;
-
-            for (let i = 1; i <= steps_needed; ++i) {
-              let theta_c = theta + i / steps_needed * Math.PI;
-
-              addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
-              addVertex(o_x, o_y);
-            }
-            continue;
-          } else {
-            // no endcap
-            addVertex(x2 + th * nu_y, y2 - th * nu_x);
-            addVertex(x2 - th * nu_y, y2 + th * nu_x);
-            continue;
-          }
-        }
-
-        if (isNaN(x3) || isNaN(y3)) { // ending endcap
-          let pu_x = x2 - x1;
-          let pu_y = y2 - y1;
-          let dis = Math.hypot(pu_x, pu_y);
-
-          if (dis === 0) {
-            pu_x = 1;
-            pu_y = 0;
-          } else {
-            pu_x /= dis;
-            pu_y /= dis;
-          }
-
-          if (isNaN(pu_x) || isNaN(pu_y))
-            continue; // undefined >:(
-
-          addVertex(x2 + th * pu_y, y2 - th * pu_x);
-          addVertex(x2 - th * pu_y, y2 + th * pu_x);
-
-          if (this.endcapType === 1) {
-            let theta = Math.atan2(pu_y, pu_x) + 3 * Math.PI / 2;
-            let steps_needed = Math.ceil(Math.PI / this.endcapRes);
-
-            let o_x = x2 - th * pu_y, o_y = y2 + th * pu_x;
-
-            for (let i = 1; i <= steps_needed; ++i) {
-              let theta_c = theta + i / steps_needed * Math.PI;
-
-              addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
-              addVertex(o_x, o_y);
-            }
-            continue;
-          } else {
-            break;
-          }
-        }
-
-        if (isNaN(x2) || isNaN(x2)) {
-          duplicateVertex();
-          needToDupeVertex = true;
-
-          continue;
-        } else { // all vertices are defined, time to draw a joinerrrrr
-          if (this.joinType === 2 || this.joinType === 3) {
-            // find the two angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
-
-            v1x = x1 - x2;
-            v1y = y1 - y2;
-            v2x = x3 - x2;
-            v2y = y3 - y2;
-
-            v1l = Math.hypot(v1x, v1y);
-            v2l = Math.hypot(v2x, v2y);
-
-            b1_x = v2l * v1x + v1l * v2x, b1_y = v2l * v1y + v1l * v2y;
-            scale = 1 / Math.hypot(b1_x, b1_y);
-
-            if (scale === Infinity || scale === -Infinity) {
-              b1_x = -v1y;
-              b1_y = v1x;
-              scale = 1 / Math.hypot(b1_x, b1_y);
-            }
-
-            b1_x *= scale;
-            b1_y *= scale;
-
-            scale = th * v1l / (b1_x * v1y - b1_y * v1x);
-
-            if (this.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
-              // if the length of the miter is massive and we're in dynamic mode,
-              // we exit this if statement and do a rounded join
-              if (scale === Infinity || scale === -Infinity)
-                scale = 1;
-
-              b1_x *= scale;
-              b1_y *= scale;
-
-              addVertex(x2 - b1_x, y2 - b1_y);
-              addVertex(x2 + b1_x, y2 + b1_y);
-
-              continue;
-            }
-          }
-
-          nu_x = x3 - x2;
-          nu_y = y3 - y2;
-          dis = Math.hypot(nu_x, nu_y);
-
-          if (dis === 0) {
-            nu_x = 1;
-            nu_y = 0;
-          } else {
-            nu_x /= dis;
-            nu_y /= dis;
-          }
-
-          pu_x = x2 - x1;
-          pu_y = y2 - y1;
-          dis = Math.hypot(pu_x, pu_y);
-
-          if (dis === 0) {
-            pu_x = 1;
-            pu_y = 0;
-          } else {
-            pu_x /= dis;
-            pu_y /= dis;
-          }
-
-          addVertex(x2 + th * pu_y, y2 - th * pu_x);
-          addVertex(x2 - th * pu_y, y2 + th * pu_x);
-
-          if (this.joinType === 1 || this.joinType === 3) {
-            let a1 = Math.atan2(-pu_y, -pu_x) - Math.PI/2;
-            let a2 = Math.atan2(nu_y, nu_x) - Math.PI/2;
-
-            // if right turn, flip a2
-            // if left turn, flip a1
-
-            let start_a, end_a;
-
-            if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
-              // left turn
-              start_a = Math.PI + a1;
-              end_a = a2;
-            } else {
-              start_a = Math.PI + a2;
-              end_a = a1;
-            }
-
-            let angle_subtended = mod(end_a - start_a, 2 * Math.PI);
-            let steps_needed = Math.ceil(angle_subtended / this.joinRes);
-
-            for (let i = 0; i <= steps_needed; ++i) {
-              let theta_c = start_a + angle_subtended * i / steps_needed;
-
-              addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
-              addVertex(x2, y2);
-            }
-          }
-
-          addVertex(x2 + th * nu_y, y2 - th * nu_x);
-          addVertex(x2 - th * nu_y, y2 + th * nu_x);
-        }
-      }
-
-      if (glTriStripI * 2 < triStripVertices.length) {
-        let newFloatArray = new Float32Array(Math.min(Math.max(MIN_SIZE, nextPowerOfTwo(glTriStripI)), MAX_SIZE));
-        newFloatArray.set(triStripVertices.subarray(0, glTriStripI));
-
-        triStripVertices = this._glTriangleStripVertices = newFloatArray;
-      }
-
-      this._glTriangleStripVerticesTotal = Math.ceil(glTriStripI / 2);
-    }
-
-    _calculateNativeLines() {
-      let vertices = this.vertices;
-
-      if (vertices.length <= 3) {
-        this._glTriangleStripVerticesTotal = 0;
-        return;
-      }
-
-      let triStripVertices = this._glTriangleStripVertices;
-      if (!triStripVertices) {
-        triStripVertices = this._glTriangleStripVertices = new Float32Array(MIN_SIZE);
-      }
-
-      if (triStripVertices.length < vertices.length || triStripVertices.length > vertices.length * 2) {
-        triStripVertices = this._glTriangleStripVertices = new Float32Array(Math.min(Math.max(MIN_SIZE, nextPowerOfTwo(vertices.length)), MAX_SIZE));
-      }
-
-      if (Array.isArray(vertices)) {
-        for (let i = 0; i < vertices.length; ++i) {
-          triStripVertices[i] = vertices[i];
-        }
-      } else {
-        triStripVertices.set(vertices);
-      }
-
-      this._glTriangleStripVerticesTotal = Math.ceil(vertices.length / 2);
-    }
-
-    calculateVertices() {
+    calculateVertices () {
       // Calculate the vertices
       if (!this.useNative) {
-        this._calculateTriangles();
+        this.calculateTriangles();
       } else {
-        this._calculateNativeLines();
+        this.calculateNativeLines();
       }
     }
 
-    render(renderInfo) {
+
+      calculateTriangles () {
+        // Conditions to just say there are 0 vertices and exit early
+        if (this.thickness <= 0 ||
+          !integerInRange(this.endcapType, 0, 1) ||
+          !integerInRange(this.joinType, 0, 3) ||
+          this.endcapRes < MIN_RES_ANGLE ||
+          this.joinRes < MIN_RES_ANGLE ||
+          this.vertices.length <= 3) {
+          this.glVerticesCount = 0;
+          return
+        }
+
+        // If glVertices isn't an array, make it an array with size MIN_SIZE
+        if (!this.glVertices) {
+          this.glVertices = new Float32Array(MIN_SIZE);
+        }
+
+        // The vertices that WebGL would use
+        let glVertices = this.glVertices;
+
+        let glVerticesIndex = 0; // the array position we are on (2x which vertex we're on)
+        let needToDupeVertex = false; // whether we need to duplicate the CURRENT vertex
+
+        // if glVerticesIndex > glVerticesThreshold, we need to expand glVertices
+        let glVerticesThreshold = glVertices.length - 2;
+
+        // To allow this to be accessed within addVertex
+        const that = this;
+
+        // Push a GL vertex back
+        function addVertex (x, y) {
+          if (glVerticesIndex > glVerticesThreshold) {
+            // Not enough space in the FloatArray, reallocate one with twice the size
+
+            const newFloatArray = new Float32Array(2 * glVertices.length);
+            newFloatArray.set(glVertices); // copy over the old data
+
+            that.glVertices = newFloatArray;
+            glVertices = that.glVertices;
+
+            // Update the new threshold
+            glVerticesThreshold = glVertices.length - 2;
+          }
+
+          // Set the next two entries to x and y
+          glVertices[glVerticesIndex] = x;
+          glVerticesIndex += 1;
+          glVertices[glVerticesIndex] = y;
+          glVerticesIndex += 1;
+
+          // If we need to duplicate the CURRENT vertex, do it again
+          if (needToDupeVertex) {
+            needToDupeVertex = false;
+            addVertex(x, y);
+          }
+        }
+
+        // Duplicate the LAST vertex immediately
+        function duplicateVertex () {
+          addVertex(glVertices[glVerticesIndex - 2], glVertices[glVerticesIndex - 1]);
+        }
+
+        // The vertices of the polyline
+        const vertices = this.vertices;
+
+        // Number of polyline vertex coordinates
+        const coordinateCount = vertices.length;
+
+        // Thickness of the polyline from the edge to the center. We divide it by two
+        // because this.thickness is considered to be the total width of the line
+        const th = this.thickness / 2;
+
+        // Threshold distance from the corner of the miter to the center of the join
+        // which would imply that the corner should be ROUNDED, in DYNAMIC mode.
+        // That is, if the miter length is larger than this quantity, we should round
+        // the vertex instead
+        const maxMiterLength = th / Math.cos(this.joinRes / 2);
+
+        // Lots of variables
+        let x2, x3, y2, y3, v2x, v2y, v2l;
+
+        x2 = NaN;
+        x3 = NaN;
+
+        y2 = NaN;
+        y3 = NaN;
+
+        for (let i = 0; i <= coordinateCount; i += 2) {
+          // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
+          // If any of these is NaN, that vertex is considered undefined
+          let x1 = x2;
+          x2 = x3;
+          x3 = (i == coordinateCount) ? NaN : vertices[i];
+          y2 = y3;
+          y3 = (i == coordinateCount) ? NaN : vertices[i + 1];
+
+          if (i === 0) {
+            continue
+          }
+
+          // Shift the previous values of (v2x, v2y) back to (v1x, v1y), so that
+          // (v1x, v1y) is the vector from (x2, y2) to (x1, y1). Note the order in
+          // those points; this is why it is negated.
+          let v1x = -v2x;
+          let v1y = -v2y;
+
+          // (v2x, v2y) is the vector from (x2, y2) to (x3, y3)
+          v2x = x3 - x2;
+          v2y = y3 - y2;
+
+          // Give v2l's value to v1l
+          let v1l = v2l;
+
+          // v2l is the length of vector (v2x, v2y)
+          v2l = Math.hypot(v2x, v2y);
+
+          // Whether a starting endcap should be emitted. Note that x !== x <-> isNaN(x)
+          let isStartingEndcap = x1 !== x1;
+          let isEndingEndcap = x3 !== x3;
+
+          // If we need to emit a (starting or ending) endcap. Note that we emit
+          // a starting endcap when p1 is undefined, and thus the endcap should be
+          // on p2 facing away from p3. We emit an ending endcap when p3 is undefined,
+          // and thus the endcap should be on p2, facing away from p1
+          if (isStartingEndcap || isEndingEndcap) {
+            // (duX, duY) is a vector of length th (thickness) from the center of the endcap
+            // facing towards the rest of the (semicircular) endcap. That is, it
+            // is facing towards the bulb of the endcap, not away from it. Illustration
+            // for an ending endcap:
+            //
+            //  p1 -> • ------------ •) <- p2, endcap
+            //  (duX, duY) = -->
+
+            let duX, duY;
+
+            if (isEndingEndcap) {
+              // Multiplying by th / v1l makes the vector length th, while preserving
+              // its direction
+              duX = -v1x * th / v1l;
+              duY = -v1y * th / v1l;
+            } else {
+              duX = v2x * th / v2l;
+              duY = v2y * th / v2l;
+            }
+
+            // If we can't create an endcap because of various undefined coordinates,
+            // just give up. This might happen if x2 is defined but y2 is not, something
+            // like that.
+            if ((duX !== duX) || (duY !== duY)) continue
+
+            // Two starting vertices of the endcap. Note that these are (x2, y2) ± (duY, -duX);
+            // the second vector is rotated 90 degrees counterclockwise from (duY, duX).
+            addVertex(x2 + duY, y2 - duX);
+            addVertex(x2 - duY, y2 + duX);
+
+            // Code for making a rounded endcap
+            if (this.endcapType === 1) {
+              // Starting theta value
+              const theta = Math.atan2(duY, duX) + (isStartingEndcap ? Math.PI / 2 : 3 * Math.PI / 2);
+
+              // Number of steps needed so that the angular resolution is smaller than or
+              // equal to this.endcapRes
+              const stepsNeeded = Math.ceil(Math.PI / this.endcapRes);
+
+              // (cX, cY) is a fixed point; in fact, they are the last vertex before
+              // this loop. This defines a point on the boundary of the semicircle
+              // to which a "triangle fan" can be drawn which fills in the entire
+              // semicircle.
+              const cX = x2 - duY;
+              const cY = y2 + duX;
+
+              // Iterate through each step
+              for (let i = 1; i <= stepsNeeded; ++i) {
+                // Calculate an intermediate angle
+                const thetaC = theta + i / stepsNeeded * Math.PI;
+
+                // Vertex on the circle subtending that intermediate angle
+                addVertex(x2 + th * Math.cos(thetaC), y2 + th * Math.sin(thetaC));
+                addVertex(cX, cY);
+              }
+
+              continue
+            }
+          }
+
+          // If the middle vertex is undefined, we need to duplicate the previous and next
+          // gl vertices. This creates a degenerate (0-width) triangle which disconnects the
+          // two triangle strips. To duplicate the previous vertex, we use duplicateVertex().
+          // To duplicate the next vertex, we set needToDupeVertex = true, which will
+          // duplicate the next call to addVertex.
+          if (x2 !== x2) {
+            duplicateVertex();
+            needToDupeVertex = true;
+          } else {
+            // all vertices are defined, time to draw a joiner!
+            if (this.joinType === 2 || this.joinType === 3) {
+              // find the angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
+              // After this section of code, (b1x, b1y) is a unit vector bisecting
+              // the vectors (v1x, v1y) and (v2x, v2y)
+              let b1x = v2l * v1x + v1l * v2x;
+              let b1y = v2l * v1y + v1l * v2y;
+              let scale = 1 / Math.hypot(b1x, b1y);
+
+              // If the scale is infinite, that means b1x = b1y = 0, so the vectors
+              // are opposite each other. We thus choose a vector perpendicular to both
+              // vectors because that bisects the 180 degree angle they subtend
+              if (scale === Infinity || scale === -Infinity) {
+                b1x = -v1y;
+                b1y = v1x;
+                scale = 1 / Math.hypot(b1x, b1y);
+              }
+
+              // Scale it to be a unit vector
+              b1x *= scale;
+              b1y *= scale;
+
+              // Set scale to the length of a miter. (b1x, b1y) is now in the direction
+              // of a proper miter, but we multiply it by this value to make it the correct
+              // length.
+              scale = th * v1l / (b1x * v1y - b1y * v1x);
+
+              if (this.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
+                // if the length of the miter is massive and we're in dynamic mode,
+                // we reject this if statement and do a rounded join. More precisely,
+                // |scale| exceeds maxMiterLength when the angle between the two vectors
+                // is greater than the angular resolution mandated by this.joinRes.
+
+                // Scale by the length of a miter
+                b1x *= scale;
+                b1y *= scale;
+
+                // Add the two miter vertices. This is all that is necessary to join
+                // the vertices, since both points lie on the infinite rectangles determined
+                // by each of the pairs ((x1, y1), (x2, y2)) and ((x2, y2), (x3, y3)).
+                addVertex(x2 - b1x, y2 - b1y);
+                addVertex(x2 + b1x, y2 + b1y);
+
+                continue
+              }
+            }
+
+            // These are scaling factors associated with scaling the displacement vectors
+            // (v1x, v1y) and (v2x, v2y) to have length th (thickness)
+            let puFactor = -th / v1l;
+            let nuFactor = th / v2l;
+
+            // Add two points which end the current rectangle. This is all we need
+            // if there is no join to be computed (i.e. if the join mode is NONE)
+            addVertex(x2 + puFactor * v1y, y2 - puFactor * v1x);
+            addVertex(x2 - puFactor * v1y, y2 + puFactor * v1x);
+
+            if (this.joinType === 1 || this.joinType === 3) {
+              // If the join type is round or dynamic, we need to make a rounded join.
+              // a1 and a2 are angles associated with the direction of where the rounded
+              // join should start and end.
+              const a1 = Math.atan2(v1y, v1x) - Math.PI / 2;
+              const a2 = Math.atan2(v2y, v2x) - Math.PI / 2;
+
+              // If the join is a right turn viewed from above, we flip a2 by adding π
+              // if left turn, flip a1 by adding π
+
+              let startA, endA;
+
+              // The below condition is satisfied when the join is a left turn
+              if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
+                // starting angle is a1 + π, ending angle is a2
+                startA = Math.PI + a1;
+                endA = a2;
+              } else {
+                // starting angle is a2 + π, ending angle is a1
+                startA = Math.PI + a2;
+                endA = a1;
+              }
+
+              // The absolute angle subtended by endA and startA
+              // TODO: not sure if the mod function here is necessary
+              const angleSubtended = mod(endA - startA, 2 * Math.PI);
+
+              // The number of angle steps needed to make sure the angular resolution
+              // is less than or equal to this.joinRes
+              const stepsNeeded = Math.ceil(angleSubtended / this.joinRes);
+
+              for (let i = 0; i <= stepsNeeded; ++i) {
+                // For every intermediate angle
+                const thetaC = startA + angleSubtended * i / stepsNeeded;
+
+                // Add a point on the circular sector, then connect back to (x2, y2)
+                // to create a "circular fan"
+                addVertex(x2 + th * Math.cos(thetaC), y2 + th * Math.sin(thetaC));
+                addVertex(x2, y2);
+              }
+            }
+
+            // Add the starting vertices for the next rectangle!
+            addVertex(x2 + nuFactor * v2y, y2 - nuFactor * v2x);
+            addVertex(x2 - nuFactor * v2y, y2 + nuFactor * v2x);
+          }
+        }
+
+        // If the number of glVertices we computed is less than four times the total buffer size,
+        // we reallocate the buffer to be two times the next power of two after the number of
+        // glVertices we compute. This prevents excess memory from being forever wasted by
+        // a polyline history with lots of vertices.
+        if (glVerticesIndex * 4 < glVertices.length) {
+          const newFloatArray = new Float32Array(Math.min(Math.max(MIN_SIZE,
+            2 * nextPowerOfTwo(glVerticesIndex)), MAX_SIZE));
+
+          // Copy old values to the new float array
+          newFloatArray.set(glVertices.subarray(0, glVerticesIndex));
+
+          glVertices = this.glVertices = newFloatArray;
+        }
+
+        // Set the number of glVertices to be used later when rendered with gl!
+        this.glVerticesCount = Math.ceil(glVerticesIndex / 2);
+      }
+
+      calculateNativeLines () {
+        const vertices = this.vertices;
+
+        // Early exit condition
+        if (vertices.length <= 3) {
+          this.glVerticesCount = 0;
+          return
+        }
+
+        // If glVertices doesn't exist yet, set it to a newly-created Float32Array
+        let glVertices = this.glVertices;
+        if (!glVertices) {
+          glVertices = this.glVertices = new Float32Array(MIN_SIZE);
+        }
+
+        // Adjust our array size as necessary.
+        let undersized = glVertices.length < vertices.length;
+        let oversized = glVertices.length > vertices.length * 4;
+        if (undersized || oversized) {
+          glVertices = this.glVertices = new Float32Array(Math.min(Math.max(MIN_SIZE,
+            ((oversized) ? 2 : 1) * nextPowerOfTwo(vertices.length)), MAX_SIZE));
+        }
+
+        // If vertices is a plain array, we copy it manually. Otherwise, we use
+        // the built in ArrayBuffer.set function for I AM SPEED
+        if (Array.isArray(vertices)) {
+          for (let i = 0; i < vertices.length; ++i) {
+            glVertices[i] = vertices[i];
+          }
+        } else {
+          glVertices.set(vertices);
+        }
+
+        // Set the number of vertices for gl to render!
+        this.glVerticesCount = Math.ceil(vertices.length / 2);
+      }
+
+    render (renderInfo) {
       // Calculate the vertices
-      this.calculateVertices();
+      if (this.alwaysRecalculate) {
+        this.calculateVertices();
+      }
 
       // Potential early exit
-      let vertexCount = this._glTriangleStripVerticesTotal;
-      if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return;
+      const vertexCount = this.glVerticesCount;
+      if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
 
-      let gl = renderInfo.gl;
-      let glManager = renderInfo.glResourceManager;
+      const gl = renderInfo.gl;
+      const glManager = renderInfo.glResourceManager;
 
       // If there is no polyline program yet, compile one!
       if (!glManager.hasProgram(POLYLINE_PROGRAM_NAME)) {
         glManager.compileProgram(POLYLINE_PROGRAM_NAME,
           vertexShaderSource, fragmentShaderSource,
-          ["v_position"], ["xy_scale", "line_color"]);
+          ['v_position'], ['xy_scale', 'line_color']);
       }
 
-      let polylineInfo = glManager.getProgram(POLYLINE_PROGRAM_NAME);
+      const polylineInfo = glManager.getProgram(POLYLINE_PROGRAM_NAME);
 
       this.addUsedBufferName(this.uuid);
-      let glBuffer = glManager.getBuffer(this.uuid);
+      const glBuffer = glManager.getBuffer(this.uuid);
 
       // gl, glResourceManager, width, height, text, textCanvas
 
@@ -1172,7 +1278,7 @@ void main() {
       gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
 
       // Get the desired color of our line
-      let color = this.color.glColor();
+      const color = this.color.glColor();
 
       // set the vec4 at colorLocation to (r, g, b, a)
       gl.uniform4f(polylineInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
@@ -1181,7 +1287,7 @@ void main() {
       gl.uniform2f(polylineInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
 
       // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this._glTriangleStripVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */ );
+      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
 
       // enable the vertices location attribute to be used in the program
       gl.enableVertexAttribArray(polylineInfo.attribs.v_position);
