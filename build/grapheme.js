@@ -964,6 +964,28 @@ var Grapheme = (function (exports) {
     7: SkeletonArrowFunctionFactory(2,3)
   };
 
+  // Length of arrow in pixels for a line with th=1
+  const arrowLengths = {};
+
+  (function() {
+    // Calculate the arrow lengths experimentally!!
+
+    let maxX;
+    let addVertex = (x,y) => {
+      if (x > maxX)
+        maxX = x;
+    };
+
+    for (let key in arrowDrawers) {
+      let drawer = arrowDrawers[key];
+      maxX = 0;
+
+      drawer(addVertex, 0, 0, 1, 0, 1, 0, 0, true);
+
+      arrowLengths[key] = maxX;
+    }
+  })();
+
   // list of endcap types
   const ENDCAP_TYPES = {
     NONE: 0,
@@ -1573,6 +1595,7 @@ void main() {
   exports.Context = GraphemeContext;
   exports.PolylineElement = PolylineElement;
   exports.arrowDrawers = arrowDrawers;
+  exports.arrowLengths = arrowLengths;
 
   return exports;
 

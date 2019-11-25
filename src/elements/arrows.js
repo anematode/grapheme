@@ -135,4 +135,26 @@ const arrowDrawers = {
   7: SkeletonArrowFunctionFactory(2,3)
 }
 
-export { ARROW_TYPES, arrowDrawers };
+// Length of arrow in pixels for a line with th=1
+const arrowLengths = {};
+
+(function() {
+  // Calculate the arrow lengths experimentally!!
+
+  let maxX;
+  let addVertex = (x,y) => {
+    if (x > maxX)
+      maxX = x;
+  }
+
+  for (let key in arrowDrawers) {
+    let drawer = arrowDrawers[key]
+    maxX = 0;
+
+    drawer(addVertex, 0, 0, 1, 0, 1, 0, 0, true);
+
+    arrowLengths[key] = maxX;
+  }
+})();
+
+export { ARROW_TYPES, arrowDrawers, arrowLengths };
