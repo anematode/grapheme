@@ -776,16 +776,81 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // Some functions to draw arrows
+
+  function TriangularArrow(arrowLenScale, arrowWidthScale, addVertex, x2, y2, xa, ya, th, duX, duY, isStarting) {
+    // Constructs a "triangular arrow" on (x2, y2) facing away from (xa, ya)
+    let arrowLen = th * arrowLenScale;
+    let arrowWidth = th * arrowWidthScale;
+
+    let v1x = xa - x2;
+    let v1y = ya - y2;
+    let v1l = Math.hypot(v1x, v1y);
+
+    if (v1l === 0) return; // yeah, I'm not dealing with that
+
+    v1x /= v1l;
+    v1y /= v1l;
+
+    // (abx, aby) is base of the arrow
+    let abx = x2 + v1x * arrowLen;
+    let aby = y2 + v1y * arrowLen;
+
+    let av1x = abx + v1y * arrowWidth;
+    let av1y = aby - v1x * arrowWidth;
+
+    let av2x = abx - v1y * arrowWidth;
+    let av2y = aby + v1x * arrowWidth;
+
+    function addArrowBaseVertices() {
+      addVertex(abx + duY, aby - duX);
+      addVertex(abx - duY, aby + duX);
+    }
+
+    if (!isStarting) addArrowBaseVertices();
+
+    addVertex(x2, y2);
+    addVertex(av1x, av1y);
+    addVertex(av2x, av2y);
+
+    if (isStarting) addArrowBaseVertices();
+  }
+
+  function StandardArrow(...args) {
+    TriangularArrow(15, 5, ...args);
+  }
+
+  function SquatArrow(...args) {
+    TriangularArrow(8, 5, ...args);
+  }
+
+  // list of built-in arrow types
+  const ARROW_TYPES = {
+    CUSTOM: -1,
+    STANDARD: 0,
+    SQUAT: 1
+  };
+
+  const arrowDrawers = {
+    0: StandardArrow,
+    1: SquatArrow
+  };
+
   // list of endcap types
   const ENDCAP_TYPES = {
     NONE: 0,
-    ROUND: 1,
-    ARROW_F: 2, // arrow on every ending endcap
-    ARROW_B: 3, // arrow on every starting endcap
-    ARROW_FB: 4, // arrow on every endcap
-    ARROW_F_END_ONLY: 5, // arrow on the end of the whole path
-    ARROW_B_START_ONLY: 6, // arrow at the start of the whole path
-    ARROW_FB_ENDS_ONLY: 7 // arrows at both ends of the path
+    ROUND: 1
+  };
+
+  // list of arrow position types
+  const ARROW_LOCATION_TYPES = {
+    NONE: -1,
+    ARROW_F: 0, // arrow on every ending endcap
+    ARROW_B: 1, // arrow on every starting endcap
+    ARROW_FB: 2, // arrow on every endcap
+    ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
+    ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
+    ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
   };
 
   // list of join types
@@ -875,6 +940,12 @@ void main() {
       // angle in radians between consecutive roundings, including in dynamic mode
       this.joinRes = select(params.joinRes, 0.4);
 
+      // Location of arrows (default is none)
+      this.arrowLocations = select(params.arrowLocations, -1);
+
+      // Type of arrows to be drawn
+      this.arrowType = select(params.arrowType, 0);
+
       // Whether or not to use native GL.LINE_STRIP
       this.useNative = select(params.useNative, false);
 
@@ -892,6 +963,14 @@ void main() {
 
     static get JOIN_TYPES () {
       return JOIN_TYPES
+    }
+
+    static get ARROW_TYPES () {
+      return ARROW_TYPES
+    }
+
+    static get ARROW_LOCATION_TYPES () {
+      return ARROW_LOCATION_TYPES
     }
 
     calculateVertices () {
@@ -966,6 +1045,18 @@ void main() {
           addVertex(glVertices[glVerticesIndex - 2], glVertices[glVerticesIndex - 1]);
         }
 
+        function drawArrow(...args) {
+          // isStarting = true if it is a starting endcap, false if it is an
+          // ending endcap
+
+          if (that.arrowType === -1) { // custom arrow type
+            that.customArrowDrawer(addVertex, ...args);
+          } else {
+            // Draw using one of the defined arrow drawers
+            arrowDrawers[that.arrowType](addVertex, ...args);
+          }
+        }
+
         // The vertices of the polyline
         const vertices = this.vertices;
 
@@ -975,6 +1066,9 @@ void main() {
         // Thickness of the polyline from the edge to the center. We divide it by two
         // because this.thickness is considered to be the total width of the line
         const th = this.thickness / 2;
+
+        // Arrow locations
+        const arrowLocations = this.arrowLocations;
 
         // Threshold distance from the corner of the miter to the center of the join
         // which would imply that the corner should be ROUNDED, in DYNAMIC mode.
@@ -997,6 +1091,8 @@ void main() {
           let x1 = x2;
           x2 = x3;
           x3 = (i == coordinateCount) ? NaN : vertices[i];
+
+          let y1 = y2;
           y2 = y3;
           y3 = (i == coordinateCount) ? NaN : vertices[i + 1];
 
@@ -1054,13 +1150,43 @@ void main() {
             // like that.
             if ((duX !== duX) || (duY !== duY)) continue
 
+            if (isStartingEndcap) {
+              // check if we should draw an arrow
+
+              let ALT = ARROW_LOCATION_TYPES;
+              if (arrowLocations === ALT.ARROW_B ||  // if arrows at starting endcaps
+                arrowLocations === ALT.ARROW_FB || // if arrows at all endcaps
+                ((arrowLocations === ALT.ARROW_B_START_ONLY || // if arrow at beginning
+                arrowLocations === ALT.ARROW_FB_ENDS_ONLY) && i === 2)) {
+                // TODO: more nuanced drawing methods
+                drawArrow(x2, y2, x3, y3, th, duX, duY, true);
+
+                continue;
+              }
+            }
+
+            if (isEndingEndcap) {
+              // check if we should draw an arrow
+              let ALT = ARROW_LOCATION_TYPES;
+              if (arrowLocations === ALT.ARROW_F ||  // if arrows at ending endcaps
+                arrowLocations === ALT.ARROW_FB || // if arrows at all endcaps
+                ((arrowLocations === ALT.ARROW_F_END_ONLY || // if arrow at end
+                arrowLocations === ALT.ARROW_FB_ENDS_ONLY) && i === coordinateCount)) {
+                // TODO: more nuanced drawing methods
+                drawArrow(x2, y2, x1, y1, th, duX, duY, false);
+
+                continue;
+              }
+            }
+
             // Two starting vertices of the endcap. Note that these are (x2, y2) ± (duY, -duX);
             // the second vector is rotated 90 degrees counterclockwise from (duY, duX).
             addVertex(x2 + duY, y2 - duX);
             addVertex(x2 - duY, y2 + duX);
 
+
             // Code for making a rounded endcap
-            if (this.endcapType === 1) {
+            if (this.endcapType === 1 && drawEndcap) {
               // Starting theta value
               const theta = Math.atan2(duY, duX) + (isStartingEndcap ? Math.PI / 2 : 3 * Math.PI / 2);
 
@@ -1084,9 +1210,9 @@ void main() {
                 addVertex(x2 + th * Math.cos(thetaC), y2 + th * Math.sin(thetaC));
                 addVertex(cX, cY);
               }
-
-              continue
             }
+
+            continue
           }
 
           // If the middle vertex is undefined, we need to duplicate the previous and next
