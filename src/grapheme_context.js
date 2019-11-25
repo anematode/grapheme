@@ -1,4 +1,5 @@
 import { Window as GraphemeWindow } from './grapheme_window'
+import { InteractiveWindow } from "./interactive_window";
 import { GLResourceManager } from './gl_manager'
 import * as utils from './utils'
 
@@ -111,8 +112,8 @@ class GraphemeContext {
   }
 
   // Create a window using this context
-  createWindow () {
-    return new GraphemeWindow(this)
+  createWindow (interactive=true) {
+    return new (interactive ? InteractiveWindow : GraphemeWindow)(this)
   }
 
   // Remove a window from this context

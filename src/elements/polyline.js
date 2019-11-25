@@ -5,7 +5,13 @@ import * as utils from '../utils'
 // list of endcap types
 const ENDCAP_TYPES = {
   NONE: 0,
-  ROUND: 1
+  ROUND: 1,
+  ARROW_F: 2, // arrow on every ending endcap
+  ARROW_B: 3, // arrow on every starting endcap
+  ARROW_FB: 4, // arrow on every endcap
+  ARROW_F_END_ONLY: 5, // arrow on the end of the whole path
+  ARROW_B_START_ONLY: 6, // arrow at the start of the whole path
+  ARROW_FB_ENDS_ONLY: 7 // arrows at both ends of the path
 }
 
 // list of join types

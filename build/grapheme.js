@@ -515,6 +515,14 @@ var Grapheme = (function (exports) {
     }
   }
 
+  class InteractiveWindow extends GraphemeWindow {
+    constructor(graphemeContext, params={}) {
+      super(graphemeContext, params);
+
+      
+    }
+  }
+
   /**
   The GLResourceManager stores GL resources on a per-context basis. This allows the
   separation of elements and their drawing buffers in a relatively complete way.
@@ -730,8 +738,8 @@ var Grapheme = (function (exports) {
     }
 
     // Create a window using this context
-    createWindow () {
-      return new GraphemeWindow(this)
+    createWindow (interactive=true) {
+      return new (interactive ? InteractiveWindow : GraphemeWindow)(this)
     }
 
     // Remove a window from this context
@@ -771,7 +779,13 @@ var Grapheme = (function (exports) {
   // list of endcap types
   const ENDCAP_TYPES = {
     NONE: 0,
-    ROUND: 1
+    ROUND: 1,
+    ARROW_F: 2, // arrow on every ending endcap
+    ARROW_B: 3, // arrow on every starting endcap
+    ARROW_FB: 4, // arrow on every endcap
+    ARROW_F_END_ONLY: 5, // arrow on the end of the whole path
+    ARROW_B_START_ONLY: 6, // arrow at the start of the whole path
+    ARROW_FB_ENDS_ONLY: 7 // arrows at both ends of the path
   };
 
   // list of join types
