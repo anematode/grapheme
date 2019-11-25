@@ -1,12 +1,12 @@
 import { Window as GraphemeWindow } from './grapheme_window'
-import { InteractiveWindow } from "./interactive_window";
+import { InteractiveWindow } from './interactive_window'
 import { GLResourceManager } from './gl_manager'
 import * as utils from './utils'
 
 class GraphemeContext {
   constructor (params = {}) {
     // Creates an offscreen canvas to draw to, with an initial size of 1x1
-    this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1,1) : document.createElement('canvas');
+    this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1, 1) : document.createElement('canvas')
 
     // Create the webgl context!
     const gl = this.glContext = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl')
@@ -112,7 +112,7 @@ class GraphemeContext {
   }
 
   // Create a window using this context
-  createWindow (interactive=true) {
+  createWindow (interactive = true) {
     return new (interactive ? InteractiveWindow : GraphemeWindow)(this)
   }
 
