@@ -1,6 +1,6 @@
-import { Element as GraphemeElement } from '../grapheme_element'
 import { Color } from '../color'
 import { ARROW_TYPES, arrowDrawers } from './arrows'
+import { Simple2DGeometry } from './simple_geometry'
 import * as utils from '../utils'
 
 // list of endcap types
@@ -28,29 +28,6 @@ const JOIN_TYPES = {
   DYNAMIC: 3
 }
 
-// this vertex shader is used for the polylines
-const vertexShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// a vector containing the 2D position of the vertex
-attribute vec2 v_position;
-uniform vec2 xy_scale;
-vec2 displace = vec2(-1, 1);
-
-void main() {
-  // set the vertex's resultant position
-  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-}`
-
-// this frag shader is used for the polylines
-const fragmentShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// vec4 containing the color of the line to be drawn
-uniform vec4 line_color;
-void main() {
-  gl_FragColor = line_color;
-}
-`
-
 // Check whether x is an integer in the range [min, max]
 function integerInRange (x, min, max) {
   return utils.isInteger(x) && min <= x && x <= max
@@ -68,9 +45,6 @@ const MIN_RES_ANGLE = 0.05
 const MIN_SIZE = 16
 const MAX_SIZE = 2 ** 24
 
-// Name of the polyline program stored in GLResourceManager
-const POLYLINE_PROGRAM_NAME = 'polyline-shader'
-
 /**
 PolylineElement draws a sequence of line segments connecting points. Put the points
 as ordered pairs, in CANVAS COORDINATES, in polyline.vertices. To disconnect
@@ -81,7 +55,7 @@ a line from (100,100)->(500,500)->(505,500), then from (100,150)->(500,150).
 
 Other parameters:
 */
-class PolylineElement extends GraphemeElement {
+class PolylineElement extends Simple2DGeometry {
   constructor (window, params = {}) {
     super(window, params)
 
@@ -552,57 +526,24 @@ class PolylineElement extends GraphemeElement {
   render (renderInfo) {
     // Calculate the vertices
     if (this.alwaysRecalculate) {
+      const begin = performance.now()
       this.calculateVertices()
+      const end = performance.now()
+
+      window.vertexTimes.push(end - begin)
     }
 
     // Potential early exit
     const vertexCount = this.glVerticesCount
     if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
 
-    const gl = renderInfo.gl
-    const glManager = renderInfo.glResourceManager
-
-    // If there is no polyline program yet, compile one!
-    if (!glManager.hasProgram(POLYLINE_PROGRAM_NAME)) {
-      glManager.compileProgram(POLYLINE_PROGRAM_NAME,
-        vertexShaderSource, fragmentShaderSource,
-        ['v_position'], ['xy_scale', 'line_color'])
+    if (this.useNative) {
+      this.renderMode = 'LINE_STRIP'
+    } else {
+      this.renderMode = 'TRIANGLE_STRIP'
     }
 
-    const polylineInfo = glManager.getProgram(POLYLINE_PROGRAM_NAME)
-
-    this.addUsedBufferName(this.uuid)
-    const glBuffer = glManager.getBuffer(this.uuid)
-
-    // gl, glResourceManager, width, height, text, textCanvas
-
-    // tell webgl to start using the polyline program
-    gl.useProgram(polylineInfo.program)
-
-    // bind our webgl buffer to gl.ARRAY_BUFFER access point
-    gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer)
-
-    // Get the desired color of our line
-    const color = this.color.glColor()
-
-    // set the vec4 at colorLocation to (r, g, b, a)
-    gl.uniform4f(polylineInfo.uniforms.line_color, color.r, color.g, color.b, color.a)
-
-    // set the scaling factors
-    gl.uniform2f(polylineInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height)
-
-    // copy our vertex data to the GPU
-    gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */)
-
-    // enable the vertices location attribute to be used in the program
-    gl.enableVertexAttribArray(polylineInfo.attribs.v_position)
-
-    // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
-    // that it shouldn't normalize floats, and something i don't understand
-    gl.vertexAttribPointer(polylineInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0)
-
-    // draw the vertices as triangle strip
-    gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount)
+    super.render(renderInfo)
   }
 }
 

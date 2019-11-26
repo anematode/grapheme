@@ -197,6 +197,10 @@ var Grapheme = (function (exports) {
       this.lastRenderTime = Date.now();
     }
 
+    hasChild () {
+      return false
+    }
+
     destroy () {
       if (this.usedBufferNames) deleteBuffersNamed(this.usedBufferNames);
 
@@ -528,6 +532,9 @@ var Grapheme = (function (exports) {
   It is given a gl context to operate on, and creates programs in manager.programs
   and buffers in manager.buffers. programs and buffers are simply key-value pairs
   which objects can create (and destroy) as they please.
+
+  It also (TODO) does some convenient gl manipulations, like setting uniforms and attrib
+  arrays... because I'm sick of writing that so much
   */
   class GLResourceManager {
     // Compiled programs and created buffers
@@ -637,6 +644,10 @@ var Grapheme = (function (exports) {
 
       // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
       assert(gl, 'Grapheme requires WebGL to run; please get a competent browser');
+
+      // TODO: abstract away
+      gl.enable(gl.GL_BLEND);
+      gl.blendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
 
       // The gl resource manager for this context
       this.glResourceManager = new GLResourceManager(gl);
@@ -893,9 +904,21 @@ var Grapheme = (function (exports) {
         // last vertex, add base of arrow
 
         // duplicate this vertex to fully detach it from the arrowhead
-        addVertex(transV.x + duY, transV.y - duX);
-        addVertex(transV.x + duY, transV.y - duX);
-        addVertex(transV.x - duY, transV.y + duX);
+        // depending on whether this is a starting or ending arrowhead, duplicate the
+        // first or second vertex
+        let times = 2;
+
+        do {
+          addVertex(transV.x + duY, transV.y - duX);
+          times -= 1;
+          // eslint-disable-next-line no-unmodified-loop-condition
+        } while (isStarting && times > 0)
+
+        do {
+          addVertex(transV.x - duY, transV.y + duX);
+          times -= 1;
+          // eslint-disable-next-line no-unmodified-loop-condition
+        } while (!isStarting && times > 0)
       } else {
         // add the vertex normally
         addVertex(transV.x, transV.y);
@@ -985,6 +1008,115 @@ var Grapheme = (function (exports) {
     }
   })();
 
+  const monochromeShader = {
+    vertex: `// set the float precision of the shader to medium precision
+  precision mediump float;
+  // a vector containing the 2D position of the vertex
+  attribute vec2 v_position;
+  uniform vec2 xy_scale;
+  vec2 displace = vec2(-1, 1);
+
+  void main() {
+    // set the vertex's resultant position
+    gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
+  }`,
+    fragment: `// set the float precision of the shader to medium precision
+  precision mediump float;
+  // vec4 containing the color of the line to be drawn
+  uniform vec4 line_color;
+  void main() {
+    gl_FragColor = line_color;
+  }`,
+    name: 'monochrome-shader'
+  };
+
+  // Direct correspondence with gl modes
+  const RENDER_MODES = {
+    POINTS: 'POINTS',
+    LINE_STRIP: 'LINE_STRIP',
+    LINE_LOOP: 'LINE_LOOP',
+    LINES: 'LINES',
+    TRIANGLE_STRIP: 'TRIANGLE_STRIP',
+    TRIANGLE_FAN: 'TRIANGLE_FAN',
+    TRIANGLES: 'TRIANGLES'
+  };
+
+  /**
+  A 2D geometry, consisting of only one color.
+  No edges, nothing crazy, just some (possibly disjoint) areas colored in a single color.
+  The float array of vertices is glVertices, and the actual number of vertices to draw is
+  glVertexCount.
+  */
+  class Simple2DGeometry extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      this.color = new Color(0, 0, 0, 255);
+      this.glVertices = null;
+      this.glVerticesCount = 0;
+
+      this.renderMode = RENDER_MODES.POINTS;
+    }
+
+    render (renderInfo) {
+      const begin = performance.now();
+
+      // Early exit condition
+      if (!this.glVertices) return
+
+      const vertexCount = this.glVerticesCount;
+
+      const gl = renderInfo.gl;
+      const glManager = renderInfo.glResourceManager;
+
+      // If there is no simple geometry program yet, compile one!
+      if (!glManager.hasProgram(monochromeShader.name)) {
+        glManager.compileProgram(monochromeShader.name,
+          monochromeShader.vertex, monochromeShader.fragment,
+          ['v_position'], ['xy_scale', 'line_color']);
+      }
+
+      // Obtain the program we want to use
+      const programInfo = glManager.getProgram(monochromeShader.name);
+
+      // Single buffer used for position
+      const glBuffer = glManager.getBuffer(this.uuid);
+      this.addUsedBufferName(this.uuid);
+
+      // tell webgl to start using the geometry program
+      gl.useProgram(programInfo.program);
+
+      // Get the desired color of our geometry
+      const color = this.color.glColor();
+
+      // set the vec4 at colorLocation to (r, g, b, a)
+      gl.uniform4f(programInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
+
+      // set the scaling factors
+      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
+
+      // bind our webgl buffer to gl.ARRAY_BUFFER access point
+      gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+
+      // copy our vertex data to the GPU
+      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+      // enable the vertices location attribute to be used in the program
+      gl.enableVertexAttribArray(programInfo.attribs.v_position);
+
+      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
+      // that it shouldn't normalize floats, and something i don't understand
+      gl.vertexAttribPointer(programInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
+
+      // draw the vertices
+      gl.drawArrays(gl[this.renderMode], 0, vertexCount);
+
+      const end = performance.now();
+
+      window.renderingTimes.push(end - begin);
+    }
+  }
+
   // list of endcap types
   const ENDCAP_TYPES = {
     NONE: 0,
@@ -1010,29 +1142,6 @@ var Grapheme = (function (exports) {
     DYNAMIC: 3
   };
 
-  // this vertex shader is used for the polylines
-  const vertexShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// a vector containing the 2D position of the vertex
-attribute vec2 v_position;
-uniform vec2 xy_scale;
-vec2 displace = vec2(-1, 1);
-
-void main() {
-  // set the vertex's resultant position
-  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-}`;
-
-  // this frag shader is used for the polylines
-  const fragmentShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// vec4 containing the color of the line to be drawn
-uniform vec4 line_color;
-void main() {
-  gl_FragColor = line_color;
-}
-`;
-
   // Check whether x is an integer in the range [min, max]
   function integerInRange (x, min, max) {
     return isInteger(x) && min <= x && x <= max
@@ -1050,9 +1159,6 @@ void main() {
   const MIN_SIZE = 16;
   const MAX_SIZE = 2 ** 24;
 
-  // Name of the polyline program stored in GLResourceManager
-  const POLYLINE_PROGRAM_NAME = 'polyline-shader';
-
   /**
   PolylineElement draws a sequence of line segments connecting points. Put the points
   as ordered pairs, in CANVAS COORDINATES, in polyline.vertices. To disconnect
@@ -1063,7 +1169,7 @@ void main() {
 
   Other parameters:
   */
-  class PolylineElement extends GraphemeElement {
+  class PolylineElement extends Simple2DGeometry {
     constructor (window, params = {}) {
       super(window, params);
 
@@ -1534,62 +1640,30 @@ void main() {
     render (renderInfo) {
       // Calculate the vertices
       if (this.alwaysRecalculate) {
+        const begin = performance.now();
         this.calculateVertices();
+        const end = performance.now();
+
+        window.vertexTimes.push(end - begin);
       }
 
       // Potential early exit
       const vertexCount = this.glVerticesCount;
       if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
 
-      const gl = renderInfo.gl;
-      const glManager = renderInfo.glResourceManager;
-
-      // If there is no polyline program yet, compile one!
-      if (!glManager.hasProgram(POLYLINE_PROGRAM_NAME)) {
-        glManager.compileProgram(POLYLINE_PROGRAM_NAME,
-          vertexShaderSource, fragmentShaderSource,
-          ['v_position'], ['xy_scale', 'line_color']);
+      if (this.useNative) {
+        this.renderMode = 'LINE_STRIP';
+      } else {
+        this.renderMode = 'TRIANGLE_STRIP';
       }
 
-      const polylineInfo = glManager.getProgram(POLYLINE_PROGRAM_NAME);
-
-      this.addUsedBufferName(this.uuid);
-      const glBuffer = glManager.getBuffer(this.uuid);
-
-      // gl, glResourceManager, width, height, text, textCanvas
-
-      // tell webgl to start using the polyline program
-      gl.useProgram(polylineInfo.program);
-
-      // bind our webgl buffer to gl.ARRAY_BUFFER access point
-      gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-
-      // Get the desired color of our line
-      const color = this.color.glColor();
-
-      // set the vec4 at colorLocation to (r, g, b, a)
-      gl.uniform4f(polylineInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
-
-      // set the scaling factors
-      gl.uniform2f(polylineInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
-
-      // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-      // enable the vertices location attribute to be used in the program
-      gl.enableVertexAttribArray(polylineInfo.attribs.v_position);
-
-      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
-      // that it shouldn't normalize floats, and something i don't understand
-      gl.vertexAttribPointer(polylineInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
-
-      // draw the vertices as triangle strip
-      gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
+      super.render(renderInfo);
     }
   }
 
   exports.ARROW_TYPES = ARROW_TYPES;
   exports.Context = GraphemeContext;
+  exports.Group = GraphemeGroup;
   exports.PolylineElement = PolylineElement;
   exports.arrowDrawers = arrowDrawers;
   exports.arrowLengths = arrowLengths;

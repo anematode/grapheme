@@ -15,24 +15,38 @@
 
 <script src="../build/grapheme.js"></script>
 <script>
+
+window.vertexTimes = [];
+window.renderingTimes = [];
+
 let grapheme_context = new Grapheme.Context();
 let grapheme_window = grapheme_context.createWindow();
 
 grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
 
+let grapheme_group = new Grapheme.Group();
+grapheme_window.add(grapheme_group);
+
 let polyline = new Grapheme.PolylineElement();
 
-polyline.vertices = [100, 100, 200, 100, 100, 200, 0, 100, 100, 0, 180, 80];
-polyline.vertices = polyline.vertices.map(x => x + 50);
-
-polyline.thickness = 5;
+polyline.thickness = 2;
 polyline.joinType = Grapheme.PolylineElement.JOIN_TYPES.DYNAMIC;
 polyline.endcapType = Grapheme.PolylineElement.ENDCAP_TYPES.NONE;
-polyline.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_FB_ENDS_ONLY;
+polyline.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_F;
 polyline.joinRes = 2;
 
-grapheme_window.add(polyline);
+for (let i = 0; i < 50; ++i) {
+  for (let j = 0; j < 50; ++j) {
+
+    let x = i / 50 * grapheme_window.canvasWidth;
+    let y = j / 50 * grapheme_window.canvasHeight;
+
+    polyline.vertices.push(x, y, x + 50*Math.cos(15 * (i+j) / 500), y + 50*Math.sin(15 * (i+j) / 500), NaN, NaN);
+  }
+}
+
+grapheme_group.add(polyline);
 
 function render() {
   grapheme_window.render();

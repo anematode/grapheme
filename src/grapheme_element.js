@@ -40,6 +40,10 @@ class GraphemeElement {
     this.lastRenderTime = Date.now()
   }
 
+  hasChild () {
+    return false
+  }
+
   destroy () {
     if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames)
 

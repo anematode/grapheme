@@ -65,9 +65,21 @@ function ArrowFromPattern (pattern, addVertex, x2, y2, xa, ya, th, duX, duY, isS
       // last vertex, add base of arrow
 
       // duplicate this vertex to fully detach it from the arrowhead
-      addVertex(transV.x + duY, transV.y - duX)
-      addVertex(transV.x + duY, transV.y - duX)
-      addVertex(transV.x - duY, transV.y + duX)
+      // depending on whether this is a starting or ending arrowhead, duplicate the
+      // first or second vertex
+      let times = 2
+
+      do {
+        addVertex(transV.x + duY, transV.y - duX)
+        times -= 1
+        // eslint-disable-next-line no-unmodified-loop-condition
+      } while (isStarting && times > 0)
+
+      do {
+        addVertex(transV.x - duY, transV.y + duX)
+        times -= 1
+        // eslint-disable-next-line no-unmodified-loop-condition
+      } while (!isStarting && times > 0)
     } else {
       // add the vertex normally
       addVertex(transV.x, transV.y)

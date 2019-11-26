@@ -7,6 +7,9 @@ separation of elements and their drawing buffers in a relatively complete way.
 It is given a gl context to operate on, and creates programs in manager.programs
 and buffers in manager.buffers. programs and buffers are simply key-value pairs
 which objects can create (and destroy) as they please.
+
+It also (TODO) does some convenient gl manipulations, like setting uniforms and attrib
+arrays... because I'm sick of writing that so much
 */
 class GLResourceManager {
   // Compiled programs and created buffers
