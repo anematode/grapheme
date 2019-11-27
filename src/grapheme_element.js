@@ -14,7 +14,6 @@ class GraphemeElement {
 
     this.usedBufferNames = []
     this.parent = null
-    this.lastRenderTime = 0
 
     // Whether to always update geometries when render is called
     this.alwaysUpdate = utils.select(params.alwaysUpdate, true);
@@ -40,9 +39,7 @@ class GraphemeElement {
   }
 
   render (elementInfo) {
-    if (this.alwaysUpdate)
-      this.updateGeometries();
-    this.lastRenderTime = Date.now()
+    // No need to call this as a child class
   }
 
   hasChild () {

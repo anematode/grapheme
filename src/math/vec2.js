@@ -56,6 +56,15 @@ class Vec2 {
 
     return new Vec2(this.x / len, this.y / len)
   }
+
+  set(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  asArray() {
+    return [this.x, this.y]
+  }
 }
 
 const N = new Vec2(0, -1);

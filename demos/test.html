@@ -30,11 +30,11 @@ grapheme_window.add(grapheme_group);
 
 let polyline = new Grapheme.PolylineElement();
 
-polyline.thickness = 2;
-polyline.joinType = Grapheme.PolylineElement.JOIN_TYPES.DYNAMIC;
-polyline.endcapType = Grapheme.PolylineElement.ENDCAP_TYPES.NONE;
-polyline.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_F;
-polyline.joinRes = 2;
+polyline.style.thickness = 2;
+polyline.style.joinType = Grapheme.PolylineElement.JOIN_TYPES.DYNAMIC;
+polyline.style.endcapType = Grapheme.PolylineElement.ENDCAP_TYPES.NONE;
+polyline.style.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_F;
+polyline.style.joinRes = 2;
 
 for (let i = 0; i < 50; ++i) {
   for (let j = 0; j < 50; ++j) {
@@ -46,16 +46,24 @@ for (let i = 0; i < 50; ++i) {
   }
 }
 
-// grapheme_group.add(polyline);
+// grapheme_window.add(polyline);
 
-let multicolored = new Grapheme.Multicolored2DGeometry();
+let axis = new Grapheme.Axis();
+axis.start.set(100, 100)
+axis.end.set(1000, 100)
+axis.style.arrowLocations = 2
 
-multicolored.renderMode = "TRIANGLE_STRIP"
-multicolored.glVertices = new Float32Array([100, 100, 800, 800, 1500, 50]);
-multicolored.glColors = new Float32Array([1,0,0,1,1,1,0,1,1,0,1,1]);
-multicolored.glVerticesCount = 3;
+let main = new Grapheme.AxisTickmarkStyle();
+main.length *= 1.5
+axis.tickmarkStyles["main"] = main
+axis.tickmarkPositions["main"] = [0, 0.25, 0.5, 0.75, 1]
+let sub = new Grapheme.AxisTickmarkStyle();
+main.thickness *= 2
+sub.thickness /= 2
+axis.tickmarkStyles["sub"] = sub
+axis.tickmarkPositions["sub"] = [...Array(101).keys()].map(x => x / 100)
 
-grapheme_window.add(multicolored);
+grapheme_window.add(axis);
 
 function render() {
   grapheme_window.render();

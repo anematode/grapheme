@@ -44,6 +44,32 @@ var Grapheme = (function (exports) {
     return Number.isInteger(z) && z > 0
   }
 
+  // https://stackoverflow.com/a/34749873
+  function isObject (item) {
+    return (item && typeof item === 'object' && !Array.isArray(item))
+  }
+
+  // This merges the characteristics of two objects, typically parameters
+  // or styles or something like that
+  // https://stackoverflow.com/a/34749873
+  function mergeDeep (target, ...sources) {
+    if (!sources.length) return target
+    const source = sources.shift();
+
+    if (isObject(target) && isObject(source)) {
+      for (const key in source) {
+        if (isObject(source[key])) {
+          if (!target[key]) Object.assign(target, { [key]: {} });
+          mergeDeep(target[key], source[key]);
+        } else {
+          Object.assign(target, { [key]: source[key] });
+        }
+      }
+    }
+
+    return mergeDeep(target, ...sources)
+  }
+
   // Non-stupid mod function
   function mod (n, m) {
     return ((n % m) + m) % m
@@ -171,7 +197,6 @@ var Grapheme = (function (exports) {
 
       this.usedBufferNames = [];
       this.parent = null;
-      this.lastRenderTime = 0;
 
       // Whether to always update geometries when render is called
       this.alwaysUpdate = select(params.alwaysUpdate, true);
@@ -197,9 +222,7 @@ var Grapheme = (function (exports) {
     }
 
     render (elementInfo) {
-      if (this.alwaysUpdate)
-        this.updateGeometries();
-      this.lastRenderTime = Date.now();
+      // No need to call this as a child class
     }
 
     hasChild () {
@@ -848,6 +871,15 @@ var Grapheme = (function (exports) {
 
       return new Vec2(this.x / len, this.y / len)
     }
+
+    set(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    asArray() {
+      return [this.x, this.y]
+    }
   }
 
   const N = new Vec2(0, -1);
@@ -1316,36 +1348,34 @@ var Grapheme = (function (exports) {
   Other parameters:
   */
   class PolylineElement extends Simple2DGeometry {
-    constructor (window, params = {}) {
-      super(window, params);
+    constructor (params = {}) {
+      super(params);
 
       // Array (or FloatArray) storing the pairs of vertices which are to be connected.
       // To prevent a join, put two NaNs in a row.
       this.vertices = select(params.vertices, []);
 
-      // Color of the polyline
-      this.color = select(params.color, new Color(0, 0, 0, 255));
+      // Contains useful style information
+      this.style = {};
+      let style = this.style;
 
-      // Thickness in canvas pixels
-      this.thickness = select(params.thickness, 2);
+      // color is a property of Simple2DGeometry, but we want it to be accessible
+      // in style
+      Object.defineProperty(style, "color", {
+        get: () => this.color,
+        set: (color) => this.color = color
+      });
 
-      // The type of endcap to be used (refer to the ENDCAPS enum)
-      this.endcapType = select(params.endcapType, 1);
-
-      // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
-      this.endcapRes = select(params.endcapRes, 0.4);
-
-      // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)
-      this.joinType = select(params.joinType, 3);
-
-      // angle in radians between consecutive roundings, including in dynamic mode
-      this.joinRes = select(params.joinRes, 0.4);
-
-      // Location of arrows (default is none)
-      this.arrowLocations = select(params.arrowLocations, -1);
-
-      // Type of arrows to be drawn
-      this.arrowType = select(params.arrowType, 0);
+      mergeDeep(style, {
+        color: new Color(0, 0, 0, 255), // Color of the polyline
+        thickness: 2, // Thickness in canvas pixels
+        endcapType: 1, // The type of endcap to be used (refer to the ENDCAPS enum)
+        endcapRes: 0.4, // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
+        joinType: 3, // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)
+        joinRes: 0.4, // angle in radians between consecutive roundings, including in dynamic mode
+        arrowLocations: -1, // Location of arrows (default is none)
+        arrowType: 0 // Type of arrows to be drawn
+      }, params);
 
       // Whether or not to use native GL.LINE_STRIP
       this.useNative = select(params.useNative, false);
@@ -1385,11 +1415,11 @@ var Grapheme = (function (exports) {
 
     calculateTriangles () {
       // Conditions to just say there are 0 vertices and exit early
-      if (this.thickness <= 0 ||
-          !integerInRange(this.endcapType, 0, 1) ||
-          !integerInRange(this.joinType, 0, 3) ||
-          this.endcapRes < MIN_RES_ANGLE ||
-          this.joinRes < MIN_RES_ANGLE ||
+      if (this.style.thickness <= 0 ||
+          !integerInRange(this.style.endcapType, 0, 1) ||
+          !integerInRange(this.style.joinType, 0, 3) ||
+          this.style.endcapRes < MIN_RES_ANGLE ||
+          this.style.joinRes < MIN_RES_ANGLE ||
           this.vertices.length <= 3) {
         this.glVerticesCount = 0;
         return
@@ -1449,11 +1479,11 @@ var Grapheme = (function (exports) {
         // isStarting = true if it is a starting endcap, false if it is an
         // ending endcap
 
-        if (that.arrowType === -1) { // custom arrow type
+        if (that.style.arrowType === -1) { // custom arrow type
           that.customArrowDrawer(addVertex, ...args);
         } else {
           // Draw using one of the defined arrow drawers
-          arrowDrawers[that.arrowType](addVertex, ...args);
+          arrowDrawers[that.style.arrowType](addVertex, ...args);
         }
       }
 
@@ -1464,17 +1494,17 @@ var Grapheme = (function (exports) {
       const coordinateCount = vertices.length;
 
       // Thickness of the polyline from the edge to the center. We divide it by two
-      // because this.thickness is considered to be the total width of the line
-      const th = this.thickness / 2;
+      // because this.style.thickness is considered to be the total width of the line
+      const th = this.style.thickness / 2;
 
       // Arrow locations
-      const arrowLocations = this.arrowLocations;
+      const arrowLocations = this.style.arrowLocations;
 
       // Threshold distance from the corner of the miter to the center of the join
       // which would imply that the corner should be ROUNDED, in DYNAMIC mode.
       // That is, if the miter length is larger than this quantity, we should round
       // the vertex instead
-      const maxMiterLength = th / Math.cos(this.joinRes / 2);
+      const maxMiterLength = th / Math.cos(this.style.joinRes / 2);
 
       // Lots of variables
       let x2, x3, y2, y3, v2x, v2y, v2l;
@@ -1585,13 +1615,13 @@ var Grapheme = (function (exports) {
           addVertex(x2 - duY, y2 + duX);
 
           // Code for making a rounded endcap
-          if (this.endcapType === 1) {
+          if (this.style.endcapType === 1) {
             // Starting theta value
             const theta = Math.atan2(duY, duX) + (isStartingEndcap ? Math.PI / 2 : 3 * Math.PI / 2);
 
             // Number of steps needed so that the angular resolution is smaller than or
-            // equal to this.endcapRes
-            const stepsNeeded = Math.ceil(Math.PI / this.endcapRes);
+            // equal to this.style.endcapRes
+            const stepsNeeded = Math.ceil(Math.PI / this.style.endcapRes);
 
             // (cX, cY) is a fixed point; in fact, they are the last vertex before
             // this loop. This defines a point on the boundary of the semicircle
@@ -1624,7 +1654,7 @@ var Grapheme = (function (exports) {
           needToDupeVertex = true;
         } else {
           // all vertices are defined, time to draw a joiner!
-          if (this.joinType === 2 || this.joinType === 3) {
+          if (this.style.joinType === 2 || this.style.joinType === 3) {
             // find the angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
             // After this section of code, (b1x, b1y) is a unit vector bisecting
             // the vectors (v1x, v1y) and (v2x, v2y)
@@ -1650,11 +1680,11 @@ var Grapheme = (function (exports) {
             // length.
             scale = th * v1l / (b1x * v1y - b1y * v1x);
 
-            if (this.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
+            if (this.style.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
               // if the length of the miter is massive and we're in dynamic mode,
               // we reject this if statement and do a rounded join. More precisely,
               // |scale| exceeds maxMiterLength when the angle between the two vectors
-              // is greater than the angular resolution mandated by this.joinRes.
+              // is greater than the angular resolution mandated by this.style.joinRes.
 
               // Scale by the length of a miter
               b1x *= scale;
@@ -1680,7 +1710,7 @@ var Grapheme = (function (exports) {
           addVertex(x2 + puFactor * v1y, y2 - puFactor * v1x);
           addVertex(x2 - puFactor * v1y, y2 + puFactor * v1x);
 
-          if (this.joinType === 1 || this.joinType === 3) {
+          if (this.style.joinType === 1 || this.style.joinType === 3) {
             // If the join type is round or dynamic, we need to make a rounded join.
             // a1 and a2 are angles associated with the direction of where the rounded
             // join should start and end.
@@ -1708,8 +1738,8 @@ var Grapheme = (function (exports) {
             const angleSubtended = mod(endA - startA, 2 * Math.PI);
 
             // The number of angle steps needed to make sure the angular resolution
-            // is less than or equal to this.joinRes
-            const stepsNeeded = Math.ceil(angleSubtended / this.joinRes);
+            // is less than or equal to this.style.joinRes
+            const stepsNeeded = Math.ceil(angleSubtended / this.style.joinRes);
 
             for (let i = 0; i <= stepsNeeded; ++i) {
               // For every intermediate angle
@@ -1785,7 +1815,8 @@ var Grapheme = (function (exports) {
 
     render (renderInfo) {
       // Calculate the vertices
-      super.render(renderInfo);
+      if (this.alwaysUpdate)
+        this.updateGeometries();
 
       // Potential early exit
       const vertexCount = this.glVerticesCount;
@@ -1801,8 +1832,303 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function defaultLabel(x) {
+    return x.toFixed(5);
+  }
+
+  class AxisTickmarkStyle {
+    constructor(params={}) {
+      // Length, in canvas pixels, of each tickmark
+      this.length = select(params.length, 16);
+
+      // 1 -> entirely to the left of the axis; 0 -> centered on the axis; -1
+      // -> entirely to the right of the axis, and everything in between!
+      this.positioning = select(params.positioning, 0);
+
+      // Thickness of the tickmarks in canvas pixels
+      this.thickness = select(params.thickness, 2);
+
+      // Color of the tickmark
+      this.color = new Color(0,0,0,255);
+
+      // The following are TEXT PROPERTIES
+      // Whether or not to display text on the tickmarks
+      this.displayText = select(params.displayText, false);
+
+      // direction to offset text in (rounded to nearest cardinal direction)
+      this.textOffset = select(params.textOffset, S);
+
+      // degrees, not radians!
+      this.textRotation = select(params.textRotation, 0);
+
+      // pixels of extra offset for readibility
+      this.textPadding = select(params.textPadding, 2);
+
+      // The font to use for labeling
+      this.font = select(params.font, "12px Helvetica");
+
+      // Pixels of text shadow to make it look nicer
+      this.shadowSize = select(params.shadowSize, 3);
+
+      // Color of the text
+      this.textColor = select(params.textColor, new Color(0,0,0,255));
+
+      // Text function
+      this.textFunc = select(params.textFunc, defaultLabel);
+    }
+
+    isValid() {
+      return (this.length > 0 && (-1 <= this.positioning && this.positioning <= 1) &&
+        (this.thickness > 0));
+    }
+
+    // Reference theory/class_theory/axis_tickmark_style.jpg for explanation
+    createTickmarks(transformation, positions, geometry) {
+      checkType(geometry, Simple2DGeometry);
+
+      let tickmarkCount = positions.length;
+      let vertexCount = tickmarkCount * 5; // 5 vertices per thing
+
+      geometry.renderMode = "TRIANGLE_STRIP";
+      geometry.color = this.color;
+      if (!geometry.glVertices || geometry.glVertices.length !== 2 * vertexCount) {
+        geometry.glVertices = new Float32Array(2 * vertexCount);
+      }
+
+      let vertices = geometry.glVertices;
+
+      // Note that "s" in class theory is positioning, and "t" is thickness
+      let { positioning, thickness, length } = this;
+      const {v1, v2, x1, x2} = transformation;
+      let axisDisplacement = v2.minus(v1);
+
+      // vectors as defined in class_theory
+      let xi = axisDisplacement.unit().scale(thickness / 2);
+      let upsilon = axisDisplacement.unit().rotate(Math.PI / 2);
+      let nanVertex = new Vec2(NaN, NaN);
+
+      let index = 0;
+
+      function addVertex(v) {
+        vertices[index] = v.x;
+        vertices[index+1] = v.y;
+        index += 2;
+      }
+
+      for (let i = 0; i < positions.length; ++i) {
+        let givenPos = positions[i];
+        if (givenPos.value)
+          givenPos = givenPos.value;
+
+        let pos = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1);
+        let lambda = upsilon.scale((positioning + 1) / 2 * length).add(pos);
+        let omicron = upsilon.scale((positioning - 1) / 2 * length).add(pos);
+
+        // Create a rectangle for the tick
+        addVertex(omicron.minus(xi));
+        addVertex(lambda.minus(xi));
+        addVertex(omicron.add(xi));
+        addVertex(lambda.add(xi));
+        addVertex(nanVertex);
+      }
+
+      geometry.glVerticesCount = vertexCount;
+    }
+  }
+
+  /**
+  A displayed axis, potentially with tick marks of various types,
+  potentially with labels, and potentially with an arrow. The position of the axis
+  (and the transformation it entails) is determined by six variables: start, end,
+  marginStart, marginEnd, xStart and xEnd. start is a Vec2, in canvas pixels, of
+  the start of the axis; the same is true for end. marginStart is a number of canvas
+  pixels which represents an "unused" portion of the axis at the beginning of the axis;
+  it can be 0. marginEnd is the same for the end of the axis; if there is an arrow at
+  the end of the axis, it will automatically be set to 1.5 * the length of the arrowhead.
+  xStart is the REPRESENTED coordinate at marginStart in from start. xEnd is the
+  REPRESENTED coordinate at marginEnd in from end.
+
+  Tickmarks must be divided into certain style classes, though the number of such
+  classes is unlimited. The style of each tickmark is defined by the AxisTickmarkStyle
+  class, which abstracts their relative position to the axis, thickness, etc. This
+  style also deals with labels, and Axis doesn't have to think about labels too hard.
+  These style classes are given as key value pairs in a "tickmarkStyles" object,
+  where the keys are the named of the style classes (ex: "big" to be used for integers,
+  "small" to be used for nonintegers). The positions of the tickmarks themselves are
+  given in the tickmarkPositions object, which is another set of key value pairs.
+  The keys are the style classes and the values are arrays of tickmark positions. To
+  support things like arbitrary-precision arithmetic in the future, these positions
+  may either be NUMBERS, which will be simply transformed using the Axis's defined
+  linear transformation to pixel space, or OBJECTS with a "value" property. The reason
+  we may want OBJECTS is for labeling reasons. For example, suppose we want to label
+  a bunch of rational numbers in (0,1). Then we could define a labelFunction which
+  takes in a number and outputs a string form of a rational number close to that number,
+  but that's annoying. Instead, we give the positions of the tickmarks as objects of
+  the form {num: p, den: q, value: p/q}, so that Axis transforms them according to their
+  numerical value while the labelFunction still has information on the numerator and
+  denominator.
+  */
+  class Axis extends GraphemeGroup {
+    constructor (params = {}) {
+      super(params);
+
+      // Starting point of the axis, including the extra margins
+      this.start = select(params.start, new Vec2(0, 0));
+
+      // Ending point of the axis, including the extra margins
+      this.end = select(params.end, new Vec2(100, 0));
+
+      // Length, in canvas pixels, of the starting margin
+      this.margins = {
+        start: 0,
+        end: 0,
+        automatic: true
+      };
+
+      // Axis value represented near start
+      this.xStart = select(params.xStart, 0);
+
+      // Axis value represented near end
+      this.xEnd = select(params.xEnd, 1);
+
+      // Used internally, no need for the user to touch it. Unless there's a bug.
+      // Then I have to touch it. Ugh.
+      this.axisComponents = {
+        tickmarkGeometries: {},
+        axisGeometry: new PolylineElement(Object.assign({
+          arrowLocations: -1,
+          arrowType: 0,
+          thickness: 3,
+          color: new Color(0,0,0,255)
+        }, params))
+      };
+
+      // Style of the main axis line
+      this.style = this.axisComponents.axisGeometry.style;
+
+      // Tickmark styles, as described above
+      this.tickmarkStyles = select(params.tickmarkStyles, {});
+
+      // Tickmark positions, as described above
+      this.tickmarkPositions = select(params.tickmarkPositions, {});
+    }
+
+    // Set all colors, including the tickmark colors, to a given color
+    setAllColorsTo(color) {
+      checkType(color, Color);
+      this.color = color;
+
+      this.tickmarkStyles.forEach(tickmarkStyle => tickmarkStyle.color = color);
+    }
+
+    calculateMargins() {
+      let arrowLoc = this.style.arrowLocations;
+      let arrowLength = arrowLengths[this.style.arrowType];
+
+      this.margins.start = 0;
+      this.margins.end = 0;
+
+      if ([1,2,4,5].includes(arrowLoc)) {
+        this.margins.start = 1.5 * arrowLength * this.style.thickness / 2;
+      }
+
+      if ([0,2,3,5].includes(arrowLoc)) {
+        this.margins.end = 1.5 * arrowLength * this.style.thickness / 2;
+      }
+    }
+
+    updateTickmarkGeometries() {
+      let tickmarkGeometries = this.axisComponents.tickmarkGeometries;
+      let axisDisplacement = this.end.minus(this.start);
+      let axisLength = axisDisplacement.length();
+
+      if (axisLength < 3 * (this.marginStart + this.marginEnd) ||
+        this.marginStart < 0 || this.marginEnd < 0 || axisLength < 5) {
+        // No thx
+        return;
+      }
+
+      let axisDisplacementDir = axisDisplacement.unit();
+
+      // The transformation defined by this axis
+      const transformation = {
+        v1: this.start.add(axisDisplacementDir.scale(this.margins.start)),
+        v2: this.end.minus(axisDisplacementDir.scale(this.margins.end)),
+        x1: this.xStart,
+        x2: this.xEnd
+      };
+
+      // For every type of tickmark
+      for (let styleName in this.tickmarkStyles) {
+        const style = this.tickmarkStyles[styleName];
+        const positions = this.tickmarkPositions[styleName];
+
+        if (!positions) continue;
+
+        let geometry = tickmarkGeometries[styleName];
+        if (!geometry) {
+          geometry = new Simple2DGeometry();
+          geometry.alwaysUpdate = false;
+          this.add(geometry);
+
+          tickmarkGeometries[styleName] = geometry;
+        }
+
+        // Create some tickmarks!
+        style.createTickmarks(transformation, positions, geometry);
+      }
+
+      for (let geometryName in this.tickmarkGeometries) {
+        if (!this.tickmarkStyles[geometryName]) {
+          let unusedGeometry = this.tickmarkGeometries[geometryName];
+
+          // unused geometry, destroy it
+          this.remove(unusedGeometry);
+          unusedGeometry.destroy();
+
+          delete this.tickmarkGeometries[geometryName];
+        }
+      }
+    }
+
+    updateAxisGeometry() {
+      let axisGeometry = this.axisComponents.axisGeometry;
+      axisGeometry.precedence = 1; // put it on top of the tickmarks
+      axisGeometry.alwaysUpdate = false;
+
+      // Axis geometry connects these two vertices
+      axisGeometry.vertices = [...this.start.asArray(), ...this.end.asArray()];
+      axisGeometry.updateGeometries();
+
+      if (!this.hasChild(axisGeometry))
+        this.add(axisGeometry);
+    }
+
+    updateGeometries () {
+      if (this.margins.automatic)
+        this.calculateMargins();
+      this.updateTickmarkGeometries();
+      this.updateAxisGeometry();
+    }
+
+    destroy() {
+      super.destroy(); // this will destroy all the child geometries
+
+      delete this.axisComponents;
+    }
+
+    render (renderInfo) {
+      if (this.alwaysUpdate)
+        this.updateGeometries();
+
+      super.render(renderInfo);
+    }
+  }
+
   exports.ARROW_LOCATION_TYPES = ARROW_LOCATION_TYPES;
   exports.ARROW_TYPES = ARROW_TYPES;
+  exports.Axis = Axis;
+  exports.AxisTickmarkStyle = AxisTickmarkStyle;
   exports.Context = GraphemeContext;
   exports.GeometryUnion = GeometryUnion;
   exports.Group = GraphemeGroup;

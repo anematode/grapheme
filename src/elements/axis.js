@@ -1,59 +1,12 @@
 import { Element as GraphemeElement } from '../grapheme_element'
-import { Vec2, S } from './math'
+import { Group as GraphemeGroup } from "../grapheme_group"
+import { Simple2DGeometry } from "./simple_geometry"
+import { PolylineElement } from "./polyline"
+import { Vec2, S } from '../math/vec2'
 import { Color } from '../color'
-import { ARROW_TYPES, arrowLengths, ARROW_LOCATION_TYPES }
+import { ARROW_TYPES, arrowLengths, ARROW_LOCATION_TYPES } from "./arrows"
 import * as utils from "../utils"
-
-function defaultLabel(x) {
-  return x.toFixed(5);
-}
-
-class AxisTickmarkStyle {
-  constructor(params={}) {
-    // Length, in canvas pixels, of each tickmark
-    this.length = utils.select(params.length, 6);
-
-    // 1 -> entirely to the left of the axis; 0 -> centered on the axis; -1
-    // -> entirely to the right of the axis, and everything in between!
-    this.positioning = utils.select(params.positioning, 0);
-
-    // Thickness of the tickmarks in canvas pixels
-    this.thickness = utils.select(params.thickness, 2);
-
-    // Color of the tickmark
-    this.color = new Color(0,0,0,255);
-
-    // The following are TEXT PROPERTIES
-    // Whether or not to display text on the tickmarks
-    this.displayText = utils.select(params.displayText, false);
-
-    // direction to offset text in (rounded to nearest cardinal direction)
-    this.textOffset = utils.select(params.textOffset, S);
-
-    // degrees, not radians!
-    this.textRotation = utils.select(params.textRotation, 0);
-
-    // pixels of extra offset for readibility
-    this.textPadding = utils.select(params.textPadding, 2);
-
-    // The font to use for labeling
-    this.font = utils.select(params.font, "12px Helvetica")
-
-    // Pixels of text shadow to make it look nicer
-    this.shadowSize = utils.select(params.shadowSize, 3);
-
-    // Color of the text
-    this.textColor = utils.select(params.textColor, new Color(0,0,0,255));
-
-    // Text function
-    this.textFunc = utils.select(params.textFunc, defaultLabel);
-  }
-
-  isValid() {
-    return (this.length > 0 && (-1 <= this.positioning && this.positioning <= 1) &&
-      (this.thickness > 0));
-  }
-}
+import {AxisTickmarkStyle} from "./axis_tickmarks"
 
 /**
 A displayed axis, potentially with tick marks of various types,
@@ -87,7 +40,7 @@ the form {num: p, den: q, value: p/q}, so that Axis transforms them according to
 numerical value while the labelFunction still has information on the numerator and
 denominator.
 */
-class Axis extends GraphemeElement {
+class Axis extends GraphemeGroup {
   constructor (params = {}) {
     super(params)
 
@@ -98,10 +51,11 @@ class Axis extends GraphemeElement {
     this.end = utils.select(params.end, new Vec2(100, 0))
 
     // Length, in canvas pixels, of the starting margin
-    this.marginStart = utils.select(params.marginStart, 0);
-
-    // Length, in canvas pixels, of the ending margin
-    this.marginEnd = utils.select(params.marginEnd, 0);
+    this.margins = {
+      start: 0,
+      end: 0,
+      automatic: true
+    }
 
     // Axis value represented near start
     this.xStart = utils.select(params.xStart, 0);
@@ -109,32 +63,26 @@ class Axis extends GraphemeElement {
     // Axis value represented near end
     this.xEnd = utils.select(params.xEnd, 1);
 
-    // Location of optional arrowheads at the ends of the axis
-    this.arrowLocations = utils.select(params.arrowLocations, ARROW_LOCATION_TYPES.NONE);
+    // Used internally, no need for the user to touch it. Unless there's a bug.
+    // Then I have to touch it. Ugh.
+    this.axisComponents = {
+      tickmarkGeometries: {},
+      axisGeometry: new PolylineElement(Object.assign({
+        arrowLocations: -1,
+        arrowType: 0,
+        thickness: 3,
+        color: new Color(0,0,0,255)
+      }, params))
+    }
 
-    // Type of arrows at the ends of the axis
-    this.arrowType = utils.select(params.arrowType, ARROW_TYPES.STANDARD);
-
-    // Thickness of the axis line
-    this.thickness = utils.select(params.thickness, 4)
-
-    // Color of the axis (but not necessarily the tickmarks)
-    this.color = utils.select(params.color, new Color(0, 0, 0, 255))
+    // Style of the main axis line
+    this.style = this.axisComponents.axisGeometry.style;
 
     // Tickmark styles, as described above
     this.tickmarkStyles = utils.select(params.tickmarkStyles, {})
 
     // Tickmark positions, as described above
     this.tickmarkPositions = utils.select(params.tickmarkPositions, {})
-
-    // Used internally, no need for the user to touch it. Unless there's a bug.
-    // Then I have to touch it. Ugh.
-    this.internal = {
-      tickmarkGeometries: {},
-      axisGeometry: null
-
-    }
-
   }
 
   // Set all colors, including the tickmark colors, to a given color
@@ -145,9 +93,44 @@ class Axis extends GraphemeElement {
     this.tickmarkStyles.forEach(tickmarkStyle => tickmarkStyle.color = color);
   }
 
-  updateGeometries () {
-    let tickmarkGeometries = this.internal.tickmarkGeometries
+  calculateMargins() {
+    let arrowLoc = this.style.arrowLocations
+    let arrowLength = arrowLengths[this.style.arrowType]
 
+    this.margins.start = 0
+    this.margins.end = 0
+
+    if ([1,2,4,5].includes(arrowLoc)) {
+      this.margins.start = 1.5 * arrowLength * this.style.thickness / 2
+    }
+
+    if ([0,2,3,5].includes(arrowLoc)) {
+      this.margins.end = 1.5 * arrowLength * this.style.thickness / 2
+    }
+  }
+
+  updateTickmarkGeometries() {
+    let tickmarkGeometries = this.axisComponents.tickmarkGeometries
+    let axisDisplacement = this.end.minus(this.start)
+    let axisLength = axisDisplacement.length()
+
+    if (axisLength < 3 * (this.marginStart + this.marginEnd) ||
+      this.marginStart < 0 || this.marginEnd < 0 || axisLength < 5) {
+      // No thx
+      return;
+    }
+
+    let axisDisplacementDir = axisDisplacement.unit()
+
+    // The transformation defined by this axis
+    const transformation = {
+      v1: this.start.add(axisDisplacementDir.scale(this.margins.start)),
+      v2: this.end.minus(axisDisplacementDir.scale(this.margins.end)),
+      x1: this.xStart,
+      x2: this.xEnd
+    }
+
+    // For every type of tickmark
     for (let styleName in this.tickmarkStyles) {
       const style = this.tickmarkStyles[styleName]
       const positions = this.tickmarkPositions[styleName]
@@ -155,41 +138,63 @@ class Axis extends GraphemeElement {
       if (!positions) continue;
 
       let geometry = tickmarkGeometries[styleName];
-
       if (!geometry) {
-        geometry = new PolylineElement()
+        geometry = new Simple2DGeometry()
         geometry.alwaysUpdate = false;
+        this.add(geometry)
+
         tickmarkGeometries[styleName] = geometry;
       }
 
-      geometry.vertices = []
-
-      style.createTickmarks(this, positions, geometry)
+      // Create some tickmarks!
+      style.createTickmarks(transformation, positions, geometry)
     }
 
     for (let geometryName in this.tickmarkGeometries) {
       if (!this.tickmarkStyles[geometryName]) {
+        let unusedGeometry = this.tickmarkGeometries[geometryName]
+
         // unused geometry, destroy it
-        this.tickmarkGeometries[geometryName].destroy()
+        this.remove(unusedGeometry)
+        unusedGeometry.destroy()
+
         delete this.tickmarkGeometries[geometryName]
       }
     }
   }
 
-  destroy() {
-    super.destroy()
+  updateAxisGeometry() {
+    let axisGeometry = this.axisComponents.axisGeometry
+    axisGeometry.precedence = 1 // put it on top of the tickmarks
+    axisGeometry.alwaysUpdate = false
 
-    for (let geometryName in this.tickmarkGeometries) {
-      this.tickmarkGeometries[geometryName].destroy()
-      delete this.tickmarkGeometries[geometryName]
-    }
+    // Axis geometry connects these two vertices
+    axisGeometry.vertices = [...this.start.asArray(), ...this.end.asArray()]
+    axisGeometry.updateGeometries()
+
+    if (!this.hasChild(axisGeometry))
+      this.add(axisGeometry)
+  }
+
+  updateGeometries () {
+    if (this.margins.automatic)
+      this.calculateMargins()
+    this.updateTickmarkGeometries()
+    this.updateAxisGeometry()
+  }
+
+  destroy() {
+    super.destroy() // this will destroy all the child geometries
+
+    delete this.axisComponents
   }
 
   render (renderInfo) {
-    super.render(renderInfo)
+    if (this.alwaysUpdate)
+      this.updateGeometries()
 
-    
+    super.render(renderInfo)
   }
 }
 
-export { Axis }
+export { Axis, AxisTickmarkStyle }

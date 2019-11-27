@@ -12,3 +12,10 @@ npm install --global rollup
 Then you can run build.sh, which will dump the grapheme JS and CSS in the build/ folder. The most recent build, however, is already in build.
 
 Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.html.
+
+
+To Do:
+
+- Convert everything to CSS coordinates rather than canvas coordinates
+- Reset params={} stuff and make it make SENSE
+- Make enums sensible
