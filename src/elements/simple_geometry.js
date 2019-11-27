@@ -75,8 +75,6 @@ class Simple2DGeometry extends GraphemeElement {
   }
 
   render (renderInfo) {
-    const begin = performance.now()
-
     // Early exit condition
     if (!this.glVertices) return
 
@@ -126,10 +124,6 @@ class Simple2DGeometry extends GraphemeElement {
 
     // draw the vertices
     gl.drawArrays(gl[this.renderMode], 0, vertexCount)
-
-    const end = performance.now()
-
-    window.renderingTimes.push(end - begin)
   }
 }
 
@@ -139,8 +133,106 @@ class Multicolored2DGeometry extends GraphemeElement {
 
     this.glVertices = null
     this.glColors = null
-    this.glVerticesCount = multicoloredShader
+    this.glVerticesCount = 0;
+
+    this.renderMode = RENDER_MODES.POINTS
+  }
+
+  render (renderInfo) {
+    if (!this.glVertices || !this.glColors || !this.glVerticesCount) return;
+
+    const vertexCount = this.glVerticesCount
+
+    const gl = renderInfo.gl
+    const glManager = renderInfo.glResourceManager
+
+    // If there is no simple geometry program yet, compile one!
+    if (!glManager.hasProgram(multicoloredShader.name)) {
+      glManager.compileProgram(multicoloredShader.name,
+        multicoloredShader.vertex, multicoloredShader.fragment,
+        ['v_position', 'v_color'], ['xy_scale'])
+    }
+
+    // Obtain the program we want to use
+    const programInfo = glManager.getProgram(multicoloredShader.name)
+
+    let glPositionBufferID, glColorBufferID;
+    if (!this.glPositionBufferID) {
+      this.glPositionBufferID = this.uuid + "-position"
+      this.addUsedBufferName(this.glPositionBufferID)
+    }
+
+    glPositionBufferID = this.glPositionBufferID;
+
+    if (!this.glColorBufferID) {
+      this.glColorBufferID = this.uuid + "-color"
+      this.addUsedBufferName(this.glColorBufferID)
+    }
+
+    glColorBufferID = this.glColorBufferID;
+
+    // buffer used for position
+    const glPositionBuffer = glManager.getBuffer(glPositionBufferID)
+
+    // buffer used for colors
+    const glColorBuffer = glManager.getBuffer(glColorBufferID)
+
+    // tell webgl to start using the geometry program
+    gl.useProgram(programInfo.program)
+
+    // set the scaling factors
+    gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height)
+
+    // bind our webgl buffer to gl.ARRAY_BUFFER access point
+    gl.bindBuffer(gl.ARRAY_BUFFER, glPositionBuffer)
+
+    // copy our vertex data to the GPU
+    gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */)
+
+    // enable the vertices location attribute to be used in the program
+    gl.enableVertexAttribArray(programInfo.attribs.v_position)
+
+    // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
+    // that it shouldn't normalize floats, and something i don't understand
+    gl.vertexAttribPointer(programInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0)
+
+    // bind our webgl buffer to gl.ARRAY_BUFFER access point
+    gl.bindBuffer(gl.ARRAY_BUFFER, glColorBuffer)
+
+    // copy our vertex data to the GPU
+    gl.bufferData(gl.ARRAY_BUFFER, this.glColors, gl.DYNAMIC_DRAW /* means we will rewrite the data often */)
+
+    // Same business for colors
+    gl.enableVertexAttribArray(programInfo.attribs.v_color)
+    gl.vertexAttribPointer(programInfo.attribs.v_color, 4, gl.FLOAT, false, 0, 0)
+
+    // draw the vertices
+    gl.drawArrays(gl[this.renderMode], 0, vertexCount)
   }
 }
 
-export { Simple2DGeometry, Multicolored2DGeometry, RENDER_MODES }
+// A union of multicolored and simple geometries to allow drawing them all in
+// a single gl.drawArrays call
+
+// TODO
+class GeometryUnion extends Multicolored2DGeometry {
+  constructor(params={}) {
+    super(params)
+
+    this.geometries = []
+  }
+
+  computeGeometry() {
+    if (this.renderMode === "TRIANGLE_FAN" || this.renderMode === "LINE_LOOP") {
+      throw new Error("Unsupported render mode for geometry union");
+    }
+
+    let vertexCount = 0;
+
+    for (let i = 0; i < this.geometries.length; ++i) {
+      vertexCount += this.geometries[i];
+    }
+  }
+}
+
+export { Simple2DGeometry, Multicolored2DGeometry, RENDER_MODES, GeometryUnion }

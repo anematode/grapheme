@@ -172,6 +172,9 @@ var Grapheme = (function (exports) {
       this.usedBufferNames = [];
       this.parent = null;
       this.lastRenderTime = 0;
+
+      // Whether to always update geometries when render is called
+      this.alwaysUpdate = select(params.alwaysUpdate, true);
     }
 
     addUsedBufferName (bufferName) {
@@ -194,6 +197,8 @@ var Grapheme = (function (exports) {
     }
 
     render (elementInfo) {
+      if (this.alwaysUpdate)
+        this.updateGeometries();
       this.lastRenderTime = Date.now();
     }
 
@@ -837,7 +842,23 @@ var Grapheme = (function (exports) {
     refAngle () {
       return Math.atan2(this.y, this.x)
     }
+
+    unit() {
+      const len = this.length();
+
+      return new Vec2(this.x / len, this.y / len)
+    }
   }
+
+  const N = new Vec2(0, -1);
+  const S = new Vec2(0, 1);
+  const E = new Vec2(1, 0);
+  const W = new Vec2(-1, 0);
+
+  const NE = N.add(E).unit();
+  const NW = N.add(W).unit();
+  const SE = S.add(E).unit();
+  const SW = S.add(W).unit();
 
   // Some functions to draw arrows
 
@@ -1008,6 +1029,17 @@ var Grapheme = (function (exports) {
     }
   })();
 
+  // list of arrow position types
+  const ARROW_LOCATION_TYPES = {
+    NONE: -1,
+    ARROW_F: 0, // arrow on every ending endcap
+    ARROW_B: 1, // arrow on every starting endcap
+    ARROW_FB: 2, // arrow on every endcap
+    ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
+    ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
+    ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
+  };
+
   const monochromeShader = {
     vertex: `// set the float precision of the shader to medium precision
   precision mediump float;
@@ -1028,6 +1060,29 @@ var Grapheme = (function (exports) {
     gl_FragColor = line_color;
   }`,
     name: 'monochrome-shader'
+  };
+
+  const multicoloredShader = {
+    vertex: `// set the float precision of the shader to medium precision
+  precision mediump float;
+  // a vector containing the 2D position of the vertex
+  attribute vec2 v_position;
+  attribute vec4 v_color;
+  uniform vec2 xy_scale;
+  vec2 displace = vec2(-1, 1);
+
+  varying lowp vec4 vColor;
+
+  void main() {
+    // set the vertex's resultant position
+    gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
+    vColor = v_color;
+  }`,
+    fragment: `varying lowp vec4 vColor;
+    void main(void) {
+      gl_FragColor = vColor;
+    }`,
+    name: 'multicolored-shader'
   };
 
   // Direct correspondence with gl modes
@@ -1059,8 +1114,6 @@ var Grapheme = (function (exports) {
     }
 
     render (renderInfo) {
-      const begin = performance.now();
-
       // Early exit condition
       if (!this.glVertices) return
 
@@ -1110,10 +1163,114 @@ var Grapheme = (function (exports) {
 
       // draw the vertices
       gl.drawArrays(gl[this.renderMode], 0, vertexCount);
+    }
+  }
 
-      const end = performance.now();
+  class Multicolored2DGeometry extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
 
-      window.renderingTimes.push(end - begin);
+      this.glVertices = null;
+      this.glColors = null;
+      this.glVerticesCount = 0;
+
+      this.renderMode = RENDER_MODES.POINTS;
+    }
+
+    render (renderInfo) {
+      if (!this.glVertices || !this.glColors || !this.glVerticesCount) return;
+
+      const vertexCount = this.glVerticesCount;
+
+      const gl = renderInfo.gl;
+      const glManager = renderInfo.glResourceManager;
+
+      // If there is no simple geometry program yet, compile one!
+      if (!glManager.hasProgram(multicoloredShader.name)) {
+        glManager.compileProgram(multicoloredShader.name,
+          multicoloredShader.vertex, multicoloredShader.fragment,
+          ['v_position', 'v_color'], ['xy_scale']);
+      }
+
+      // Obtain the program we want to use
+      const programInfo = glManager.getProgram(multicoloredShader.name);
+
+      let glPositionBufferID, glColorBufferID;
+      if (!this.glPositionBufferID) {
+        this.glPositionBufferID = this.uuid + "-position";
+        this.addUsedBufferName(this.glPositionBufferID);
+      }
+
+      glPositionBufferID = this.glPositionBufferID;
+
+      if (!this.glColorBufferID) {
+        this.glColorBufferID = this.uuid + "-color";
+        this.addUsedBufferName(this.glColorBufferID);
+      }
+
+      glColorBufferID = this.glColorBufferID;
+
+      // buffer used for position
+      const glPositionBuffer = glManager.getBuffer(glPositionBufferID);
+
+      // buffer used for colors
+      const glColorBuffer = glManager.getBuffer(glColorBufferID);
+
+      // tell webgl to start using the geometry program
+      gl.useProgram(programInfo.program);
+
+      // set the scaling factors
+      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
+
+      // bind our webgl buffer to gl.ARRAY_BUFFER access point
+      gl.bindBuffer(gl.ARRAY_BUFFER, glPositionBuffer);
+
+      // copy our vertex data to the GPU
+      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+      // enable the vertices location attribute to be used in the program
+      gl.enableVertexAttribArray(programInfo.attribs.v_position);
+
+      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
+      // that it shouldn't normalize floats, and something i don't understand
+      gl.vertexAttribPointer(programInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
+
+      // bind our webgl buffer to gl.ARRAY_BUFFER access point
+      gl.bindBuffer(gl.ARRAY_BUFFER, glColorBuffer);
+
+      // copy our vertex data to the GPU
+      gl.bufferData(gl.ARRAY_BUFFER, this.glColors, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+      // Same business for colors
+      gl.enableVertexAttribArray(programInfo.attribs.v_color);
+      gl.vertexAttribPointer(programInfo.attribs.v_color, 4, gl.FLOAT, false, 0, 0);
+
+      // draw the vertices
+      gl.drawArrays(gl[this.renderMode], 0, vertexCount);
+    }
+  }
+
+  // A union of multicolored and simple geometries to allow drawing them all in
+  // a single gl.drawArrays call
+
+  // TODO
+  class GeometryUnion extends Multicolored2DGeometry {
+    constructor(params={}) {
+      super(params);
+
+      this.geometries = [];
+    }
+
+    computeGeometry() {
+      if (this.renderMode === "TRIANGLE_FAN" || this.renderMode === "LINE_LOOP") {
+        throw new Error("Unsupported render mode for geometry union");
+      }
+
+      let vertexCount = 0;
+
+      for (let i = 0; i < this.geometries.length; ++i) {
+        vertexCount += this.geometries[i];
+      }
     }
   }
 
@@ -1121,17 +1278,6 @@ var Grapheme = (function (exports) {
   const ENDCAP_TYPES = {
     NONE: 0,
     ROUND: 1
-  };
-
-  // list of arrow position types
-  const ARROW_LOCATION_TYPES = {
-    NONE: -1,
-    ARROW_F: 0, // arrow on every ending endcap
-    ARROW_B: 1, // arrow on every starting endcap
-    ARROW_FB: 2, // arrow on every endcap
-    ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
-    ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
-    ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
   };
 
   // list of join types
@@ -1205,7 +1351,7 @@ var Grapheme = (function (exports) {
       this.useNative = select(params.useNative, false);
 
       // Whether to recalculate the vertices every time render() is called
-      this.alwaysRecalculate = true;
+      this.alwaysUpdate = true;
 
       // used internally for gl vertices
       this.glVertices = null;
@@ -1228,7 +1374,7 @@ var Grapheme = (function (exports) {
       return ARROW_LOCATION_TYPES
     }
 
-    calculateVertices () {
+    updateGeometries () {
       // Calculate the vertices
       if (!this.useNative) {
         this.calculateTriangles();
@@ -1639,13 +1785,7 @@ var Grapheme = (function (exports) {
 
     render (renderInfo) {
       // Calculate the vertices
-      if (this.alwaysRecalculate) {
-        const begin = performance.now();
-        this.calculateVertices();
-        const end = performance.now();
-
-        window.vertexTimes.push(end - begin);
-      }
+      super.render(renderInfo);
 
       // Potential early exit
       const vertexCount = this.glVerticesCount;
@@ -1661,10 +1801,15 @@ var Grapheme = (function (exports) {
     }
   }
 
+  exports.ARROW_LOCATION_TYPES = ARROW_LOCATION_TYPES;
   exports.ARROW_TYPES = ARROW_TYPES;
   exports.Context = GraphemeContext;
+  exports.GeometryUnion = GeometryUnion;
   exports.Group = GraphemeGroup;
+  exports.Multicolored2DGeometry = Multicolored2DGeometry;
   exports.PolylineElement = PolylineElement;
+  exports.RENDER_MODES = RENDER_MODES;
+  exports.Simple2DGeometry = Simple2DGeometry;
   exports.arrowDrawers = arrowDrawers;
   exports.arrowLengths = arrowLengths;
 

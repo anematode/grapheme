@@ -50,6 +50,22 @@ class Vec2 {
   refAngle () {
     return Math.atan2(this.y, this.x)
   }
+
+  unit() {
+    const len = this.length();
+
+    return new Vec2(this.x / len, this.y / len)
+  }
 }
 
-export { Vec2 }
+const N = new Vec2(0, -1);
+const S = new Vec2(0, 1);
+const E = new Vec2(1, 0);
+const W = new Vec2(-1, 0);
+
+const NE = N.add(E).unit()
+const NW = N.add(W).unit()
+const SE = S.add(E).unit()
+const SW = S.add(W).unit()
+
+export { Vec2, N, S, E, W, NE, NW, SE, SW }

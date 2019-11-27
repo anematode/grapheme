@@ -1,5 +1,5 @@
 import { Color } from '../color'
-import { ARROW_TYPES, arrowDrawers } from './arrows'
+import { ARROW_TYPES, arrowDrawers, ARROW_LOCATION_TYPES } from './arrows'
 import { Simple2DGeometry } from './simple_geometry'
 import * as utils from '../utils'
 
@@ -7,17 +7,6 @@ import * as utils from '../utils'
 const ENDCAP_TYPES = {
   NONE: 0,
   ROUND: 1
-}
-
-// list of arrow position types
-const ARROW_LOCATION_TYPES = {
-  NONE: -1,
-  ARROW_F: 0, // arrow on every ending endcap
-  ARROW_B: 1, // arrow on every starting endcap
-  ARROW_FB: 2, // arrow on every endcap
-  ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
-  ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
-  ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
 }
 
 // list of join types
@@ -91,7 +80,7 @@ class PolylineElement extends Simple2DGeometry {
     this.useNative = utils.select(params.useNative, false)
 
     // Whether to recalculate the vertices every time render() is called
-    this.alwaysRecalculate = true
+    this.alwaysUpdate = true
 
     // used internally for gl vertices
     this.glVertices = null
@@ -114,7 +103,7 @@ class PolylineElement extends Simple2DGeometry {
     return ARROW_LOCATION_TYPES
   }
 
-  calculateVertices () {
+  updateGeometries () {
     // Calculate the vertices
     if (!this.useNative) {
       this.calculateTriangles()
@@ -525,13 +514,7 @@ class PolylineElement extends Simple2DGeometry {
 
   render (renderInfo) {
     // Calculate the vertices
-    if (this.alwaysRecalculate) {
-      const begin = performance.now()
-      this.calculateVertices()
-      const end = performance.now()
-
-      window.vertexTimes.push(end - begin)
-    }
+    super.render(renderInfo)
 
     // Potential early exit
     const vertexCount = this.glVerticesCount

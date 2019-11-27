@@ -169,4 +169,15 @@ const arrowLengths = {};
   }
 })()
 
-export { ARROW_TYPES, arrowDrawers, arrowLengths }
+// list of arrow position types
+const ARROW_LOCATION_TYPES = {
+  NONE: -1,
+  ARROW_F: 0, // arrow on every ending endcap
+  ARROW_B: 1, // arrow on every starting endcap
+  ARROW_FB: 2, // arrow on every endcap
+  ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
+  ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
+  ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
+}
+
+export { ARROW_TYPES, arrowDrawers, arrowLengths, ARROW_LOCATION_TYPES}
