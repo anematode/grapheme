@@ -4,7 +4,7 @@ import { GLResourceManager } from './gl_manager'
 import * as utils from './utils'
 
 class GraphemeContext {
-  constructor (params = {}) {
+  constructor () {
     // Creates an offscreen canvas to draw to, with an initial size of 1x1
     this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1, 1) : document.createElement('canvas')
 
@@ -13,10 +13,6 @@ class GraphemeContext {
 
     // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
     utils.assert(gl, 'Grapheme requires WebGL to run; please get a competent browser')
-
-    // TODO: abstract away
-    gl.enable(gl.GL_BLEND)
-    gl.blendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
     // The gl resource manager for this context
     this.glResourceManager = new GLResourceManager(gl)

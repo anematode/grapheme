@@ -16,6 +16,13 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Convert everything to CSS coordinates rather than canvas coordinates
-- Reset params={} stuff and make it make SENSE
+- Label (both fancy and not fancy)
+- AxisStrategizer
+- SmartAxis
+- Gridlines
+- SmartGridlines
+- InteractiveGridlines
+- Square endcap type
 - Make enums sensible
+- Dashed polyline
+- JSDoc everything that's not likely to change soon

@@ -51,26 +51,26 @@ class Vec2 {
     return Math.atan2(this.y, this.x)
   }
 
-  unit() {
-    const len = this.length();
+  unit () {
+    const len = this.length()
 
     return new Vec2(this.x / len, this.y / len)
   }
 
-  set(x, y) {
-    this.x = x;
-    this.y = y;
+  set (x, y) {
+    this.x = x
+    this.y = y
   }
 
-  asArray() {
+  asArray () {
     return [this.x, this.y]
   }
 }
 
-const N = new Vec2(0, -1);
-const S = new Vec2(0, 1);
-const E = new Vec2(1, 0);
-const W = new Vec2(-1, 0);
+const N = new Vec2(0, -1)
+const S = new Vec2(0, 1)
+const E = new Vec2(1, 0)
+const W = new Vec2(-1, 0)
 
 const NE = N.add(E).unit()
 const NW = N.add(W).unit()

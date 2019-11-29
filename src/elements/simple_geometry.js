@@ -133,13 +133,13 @@ class Multicolored2DGeometry extends GraphemeElement {
 
     this.glVertices = null
     this.glColors = null
-    this.glVerticesCount = 0;
+    this.glVerticesCount = 0
 
     this.renderMode = RENDER_MODES.POINTS
   }
 
   render (renderInfo) {
-    if (!this.glVertices || !this.glColors || !this.glVerticesCount) return;
+    if (!this.glVertices || !this.glColors || !this.glVerticesCount) return
 
     const vertexCount = this.glVerticesCount
 
@@ -156,20 +156,19 @@ class Multicolored2DGeometry extends GraphemeElement {
     // Obtain the program we want to use
     const programInfo = glManager.getProgram(multicoloredShader.name)
 
-    let glPositionBufferID, glColorBufferID;
     if (!this.glPositionBufferID) {
-      this.glPositionBufferID = this.uuid + "-position"
+      this.glPositionBufferID = this.uuid + '-position'
       this.addUsedBufferName(this.glPositionBufferID)
     }
 
-    glPositionBufferID = this.glPositionBufferID;
+    const glPositionBufferID = this.glPositionBufferID
 
     if (!this.glColorBufferID) {
-      this.glColorBufferID = this.uuid + "-color"
+      this.glColorBufferID = this.uuid + '-color'
       this.addUsedBufferName(this.glColorBufferID)
     }
 
-    glColorBufferID = this.glColorBufferID;
+    const glColorBufferID = this.glColorBufferID
 
     // buffer used for position
     const glPositionBuffer = glManager.getBuffer(glPositionBufferID)
@@ -216,22 +215,24 @@ class Multicolored2DGeometry extends GraphemeElement {
 
 // TODO
 class GeometryUnion extends Multicolored2DGeometry {
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     this.geometries = []
   }
 
-  computeGeometry() {
-    if (this.renderMode === "TRIANGLE_FAN" || this.renderMode === "LINE_LOOP") {
-      throw new Error("Unsupported render mode for geometry union");
+  computeGeometry () {
+    if (this.renderMode === 'TRIANGLE_FAN' || this.renderMode === 'LINE_LOOP') {
+      throw new Error('Unsupported render mode for geometry union')
     }
 
-    let vertexCount = 0;
+    let vertexCount = 0
 
     for (let i = 0; i < this.geometries.length; ++i) {
-      vertexCount += this.geometries[i];
+      vertexCount += this.geometries[i]
     }
+
+    return vertexCount
   }
 }
 
