@@ -2,9 +2,25 @@ import { Vec2 } from '../math/vec2'
 
 // Some functions to draw arrows
 
+/**
+ * TriangularArrow - Constructs a triangular arrow with specified dimensions.
+ *
+ * @param  {number} arrowLenScale   How many times the thickness of the line the length of the arrow should be
+ * @param  {number} arrowWidthScale How many times the thickness of the line the width of the arrow should be
+ * @param  {Function} addVertex     Function to call when adding a vertex
+ * @param  {number} x2              description
+ * @param  {number} y2              description
+ * @param  {number} xa              description
+ * @param  {number} ya              description
+ * @param  {number} th              HALF the thickness of the line this arrow is connected to.
+ * @param  {number} duX             description
+ * @param  {number} duY             description
+ * @param  {number} isStarting      description
+ * @return {type}                 description
+ */
 function TriangularArrow (arrowLenScale, arrowWidthScale, addVertex, x2, y2, xa, ya, th, duX, duY, isStarting) {
   // Constructs a "triangular arrow" on (x2, y2) facing away from (xa, ya)
-  const arrowLen = th * arrowLenScale
+  const arrowLen = 2 * th * arrowLenScale
   const arrowWidth = th * arrowWidthScale
 
   let v1x = xa - x2
@@ -88,11 +104,11 @@ function ArrowFromPattern (pattern, addVertex, x2, y2, xa, ya, th, duX, duY, isS
 }
 
 function StandardArrow (...args) {
-  TriangularArrow(15, 5, ...args)
+  TriangularArrow(15 / 2, 5, ...args)
 }
 
 function SquatArrow (...args) {
-  TriangularArrow(8, 5, ...args)
+  TriangularArrow(4, 5, ...args)
 }
 
 const SQRT2 = Math.SQRT2
@@ -180,4 +196,4 @@ const ARROW_LOCATION_TYPES = {
   ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
 }
 
-export { ARROW_TYPES, arrowDrawers, arrowLengths, ARROW_LOCATION_TYPES}
+export { ARROW_TYPES, arrowDrawers, arrowLengths, ARROW_LOCATION_TYPES }

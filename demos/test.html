@@ -36,36 +36,57 @@ polyline.style.endcapType = Grapheme.PolylineElement.ENDCAP_TYPES.NONE;
 polyline.style.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_F;
 polyline.style.joinRes = 2;
 
-for (let i = 0; i < 50; ++i) {
-  for (let j = 0; j < 50; ++j) {
-
-    let x = i / 50 * grapheme_window.canvasWidth;
-    let y = j / 50 * grapheme_window.canvasHeight;
-
-    polyline.vertices.push(x, y, x + 50*Math.cos(15 * (i+j) / 500), y + 50*Math.sin(15 * (i+j) / 500), NaN, NaN);
-  }
-}
-
-// grapheme_window.add(polyline);
+grapheme_window.add(polyline);
 
 let axis = new Grapheme.Axis();
-axis.start.set(100, 100)
-axis.end.set(1000, 100)
-axis.style.arrowLocations = 2
+axis.start.set(100, 1000)
+axis.end.set(1000, 1000)
+axis.style.arrowLocations = -1
+axis.xStart = 1990
+axis.xEnd = 2000
 
 let main = new Grapheme.AxisTickmarkStyle();
-main.length *= 1.5
 axis.tickmarkStyles["main"] = main
-axis.tickmarkPositions["main"] = [0, 0.25, 0.5, 0.75, 1]
+axis.tickmarkPositions["main"] = [...Array(11).keys()].map(k => k + 1990)
 let sub = new Grapheme.AxisTickmarkStyle();
-main.thickness *= 2
-sub.thickness /= 2
 axis.tickmarkStyles["sub"] = sub
-axis.tickmarkPositions["sub"] = [...Array(101).keys()].map(x => x / 100)
+axis.tickmarkPositions["sub"] = [...Array(10).keys()].map(k => k + 1990.5)
 
 grapheme_window.add(axis);
 
+axis = new Grapheme.Axis();
+axis.start.set(100, 1000)
+axis.end.set(100, 500)
+axis.style.arrowLocations = -1
+axis.xStart = 1990
+axis.xEnd = 2000
+
+main = new Grapheme.AxisTickmarkStyle();
+axis.tickmarkStyles["main"] = main
+axis.tickmarkPositions["main"] = [...Array(11).keys()].map(k => k + 1990)
+sub = new Grapheme.AxisTickmarkStyle();
+axis.tickmarkStyles["sub"] = sub
+axis.tickmarkPositions["sub"] = [...Array(10).keys()].map(k => k + 1990.5)
+
+grapheme_window.add(axis);
+
+let ia = 0;
+
 function render() {
+  ia += 0.1;
+
+  polyline.vertices = []
+
+  for (let i = 0; i < 50; ++i) {
+    for (let j = 0; j < 50; ++j) {
+
+      let x = i / 50 * grapheme_window.canvasWidth;
+      let y = j / 50 * grapheme_window.canvasHeight;
+
+      polyline.vertices.push(x, y, x + 50*Math.cos(ia + 50 * (i+j) / 500), y + 50*Math.sin(ia + 50 * (2*i+j) / 500), NaN, NaN);
+    }
+  }
+
   grapheme_window.render();
 
   requestAnimationFrame(render);

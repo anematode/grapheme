@@ -5,18 +5,28 @@ A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
 (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
 */
 class GraphemeElement {
-  constructor (params = {}) {
+  constructor ({
+    precedence = 0,
+    visible = true,
+    alwaysUpdate = true
+  } = {}) {
     // precedence is a number from -Infinity to Infinity.
-    this.precedence = utils.select(params.precedence, 0)
+    this.precedence = precedence
 
+    // Unique identifier for this object
     this.uuid = utils.generateUUID()
-    this.visible = utils.select(params.visible, true)
 
+    // Whether this element is drawn on renderIfVisible()
+    this.visible = visible
+
+    // List of buffer names used, for easy cleanup when the object is destroyed
     this.usedBufferNames = []
+
+    // The parent of this element
     this.parent = null
 
     // Whether to always update geometries when render is called
-    this.alwaysUpdate = utils.select(params.alwaysUpdate, true);
+    this.alwaysUpdate = alwaysUpdate
   }
 
   addUsedBufferName (bufferName) {
@@ -35,6 +45,12 @@ class GraphemeElement {
   orphanize () {
     if (this.parent) {
       this.parent.remove(this)
+    }
+  }
+
+  renderIfVisible (renderInfo) {
+    if (this.visible) {
+      this.render(renderInfo)
     }
   }
 

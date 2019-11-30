@@ -16,8 +16,8 @@ glCanvasContext = the ImageBitmapRenderingContext associated with the glCanvas
 textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
 */
 class GraphemeWindow extends GraphemeGroup {
-  constructor (graphemeContext, params = {}) {
-    super(params)
+  constructor (graphemeContext) {
+    super()
 
     // Grapheme context this window is a child of
     this.context = graphemeContext
@@ -48,6 +48,20 @@ class GraphemeWindow extends GraphemeGroup {
 
     // Set the default size to 640 by 480 in CSS pixels
     this.setSize(...DEFAULT_SIZE)
+
+    // Scale text canvas as needed due to DPR
+    this._scaleTextCanvasToDPR()
+  }
+
+  _scaleTextCanvasToDPR () {
+    const ctx = this.textCanvasContext
+
+    for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
+      ctx.restore()
+    }
+
+    ctx.scale(utils.dpr, utils.dpr)
+    ctx.save()
   }
 
   // Set the size of this window (including adjusting the canvas size)
@@ -109,7 +123,7 @@ class GraphemeWindow extends GraphemeGroup {
   // Event triggered when the device pixel ratio changes
   _onDPRChanged () {
     this._updateCanvasWidth()
-    super._onDPRChanged()
+    this._scaleTextCanvasToDPR()
   }
 
   // Destroy this window.
@@ -186,7 +200,7 @@ class GraphemeWindow extends GraphemeGroup {
       // sort our elements by drawing precedence
       this.sortChildrenByPrecedence()
 
-      super.render(renderInfo)
+      super.renderIfVisible(renderInfo)
 
       // Copy the canvas to this canvas
       const glBitmap = glCanvas.transferToImageBitmap()

@@ -6,7 +6,8 @@ import * as utils from '../utils'
 // list of endcap types
 const ENDCAP_TYPES = {
   NONE: 0,
-  ROUND: 1
+  ROUND: 1,
+  SQUARE: 2
 }
 
 // list of join types
@@ -48,21 +49,30 @@ class PolylineElement extends Simple2DGeometry {
   constructor (params = {}) {
     super(params)
 
+    const {
+      vertices = [],
+      useNative = false
+    } = params
+
     // Array (or FloatArray) storing the pairs of vertices which are to be connected.
     // To prevent a join, put two NaNs in a row.
-    this.vertices = utils.select(params.vertices, [])
+    this.vertices = vertices
+
+    // Whether or not to use native GL.LINE_STRIP
+    this.useNative = useNative
 
     // Contains useful style information
     this.style = {}
-    let style = this.style
+    const style = this.style
 
     // color is a property of Simple2DGeometry, but we want it to be accessible
     // in style
-    Object.defineProperty(style, "color", {
+    Object.defineProperty(style, 'color', {
       get: () => this.color,
-      set: (color) => this.color = color
-    });
+      set: (color) => { this.color = color }
+    })
 
+    // If params.style, merge it with the defaults and send it to this.style
     utils.mergeDeep(style, {
       color: new Color(0, 0, 0, 255), // Color of the polyline
       thickness: 2, // Thickness in CSS pixels
@@ -72,13 +82,7 @@ class PolylineElement extends Simple2DGeometry {
       joinRes: 0.4, // angle in radians between consecutive roundings, including in dynamic mode
       arrowLocations: -1, // Location of arrows (default is none)
       arrowType: 0 // Type of arrows to be drawn
-    }, params)
-
-    // Whether or not to use native GL.LINE_STRIP
-    this.useNative = utils.select(params.useNative, false)
-
-    // Whether to recalculate the vertices every time render() is called
-    this.alwaysUpdate = true
+    }, params.style || {})
 
     // used internally for gl vertices
     this.glVertices = null
@@ -172,15 +176,18 @@ class PolylineElement extends Simple2DGeometry {
       addVertex(glVertices[glVerticesIndex - 2], glVertices[glVerticesIndex - 1])
     }
 
+    const arrowType = this.style.arrowType
+    const arrowDrawer = arrowDrawers[arrowType]
+
     function drawArrow (...args) {
       // isStarting = true if it is a starting endcap, false if it is an
       // ending endcap
 
-      if (that.style.arrowType === -1) { // custom arrow type
+      if (arrowType === -1) { // custom arrow type
         that.customArrowDrawer(addVertex, ...args)
       } else {
         // Draw using one of the defined arrow drawers
-        arrowDrawers[that.style.arrowType](addVertex, ...args)
+        arrowDrawer(addVertex, ...args)
       }
     }
 
@@ -194,6 +201,9 @@ class PolylineElement extends Simple2DGeometry {
     // because this.style.thickness is considered to be the total width of the line
     const th = this.style.thickness / 2
 
+    // Type of endcap to draw, angular resolution of endcap, join type of joins, angular resolution of joins
+    const { endcapType, endcapRes, joinType, joinRes } = this.style
+
     // Arrow locations
     const arrowLocations = this.style.arrowLocations
 
@@ -201,7 +211,7 @@ class PolylineElement extends Simple2DGeometry {
     // which would imply that the corner should be ROUNDED, in DYNAMIC mode.
     // That is, if the miter length is larger than this quantity, we should round
     // the vertex instead
-    const maxMiterLength = th / Math.cos(this.style.joinRes / 2)
+    const maxMiterLength = th / Math.cos(joinRes / 2)
 
     // Lots of variables
     let x2, x3, y2, y3, v2x, v2y, v2l
@@ -312,13 +322,13 @@ class PolylineElement extends Simple2DGeometry {
         addVertex(x2 - duY, y2 + duX)
 
         // Code for making a rounded endcap
-        if (this.style.endcapType === 1) {
+        if (endcapType === 1) {
           // Starting theta value
           const theta = Math.atan2(duY, duX) + (isStartingEndcap ? Math.PI / 2 : 3 * Math.PI / 2)
 
           // Number of steps needed so that the angular resolution is smaller than or
-          // equal to this.style.endcapRes
-          const stepsNeeded = Math.ceil(Math.PI / this.style.endcapRes)
+          // equal to endcapRes
+          const stepsNeeded = Math.ceil(Math.PI / endcapRes)
 
           // (cX, cY) is a fixed point; in fact, they are the last vertex before
           // this loop. This defines a point on the boundary of the semicircle
@@ -351,7 +361,7 @@ class PolylineElement extends Simple2DGeometry {
         needToDupeVertex = true
       } else {
         // all vertices are defined, time to draw a joiner!
-        if (this.style.joinType === 2 || this.style.joinType === 3) {
+        if (joinType === 2 || joinType === 3) {
           // find the angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
           // After this section of code, (b1x, b1y) is a unit vector bisecting
           // the vectors (v1x, v1y) and (v2x, v2y)
@@ -377,11 +387,11 @@ class PolylineElement extends Simple2DGeometry {
           // length.
           scale = th * v1l / (b1x * v1y - b1y * v1x)
 
-          if (this.style.joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
+          if (joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
             // if the length of the miter is massive and we're in dynamic mode,
             // we reject this if statement and do a rounded join. More precisely,
             // |scale| exceeds maxMiterLength when the angle between the two vectors
-            // is greater than the angular resolution mandated by this.style.joinRes.
+            // is greater than the angular resolution mandated by joinRes.
 
             // Scale by the length of a miter
             b1x *= scale
@@ -407,7 +417,7 @@ class PolylineElement extends Simple2DGeometry {
         addVertex(x2 + puFactor * v1y, y2 - puFactor * v1x)
         addVertex(x2 - puFactor * v1y, y2 + puFactor * v1x)
 
-        if (this.style.joinType === 1 || this.style.joinType === 3) {
+        if (joinType === 1 || joinType === 3) {
           // If the join type is round or dynamic, we need to make a rounded join.
           // a1 and a2 are angles associated with the direction of where the rounded
           // join should start and end.
@@ -435,8 +445,8 @@ class PolylineElement extends Simple2DGeometry {
           const angleSubtended = utils.mod(endA - startA, 2 * Math.PI)
 
           // The number of angle steps needed to make sure the angular resolution
-          // is less than or equal to this.style.joinRes
-          const stepsNeeded = Math.ceil(angleSubtended / this.style.joinRes)
+          // is less than or equal to joinRes
+          const stepsNeeded = Math.ceil(angleSubtended / joinRes)
 
           for (let i = 0; i <= stepsNeeded; ++i) {
             // For every intermediate angle
@@ -512,8 +522,7 @@ class PolylineElement extends Simple2DGeometry {
 
   render (renderInfo) {
     // Calculate the vertices
-    if (this.alwaysUpdate)
-      this.updateGeometries()
+    if (this.alwaysUpdate) { this.updateGeometries() }
 
     // Potential early exit
     const vertexCount = this.glVerticesCount
