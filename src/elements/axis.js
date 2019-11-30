@@ -75,7 +75,7 @@ class Axis extends GraphemeGroup {
       style = {}
     } = params
 
-    let margins = Object.assign({start: 0, end: 0, automatic: true}, params.margins || {})
+    const margins = Object.assign({ start: 0, end: 0, automatic: true }, params.margins || {})
 
     this.start = start
     this.end = end
@@ -157,7 +157,6 @@ class Axis extends GraphemeGroup {
       x1: this.xStart,
       x2: this.xEnd
     }
-
 
     let labels = this.axisComponents.tickmarkLabels
 

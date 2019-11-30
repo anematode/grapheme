@@ -62,8 +62,8 @@ class GraphemeElement {
     this.orphanize()
   }
 
-  _onDPRChanged() {
-    return;
+  _onDPRChanged () {
+
   }
 }
 

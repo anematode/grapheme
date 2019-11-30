@@ -2,8 +2,8 @@ import * as utils from '../utils'
 import { Color } from '../color'
 import { Vec2 } from '../math/vec2'
 import { Simple2DGeometry } from './simple_geometry'
-import { Label2DStyle } from "./label_2d_style"
-import { Label2D } from "./label_2d"
+import { Label2DStyle } from './label_2d_style'
+import { Label2D } from './label_2d'
 
 // TEMP: must transfer from old grapheme
 function defaultLabel (x) {
@@ -28,7 +28,7 @@ class AxisTickmarkStyle {
     color = new Color(),
     displayLabels = false,
     labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
-    labelDir = "S",
+    labelDir = 'S',
     labelPadding = 2,
     labelStyle = new Label2DStyle(),
     labelFunc = defaultLabel
@@ -94,7 +94,7 @@ class AxisTickmarkStyle {
 
     let index = 0
 
-    function addVertex(v) {
+    function addVertex (v) {
       // Convert to canvas coordinates
       vertices[index] = v.x
       vertices[index + 1] = v.y
@@ -117,10 +117,10 @@ class AxisTickmarkStyle {
       addVertex(nanVertex)
 
       if (this.displayLabels) {
-        let textS = this.labelAnchoredTo
-        let position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
+        const textS = this.labelAnchoredTo
+        const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
 
-        let label = new Label2D({position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle})
+        const label = new Label2D({ position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle })
 
         labels.push(label)
       }

@@ -1,7 +1,7 @@
 import { Group as GraphemeGroup } from './grapheme_group'
 import * as utils from './utils'
 import { rgba } from './color'
-import {LabelManager} from "./label_manager"
+import { LabelManager } from './label_manager'
 
 const DEFAULT_SIZE = [640, 480]
 
@@ -172,7 +172,7 @@ class GraphemeWindow extends GraphemeGroup {
     // Clear the text canvas
     this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
   }
-  
+
   render () {
     // Set the active window to this window, since this is the window being rendered
     this.context.activeWindow = this
@@ -183,10 +183,10 @@ class GraphemeWindow extends GraphemeGroup {
     let err // potential error in try {...} catch
     const { glCanvas } = this.context
 
-    const width = this.cssWidth;
+    const width = this.cssWidth
     const height = this.cssHeight
-    const textWidth = this.canvasWidth;
-    const textHeight = this.canvasHeight;
+    const textWidth = this.canvasWidth
+    const textHeight = this.canvasHeight
 
     // Render information to be given to elements
     const renderInfo = {

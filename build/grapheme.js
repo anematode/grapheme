@@ -231,8 +231,8 @@ var Grapheme = (function (exports) {
       this.orphanize();
     }
 
-    _onDPRChanged() {
-      return;
+    _onDPRChanged () {
+
     }
   }
 
@@ -243,10 +243,8 @@ var Grapheme = (function (exports) {
       this.children = [];
     }
 
-    _onDPRChanged() {
+    _onDPRChanged () {
       this.children.forEach(child => child._onDPRChanged());
-      
-      return;
     }
 
     sortChildrenByPrecedence () {
@@ -316,7 +314,7 @@ var Grapheme = (function (exports) {
     Apply a function to the children of this group. If recursive = true, continue to
     apply this function to the children of all children, etc.
     */
-    applyToChildren(func, recursive=true) {
+    applyToChildren (func, recursive = true) {
       this.children.forEach(child => {
         if (recursive && child.children) {
           // if child is also a group, apply the function to all children
@@ -376,18 +374,18 @@ var Grapheme = (function (exports) {
 
   /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
   class LabelManager {
-    constructor(domElement) {
+    constructor (domElement) {
       // Pass it the container for grapheme_window
       this.domElement = domElement;
 
       // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
       this.labels = new Map();
 
-      this.currentRenderID = "";
+      this.currentRenderID = '';
     }
 
-    cleanOldRenders() {
-      let labelInfos = this.labels;
+    cleanOldRenders () {
+      const labelInfos = this.labels;
 
       labelInfos.forEach((labelInfo, label) => {
         if (labelInfo.renderID !== this.currentRenderID) {
@@ -397,16 +395,16 @@ var Grapheme = (function (exports) {
       });
     }
 
-    getElement(label) {
+    getElement (label) {
       const labelInfo = this.labels.get(label);
       let domElement;
 
       if (!labelInfo) {
-        domElement = document.createElement("div");
-        domElement.classList.add("grapheme-label");
+        domElement = document.createElement('div');
+        domElement.classList.add('grapheme-label');
         this.domElement.appendChild(domElement);
 
-        this.labels.set(label, {renderID: this.currentRenderID, domElement});
+        this.labels.set(label, { renderID: this.currentRenderID, domElement });
       } else {
         domElement = labelInfo.domElement;
         labelInfo.renderID = this.currentRenderID;
@@ -585,7 +583,7 @@ var Grapheme = (function (exports) {
       // Clear the text canvas
       this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
-    
+
     render () {
       // Set the active window to this window, since this is the window being rendered
       this.context.activeWindow = this;
@@ -1951,11 +1949,11 @@ var Grapheme = (function (exports) {
 
   class Label2DStyle {
     // TODO: rotation
-    constructor(params={}) {
+    constructor (params = {}) {
       const {
         color = new Color(),
         fontSize = 12,
-        fontFamily = "Helvetica",
+        fontFamily = 'Helvetica',
         shadowColor = new Color(),
         shadowBlur = 0
       } = params;
@@ -1967,7 +1965,7 @@ var Grapheme = (function (exports) {
       this.shadowBlur = shadowBlur;
     }
 
-    prepareContext(ctx) {
+    prepareContext (ctx) {
       ctx.fillStyle = this.color;
       ctx.font = `${this.fontSize}px ${this.fontFamily}`;
       ctx.shadowBlur = this.shadowBlur;
@@ -1975,9 +1973,9 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const validDirs = ["C", "N", "S", "W", "E", "NW", "NE", "SW", "SE"];
+  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
 
-  const labelClasses = validDirs.map(s => "grapheme-label-" + s);
+  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
 
   // Creates html element of the form
   // <div class="label label-S" label-id=this.uuid render-id=renderID>
@@ -1989,7 +1987,7 @@ var Grapheme = (function (exports) {
         text = '',
         mode = '',
         position = new Vec2(0, 0),
-        dir = "N"
+        dir = 'N'
       } = params;
 
       this.text = text;
@@ -1999,14 +1997,15 @@ var Grapheme = (function (exports) {
     }
 
     render (renderInfo) {
-      const {text, mode, position, dir} = this;
+      const { text, mode, position } = this;
+      let dir = this.dir;
+
       if (!validDirs.includes(dir)) {
-        dir = "C";
+        dir = 'C';
       }
 
-      if (mode === "2d") {
-        if (!this.labelStyle)
-          return
+      if (mode === '2d') {
+        if (!this.labelStyle) { return }
 
         const ctx = renderInfo.text;
 
@@ -2015,28 +2014,28 @@ var Grapheme = (function (exports) {
 
         // text align
         switch (dir) {
-          case "C": case "N": case "S":
-            textAlign = "center";
-            break;
-          case "NW": case "W": case "SW":
-            textAlign = "left";
-            break;
-          case "NE": case "E": case "SE":
-            textAlign = "right";
-            break;
+          case 'C': case 'N': case 'S':
+            textAlign = 'center';
+            break
+          case 'NW': case 'W': case 'SW':
+            textAlign = 'left';
+            break
+          case 'NE': case 'E': case 'SE':
+            textAlign = 'right';
+            break
         }
 
         // text baseline
         switch (dir) {
-          case "C": case "W": case "E":
-            textBaseline = "middle";
-            break;
-          case "SW": case "S": case "SE":
-            textBaseline = "top";
-            break;
-          case "NW": case "N": case "NE":
-            textBaseline = "bottom";
-            break;
+          case 'C': case 'W': case 'E':
+            textBaseline = 'middle';
+            break
+          case 'SW': case 'S': case 'SE':
+            textBaseline = 'top';
+            break
+          case 'NW': case 'N': case 'NE':
+            textBaseline = 'bottom';
+            break
         }
 
         ctx.textBaseline = textBaseline;
@@ -2044,30 +2043,30 @@ var Grapheme = (function (exports) {
 
         ctx.fillText(text, position.x, position.y);
       } else {
-        let labelElement = renderInfo.labelManager.getElement(this);
+        const labelElement = renderInfo.labelManager.getElement(this);
 
-        let labelClass = "grapheme-label-" + dir;
+        const labelClass = 'grapheme-label-' + dir;
         if (!labelElement.classList.contains(labelClass)) {
           labelElement.classList.remove(...labelClasses);
-          labelElement.classList.add("grapheme-label-" + dir);
+          labelElement.classList.add('grapheme-label-' + dir);
         }
 
-        labelElement.style.top = position.y + "px";
-        labelElement.style.left = position.x + "px";
+        labelElement.style.top = position.y + 'px';
+        labelElement.style.left = position.x + 'px';
 
-        let oldLatex = labelElement.getAttribute("latex-content");
+        const oldLatex = labelElement.getAttribute('latex-content');
 
-        if (mode === "latex") {
+        if (mode === 'latex') {
           // latex-content stores the latex to be rendered to this node, which means
           // that if it is equal to text, it does not need to be recomputed, only maybe
           // moved in some direction
           if (oldLatex !== text) {
-            labelElement.setAttribute("latex-content", text);
-            katex.render(text, labelElement, {throwOnError: false});
+            labelElement.setAttribute('latex-content', text);
+            // eslint-disable-next-line no-undef
+            katex.render(text, labelElement, { throwOnError: false });
           }
         } else {
-          if (oldLatex)
-            labelElement.removeAttribute("latex-content");
+          if (oldLatex) { labelElement.removeAttribute('latex-content'); }
 
           labelElement.innerHTML = text;
         }
@@ -2076,15 +2075,15 @@ var Grapheme = (function (exports) {
   }
 
   class Label2D extends Label {
-    constructor(params = {}) {
+    constructor (params = {}) {
       super(params);
 
-      this.mode = "2d";
+      this.mode = '2d';
       this.labelStyle = params.labelStyle || new Label2DStyle();
     }
 
-    render(renderInfo) {
-      let ctx = renderInfo.text;
+    render (renderInfo) {
+      const ctx = renderInfo.text;
       ctx.save();
 
       this.labelStyle.prepareContext(ctx);
@@ -2117,7 +2116,7 @@ var Grapheme = (function (exports) {
       color = new Color(),
       displayLabels = false,
       labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
-      labelDir = "S",
+      labelDir = 'S',
       labelPadding = 2,
       labelStyle = new Label2DStyle(),
       labelFunc = defaultLabel
@@ -2183,7 +2182,7 @@ var Grapheme = (function (exports) {
 
       let index = 0;
 
-      function addVertex(v) {
+      function addVertex (v) {
         // Convert to canvas coordinates
         vertices[index] = v.x;
         vertices[index + 1] = v.y;
@@ -2206,10 +2205,10 @@ var Grapheme = (function (exports) {
         addVertex(nanVertex);
 
         if (this.displayLabels) {
-          let textS = this.labelAnchoredTo;
-          let position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
+          const textS = this.labelAnchoredTo;
+          const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
 
-          let label = new Label2D({position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle});
+          const label = new Label2D({ position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle });
 
           labels.push(label);
         }
@@ -2287,7 +2286,7 @@ var Grapheme = (function (exports) {
         style = {}
       } = params;
 
-      let margins = Object.assign({start: 0, end: 0, automatic: true}, params.margins || {});
+      const margins = Object.assign({ start: 0, end: 0, automatic: true }, params.margins || {});
 
       this.start = start;
       this.end = end;
@@ -2369,7 +2368,6 @@ var Grapheme = (function (exports) {
         x1: this.xStart,
         x2: this.xEnd
       };
-
 
       let labels = this.axisComponents.tickmarkLabels;
 

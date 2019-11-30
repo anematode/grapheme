@@ -1,17 +1,17 @@
-import {Label} from "./label"
-import {Label2DStyle} from "./label_2d_style"
+import { Label } from './label'
+import { Label2DStyle } from './label_2d_style'
 
 class Label2D extends Label {
-  constructor(params = {}) {
+  constructor (params = {}) {
     super(params)
 
-    this.mode = "2d"
+    this.mode = '2d'
     this.labelStyle = params.labelStyle || new Label2DStyle()
   }
 
-  render(renderInfo) {
-    let ctx = renderInfo.text
-    ctx.save();
+  render (renderInfo) {
+    const ctx = renderInfo.text
+    ctx.save()
 
     this.labelStyle.prepareContext(ctx)
     super.render(renderInfo)
@@ -20,4 +20,4 @@ class Label2D extends Label {
   }
 }
 
-export {Label2D}
+export { Label2D }

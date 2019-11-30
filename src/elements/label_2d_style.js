@@ -1,12 +1,12 @@
-import {Color} from "../color"
+import { Color } from '../color'
 
 class Label2DStyle {
   // TODO: rotation
-  constructor(params={}) {
+  constructor (params = {}) {
     const {
       color = new Color(),
       fontSize = 12,
-      fontFamily = "Helvetica",
+      fontFamily = 'Helvetica',
       shadowColor = new Color(),
       shadowBlur = 0
     } = params
@@ -18,7 +18,7 @@ class Label2DStyle {
     this.shadowBlur = shadowBlur
   }
 
-  prepareContext(ctx) {
+  prepareContext (ctx) {
     ctx.fillStyle = this.color
     ctx.font = `${this.fontSize}px ${this.fontFamily}`
     ctx.shadowBlur = this.shadowBlur
@@ -26,4 +26,4 @@ class Label2DStyle {
   }
 }
 
-export {Label2DStyle}
+export { Label2DStyle }
