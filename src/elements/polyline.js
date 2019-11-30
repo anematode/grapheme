@@ -65,7 +65,7 @@ class PolylineElement extends Simple2DGeometry {
 
     utils.mergeDeep(style, {
       color: new Color(0, 0, 0, 255), // Color of the polyline
-      thickness: 2, // Thickness in canvas pixels
+      thickness: 2, // Thickness in CSS pixels
       endcapType: 1, // The type of endcap to be used (refer to the ENDCAPS enum)
       endcapRes: 0.4, // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
       joinType: 3, // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)

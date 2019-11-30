@@ -8,6 +8,12 @@ class GraphemeGroup extends GraphemeElement {
     this.children = []
   }
 
+  _onDPRChanged() {
+    this.children.forEach(child => child._onDPRChanged())
+    
+    return;
+  }
+
   sortChildrenByPrecedence () {
     // Sort the children by their precedence value
     this.children.sort((x, y) => x.precedence - y.precedence)
@@ -69,6 +75,21 @@ class GraphemeGroup extends GraphemeElement {
     this.children.forEach((child) => child.destroy())
 
     super.destroy()
+  }
+
+  /**
+  Apply a function to the children of this group. If recursive = true, continue to
+  apply this function to the children of all children, etc.
+  */
+  applyToChildren(func, recursive=true) {
+    this.children.forEach(child => {
+      if (recursive && child.children) {
+        // if child is also a group, apply the function to all children
+        child.applyToChildren(func, true)
+      }
+
+      func(child);
+    })
   }
 }
 

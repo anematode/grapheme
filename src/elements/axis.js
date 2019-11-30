@@ -44,13 +44,13 @@ class Axis extends GraphemeGroup {
   constructor (params = {}) {
     super(params)
 
-    // Starting point of the axis, including the extra margins
+    // Starting point of the axis, including the extra margins, in CSS coords
     this.start = utils.select(params.start, new Vec2(0, 0))
 
-    // Ending point of the axis, including the extra margins
+    // Ending point of the axis, including the extra margins, in CSS coords
     this.end = utils.select(params.end, new Vec2(100, 0))
 
-    // Length, in canvas pixels, of the starting margin
+    // Length, in CSS pixels, of the starting margin
     this.margins = {
       start: 0,
       end: 0,
@@ -174,6 +174,10 @@ class Axis extends GraphemeGroup {
 
     if (!this.hasChild(axisGeometry))
       this.add(axisGeometry)
+  }
+
+  _onDPRChanged() {
+    this.updateGeometries()
   }
 
   updateGeometries () {
