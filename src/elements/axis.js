@@ -64,7 +64,7 @@ class Axis extends GraphemeGroup {
    */
   constructor (params = {}) {
     super(params)
-    
+
     const {
       start = new Vec2(0, 0),
       end = new Vec2(100, 0),

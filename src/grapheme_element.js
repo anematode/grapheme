@@ -48,7 +48,7 @@ class GraphemeElement {
     }
   }
 
-  renderIfVisible(renderInfo) {
+  renderIfVisible (renderInfo) {
     if (this.visible) {
       this.render(renderInfo)
     }

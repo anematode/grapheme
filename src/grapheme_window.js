@@ -53,8 +53,8 @@ class GraphemeWindow extends GraphemeGroup {
     this._scaleTextCanvasToDPR()
   }
 
-  _scaleTextCanvasToDPR() {
-    let ctx = this.textCanvasContext
+  _scaleTextCanvasToDPR () {
+    const ctx = this.textCanvasContext
 
     for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
       ctx.restore()

@@ -217,7 +217,7 @@ var Grapheme = (function (exports) {
       }
     }
 
-    renderIfVisible(renderInfo) {
+    renderIfVisible (renderInfo) {
       if (this.visible) {
         this.render(renderInfo);
       }
@@ -406,8 +406,8 @@ var Grapheme = (function (exports) {
       this._scaleTextCanvasToDPR();
     }
 
-    _scaleTextCanvasToDPR() {
-      let ctx = this.textCanvasContext;
+    _scaleTextCanvasToDPR () {
+      const ctx = this.textCanvasContext;
 
       for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
         ctx.restore();
@@ -2046,7 +2046,7 @@ var Grapheme = (function (exports) {
      */
     constructor (params = {}) {
       super(params);
-      
+
       const {
         start = new Vec2(0, 0),
         end = new Vec2(100, 0),
