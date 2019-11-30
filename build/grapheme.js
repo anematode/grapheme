@@ -230,6 +230,10 @@ var Grapheme = (function (exports) {
 
       this.orphanize();
     }
+
+    _onDPRChanged() {
+      return;
+    }
   }
 
   class GraphemeGroup extends GraphemeElement {
@@ -237,6 +241,12 @@ var Grapheme = (function (exports) {
       super(params);
 
       this.children = [];
+    }
+
+    _onDPRChanged() {
+      this.children.forEach(child => child._onDPRChanged());
+      
+      return;
     }
 
     sortChildrenByPrecedence () {
@@ -300,6 +310,21 @@ var Grapheme = (function (exports) {
       this.children.forEach((child) => child.destroy());
 
       super.destroy();
+    }
+
+    /**
+    Apply a function to the children of this group. If recursive = true, continue to
+    apply this function to the children of all children, etc.
+    */
+    applyToChildren(func, recursive=true) {
+      this.children.forEach(child => {
+        if (recursive && child.children) {
+          // if child is also a group, apply the function to all children
+          child.applyToChildren(func, true);
+        }
+
+        func(child);
+      });
     }
   }
 
@@ -571,8 +596,10 @@ var Grapheme = (function (exports) {
       let err; // potential error in try {...} catch
       const { glCanvas } = this.context;
 
-      const width = this.canvasWidth; const
-        height = this.canvasHeight;
+      const width = this.cssWidth;
+      const height = this.cssHeight;
+      const textWidth = this.canvasWidth;
+      const textHeight = this.canvasHeight;
 
       // Render information to be given to elements
       const renderInfo = {
@@ -582,13 +609,15 @@ var Grapheme = (function (exports) {
         text: this.textCanvasContext,
         textCanvas: this.textCanvas,
         width,
-        height
+        height,
+        textWidth,
+        textHeight
       };
 
       this.labelManager.currentRenderID = renderID;
       try {
         // Set the viewport to this canvas's size
-        this.context.setViewport(width, height);
+        this.context.setViewport(textWidth, textHeight);
 
         // clear the canvas
         this.clearToColor();
@@ -1457,7 +1486,7 @@ var Grapheme = (function (exports) {
       // If params.style, merge it with the defaults and send it to this.style
       mergeDeep(style, {
         color: new Color(0, 0, 0, 255), // Color of the polyline
-        thickness: 2, // Thickness in canvas pixels
+        thickness: 2, // Thickness in CSS pixels
         endcapType: 1, // The type of endcap to be used (refer to the ENDCAPS enum)
         endcapRes: 0.4, // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
         joinType: 3, // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)
@@ -2154,7 +2183,8 @@ var Grapheme = (function (exports) {
 
       let index = 0;
 
-      function addVertex (v) {
+      function addVertex(v) {
+        // Convert to canvas coordinates
         vertices[index] = v.x;
         vertices[index + 1] = v.y;
         index += 2;

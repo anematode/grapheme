@@ -94,7 +94,8 @@ class AxisTickmarkStyle {
 
     let index = 0
 
-    function addVertex (v) {
+    function addVertex(v) {
+      // Convert to canvas coordinates
       vertices[index] = v.x
       vertices[index + 1] = v.y
       index += 2

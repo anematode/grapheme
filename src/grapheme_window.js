@@ -183,8 +183,10 @@ class GraphemeWindow extends GraphemeGroup {
     let err // potential error in try {...} catch
     const { glCanvas } = this.context
 
-    const width = this.canvasWidth; const
-      height = this.canvasHeight
+    const width = this.cssWidth;
+    const height = this.cssHeight
+    const textWidth = this.canvasWidth;
+    const textHeight = this.canvasHeight;
 
     // Render information to be given to elements
     const renderInfo = {
@@ -194,13 +196,15 @@ class GraphemeWindow extends GraphemeGroup {
       text: this.textCanvasContext,
       textCanvas: this.textCanvas,
       width,
-      height
+      height,
+      textWidth,
+      textHeight
     }
 
     this.labelManager.currentRenderID = renderID
     try {
       // Set the viewport to this canvas's size
-      this.context.setViewport(width, height)
+      this.context.setViewport(textWidth, textHeight)
 
       // clear the canvas
       this.clearToColor()
