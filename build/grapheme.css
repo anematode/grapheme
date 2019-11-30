@@ -13,3 +13,43 @@
   left: 0;
   margin: 0;
 }
+
+.grapheme-label {
+  position: absolute;
+}
+
+.grapheme-label-N {
+  transform: translate(-50%, -100%);
+}
+
+.grapheme-label-NW {
+  transform: translate(-100%, -100%);
+}
+
+.grapheme-label-NE {
+  transform: translate(0, -100%);
+}
+
+.grapheme-label-C {
+  transform: translate(-50%, -50%);
+}
+
+.grapheme-label-W {
+  transform: translate(-100%, -50%);
+}
+
+.grapheme-label-SW {
+  transform: translate(-100%, 0);
+}
+
+.grapheme-label-SE {
+
+}
+
+.grapheme-label-S {
+  transform: translate(-50%, 0);
+}
+
+.grapheme-label-E {
+  transform: translate(0, -50%);
+}

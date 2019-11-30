@@ -2,10 +2,12 @@ import * as utils from '../utils'
 import { Color } from '../color'
 import { Vec2 } from '../math/vec2'
 import { Simple2DGeometry } from './simple_geometry'
+import { Label2DStyle } from "./label_2d_style"
+import { Label2D } from "./label_2d"
 
 // TEMP: must transfer from old grapheme
 function defaultLabel (x) {
-  return x.toFixed(5)
+  return x + ''
 }
 
 /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
@@ -24,26 +26,23 @@ class AxisTickmarkStyle {
     positioning = 0,
     thickness = 2,
     color = new Color(),
-    displayText = false,
-    textOffset = 5,
-    textRotation = 0,
-    textPadding = 2,
-    font = '12px Helvetica',
-    shadowSize = 3,
-    textColor = new Color(),
-    textFunc = defaultLabel
+    displayLabels = false,
+    labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
+    labelDir = "S",
+    labelPadding = 2,
+    labelStyle = new Label2DStyle(),
+    labelFunc = defaultLabel
   } = {}) {
     this.length = length
     this.positioning = positioning
     this.thickness = thickness
     this.color = color
-    this.displayText = displayText
-    this.textRotation = textRotation
-    this.textPadding = textPadding
-    this.font = font
-    this.shadowSize = 3
-    this.textColor = textColor
-    this.textFunc = textFunc
+    this.displayLabels = displayLabels
+    this.labelAnchoredTo = labelAnchoredTo
+    this.labelDir = labelDir
+    this.labelPadding = labelPadding
+    this.labelStyle = labelStyle
+    this.labelFunc = labelFunc
   }
 
   /**
@@ -66,7 +65,7 @@ class AxisTickmarkStyle {
    * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
    * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
    */
-  createTickmarks (transformation, positions, geometry) {
+  createTickmarks (transformation, positions, geometry, labels) {
     utils.checkType(geometry, Simple2DGeometry)
 
     const tickmarkCount = positions.length
@@ -115,6 +114,15 @@ class AxisTickmarkStyle {
       addVertex(omicron.add(xi))
       addVertex(lambda.add(xi))
       addVertex(nanVertex)
+
+      if (this.displayLabels) {
+        let textS = this.labelAnchoredTo
+        let position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
+
+        let label = new Label2D({position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle})
+
+        labels.push(label)
+      }
     }
 
     geometry.glVerticesCount = vertexCount

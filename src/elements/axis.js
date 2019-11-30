@@ -68,17 +68,14 @@ class Axis extends GraphemeGroup {
     const {
       start = new Vec2(0, 0),
       end = new Vec2(100, 0),
-      margins = {
-        start: 0,
-        end: 0,
-        automatic: true
-      },
       xStart = 0,
       xEnd = 1,
       tickmarkStyles = {},
       tickmarkPositions = {},
       style = {}
     } = params
+
+    let margins = Object.assign({start: 0, end: 0, automatic: true}, params.margins || {})
 
     this.start = start
     this.end = end
@@ -92,6 +89,7 @@ class Axis extends GraphemeGroup {
     // Then I have to touch it. Ugh.
     this.axisComponents = {
       tickmarkGeometries: {},
+      tickmarkLabels: [],
       axisGeometry: new PolylineElement(Object.assign({
         // Some sensible default values
         arrowLocations: -1,
@@ -160,6 +158,15 @@ class Axis extends GraphemeGroup {
       x2: this.xEnd
     }
 
+
+    let labels = this.axisComponents.tickmarkLabels
+
+    for (let i = 0; i < labels.length; ++i) {
+      this.remove(labels[i])
+    }
+
+    labels = this.axisComponents.tickmarkLabels = []
+
     // For every type of tickmark
     for (const styleName in this.tickmarkStyles) {
       const style = this.tickmarkStyles[styleName]
@@ -177,8 +184,10 @@ class Axis extends GraphemeGroup {
       }
 
       // Create some tickmarks!
-      style.createTickmarks(transformation, positions, geometry)
+      style.createTickmarks(transformation, positions, geometry, labels)
     }
+
+    labels.forEach(label => this.add(label))
 
     for (const geometryName in this.tickmarkGeometries) {
       if (!this.tickmarkStyles[geometryName]) {
@@ -224,7 +233,9 @@ class Axis extends GraphemeGroup {
   }
 
   render (renderInfo) {
-    if (this.alwaysUpdate) { this.updateGeometries() }
+    if (this.alwaysUpdate) {
+      this.updateGeometries()
+    }
 
     super.render(renderInfo)
   }

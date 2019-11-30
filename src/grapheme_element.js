@@ -16,7 +16,7 @@ class GraphemeElement {
     // Unique identifier for this object
     this.uuid = utils.generateUUID()
 
-    // Whether this element is drawn on renderIfVisible()
+    // Whether this element is drawn on render TODO
     this.visible = visible
 
     // List of buffer names used, for easy cleanup when the object is destroyed
@@ -45,12 +45,6 @@ class GraphemeElement {
   orphanize () {
     if (this.parent) {
       this.parent.remove(this)
-    }
-  }
-
-  renderIfVisible (renderInfo) {
-    if (this.visible) {
-      this.render(renderInfo)
     }
   }
 

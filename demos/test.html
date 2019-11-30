@@ -13,30 +13,17 @@
 
 <body>
 
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
 <script src="../build/grapheme.js"></script>
+
 <script>
-
-window.vertexTimes = [];
-window.renderingTimes = [];
-
 let grapheme_context = new Grapheme.Context();
 let grapheme_window = grapheme_context.createWindow();
 
 grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
-
-let grapheme_group = new Grapheme.Group();
-grapheme_window.add(grapheme_group);
-
-let polyline = new Grapheme.PolylineElement();
-
-polyline.style.thickness = 2;
-polyline.style.joinType = Grapheme.PolylineElement.JOIN_TYPES.DYNAMIC;
-polyline.style.endcapType = Grapheme.PolylineElement.ENDCAP_TYPES.NONE;
-polyline.style.arrowLocations = Grapheme.PolylineElement.ARROW_LOCATION_TYPES.ARROW_F;
-polyline.style.joinRes = 2;
-
-grapheme_window.add(polyline);
 
 let axis = new Grapheme.Axis();
 axis.start.set(100, 1000)
@@ -44,49 +31,18 @@ axis.end.set(1000, 1000)
 axis.style.arrowLocations = -1
 axis.xStart = 1990
 axis.xEnd = 2000
-
 let main = new Grapheme.AxisTickmarkStyle();
 axis.tickmarkStyles["main"] = main
 axis.tickmarkPositions["main"] = [...Array(11).keys()].map(k => k + 1990)
+main.displayLabels = true
+main.labelDir = "S"
 let sub = new Grapheme.AxisTickmarkStyle();
 axis.tickmarkStyles["sub"] = sub
 axis.tickmarkPositions["sub"] = [...Array(10).keys()].map(k => k + 1990.5)
 
 grapheme_window.add(axis);
 
-axis = new Grapheme.Axis();
-axis.start.set(100, 1000)
-axis.end.set(100, 500)
-axis.style.arrowLocations = -1
-axis.xStart = 1990
-axis.xEnd = 2000
-
-main = new Grapheme.AxisTickmarkStyle();
-axis.tickmarkStyles["main"] = main
-axis.tickmarkPositions["main"] = [...Array(11).keys()].map(k => k + 1990)
-sub = new Grapheme.AxisTickmarkStyle();
-axis.tickmarkStyles["sub"] = sub
-axis.tickmarkPositions["sub"] = [...Array(10).keys()].map(k => k + 1990.5)
-
-grapheme_window.add(axis);
-
-let ia = 0;
-
 function render() {
-  ia += 0.1;
-
-  polyline.vertices = []
-
-  for (let i = 0; i < 50; ++i) {
-    for (let j = 0; j < 50; ++j) {
-
-      let x = i / 50 * grapheme_window.canvasWidth;
-      let y = j / 50 * grapheme_window.canvasHeight;
-
-      polyline.vertices.push(x, y, x + 50*Math.cos(ia + 50 * (i+j) / 500), y + 50*Math.sin(ia + 50 * (2*i+j) / 500), NaN, NaN);
-    }
-  }
-
   grapheme_window.render();
 
   requestAnimationFrame(render);
@@ -94,10 +50,9 @@ function render() {
 
 render();
 
-grapheme_window.domElement.onclick = (evt) => {
-  polyline.vertices.push(evt.clientX * 2);
-  polyline.vertices.push(evt.clientY * 2);
-};
+window.onresize = () => {
+  grapheme_window.setSize(window.innerWidth, window.innerHeight);
+}
 </script>
 
 </body>

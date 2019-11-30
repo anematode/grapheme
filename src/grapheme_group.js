@@ -13,10 +13,10 @@ class GraphemeGroup extends GraphemeElement {
     this.children.sort((x, y) => x.precedence - y.precedence)
   }
 
-  renderIfVisible (renderInfo) {
+  render (renderInfo) {
     this.sortChildrenByPrecedence()
 
-    this.children.forEach((child) => child.renderIfVisible(renderInfo))
+    this.children.forEach((child) => child.render(renderInfo))
   }
 
   isChild (element) {

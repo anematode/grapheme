@@ -1,6 +1,7 @@
 import { Group as GraphemeGroup } from './grapheme_group'
 import * as utils from './utils'
 import { rgba } from './color'
+import {LabelManager} from "./label_manager"
 
 const DEFAULT_SIZE = [640, 480]
 
@@ -42,6 +43,9 @@ class GraphemeWindow extends GraphemeGroup {
 
     // The color of the background
     this.backgroundColor = rgba(0, 0, 0, 0)
+
+    // label manager
+    this.labelManager = new LabelManager(this.domElement)
 
     // Add this window to the context's list of window
     graphemeContext.windows.push(this)
@@ -164,11 +168,17 @@ class GraphemeWindow extends GraphemeGroup {
 
     gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a)
     gl.clear(gl.COLOR_BUFFER_BIT)
-  }
 
+    // Clear the text canvas
+    this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+  }
+  
   render () {
     // Set the active window to this window, since this is the window being rendered
     this.context.activeWindow = this
+
+    // ID of this render
+    const renderID = utils.generateUUID()
 
     let err // potential error in try {...} catch
     const { glCanvas } = this.context
@@ -180,12 +190,14 @@ class GraphemeWindow extends GraphemeGroup {
     const renderInfo = {
       gl: this.context.glContext,
       glResourceManager: this.context.glResourceManager,
+      labelManager: this.labelManager,
       text: this.textCanvasContext,
       textCanvas: this.textCanvas,
       width,
       height
     }
 
+    this.labelManager.currentRenderID = renderID
     try {
       // Set the viewport to this canvas's size
       this.context.setViewport(width, height)
@@ -196,11 +208,13 @@ class GraphemeWindow extends GraphemeGroup {
       // sort our elements by drawing precedence
       this.sortChildrenByPrecedence()
 
-      super.renderIfVisible(renderInfo)
+      super.render(renderInfo)
 
       // Copy the canvas to this canvas
       const glBitmap = glCanvas.transferToImageBitmap()
       this.mainCanvasContext.transferFromImageBitmap(glBitmap)
+
+      this.labelManager.cleanOldRenders()
     } catch (e) {
       err = e
     } finally {

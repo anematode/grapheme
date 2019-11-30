@@ -25,4 +25,5 @@ To Do:
 - Square endcap type
 - Make enums sensible
 - Dashed polyline
+- Arrows -> Glyph
 - JSDoc everything that's not likely to change soon

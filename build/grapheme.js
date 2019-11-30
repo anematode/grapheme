@@ -185,7 +185,7 @@ var Grapheme = (function (exports) {
       // Unique identifier for this object
       this.uuid = generateUUID();
 
-      // Whether this element is drawn on renderIfVisible()
+      // Whether this element is drawn on render TODO
       this.visible = visible;
 
       // List of buffer names used, for easy cleanup when the object is destroyed
@@ -217,12 +217,6 @@ var Grapheme = (function (exports) {
       }
     }
 
-    renderIfVisible (renderInfo) {
-      if (this.visible) {
-        this.render(renderInfo);
-      }
-    }
-
     render (elementInfo) {
       // No need to call this as a child class
     }
@@ -250,10 +244,10 @@ var Grapheme = (function (exports) {
       this.children.sort((x, y) => x.precedence - y.precedence);
     }
 
-    renderIfVisible (renderInfo) {
+    render (renderInfo) {
       this.sortChildrenByPrecedence();
 
-      this.children.forEach((child) => child.renderIfVisible(renderInfo));
+      this.children.forEach((child) => child.render(renderInfo));
     }
 
     isChild (element) {
@@ -355,6 +349,48 @@ var Grapheme = (function (exports) {
     })
   }
 
+  /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
+  class LabelManager {
+    constructor(domElement) {
+      // Pass it the container for grapheme_window
+      this.domElement = domElement;
+
+      // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
+      this.labels = new Map();
+
+      this.currentRenderID = "";
+    }
+
+    cleanOldRenders() {
+      let labelInfos = this.labels;
+
+      labelInfos.forEach((labelInfo, label) => {
+        if (labelInfo.renderID !== this.currentRenderID) {
+          labelInfo.domElement.remove();
+          labelInfos.delete(label);
+        }
+      });
+    }
+
+    getElement(label) {
+      const labelInfo = this.labels.get(label);
+      let domElement;
+
+      if (!labelInfo) {
+        domElement = document.createElement("div");
+        domElement.classList.add("grapheme-label");
+        this.domElement.appendChild(domElement);
+
+        this.labels.set(label, {renderID: this.currentRenderID, domElement});
+      } else {
+        domElement = labelInfo.domElement;
+        labelInfo.renderID = this.currentRenderID;
+      }
+
+      return domElement
+    }
+  }
+
   const DEFAULT_SIZE = [640, 480];
 
   /** A grapheme window is an actual viewable instance of Grapheme.
@@ -395,6 +431,9 @@ var Grapheme = (function (exports) {
 
       // The color of the background
       this.backgroundColor = rgba(0, 0, 0, 0);
+
+      // label manager
+      this.labelManager = new LabelManager(this.domElement);
 
       // Add this window to the context's list of window
       graphemeContext.windows.push(this);
@@ -517,11 +556,17 @@ var Grapheme = (function (exports) {
 
       gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a);
       gl.clear(gl.COLOR_BUFFER_BIT);
-    }
 
+      // Clear the text canvas
+      this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+    }
+    
     render () {
       // Set the active window to this window, since this is the window being rendered
       this.context.activeWindow = this;
+
+      // ID of this render
+      const renderID = generateUUID();
 
       let err; // potential error in try {...} catch
       const { glCanvas } = this.context;
@@ -533,12 +578,14 @@ var Grapheme = (function (exports) {
       const renderInfo = {
         gl: this.context.glContext,
         glResourceManager: this.context.glResourceManager,
+        labelManager: this.labelManager,
         text: this.textCanvasContext,
         textCanvas: this.textCanvas,
         width,
         height
       };
 
+      this.labelManager.currentRenderID = renderID;
       try {
         // Set the viewport to this canvas's size
         this.context.setViewport(width, height);
@@ -549,11 +596,13 @@ var Grapheme = (function (exports) {
         // sort our elements by drawing precedence
         this.sortChildrenByPrecedence();
 
-        super.renderIfVisible(renderInfo);
+        super.render(renderInfo);
 
         // Copy the canvas to this canvas
         const glBitmap = glCanvas.transferToImageBitmap();
         this.mainCanvasContext.transferFromImageBitmap(glBitmap);
+
+        this.labelManager.cleanOldRenders();
       } catch (e) {
         err = e;
       } finally {
@@ -1871,9 +1920,154 @@ var Grapheme = (function (exports) {
     }
   }
 
+  class Label2DStyle {
+    // TODO: rotation
+    constructor(params={}) {
+      const {
+        color = new Color(),
+        fontSize = 12,
+        fontFamily = "Helvetica",
+        shadowColor = new Color(),
+        shadowBlur = 0
+      } = params;
+
+      this.color = color;
+      this.fontSize = fontSize;
+      this.fontFamily = fontFamily;
+      this.shadowColor = shadowColor;
+      this.shadowBlur = shadowBlur;
+    }
+
+    prepareContext(ctx) {
+      ctx.fillStyle = this.color;
+      ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+      ctx.shadowBlur = this.shadowBlur;
+      ctx.shadowColor = this.shadowColor;
+    }
+  }
+
+  const validDirs = ["C", "N", "S", "W", "E", "NW", "NE", "SW", "SE"];
+
+  const labelClasses = validDirs.map(s => "grapheme-label-" + s);
+
+  // Creates html element of the form
+  // <div class="label label-S" label-id=this.uuid render-id=renderID>
+  class Label extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      const {
+        text = '',
+        mode = '',
+        position = new Vec2(0, 0),
+        dir = "N"
+      } = params;
+
+      this.text = text;
+      this.mode = mode;
+      this.dir = dir;
+      this.position = position;
+    }
+
+    render (renderInfo) {
+      const {text, mode, position, dir} = this;
+      if (!validDirs.includes(dir)) {
+        dir = "C";
+      }
+
+      if (mode === "2d") {
+        if (!this.labelStyle)
+          return
+
+        const ctx = renderInfo.text;
+
+        let textBaseline;
+        let textAlign;
+
+        // text align
+        switch (dir) {
+          case "C": case "N": case "S":
+            textAlign = "center";
+            break;
+          case "NW": case "W": case "SW":
+            textAlign = "left";
+            break;
+          case "NE": case "E": case "SE":
+            textAlign = "right";
+            break;
+        }
+
+        // text baseline
+        switch (dir) {
+          case "C": case "W": case "E":
+            textBaseline = "middle";
+            break;
+          case "SW": case "S": case "SE":
+            textBaseline = "top";
+            break;
+          case "NW": case "N": case "NE":
+            textBaseline = "bottom";
+            break;
+        }
+
+        ctx.textBaseline = textBaseline;
+        ctx.textAlign = textAlign;
+
+        ctx.fillText(text, position.x, position.y);
+      } else {
+        let labelElement = renderInfo.labelManager.getElement(this);
+
+        let labelClass = "grapheme-label-" + dir;
+        if (!labelElement.classList.contains(labelClass)) {
+          labelElement.classList.remove(...labelClasses);
+          labelElement.classList.add("grapheme-label-" + dir);
+        }
+
+        labelElement.style.top = position.y + "px";
+        labelElement.style.left = position.x + "px";
+
+        let oldLatex = labelElement.getAttribute("latex-content");
+
+        if (mode === "latex") {
+          // latex-content stores the latex to be rendered to this node, which means
+          // that if it is equal to text, it does not need to be recomputed, only maybe
+          // moved in some direction
+          if (oldLatex !== text) {
+            labelElement.setAttribute("latex-content", text);
+            katex.render(text, labelElement, {throwOnError: false});
+          }
+        } else {
+          if (oldLatex)
+            labelElement.removeAttribute("latex-content");
+
+          labelElement.innerHTML = text;
+        }
+      }
+    }
+  }
+
+  class Label2D extends Label {
+    constructor(params = {}) {
+      super(params);
+
+      this.mode = "2d";
+      this.labelStyle = params.labelStyle || new Label2DStyle();
+    }
+
+    render(renderInfo) {
+      let ctx = renderInfo.text;
+      ctx.save();
+
+      this.labelStyle.prepareContext(ctx);
+      super.render(renderInfo);
+
+      ctx.restore();
+    }
+  }
+
   // TEMP: must transfer from old grapheme
   function defaultLabel (x) {
-    return x.toFixed(5)
+    return x + ''
   }
 
   /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
@@ -1892,26 +2086,23 @@ var Grapheme = (function (exports) {
       positioning = 0,
       thickness = 2,
       color = new Color(),
-      displayText = false,
-      textOffset = 5,
-      textRotation = 0,
-      textPadding = 2,
-      font = '12px Helvetica',
-      shadowSize = 3,
-      textColor = new Color(),
-      textFunc = defaultLabel
+      displayLabels = false,
+      labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
+      labelDir = "S",
+      labelPadding = 2,
+      labelStyle = new Label2DStyle(),
+      labelFunc = defaultLabel
     } = {}) {
       this.length = length;
       this.positioning = positioning;
       this.thickness = thickness;
       this.color = color;
-      this.displayText = displayText;
-      this.textRotation = textRotation;
-      this.textPadding = textPadding;
-      this.font = font;
-      this.shadowSize = 3;
-      this.textColor = textColor;
-      this.textFunc = textFunc;
+      this.displayLabels = displayLabels;
+      this.labelAnchoredTo = labelAnchoredTo;
+      this.labelDir = labelDir;
+      this.labelPadding = labelPadding;
+      this.labelStyle = labelStyle;
+      this.labelFunc = labelFunc;
     }
 
     /**
@@ -1934,7 +2125,7 @@ var Grapheme = (function (exports) {
      * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
      * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
      */
-    createTickmarks (transformation, positions, geometry) {
+    createTickmarks (transformation, positions, geometry, labels) {
       checkType(geometry, Simple2DGeometry);
 
       const tickmarkCount = positions.length;
@@ -1983,6 +2174,15 @@ var Grapheme = (function (exports) {
         addVertex(omicron.add(xi));
         addVertex(lambda.add(xi));
         addVertex(nanVertex);
+
+        if (this.displayLabels) {
+          let textS = this.labelAnchoredTo;
+          let position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
+
+          let label = new Label2D({position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle});
+
+          labels.push(label);
+        }
       }
 
       geometry.glVerticesCount = vertexCount;
@@ -2050,17 +2250,14 @@ var Grapheme = (function (exports) {
       const {
         start = new Vec2(0, 0),
         end = new Vec2(100, 0),
-        margins = {
-          start: 0,
-          end: 0,
-          automatic: true
-        },
         xStart = 0,
         xEnd = 1,
         tickmarkStyles = {},
         tickmarkPositions = {},
         style = {}
       } = params;
+
+      let margins = Object.assign({start: 0, end: 0, automatic: true}, params.margins || {});
 
       this.start = start;
       this.end = end;
@@ -2074,6 +2271,7 @@ var Grapheme = (function (exports) {
       // Then I have to touch it. Ugh.
       this.axisComponents = {
         tickmarkGeometries: {},
+        tickmarkLabels: [],
         axisGeometry: new PolylineElement(Object.assign({
           // Some sensible default values
           arrowLocations: -1,
@@ -2142,6 +2340,15 @@ var Grapheme = (function (exports) {
         x2: this.xEnd
       };
 
+
+      let labels = this.axisComponents.tickmarkLabels;
+
+      for (let i = 0; i < labels.length; ++i) {
+        this.remove(labels[i]);
+      }
+
+      labels = this.axisComponents.tickmarkLabels = [];
+
       // For every type of tickmark
       for (const styleName in this.tickmarkStyles) {
         const style = this.tickmarkStyles[styleName];
@@ -2159,8 +2366,10 @@ var Grapheme = (function (exports) {
         }
 
         // Create some tickmarks!
-        style.createTickmarks(transformation, positions, geometry);
+        style.createTickmarks(transformation, positions, geometry, labels);
       }
+
+      labels.forEach(label => this.add(label));
 
       for (const geometryName in this.tickmarkGeometries) {
         if (!this.tickmarkStyles[geometryName]) {
@@ -2206,7 +2415,9 @@ var Grapheme = (function (exports) {
     }
 
     render (renderInfo) {
-      if (this.alwaysUpdate) { this.updateGeometries(); }
+      if (this.alwaysUpdate) {
+        this.updateGeometries();
+      }
 
       super.render(renderInfo);
     }
@@ -2217,12 +2428,22 @@ var Grapheme = (function (exports) {
   exports.Axis = Axis;
   exports.AxisTickmarkStyle = AxisTickmarkStyle;
   exports.Context = GraphemeContext;
+  exports.E = E;
   exports.GeometryUnion = GeometryUnion;
   exports.Group = GraphemeGroup;
+  exports.Label = Label;
   exports.Multicolored2DGeometry = Multicolored2DGeometry;
+  exports.N = N;
+  exports.NE = NE;
+  exports.NW = NW;
   exports.PolylineElement = PolylineElement;
   exports.RENDER_MODES = RENDER_MODES;
+  exports.S = S;
+  exports.SE = SE;
+  exports.SW = SW;
   exports.Simple2DGeometry = Simple2DGeometry;
+  exports.Vec2 = Vec2;
+  exports.W = W;
   exports.arrowDrawers = arrowDrawers;
   exports.arrowLengths = arrowLengths;
 
