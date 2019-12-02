@@ -1947,7 +1947,81 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class Label2DStyle {
+  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
+  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
+
+  class LabelStyle {
+    constructor(params={}) {
+      const {
+        mode = "2d", // valid values: 2d, latex, html
+        dir = "C"    // valid values:
+      } = params;
+
+      this.mode = mode;
+      this.dir = dir;
+    }
+
+    prepareContext(ctx) {
+      const dir = this.dir;
+
+      let textBaseline;
+      let textAlign;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      // text align
+      switch (dir) {
+        case 'C': case 'N': case 'S':
+          textAlign = 'center';
+          break
+        case 'NW': case 'W': case 'SW':
+          textAlign = 'left';
+          break
+        case 'NE': case 'E': case 'SE':
+          textAlign = 'right';
+          break
+      }
+
+      // text baseline
+      switch (dir) {
+        case 'C': case 'W': case 'E':
+          textBaseline = 'middle';
+          break
+        case 'SW': case 'S': case 'SE':
+          textBaseline = 'top';
+          break
+        case 'NW': case 'N': case 'NE':
+          textBaseline = 'bottom';
+          break
+      }
+
+      ctx.textBaseline = textBaseline;
+      ctx.textAlign = textAlign;
+    }
+
+    labelClass() {
+      let dir = this.dir;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      return "grapheme-label-" + this.dir
+    }
+
+    setLabelClass(labelElement) {
+      const labelClass = this.labelClass();
+
+      if (!labelElement.classList.contains(labelClass)) {
+        labelElement.classList.remove(...labelClasses);
+        labelElement.classList.add(labelClass);
+      }
+    }
+  }
+
+  class Label2DStyle extends LabelStyle {
     // TODO: rotation
     constructor (params = {}) {
       const {
@@ -1957,6 +2031,7 @@ var Grapheme = (function (exports) {
         shadowColor = new Color(),
         shadowBlur = 0
       } = params;
+      super(params);
 
       this.color = color;
       this.fontSize = fontSize;
@@ -1970,12 +2045,10 @@ var Grapheme = (function (exports) {
       ctx.font = `${this.fontSize}px ${this.fontFamily}`;
       ctx.shadowBlur = this.shadowBlur;
       ctx.shadowColor = this.shadowColor;
+
+      super.prepareContext(ctx);
     }
   }
-
-  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
-
-  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
 
   // Creates html element of the form
   // <div class="label label-S" label-id=this.uuid render-id=renderID>
@@ -1985,71 +2058,39 @@ var Grapheme = (function (exports) {
 
       const {
         text = '',
-        mode = '',
-        position = new Vec2(0, 0),
-        dir = 'N'
+        position = new Vec2(0, 0)
       } = params;
 
       this.text = text;
-      this.mode = mode;
-      this.dir = dir;
       this.position = position;
+
+      if (params.style) {
+        if (params.style instanceof Label2DStyle) {
+          this.style = params.style;
+        } else {
+          this.style = new Label2DStyle(params.style);
+        }
+      } else {
+        this.style = new Label2DStyle();
+      }
     }
 
     render (renderInfo) {
-      const { text, mode, position } = this;
-      let dir = this.dir;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
+      const { text, position } = this;
+      const mode = this.style.mode;
 
       if (mode === '2d') {
-        if (!this.labelStyle) { return }
-
         const ctx = renderInfo.text;
 
-        let textBaseline;
-        let textAlign;
-
-        // text align
-        switch (dir) {
-          case 'C': case 'N': case 'S':
-            textAlign = 'center';
-            break
-          case 'NW': case 'W': case 'SW':
-            textAlign = 'left';
-            break
-          case 'NE': case 'E': case 'SE':
-            textAlign = 'right';
-            break
-        }
-
-        // text baseline
-        switch (dir) {
-          case 'C': case 'W': case 'E':
-            textBaseline = 'middle';
-            break
-          case 'SW': case 'S': case 'SE':
-            textBaseline = 'top';
-            break
-          case 'NW': case 'N': case 'NE':
-            textBaseline = 'bottom';
-            break
-        }
-
-        ctx.textBaseline = textBaseline;
-        ctx.textAlign = textAlign;
+        ctx.save();
+        this.style.prepareContext(ctx);
 
         ctx.fillText(text, position.x, position.y);
+        ctx.restore();
       } else {
         const labelElement = renderInfo.labelManager.getElement(this);
 
-        const labelClass = 'grapheme-label-' + dir;
-        if (!labelElement.classList.contains(labelClass)) {
-          labelElement.classList.remove(...labelClasses);
-          labelElement.classList.add('grapheme-label-' + dir);
-        }
+        this.style.setLabelClass(labelElement);
 
         labelElement.style.top = position.y + 'px';
         labelElement.style.left = position.x + 'px';
@@ -2071,25 +2112,6 @@ var Grapheme = (function (exports) {
           labelElement.innerHTML = text;
         }
       }
-    }
-  }
-
-  class Label2D extends Label {
-    constructor (params = {}) {
-      super(params);
-
-      this.mode = '2d';
-      this.labelStyle = params.labelStyle || new Label2DStyle();
-    }
-
-    render (renderInfo) {
-      const ctx = renderInfo.text;
-      ctx.save();
-
-      this.labelStyle.prepareContext(ctx);
-      super.render(renderInfo);
-
-      ctx.restore();
     }
   }
 
@@ -2208,7 +2230,7 @@ var Grapheme = (function (exports) {
           const textS = this.labelAnchoredTo;
           const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
 
-          const label = new Label2D({ position, text: this.labelFunc(givenPos), dir: this.labelDir, labelStyle: this.labelStyle });
+          const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle });
 
           labels.push(label);
         }
