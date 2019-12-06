@@ -3,7 +3,6 @@ import { Color } from '../color'
 import { Vec2 } from '../math/vec2'
 import { Simple2DGeometry } from './simple_geometry'
 import { Label2DStyle } from './label_style'
-import { Label } from './label'
 
 // TEMP: must transfer from old grapheme
 function defaultLabel (x) {
@@ -120,9 +119,9 @@ class AxisTickmarkStyle {
         const textS = this.labelAnchoredTo
         const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
 
-        const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle })
+        /*const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle })
 
-        labels.push(label)
+        labels.push(label)*/
       }
     }
 

@@ -25,49 +25,15 @@ let grapheme_window = grapheme_context.createWindow();
 grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
 
-let axis = new Grapheme.Axis();
-axis.start.set(100, 1000)
-axis.end.set(1000, 1000)
-axis.style.arrowLocations = -1
-axis.xStart = 1990
-axis.xEnd = 2000
-let main = new Grapheme.AxisTickmarkStyle();
-axis.tickmarkStyles["main"] = main
-axis.tickmarkPositions["main"] = [...Array(11).keys()].map(k => k + 1990)
-main.displayLabels = true
-main.labelDir = "S"
-let sub = new Grapheme.AxisTickmarkStyle();
-axis.tickmarkStyles["sub"] = sub
-axis.tickmarkPositions["sub"] = [...Array(10).keys()].map(k => k + 1990.5)
-
-grapheme_window.add(axis);
-
-let polyline = new Grapheme.PolylineElement();
-
-main.labelStyle.dir = "S"
-main.labelStyle.fontSize = 24
-
-
 let ia = 0;
 function render() {
   ia += 0.1;
-/*
-  polyline.vertices = []
-  for (let i = 0; i < 50; ++i) {
-    for (let j = 0; j < 50; ++j) {
-      let x = i / 50 * grapheme_window.canvasWidth;
-      let y = j / 50 * grapheme_window.canvasHeight;
-      polyline.vertices.push(x, y, x + 50*Math.cos(ia + 50 * (i+j) / 500), y + 50*Math.sin(ia + 50 * (2*i+j) / 500), NaN, NaN);
-    }
-  }*/
 
   grapheme_window.render();
   requestAnimationFrame(render);
 }
 
 render();
-
-polyline.style.arrowLocations = 0
 
 window.onresize = () => {
   grapheme_window.setSize(window.innerWidth, window.innerHeight);

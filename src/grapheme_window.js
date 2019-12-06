@@ -10,10 +10,8 @@ That is, it is a div that can be put into the DOM and manipulated (and seen).
 
 Properties:
 domElement = the div that the user adds to the webpage
-glCanvas = the bitmap canvas that gl stuff is copied to
 textCanvas = the canvas that text and stuff is done on
 context = the parent Grapheme.Context of this window
-glCanvasContext = the ImageBitmapRenderingContext associated with the glCanvas
 textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
 */
 class GraphemeWindow extends GraphemeGroup {
@@ -29,25 +27,18 @@ class GraphemeWindow extends GraphemeGroup {
     // The two canvases of a GraphemeWindow
     this.mainCanvas = document.createElement('canvas')
     this.domElement.appendChild(this.mainCanvas)
-    this.textCanvas = document.createElement('canvas')
-    this.domElement.appendChild(this.textCanvas)
 
     // CSS stuffs
     this.mainCanvas.classList.add('grapheme-canvas')
-    this.textCanvas.classList.add('grapheme-text-canvas')
     this.domElement.classList.add('grapheme-window')
 
     // Get the contexts
-    this.mainCanvasContext = this.mainCanvas.getContext('bitmaprenderer')
-    this.textCanvasContext = this.textCanvas.getContext('2d')
-
-    // The color of the background
-    this.backgroundColor = rgba(0, 0, 0, 0)
+    this.canvasContext = this.mainCanvas.getContext('2d')
 
     // label manager
     this.labelManager = new LabelManager(this.domElement)
 
-    // Add this window to the context's list of window
+    // Add this window to the context's list of windows
     graphemeContext.windows.push(this)
 
     // Set the default size to 640 by 480 in CSS pixels
@@ -58,7 +49,7 @@ class GraphemeWindow extends GraphemeGroup {
   }
 
   _scaleTextCanvasToDPR () {
-    const ctx = this.textCanvasContext
+    const ctx = this.canvasContext
 
     for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
       ctx.restore()
@@ -69,7 +60,7 @@ class GraphemeWindow extends GraphemeGroup {
   }
 
   // Set the size of this window (including adjusting the canvas size)
-  // Note that this width and height are in
+  // Note that this width and height are in CSS pixels
   setSize (width, height) {
     // cssWidth and cssHeight are in CSS pixels
     this.cssWidth = width
@@ -79,10 +70,10 @@ class GraphemeWindow extends GraphemeGroup {
     this._updateCanvasSize();
 
     // Set the canvas CSS size using CSS
-    [this.mainCanvas, this.textCanvas].forEach((canvas) => {
-      canvas.style.width = `${width}px`
-      canvas.style.height = `${height}px`
-    })
+    let canvas = this.mainCanvas
+
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
 
     // Update the parent context, in case it needs to be resized as well to fit
     // a potentially fatter canvas
@@ -112,7 +103,6 @@ class GraphemeWindow extends GraphemeGroup {
     utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]')
 
     this.mainCanvas.width = x
-    this.textCanvas.width = x
   }
 
   // Sets the pixel height of the canvas
@@ -121,7 +111,6 @@ class GraphemeWindow extends GraphemeGroup {
     utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]')
 
     this.mainCanvas.height = x
-    this.textCanvas.height = x
   }
 
   // Event triggered when the device pixel ratio changes
@@ -149,9 +138,7 @@ class GraphemeWindow extends GraphemeGroup {
     // Delete some references
     delete this.mainCanvas
     delete this.domElement
-    delete this.textCanvas
-    delete this.mainCanvasContext
-    delete this.textCanvasContext
+    delete this.canvasContext
   }
 
   isActive () {
@@ -185,38 +172,31 @@ class GraphemeWindow extends GraphemeGroup {
 
     const width = this.cssWidth
     const height = this.cssHeight
-    const textWidth = this.canvasWidth
-    const textHeight = this.canvasHeight
+    const pxWidth = this.canvasWidth
+    const pxHeight = this.canvasHeight
+    const dpr = utils.dpr
 
     // Render information to be given to elements
     const renderInfo = {
-      gl: this.context.glContext,
-      glResourceManager: this.context.glResourceManager,
+      // gl: this.context.glContext,
+      // glResourceManager: this.context.glResourceManager,
       labelManager: this.labelManager,
-      text: this.textCanvasContext,
-      textCanvas: this.textCanvas,
+      ctx: this.canvasContext,
+      canvas: this.mainCanvas,
       width,
       height,
-      textWidth,
-      textHeight
+      pxWidth,
+      pxHeight,
+      dpr
     }
 
     this.labelManager.currentRenderID = renderID
+    
     try {
-      // Set the viewport to this canvas's size
-      this.context.setViewport(textWidth, textHeight)
-
-      // clear the canvas
-      this.clearToColor()
-
       // sort our elements by drawing precedence
       this.sortChildrenByPrecedence()
 
       super.render(renderInfo)
-
-      // Copy the canvas to this canvas
-      const glBitmap = glCanvas.transferToImageBitmap()
-      this.mainCanvasContext.transferFromImageBitmap(glBitmap)
 
       this.labelManager.cleanOldRenders()
     } catch (e) {

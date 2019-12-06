@@ -19,27 +19,11 @@ class GraphemeElement {
     // Whether this element is drawn on render TODO
     this.visible = visible
 
-    // List of buffer names used, for easy cleanup when the object is destroyed
-    this.usedBufferNames = []
-
     // The parent of this element
     this.parent = null
 
     // Whether to always update geometries when render is called
     this.alwaysUpdate = alwaysUpdate
-  }
-
-  addUsedBufferName (bufferName) {
-    if (this.usedBufferNames.indexOf(bufferName) === -1) {
-      this.usedBufferNames.push(bufferName)
-    }
-  }
-
-  removeUsedBufferName (bufferName) {
-    const index = this.usedBufferNames.indexOf(bufferName)
-    if (index !== -1) {
-      this.usedBufferNames.splice(index, 1)
-    }
   }
 
   orphanize () {
@@ -57,8 +41,6 @@ class GraphemeElement {
   }
 
   destroy () {
-    if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames)
-
     this.orphanize()
   }
 

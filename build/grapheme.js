@@ -155,20 +155,6 @@ var Grapheme = (function (exports) {
     })
   }
 
-  // Delete buffers with the given name from all Grapheme contexts
-  function deleteBuffersNamed (bufferNames) {
-    if (Array.isArray(bufferNames)) {
-      for (let i = 0; i < bufferNames.length; ++i) {
-        deleteBuffersNamed(bufferNames[i]);
-      }
-      return
-    }
-
-    CONTEXTS.forEach((context) => {
-      context.glResourceManager.deleteBuffer(bufferNames);
-    });
-  }
-
   /**
   A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
   (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
@@ -188,27 +174,11 @@ var Grapheme = (function (exports) {
       // Whether this element is drawn on render TODO
       this.visible = visible;
 
-      // List of buffer names used, for easy cleanup when the object is destroyed
-      this.usedBufferNames = [];
-
       // The parent of this element
       this.parent = null;
 
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
-    }
-
-    addUsedBufferName (bufferName) {
-      if (this.usedBufferNames.indexOf(bufferName) === -1) {
-        this.usedBufferNames.push(bufferName);
-      }
-    }
-
-    removeUsedBufferName (bufferName) {
-      const index = this.usedBufferNames.indexOf(bufferName);
-      if (index !== -1) {
-        this.usedBufferNames.splice(index, 1);
-      }
     }
 
     orphanize () {
@@ -226,8 +196,6 @@ var Grapheme = (function (exports) {
     }
 
     destroy () {
-      if (this.usedBufferNames) deleteBuffersNamed(this.usedBufferNames);
-
       this.orphanize();
     }
 
@@ -366,12 +334,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function rgba (r, g, b, a = 255) {
-    return new Color({
-      r, g, b, a
-    })
-  }
-
   /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
   class LabelManager {
     constructor (domElement) {
@@ -421,10 +383,8 @@ var Grapheme = (function (exports) {
 
   Properties:
   domElement = the div that the user adds to the webpage
-  glCanvas = the bitmap canvas that gl stuff is copied to
   textCanvas = the canvas that text and stuff is done on
   context = the parent Grapheme.Context of this window
-  glCanvasContext = the ImageBitmapRenderingContext associated with the glCanvas
   textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
   */
   class GraphemeWindow extends GraphemeGroup {
@@ -440,25 +400,18 @@ var Grapheme = (function (exports) {
       // The two canvases of a GraphemeWindow
       this.mainCanvas = document.createElement('canvas');
       this.domElement.appendChild(this.mainCanvas);
-      this.textCanvas = document.createElement('canvas');
-      this.domElement.appendChild(this.textCanvas);
 
       // CSS stuffs
       this.mainCanvas.classList.add('grapheme-canvas');
-      this.textCanvas.classList.add('grapheme-text-canvas');
       this.domElement.classList.add('grapheme-window');
 
       // Get the contexts
-      this.mainCanvasContext = this.mainCanvas.getContext('bitmaprenderer');
-      this.textCanvasContext = this.textCanvas.getContext('2d');
-
-      // The color of the background
-      this.backgroundColor = rgba(0, 0, 0, 0);
+      this.canvasContext = this.mainCanvas.getContext('2d');
 
       // label manager
       this.labelManager = new LabelManager(this.domElement);
 
-      // Add this window to the context's list of window
+      // Add this window to the context's list of windows
       graphemeContext.windows.push(this);
 
       // Set the default size to 640 by 480 in CSS pixels
@@ -469,7 +422,7 @@ var Grapheme = (function (exports) {
     }
 
     _scaleTextCanvasToDPR () {
-      const ctx = this.textCanvasContext;
+      const ctx = this.canvasContext;
 
       for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
         ctx.restore();
@@ -480,7 +433,7 @@ var Grapheme = (function (exports) {
     }
 
     // Set the size of this window (including adjusting the canvas size)
-    // Note that this width and height are in
+    // Note that this width and height are in CSS pixels
     setSize (width, height) {
       // cssWidth and cssHeight are in CSS pixels
       this.cssWidth = width;
@@ -490,10 +443,10 @@ var Grapheme = (function (exports) {
       this._updateCanvasSize();
 
       // Set the canvas CSS size using CSS
-      [this.mainCanvas, this.textCanvas].forEach((canvas) => {
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-      });
+      let canvas = this.mainCanvas;
+
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
 
       // Update the parent context, in case it needs to be resized as well to fit
       // a potentially fatter canvas
@@ -523,7 +476,6 @@ var Grapheme = (function (exports) {
       assert(isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]');
 
       this.mainCanvas.width = x;
-      this.textCanvas.width = x;
     }
 
     // Sets the pixel height of the canvas
@@ -532,7 +484,6 @@ var Grapheme = (function (exports) {
       assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
 
       this.mainCanvas.height = x;
-      this.textCanvas.height = x;
     }
 
     // Event triggered when the device pixel ratio changes
@@ -560,9 +511,7 @@ var Grapheme = (function (exports) {
       // Delete some references
       delete this.mainCanvas;
       delete this.domElement;
-      delete this.textCanvas;
-      delete this.mainCanvasContext;
-      delete this.textCanvasContext;
+      delete this.canvasContext;
     }
 
     isActive () {
@@ -596,38 +545,31 @@ var Grapheme = (function (exports) {
 
       const width = this.cssWidth;
       const height = this.cssHeight;
-      const textWidth = this.canvasWidth;
-      const textHeight = this.canvasHeight;
+      const pxWidth = this.canvasWidth;
+      const pxHeight = this.canvasHeight;
+      const dpr$1 = dpr;
 
       // Render information to be given to elements
       const renderInfo = {
-        gl: this.context.glContext,
-        glResourceManager: this.context.glResourceManager,
+        // gl: this.context.glContext,
+        // glResourceManager: this.context.glResourceManager,
         labelManager: this.labelManager,
-        text: this.textCanvasContext,
-        textCanvas: this.textCanvas,
+        ctx: this.canvasContext,
+        canvas: this.mainCanvas,
         width,
         height,
-        textWidth,
-        textHeight
+        pxWidth,
+        pxHeight,
+        dpr: dpr$1
       };
 
       this.labelManager.currentRenderID = renderID;
+      
       try {
-        // Set the viewport to this canvas's size
-        this.context.setViewport(textWidth, textHeight);
-
-        // clear the canvas
-        this.clearToColor();
-
         // sort our elements by drawing precedence
         this.sortChildrenByPrecedence();
 
         super.render(renderInfo);
-
-        // Copy the canvas to this canvas
-        const glBitmap = glCanvas.transferToImageBitmap();
-        this.mainCanvasContext.transferFromImageBitmap(glBitmap);
 
         this.labelManager.cleanOldRenders();
       } catch (e) {
@@ -1283,7 +1225,7 @@ var Grapheme = (function (exports) {
       gl.uniform4f(programInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
 
       // set the scaling factors
-      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
+      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight);
 
       // bind our webgl buffer to gl.ARRAY_BUFFER access point
       gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
@@ -1356,7 +1298,7 @@ var Grapheme = (function (exports) {
       gl.useProgram(programInfo.program);
 
       // set the scaling factors
-      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height);
+      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight);
 
       // bind our webgl buffer to gl.ARRAY_BUFFER access point
       gl.bindBuffer(gl.ARRAY_BUFFER, glPositionBuffer);
@@ -1950,10 +1892,10 @@ var Grapheme = (function (exports) {
   const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
   const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
 
-  class LabelStyle {
+  class BasicLabelStyle {
     constructor(params={}) {
       const {
-        mode = "2d", // valid values: 2d, latex, html
+        mode = "latex", // valid values: latex, html
         dir = "C"    // valid values:
       } = params;
 
@@ -1961,7 +1903,46 @@ var Grapheme = (function (exports) {
       this.dir = dir;
     }
 
-    prepareContext(ctx) {
+    labelClass() {
+      let dir = this.dir;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      return "grapheme-label-" + this.dir
+    }
+
+    setLabelClass(labelElement) {
+      const labelClass = this.labelClass();
+
+      if (!labelElement.classList.contains(labelClass)) {
+        labelElement.classList.remove(...labelClasses);
+        labelElement.classList.add(labelClass);
+      }
+    }
+  }
+
+  class Label2DStyle extends BasicLabelStyle {
+    // TODO: rotation
+    constructor (params = {}) {
+      const {
+        color = new Color(),
+        fontSize = 12,
+        fontFamily = 'Helvetica',
+        shadowColor = new Color(),
+        shadowSize = 0
+      } = params;
+      super(params);
+
+      this.color = color;
+      this.fontSize = fontSize;
+      this.fontFamily = fontFamily;
+      this.shadowColor = shadowColor;
+      this.shadowSize = shadowSize;
+    }
+
+    prepareContextTextAlignment(ctx) {
       const dir = this.dir;
 
       let textBaseline;
@@ -2001,117 +1982,18 @@ var Grapheme = (function (exports) {
       ctx.textAlign = textAlign;
     }
 
-    labelClass() {
-      let dir = this.dir;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
-
-      return "grapheme-label-" + this.dir
-    }
-
-    setLabelClass(labelElement) {
-      const labelClass = this.labelClass();
-
-      if (!labelElement.classList.contains(labelClass)) {
-        labelElement.classList.remove(...labelClasses);
-        labelElement.classList.add(labelClass);
-      }
-    }
-  }
-
-  class Label2DStyle extends LabelStyle {
-    // TODO: rotation
-    constructor (params = {}) {
-      const {
-        color = new Color(),
-        fontSize = 12,
-        fontFamily = 'Helvetica',
-        shadowColor = new Color(),
-        shadowBlur = 0
-      } = params;
-      super(params);
-
-      this.color = color;
-      this.fontSize = fontSize;
-      this.fontFamily = fontFamily;
-      this.shadowColor = shadowColor;
-      this.shadowBlur = shadowBlur;
-    }
-
-    prepareContext (ctx) {
-      ctx.fillStyle = this.color;
+    prepareContextTextStyle(ctx) {
+      this.prepareContextTextAlignment(ctx);
       ctx.font = `${this.fontSize}px ${this.fontFamily}`;
-      ctx.shadowBlur = this.shadowBlur;
-      ctx.shadowColor = this.shadowColor;
-
-      super.prepareContext(ctx);
-    }
-  }
-
-  // Creates html element of the form
-  // <div class="label label-S" label-id=this.uuid render-id=renderID>
-  class Label extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        text = '',
-        position = new Vec2(0, 0)
-      } = params;
-
-      this.text = text;
-      this.position = position;
-
-      if (params.style) {
-        if (params.style instanceof Label2DStyle) {
-          this.style = params.style;
-        } else {
-          this.style = new Label2DStyle(params.style);
-        }
-      } else {
-        this.style = new Label2DStyle();
-      }
     }
 
-    render (renderInfo) {
-      const { text, position } = this;
-      const mode = this.style.mode;
+    prepareContextShadow(ctx) {
+      ctx.fillStyle = this.shadowColor.hex();
+      ctx.lineWidth = this.shadowSize * 2;
+    }
 
-      if (mode === '2d') {
-        const ctx = renderInfo.text;
-
-        ctx.save();
-        this.style.prepareContext(ctx);
-
-        ctx.fillText(text, position.x, position.y);
-        ctx.restore();
-      } else {
-        const labelElement = renderInfo.labelManager.getElement(this);
-
-        this.style.setLabelClass(labelElement);
-
-        labelElement.style.top = position.y + 'px';
-        labelElement.style.left = position.x + 'px';
-
-        const oldLatex = labelElement.getAttribute('latex-content');
-
-        if (mode === 'latex') {
-          // latex-content stores the latex to be rendered to this node, which means
-          // that if it is equal to text, it does not need to be recomputed, only maybe
-          // moved in some direction
-          if (oldLatex !== text) {
-            labelElement.setAttribute('latex-content', text);
-            // eslint-disable-next-line no-undef
-            katex.render(text, labelElement, { throwOnError: false });
-          }
-        } else {
-          if (oldLatex) { labelElement.removeAttribute('latex-content'); }
-
-          labelElement.innerHTML = text;
-        }
-      }
+    prepareContextFill(ctx) {
+      ctx.fillStyle = this.color.hex();
     }
   }
 
@@ -2230,9 +2112,9 @@ var Grapheme = (function (exports) {
           const textS = this.labelAnchoredTo;
           const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
 
-          const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle });
+          /*const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle })
 
-          labels.push(label);
+          labels.push(label)*/
         }
       }
 
@@ -2473,15 +2355,75 @@ var Grapheme = (function (exports) {
     }
   }
 
+  class LabelBase extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      const {
+        text = '',
+        position = new Vec2(0, 0)
+      } = params;
+
+      this.text = text;
+      this.position = position;
+    }
+  }
+
+  // Creates html element of the form
+  // <div class="label label-S" > this.text ... </div>
+  class BasicLabel extends LabelBase {
+    constructor(params = {}) {
+      super(params);
+
+      this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
+    }
+
+    render (renderInfo) {
+      const { text, position } = this;
+      const mode = this.style.mode;
+
+      const labelElement = renderInfo.labelManager.getElement(this);
+
+      this.style.setLabelClass(labelElement);
+
+      labelElement.style.top = position.y + 'px';
+      labelElement.style.left = position.x + 'px';
+
+      const oldLatex = labelElement.getAttribute('latex-content');
+
+      if (mode === 'latex') {
+        // latex-content stores the latex to be rendered to this node, which means
+        // that if it is equal to text, it does not need to be recomputed, only maybe
+        // moved in some direction
+        if (oldLatex !== text) {
+          labelElement.setAttribute('latex-content', text);
+          // eslint-disable-next-line no-undef
+          katex.render(text, labelElement, { throwOnError: false });
+        }
+      } else {
+        if (oldLatex) { labelElement.removeAttribute('latex-content'); }
+
+        labelElement.innerHTML = text;
+      }
+    }
+  }
+
+  class Label2D extends LabelBase {
+    constructor(params) {
+      this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+    }
+  }
+
   exports.ARROW_LOCATION_TYPES = ARROW_LOCATION_TYPES;
   exports.ARROW_TYPES = ARROW_TYPES;
   exports.Axis = Axis;
   exports.AxisTickmarkStyle = AxisTickmarkStyle;
+  exports.BasicLabel = BasicLabel;
   exports.Context = GraphemeContext;
   exports.E = E;
   exports.GeometryUnion = GeometryUnion;
   exports.Group = GraphemeGroup;
-  exports.Label = Label;
+  exports.Label2D = Label2D;
   exports.Multicolored2DGeometry = Multicolored2DGeometry;
   exports.N = N;
   exports.NE = NE;

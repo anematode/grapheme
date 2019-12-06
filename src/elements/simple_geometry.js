@@ -107,7 +107,7 @@ class Simple2DGeometry extends GraphemeElement {
     gl.uniform4f(programInfo.uniforms.line_color, color.r, color.g, color.b, color.a)
 
     // set the scaling factors
-    gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height)
+    gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight)
 
     // bind our webgl buffer to gl.ARRAY_BUFFER access point
     gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer)
@@ -180,7 +180,7 @@ class Multicolored2DGeometry extends GraphemeElement {
     gl.useProgram(programInfo.program)
 
     // set the scaling factors
-    gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.width, -2 / renderInfo.height)
+    gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight)
 
     // bind our webgl buffer to gl.ARRAY_BUFFER access point
     gl.bindBuffer(gl.ARRAY_BUFFER, glPositionBuffer)

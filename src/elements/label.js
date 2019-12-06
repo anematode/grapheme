@@ -1,10 +1,8 @@
 import { Element as GraphemeElement } from '../grapheme_element'
 import { Vec2 } from '../math/vec2'
-import { Label2DStyle } from "./label_style"
+import { Label2DStyle, BasicLabelStyle } from "./label_style"
 
-// Creates html element of the form
-// <div class="label label-S" label-id=this.uuid render-id=renderID>
-class Label extends GraphemeElement {
+class LabelBase extends GraphemeElement {
   constructor (params = {}) {
     super(params)
 
@@ -15,56 +13,52 @@ class Label extends GraphemeElement {
 
     this.text = text
     this.position = position
+  }
+}
 
-    if (params.style) {
-      if (params.style instanceof Label2DStyle) {
-        this.style = params.style
-      } else {
-        this.style = new Label2DStyle(params.style)
-      }
-    } else {
-      this.style = new Label2DStyle()
-    }
+// Creates html element of the form
+// <div class="label label-S" > this.text ... </div>
+class BasicLabel extends LabelBase {
+  constructor(params = {}) {
+    super(params)
+
+    this.style = params.style ? params.style : new BasicLabelStyle(params.style || {})
   }
 
   render (renderInfo) {
     const { text, position } = this
     const mode = this.style.mode
 
-    if (mode === '2d') {
-      const ctx = renderInfo.text
+    const labelElement = renderInfo.labelManager.getElement(this)
 
-      ctx.save()
-      this.style.prepareContext(ctx)
+    this.style.setLabelClass(labelElement)
 
-      ctx.fillText(text, position.x, position.y)
-      ctx.restore()
-    } else {
-      const labelElement = renderInfo.labelManager.getElement(this)
+    labelElement.style.top = position.y + 'px'
+    labelElement.style.left = position.x + 'px'
 
-      this.style.setLabelClass(labelElement)
+    const oldLatex = labelElement.getAttribute('latex-content')
 
-      labelElement.style.top = position.y + 'px'
-      labelElement.style.left = position.x + 'px'
-
-      const oldLatex = labelElement.getAttribute('latex-content')
-
-      if (mode === 'latex') {
-        // latex-content stores the latex to be rendered to this node, which means
-        // that if it is equal to text, it does not need to be recomputed, only maybe
-        // moved in some direction
-        if (oldLatex !== text) {
-          labelElement.setAttribute('latex-content', text)
-          // eslint-disable-next-line no-undef
-          katex.render(text, labelElement, { throwOnError: false })
-        }
-      } else {
-        if (oldLatex) { labelElement.removeAttribute('latex-content') }
-
-        labelElement.innerHTML = text
+    if (mode === 'latex') {
+      // latex-content stores the latex to be rendered to this node, which means
+      // that if it is equal to text, it does not need to be recomputed, only maybe
+      // moved in some direction
+      if (oldLatex !== text) {
+        labelElement.setAttribute('latex-content', text)
+        // eslint-disable-next-line no-undef
+        katex.render(text, labelElement, { throwOnError: false })
       }
+    } else {
+      if (oldLatex) { labelElement.removeAttribute('latex-content') }
+
+      labelElement.innerHTML = text
     }
   }
 }
 
-export { Label }
+class Label2D extends LabelBase {
+  constructor(params) {
+    this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {})
+  }
+}
+
+export { BasicLabel, Label2D }
