@@ -21,6 +21,7 @@ To Do:
 - Gridlines
 - Plot (with scissoring)
 - InteractiveWindow (and event handling, which will be tricky)
+- Mandelbrot
 - Interval Arithmetic
 - FunctionalGraph
 - FunctionalGraph inequality
