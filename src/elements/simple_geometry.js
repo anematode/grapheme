@@ -1,8 +1,8 @@
 import { Element as GraphemeElement } from '../grapheme_element'
-import { Color } from "../other/color"
+import { Color } from '../other/color'
 
 class Path2DGeometry extends GraphemeElement {
-  constructor(params={}) {
+  constructor (params = {}) {
     const {
       path = new Path2D(),
       fillColor = new Color()
@@ -14,7 +14,7 @@ class Path2DGeometry extends GraphemeElement {
     this.fillColor = fillColor
   }
 
-  render(renderInfo) {
+  render (renderInfo) {
     const ctx = renderInfo.canvasCtx
 
     ctx.fillColor = this.fillColor

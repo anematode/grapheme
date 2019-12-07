@@ -19,7 +19,7 @@ class GraphemeGroup extends GraphemeElement {
 
   render (renderInfo) {
     super.render(renderInfo)
-    
+
     // sort our elements by drawing precedence
     this.sortChildrenByPrecedence()
 

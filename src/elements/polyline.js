@@ -1,14 +1,14 @@
-import {PolylineBase} from "./polyline_base"
+import { PolylineBase } from './polyline_base'
 
 class PolylineElement extends PolylineBase {
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     this.mainPath = null
     this.arrowPath = null
   }
 
-  updateGeometries() {
+  updateGeometries () {
     const path = new Path2D()
     this.mainPath = path
 
@@ -17,16 +17,18 @@ class PolylineElement extends PolylineBase {
 
     const vertices = this.vertices
 
-    if (vertices.length < 4) // Nothing to draw
+    // Nothing to draw
+    if (vertices.length < 4) {
       return
+    }
 
-    let coordinateCount = vertices.length
-    let {arrowhead, arrowLocations, thickness} = this.style
+    const coordinateCount = vertices.length
+    const { arrowhead, arrowLocations, thickness } = this.style
 
-    let inclStart = arrowLocations.includes("start") && arrowhead
-    let inclSubstart = arrowLocations.includes("substart") && arrowhead
-    let inclEnd = arrowLocations.includes("end") && arrowhead
-    let inclSubend = arrowLocations.includes("subend") && arrowhead
+    const inclStart = arrowLocations.includes('start') && arrowhead
+    const inclSubstart = arrowLocations.includes('substart') && arrowhead
+    const inclEnd = arrowLocations.includes('end') && arrowhead
+    const inclSubend = arrowLocations.includes('subend') && arrowhead
 
     let x2 = NaN
     let x3 = NaN
@@ -51,10 +53,10 @@ class PolylineElement extends PolylineBase {
       const isEndingEndcap = Number.isNaN(x3)
 
       if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-        let newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness)
+        const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness)
         path.moveTo(newV.x, newV.y)
       } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-        let newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness)
+        const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness)
         path.lineTo(newV.x, newV.y)
       } else if (isStartingEndcap) {
         path.moveTo(x2, y2)
@@ -75,4 +77,4 @@ class PolylineElement extends PolylineBase {
   }
 }
 
-export {PolylineElement}
+export { PolylineElement }

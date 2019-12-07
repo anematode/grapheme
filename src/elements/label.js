@@ -1,6 +1,6 @@
 import { Element as GraphemeElement } from '../grapheme_element'
 import { Vec2 } from '../math/vec2'
-import { Label2DStyle, BasicLabelStyle } from "./label_style"
+import { Label2DStyle, BasicLabelStyle } from './label_style'
 
 class LabelBase extends GraphemeElement {
   constructor (params = {}) {
@@ -19,7 +19,7 @@ class LabelBase extends GraphemeElement {
 // Creates html element of the form
 // <div class="label label-S" > this.text ... </div>
 class BasicLabel extends LabelBase {
-  constructor(params = {}) {
+  constructor (params = {}) {
     super(params)
 
     this.style = params.style ? params.style : new BasicLabelStyle(params.style || {})
@@ -56,7 +56,9 @@ class BasicLabel extends LabelBase {
 }
 
 class Label2D extends LabelBase {
-  constructor(params) {
+  constructor (params) {
+    super(params)
+
     this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {})
   }
 }

@@ -1,75 +1,73 @@
 import * as utils from '../utils'
 import { Color } from '../other/color'
-import { Vec2 } from '../math/vec2'
 import { Label2DStyle } from './label_style'
 
 /* Unicode characters for exponent signs, LOL */
-const exponent_reference = {
+const exponentReference = {
   '-': String.fromCharCode(8315),
-  '0': String.fromCharCode(8304),
-  '1': String.fromCharCode(185),
-  '2': String.fromCharCode(178),
-  '3': String.fromCharCode(179),
-  '4': String.fromCharCode(8308),
-  '5': String.fromCharCode(8309),
-  '6': String.fromCharCode(8310),
-  '7': String.fromCharCode(8311),
-  '8': String.fromCharCode(8312),
-  '9': String.fromCharCode(8313)
-};
+  0: String.fromCharCode(8304),
+  1: String.fromCharCode(185),
+  2: String.fromCharCode(178),
+  3: String.fromCharCode(179),
+  4: String.fromCharCode(8308),
+  5: String.fromCharCode(8309),
+  6: String.fromCharCode(8310),
+  7: String.fromCharCode(8311),
+  8: String.fromCharCode(8312),
+  9: String.fromCharCode(8313)
+}
 
 /* Convert a digit into its exponent form */
-function convert_char(c) {
-  return exponent_reference[c];
+function convertChar (c) {
+  return exponentReference[c]
 }
 
 /* Convert an integer into its exponent form (of Unicode characters) */
-function exponentify(integer) {
-  utils.assert(utils.isInteger(integer), "needs to be an integer");
+function exponentify (integer) {
+  utils.assert(utils.isInteger(integer), 'needs to be an integer')
 
-  let stringi = integer + '';
-  let out = '';
+  const stringi = integer + ''
+  let out = ''
 
   for (let i = 0; i < stringi.length; ++i) {
-    out += convert_char(stringi[i]);
+    out += convertChar(stringi[i])
   }
 
-  return out;
+  return out
 }
 
 // Credit: https://stackoverflow.com/a/20439411
 /* Turns a float into a pretty float by removing dumb floating point things */
-function beautifyFloat(f, prec=12) {
-  let strf = f.toFixed(prec);
+function beautifyFloat (f, prec = 12) {
+  const strf = f.toFixed(prec)
   if (strf.includes('.')) {
-    return strf.replace(/\.?0+$/g,'');
+    return strf.replace(/\.?0+$/g, '')
   } else {
-    return strf;
+    return strf
   }
 }
 
 // Multiplication character
-const CDOT = String.fromCharCode(183);
+const CDOT = String.fromCharCode(183)
 
 const defaultLabel = x => {
-    if (x === 0) return "0"; // special case
-    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
-      // non-extreme floats displayed normally
-      return beautifyFloat(x);
-    else {
-      // scientific notation for the very fat and very small!
+  if (x === 0) return '0' // special case
+  else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) {
+  // non-extreme floats displayed normally
+    return beautifyFloat(x)
+  } else {
+    // scientific notation for the very fat and very small!
 
-      let exponent = Math.floor(Math.log10(Math.abs(x)));
-      let mantissa = x / (10 ** exponent);
+    const exponent = Math.floor(Math.log10(Math.abs(x)))
+    const mantissa = x / (10 ** exponent)
 
-      let prefix = (utils.isApproxEqual(mantissa,1) ? '' :
-        (beautifyFloat(mantissa, 8) + CDOT));
-      let exponent_suffix = "10" + exponentify(exponent);
+    const prefix = (utils.isApproxEqual(mantissa, 1) ? ''
+      : (beautifyFloat(mantissa, 8) + CDOT))
+    const exponentSuffix = '10' + exponentify(exponent)
 
-      return prefix + exponent_suffix;
-    }
+    return prefix + exponentSuffix
   }
-
+}
 
 /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
 class AxisTickmarkStyle {
@@ -121,12 +119,10 @@ class AxisTickmarkStyle {
     polyline.vertices = []
     polyline.style.thickness = this.thickness
     polyline.style.color = this.color
-    polyline.endcapType = "butt"
-
-    const tickmarkCount = positions.length
+    polyline.endcapType = 'butt'
 
     // Note that "s" in class theory is positioning, and "t" is thickness
-    const { positioning, thickness, length } = this
+    const { positioning, length } = this
     const { v1, v2, x1, x2 } = transformation
     const axisDisplacement = v2.subtract(v1)
 
@@ -151,7 +147,7 @@ class AxisTickmarkStyle {
         const textS = this.labelAnchoredTo
         const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
 
-        label2dset.texts.push({text: this.labelFunc(givenPos), pos: position})
+        label2dset.texts.push({ text: this.labelFunc(givenPos), pos: position })
       }
     }
   }

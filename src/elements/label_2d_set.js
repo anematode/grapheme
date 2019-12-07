@@ -1,8 +1,8 @@
-import {Element as GraphemeElement} from "../grapheme_element"
-import {Label2DStyle} from "./label_style"
+import { Element as GraphemeElement } from '../grapheme_element'
+import { Label2DStyle } from './label_style'
 
 class Label2DSet extends GraphemeElement {
-  constructor(params = {}) {
+  constructor (params = {}) {
     super(params)
 
     this.style = new Label2DStyle()
@@ -11,8 +11,8 @@ class Label2DSet extends GraphemeElement {
     this.texts = params.texts ? params.texts : []
   }
 
-  render(renderInfo) {
-    let texts = this.texts, ctx = renderInfo.canvasCtx
+  render (renderInfo) {
+    const texts = this.texts; const ctx = renderInfo.canvasCtx
 
     ctx.save()
 
@@ -22,8 +22,8 @@ class Label2DSet extends GraphemeElement {
       this.style.prepareContextShadow(ctx)
 
       for (let i = 0; i < texts.length; ++i) {
-        let textInfo = texts[i]
-        let {text, pos} = textInfo
+        const textInfo = texts[i]
+        const { text, pos } = textInfo
 
         ctx.strokeText(text, pos.x, pos.y)
       }
@@ -32,8 +32,8 @@ class Label2DSet extends GraphemeElement {
     this.style.prepareContextFill(ctx)
 
     for (let i = 0; i < texts.length; ++i) {
-      let textInfo = texts[i]
-      let {text, pos} = textInfo
+      const textInfo = texts[i]
+      const { text, pos } = textInfo
 
       ctx.fillText(text, pos.x, pos.y)
     }
@@ -42,4 +42,4 @@ class Label2DSet extends GraphemeElement {
   }
 }
 
-export {Label2DSet}
+export { Label2DSet }

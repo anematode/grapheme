@@ -1,13 +1,16 @@
 
-import {Arrowhead} from "./arrowhead"
-import {Vec2} from "../math/vec2"
+import { Arrowhead } from './arrowhead'
+import { Vec2 } from '../math/vec2'
 
-function createTriangleArrowhead(width, length) {
-  return new Arrowhead({vertices: [
-    new Vec2(0, 0),
-    new Vec2(-length, width / 2),
-    new Vec2(-length, -width / 2)
-  ], length})
+function createTriangleArrowhead (width, length) {
+  return new Arrowhead({
+    vertices: [
+      new Vec2(0, 0),
+      new Vec2(-length, width / 2),
+      new Vec2(-length, -width / 2)
+    ],
+    length
+  })
 }
 
 const Arrowheads = {
@@ -15,4 +18,4 @@ const Arrowheads = {
   Squat: createTriangleArrowhead(3, 3)
 }
 
-export {Arrowheads}
+export { Arrowheads }

@@ -48,7 +48,7 @@ class GraphemeContext {
     }
   }
 
-  prepareForWindow(window) {
+  prepareForWindow (window) {
     const gl = this.gl
 
     this.setViewport(window.canvasWidth, window.canvasHeight)

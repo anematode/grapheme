@@ -1,7 +1,8 @@
-import { Element as GraphemeElement } from "./grapheme_element"
+import { Element as GraphemeElement } from './grapheme_element'
+import * as utils from './utils'
 
 class WebGLGraphemeElement extends GraphemeElement {
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     this.usedBufferNames = []
@@ -26,10 +27,10 @@ class WebGLGraphemeElement extends GraphemeElement {
 
   }
 
-  destroy() {
+  destroy () {
     if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames)
     super.destroy()
   }
 }
 
-export {WebGLGraphemeElement as WebGLElement}
+export { WebGLGraphemeElement as WebGLElement }

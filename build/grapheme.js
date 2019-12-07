@@ -129,9 +129,23 @@ var Grapheme = (function (exports) {
     })
   }
 
+  // Delete buffers with the given name from all Grapheme contexts
+  function deleteBuffersNamed (bufferNames) {
+    if (Array.isArray(bufferNames)) {
+      for (let i = 0; i < bufferNames.length; ++i) {
+        deleteBuffersNamed(bufferNames[i]);
+      }
+      return
+    }
+
+    CONTEXTS.forEach((context) => {
+      context.glResourceManager.deleteBuffer(bufferNames);
+    });
+  }
+
   let x = 0;
 
-  function getRenderID() {
+  function getRenderID () {
     x += 1;
     return x
   }
@@ -168,13 +182,12 @@ var Grapheme = (function (exports) {
       }
     }
 
-    updateGeometries() {
-      
+    updateGeometries () {
+
     }
 
     render (elementInfo) {
-      if (this.alwaysUpdate)
-        this.updateGeometries();
+      if (this.alwaysUpdate) { this.updateGeometries(); }
 
       elementInfo.window.beforeRender(this);
     }
@@ -210,7 +223,7 @@ var Grapheme = (function (exports) {
 
     render (renderInfo) {
       super.render(renderInfo);
-      
+
       // sort our elements by drawing precedence
       this.sortChildrenByPrecedence();
 
@@ -286,7 +299,7 @@ var Grapheme = (function (exports) {
   }
 
   class WebGLGraphemeElement extends GraphemeElement {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
       this.usedBufferNames = [];
@@ -311,8 +324,8 @@ var Grapheme = (function (exports) {
 
     }
 
-    destroy() {
-      if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames);
+    destroy () {
+      if (this.usedBufferNames) deleteBuffersNamed(this.usedBufferNames);
       super.destroy();
     }
   }
@@ -440,7 +453,7 @@ var Grapheme = (function (exports) {
       this.canvasHeight = this.height * dpr;
 
       // Set the canvas CSS size using CSS
-      let canvas = this.canvas;
+      const canvas = this.canvas;
 
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
@@ -509,12 +522,12 @@ var Grapheme = (function (exports) {
       return (this.context.currentWindow === this)
     }
 
-    clear() {
+    clear () {
       // Clear the canvas
       this.canvasCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
-    beforeRender(element) {
+    beforeRender (element) {
       if (element instanceof WebGLGraphemeElement) {
         if (this.needsContextPrepared) {
           this.context.prepareForWindow(this);
@@ -552,7 +565,7 @@ var Grapheme = (function (exports) {
       // Set the active window to this window, since this is the window being rendered
       this.context.currentWindow = this;
 
-      const {cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx} = this;
+      const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this;
 
       // ID of this render
       const renderID = getRenderID();
@@ -564,7 +577,7 @@ var Grapheme = (function (exports) {
       // canvasCtx
       // window
       const renderInfo = {
-        dims: {cssWidth, cssHeight, canvasWidth, canvasHeight},
+        dims: { cssWidth, cssHeight, canvasWidth, canvasHeight },
         labelManager,
         canvasCtx,
         window: this
@@ -748,7 +761,7 @@ var Grapheme = (function (exports) {
       }
     }
 
-    prepareForWindow(window) {
+    prepareForWindow (window) {
       const gl = this.gl;
 
       this.setViewport(window.canvasWidth, window.canvasHeight);
@@ -894,15 +907,15 @@ var Grapheme = (function (exports) {
   }
 
   class LineStyle {
-    constructor(params={}) {
+    constructor (params = {}) {
       const {
         color = new Color(),
         thickness = 2, // in CSS pixels
         dashPattern = [], // lengths of alternating dashes
         dashOffset = 0, // length of dash offset
-        endcap = "round", // endcap, among "butt", "round", "square"
+        endcap = 'round', // endcap, among "butt", "round", "square"
         endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
-        join = "miter", // join type, among "miter", "round", "bevel"
+        join = 'miter', // join type, among "miter", "round", "bevel"
         joinRes = 0.3, // angle between consecutive join roundings
         useNative = true, // whether to use native line drawing, only used in WebGL
         arrowhead = null, // arrowhead to draw
@@ -922,7 +935,7 @@ var Grapheme = (function (exports) {
       this.arrowLocations = arrowLocations;
     }
 
-    prepareContext(ctx) {
+    prepareContext (ctx) {
       ctx.fillStyle = ctx.strokeStyle = this.color.hex();
       ctx.lineWidth = this.thickness;
       ctx.setLineDash(this.dashPattern);
@@ -934,7 +947,7 @@ var Grapheme = (function (exports) {
   }
 
   class PolylineBase extends GraphemeElement {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
       let {
@@ -952,14 +965,14 @@ var Grapheme = (function (exports) {
   }
 
   class PolylineElement extends PolylineBase {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
       this.mainPath = null;
       this.arrowPath = null;
     }
 
-    updateGeometries() {
+    updateGeometries () {
       const path = new Path2D();
       this.mainPath = path;
 
@@ -968,16 +981,18 @@ var Grapheme = (function (exports) {
 
       const vertices = this.vertices;
 
-      if (vertices.length < 4) // Nothing to draw
+      // Nothing to draw
+      if (vertices.length < 4) {
         return
+      }
 
-      let coordinateCount = vertices.length;
-      let {arrowhead, arrowLocations, thickness} = this.style;
+      const coordinateCount = vertices.length;
+      const { arrowhead, arrowLocations, thickness } = this.style;
 
-      let inclStart = arrowLocations.includes("start") && arrowhead;
-      let inclSubstart = arrowLocations.includes("substart") && arrowhead;
-      let inclEnd = arrowLocations.includes("end") && arrowhead;
-      let inclSubend = arrowLocations.includes("subend") && arrowhead;
+      const inclStart = arrowLocations.includes('start') && arrowhead;
+      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
+      const inclEnd = arrowLocations.includes('end') && arrowhead;
+      const inclSubend = arrowLocations.includes('subend') && arrowhead;
 
       let x2 = NaN;
       let x3 = NaN;
@@ -1002,10 +1017,10 @@ var Grapheme = (function (exports) {
         const isEndingEndcap = Number.isNaN(x3);
 
         if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-          let newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
+          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
           path.moveTo(newV.x, newV.y);
         } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-          let newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
+          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
           path.lineTo(newV.x, newV.y);
         } else if (isStartingEndcap) {
           path.moveTo(x2, y2);
@@ -1094,7 +1109,7 @@ var Grapheme = (function (exports) {
       return [this.x, this.y]
     }
 
-    hasNaN() {
+    hasNaN () {
       return Number.isNaN(this.x) || Number.isNaN(this.y)
     }
   }
@@ -1111,27 +1126,29 @@ var Grapheme = (function (exports) {
 
   // A glyph to be fill drawn in some fashion.
   class Glyph {
-    constructor(params={}) {
+    constructor (params = {}) {
       // vertices is array of Vec2s
-      const {vertices=[]} = params;
+      const { vertices = [] } = params;
       this.vertices = vertices;
     }
 
-    addGlyphToPath(path, x=0, y=0, scale=1, angle=0) {
+    addGlyphToPath (path, x = 0, y = 0, scale = 1, angle = 0) {
       const vertices = this.vertices;
 
-      let translateV = new Vec2(x, y);
+      const translateV = new Vec2(x, y);
 
-      if (vertices.length < 2) // Nothing to draw
+      // Nothing to draw
+      if (vertices.length < 2) {
         return
+      }
 
-      let p1 = vertices[0].scale(scale).rotate(angle).add(translateV);
+      const p1 = vertices[0].scale(scale).rotate(angle).add(translateV);
       let jumpToNext = false;
 
       path.moveTo(p1.x, p1.y);
 
       for (let i = 1; i < vertices.length; ++i) {
-        let p = vertices[i].scale(scale).rotate(angle).add(translateV);
+        const p = vertices[i].scale(scale).rotate(angle).add(translateV);
 
         if (p.hasNaN()) {
           jumpToNext = true;
@@ -1147,9 +1164,11 @@ var Grapheme = (function (exports) {
       path.closePath();
     }
 
-    getGlyphPath2D(x=0, y=0, scale=1, angle=0) {
-      let path = new Path2D();
-      addGlyphToPath(path, x, y, scale, angle);
+    getGlyphPath2D (x = 0, y = 0, scale = 1, angle = 0) {
+      const path = new Path2D();
+
+      this.addGlyphToPath(path, x, y, scale, angle);
+
       return path
     }
   }
@@ -1161,25 +1180,25 @@ var Grapheme = (function (exports) {
 
   Use glyph vertices with thickness 2 */
   class Arrowhead extends Glyph {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
-      const {length = 0} = params;
+      const { length = 0 } = params;
       this.length = length;
     }
 
-    getPath2D(x1, y1, x2, y2, thickness) { // draw an arrow at x2, y2 facing away from x1, y1
-      let path = new Path2D();
-      let pos = this.addPath2D(path, x1, y1, x2, y2, thickness);
+    getPath2D (x1, y1, x2, y2, thickness) { // draw an arrow at x2, y2 facing away from x1, y1
+      const path = new Path2D();
+      const pos = this.addPath2D(path, x1, y1, x2, y2, thickness);
 
       return {
         path, pos
       }
     }
 
-    addPath2D(path, x1, y1, x2, y2, thickness) {
-      let arrowTipAt = new Vec2(x2, y2);
-      let displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
+    addPath2D (path, x1, y1, x2, y2, thickness) {
+      const arrowTipAt = new Vec2(x2, y2);
+      const displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
 
       this.addGlyphToPath(path, x2, y2, 2 * thickness, Math.atan2(y2 - y1, x2 - x1));
 
@@ -1187,12 +1206,15 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function createTriangleArrowhead(width, length) {
-    return new Arrowhead({vertices: [
-      new Vec2(0, 0),
-      new Vec2(-length, width / 2),
-      new Vec2(-length, -width / 2)
-    ], length})
+  function createTriangleArrowhead (width, length) {
+    return new Arrowhead({
+      vertices: [
+        new Vec2(0, 0),
+        new Vec2(-length, width / 2),
+        new Vec2(-length, -width / 2)
+      ],
+      length
+    })
   }
 
   const Arrowheads = {
@@ -1204,27 +1226,27 @@ var Grapheme = (function (exports) {
   const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
 
   class BasicLabelStyle {
-    constructor(params={}) {
+    constructor (params = {}) {
       const {
-        mode = "latex", // valid values: latex, html
-        dir = "C"    // valid values:
+        mode = 'latex', // valid values: latex, html
+        dir = 'C' // valid values:
       } = params;
 
       this.mode = mode;
       this.dir = dir;
     }
 
-    labelClass() {
+    labelClass () {
       let dir = this.dir;
 
       if (!validDirs.includes(dir)) {
         dir = 'C';
       }
 
-      return "grapheme-label-" + this.dir
+      return 'grapheme-label-' + this.dir
     }
 
-    setLabelClass(labelElement) {
+    setLabelClass (labelElement) {
       const labelClass = this.labelClass();
 
       if (!labelElement.classList.contains(labelClass)) {
@@ -1253,8 +1275,8 @@ var Grapheme = (function (exports) {
       this.shadowSize = shadowSize;
     }
 
-    prepareContextTextAlignment(ctx) {
-      const dir = this.dir;
+    prepareContextTextAlignment (ctx) {
+      let dir = this.dir;
 
       let textBaseline;
       let textAlign;
@@ -1293,63 +1315,63 @@ var Grapheme = (function (exports) {
       ctx.textAlign = textAlign;
     }
 
-    prepareContextTextStyle(ctx) {
+    prepareContextTextStyle (ctx) {
       this.prepareContextTextAlignment(ctx);
       ctx.font = `${this.fontSize}px ${this.fontFamily}`;
     }
 
-    prepareContextShadow(ctx) {
+    prepareContextShadow (ctx) {
       ctx.fillStyle = this.shadowColor.hex();
       ctx.lineWidth = this.shadowSize * 2;
     }
 
-    prepareContextFill(ctx) {
+    prepareContextFill (ctx) {
       ctx.fillStyle = this.color.hex();
     }
   }
 
   /* Unicode characters for exponent signs, LOL */
-  const exponent_reference = {
+  const exponentReference = {
     '-': String.fromCharCode(8315),
-    '0': String.fromCharCode(8304),
-    '1': String.fromCharCode(185),
-    '2': String.fromCharCode(178),
-    '3': String.fromCharCode(179),
-    '4': String.fromCharCode(8308),
-    '5': String.fromCharCode(8309),
-    '6': String.fromCharCode(8310),
-    '7': String.fromCharCode(8311),
-    '8': String.fromCharCode(8312),
-    '9': String.fromCharCode(8313)
+    0: String.fromCharCode(8304),
+    1: String.fromCharCode(185),
+    2: String.fromCharCode(178),
+    3: String.fromCharCode(179),
+    4: String.fromCharCode(8308),
+    5: String.fromCharCode(8309),
+    6: String.fromCharCode(8310),
+    7: String.fromCharCode(8311),
+    8: String.fromCharCode(8312),
+    9: String.fromCharCode(8313)
   };
 
   /* Convert a digit into its exponent form */
-  function convert_char(c) {
-    return exponent_reference[c];
+  function convertChar (c) {
+    return exponentReference[c]
   }
 
   /* Convert an integer into its exponent form (of Unicode characters) */
-  function exponentify(integer) {
-    assert(isInteger(integer), "needs to be an integer");
+  function exponentify (integer) {
+    assert(isInteger(integer), 'needs to be an integer');
 
-    let stringi = integer + '';
+    const stringi = integer + '';
     let out = '';
 
     for (let i = 0; i < stringi.length; ++i) {
-      out += convert_char(stringi[i]);
+      out += convertChar(stringi[i]);
     }
 
-    return out;
+    return out
   }
 
   // Credit: https://stackoverflow.com/a/20439411
   /* Turns a float into a pretty float by removing dumb floating point things */
-  function beautifyFloat(f, prec=12) {
-    let strf = f.toFixed(prec);
+  function beautifyFloat (f, prec = 12) {
+    const strf = f.toFixed(prec);
     if (strf.includes('.')) {
-      return strf.replace(/\.?0+$/g,'');
+      return strf.replace(/\.?0+$/g, '')
     } else {
-      return strf;
+      return strf
     }
   }
 
@@ -1357,24 +1379,23 @@ var Grapheme = (function (exports) {
   const CDOT = String.fromCharCode(183);
 
   const defaultLabel = x => {
-      if (x === 0) return "0"; // special case
-      else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
-        // non-extreme floats displayed normally
-        return beautifyFloat(x);
-      else {
-        // scientific notation for the very fat and very small!
+    if (x === 0) return '0' // special case
+    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) {
+    // non-extreme floats displayed normally
+      return beautifyFloat(x)
+    } else {
+      // scientific notation for the very fat and very small!
 
-        let exponent = Math.floor(Math.log10(Math.abs(x)));
-        let mantissa = x / (10 ** exponent);
+      const exponent = Math.floor(Math.log10(Math.abs(x)));
+      const mantissa = x / (10 ** exponent);
 
-        let prefix = (isApproxEqual(mantissa,1) ? '' :
-          (beautifyFloat(mantissa, 8) + CDOT));
-        let exponent_suffix = "10" + exponentify(exponent);
+      const prefix = (isApproxEqual(mantissa, 1) ? ''
+        : (beautifyFloat(mantissa, 8) + CDOT));
+      const exponentSuffix = '10' + exponentify(exponent);
 
-        return prefix + exponent_suffix;
-      }
-    };
-
+      return prefix + exponentSuffix
+    }
+  };
 
   /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
   class AxisTickmarkStyle {
@@ -1426,12 +1447,10 @@ var Grapheme = (function (exports) {
       polyline.vertices = [];
       polyline.style.thickness = this.thickness;
       polyline.style.color = this.color;
-      polyline.endcapType = "butt";
-
-      const tickmarkCount = positions.length;
+      polyline.endcapType = 'butt';
 
       // Note that "s" in class theory is positioning, and "t" is thickness
-      const { positioning, thickness, length } = this;
+      const { positioning, length } = this;
       const { v1, v2, x1, x2 } = transformation;
       const axisDisplacement = v2.subtract(v1);
 
@@ -1456,14 +1475,14 @@ var Grapheme = (function (exports) {
           const textS = this.labelAnchoredTo;
           const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
 
-          label2dset.texts.push({text: this.labelFunc(givenPos), pos: position});
+          label2dset.texts.push({ text: this.labelFunc(givenPos), pos: position });
         }
       }
     }
   }
 
   class Label2DSet extends GraphemeElement {
-    constructor(params = {}) {
+    constructor (params = {}) {
       super(params);
 
       this.style = new Label2DStyle();
@@ -1472,8 +1491,8 @@ var Grapheme = (function (exports) {
       this.texts = params.texts ? params.texts : [];
     }
 
-    render(renderInfo) {
-      let texts = this.texts, ctx = renderInfo.canvasCtx;
+    render (renderInfo) {
+      const texts = this.texts; const ctx = renderInfo.canvasCtx;
 
       ctx.save();
 
@@ -1483,8 +1502,8 @@ var Grapheme = (function (exports) {
         this.style.prepareContextShadow(ctx);
 
         for (let i = 0; i < texts.length; ++i) {
-          let textInfo = texts[i];
-          let {text, pos} = textInfo;
+          const textInfo = texts[i];
+          const { text, pos } = textInfo;
 
           ctx.strokeText(text, pos.x, pos.y);
         }
@@ -1493,8 +1512,8 @@ var Grapheme = (function (exports) {
       this.style.prepareContextFill(ctx);
 
       for (let i = 0; i < texts.length; ++i) {
-        let textInfo = texts[i];
-        let {text, pos} = textInfo;
+        const textInfo = texts[i];
+        const { text, pos } = textInfo;
 
         ctx.fillText(text, pos.x, pos.y);
       }
@@ -1615,7 +1634,7 @@ var Grapheme = (function (exports) {
      * calculateMargins - Calculate the margins of the axis, given the size of the arrows.
      */
     calculateMargins () {
-      let style = this.style;
+      const style = this.style;
 
       const arrowLocations = style.arrowLocations;
       const arrowLength = style.arrowhead ? style.arrowhead.length : 0;
@@ -1623,11 +1642,11 @@ var Grapheme = (function (exports) {
       this.margins.start = 0;
       this.margins.end = 0;
 
-      if (arrowLocations.includes("start") || arrowLocations.includes("substart")) {
+      if (arrowLocations.includes('start') || arrowLocations.includes('substart')) {
         this.margins.start = 3 * arrowLength * this.style.thickness;
       }
 
-      if (arrowLocations.includes("end") || arrowLocations.includes("subend")) {
+      if (arrowLocations.includes('end') || arrowLocations.includes('subend')) {
         this.margins.end = 3 * arrowLength * this.style.thickness;
       }
     }
@@ -1752,7 +1771,7 @@ var Grapheme = (function (exports) {
   dividing up a line. */
 
   class DemarcationStrategizer {
-    constructor(params={}) {
+    constructor (params = {}) {
       const {
         start = 0,
         end = 1,
@@ -1775,7 +1794,7 @@ var Grapheme = (function (exports) {
   and sub. The axis distance between main demarcations is mainLength and the number of
   subdivisions is subdivs */
   class MainSubDemarcationStrategizer extends DemarcationStrategizer {
-    constructor(params = {}) {
+    constructor (params = {}) {
       super(params);
 
       const {
@@ -1787,27 +1806,27 @@ var Grapheme = (function (exports) {
       this.subdivs = subdivs;
     }
 
-    getDemarcations() {
+    getDemarcations () {
       // Whee!!
-      let end = this.end, start = this.start;
+      let end = this.end; let start = this.start;
 
       if (end < start) {
-        let t = end;
+        const t = end;
         end = start;
         start = t;
       }
 
-      let zero = [];
-      let main = [];
-      let sub = [];
+      const zero = [];
+      const main = [];
+      const sub = [];
 
-      let { mainLength, subdivs } = this;
+      const { mainLength, subdivs } = this;
 
-      let xS = Math.ceil(start / mainLength);
-      let xE = Math.floor(end / mainLength);
+      const xS = Math.ceil(start / mainLength);
+      const xE = Math.floor(end / mainLength);
 
       if (subdivs * (xS - xE) > MAX_DEMARCATIONS) {
-        throw new Error("too many demarcations!!")
+        throw new Error('too many demarcations!!')
       }
 
       for (let i = xS; i <= xE; ++i) {
@@ -1816,19 +1835,19 @@ var Grapheme = (function (exports) {
           continue
         }
 
-        let pos = mainLength * i;
+        const pos = mainLength * i;
         main.push(pos);
       }
 
-      let yS = Math.ceil(subdivs * start / mainLength);
-      let yE = Math.floor(subdivs * end / mainLength);
+      const yS = Math.ceil(subdivs * start / mainLength);
+      const yE = Math.floor(subdivs * end / mainLength);
 
       for (let i = yS; i <= yE; ++i) {
         if (i % subdivs === 0) { // already emitted as a main
           continue
         }
 
-        let pos = mainLength / subdivs * i;
+        const pos = mainLength / subdivs * i;
         sub.push(pos);
       }
 
@@ -1854,14 +1873,14 @@ var Grapheme = (function (exports) {
   satisfy this, the last one in the list of demarcations will be chosen.
   */
   class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
-    constructor(params={}) {
+    constructor (params = {}) {
       super(params);
 
       const {
         patterns = [
-          {main: 10, sub: 5},
-          {main: 5, sub: 5},
-          {main: 4, sub: 4},
+          { main: 10, sub: 5 },
+          { main: 5, sub: 5 },
+          { main: 4, sub: 4 }
         ],
         idealSubDist = 60 // CSS pixels
       } = params;
@@ -1870,8 +1889,8 @@ var Grapheme = (function (exports) {
       this.patterns = patterns;
     }
 
-    getDemarcations() {
-      let {patterns, idealSubDist, start, end, length} = this;
+    getDemarcations () {
+      const { patterns, idealSubDist, start, end, length } = this;
 
       // for each pattern, find the most optimal pattern based on powers of 10 and
       // see if that is indeed the best
@@ -1880,12 +1899,12 @@ var Grapheme = (function (exports) {
       let currentError = Infinity;
 
       for (let i = 0; i < patterns.length; ++i) {
-        let pattern = patterns[i];
+        const pattern = patterns[i];
 
-        let ne = Math.round(Math.log10(this.idealSubDist * (end - start) / length * pattern.sub / pattern.main));
-        let scaling = Math.pow(10, ne);
+        const ne = Math.round(Math.log10(idealSubDist * (end - start) / length * pattern.sub / pattern.main));
+        const scaling = Math.pow(10, ne);
 
-        let error = Math.abs(pattern.main / pattern.sub * length / (end-start) * scaling - this.idealSubDist);
+        const error = Math.abs(pattern.main / pattern.sub * length / (end - start) * scaling - idealSubDist);
 
         if (error < currentError) {
           bestMain = pattern.main * scaling;
@@ -1895,7 +1914,7 @@ var Grapheme = (function (exports) {
       }
 
       if (currentError === Infinity) {
-        throw new Error("No happy demarcations")
+        throw new Error('No happy demarcations')
       }
 
       this.mainLength = bestMain;
@@ -1906,11 +1925,12 @@ var Grapheme = (function (exports) {
   }
 
   class AutoAxis extends Axis {
-    constructor(params={}) {
-      super(Object.assign({tickmarkStyles: {
-          "main": new AxisTickmarkStyle({displayLabels: true, labelStyle: new Label2DStyle({fontSize: 24, dir: "S"})}),
-          "sub": new AxisTickmarkStyle({length: 5}),
-          "zero": new AxisTickmarkStyle({displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({fontSize: 24, dir: "S"})})
+    constructor (params = {}) {
+      super(Object.assign({
+        tickmarkStyles: {
+          main: new AxisTickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
+          sub: new AxisTickmarkStyle({ length: 5 }),
+          zero: new AxisTickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
         }
       }, params));
 
@@ -1919,8 +1939,8 @@ var Grapheme = (function (exports) {
       this.strategizer = strategizer;
     }
 
-    autoTickmarks() {
-      let strategizer = this.strategizer;
+    autoTickmarks () {
+      const strategizer = this.strategizer;
 
       strategizer.start = this.xStart;
       strategizer.end = this.xEnd;
@@ -1929,7 +1949,7 @@ var Grapheme = (function (exports) {
       this.tickmarkPositions = strategizer.getDemarcations();
     }
 
-    updateGeometries() {
+    updateGeometries () {
       this.autoTickmarks();
 
       super.updateGeometries();

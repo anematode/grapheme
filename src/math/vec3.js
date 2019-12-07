@@ -5,7 +5,7 @@ class Vec3 {
     this.z = z
   }
 
-  length() {
+  length () {
     return Math.hypot(this.x, this.y, this.z)
   }
 
@@ -41,13 +41,13 @@ class Vec3 {
     return this.scale(this.length())
   }
 
-  set(x, y, z) {
+  set (x, y, z) {
     this.x = x
     this.y = y
     this.z = z
   }
 
-  asArray() {
+  asArray () {
     return [this.x, this.y, this.z]
   }
 

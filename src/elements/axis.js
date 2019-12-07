@@ -4,7 +4,7 @@ import { Vec2 } from '../math/vec2'
 import { Color } from '../other/color'
 import * as utils from '../utils'
 import { AxisTickmarkStyle } from './axis_tickmarks'
-import {Label2DSet} from "./label_2d_set"
+import { Label2DSet } from './label_2d_set'
 
 /**
 A displayed axis, potentially with tick marks of various types,
@@ -118,7 +118,7 @@ class Axis extends GraphemeGroup {
    * calculateMargins - Calculate the margins of the axis, given the size of the arrows.
    */
   calculateMargins () {
-    let style = this.style
+    const style = this.style
 
     const arrowLocations = style.arrowLocations
     const arrowLength = style.arrowhead ? style.arrowhead.length : 0
@@ -126,11 +126,11 @@ class Axis extends GraphemeGroup {
     this.margins.start = 0
     this.margins.end = 0
 
-    if (arrowLocations.includes("start") || arrowLocations.includes("substart")) {
+    if (arrowLocations.includes('start') || arrowLocations.includes('substart')) {
       this.margins.start = 3 * arrowLength * this.style.thickness
     }
 
-    if (arrowLocations.includes("end") || arrowLocations.includes("subend")) {
+    if (arrowLocations.includes('end') || arrowLocations.includes('subend')) {
       this.margins.end = 3 * arrowLength * this.style.thickness
     }
   }

@@ -206,7 +206,7 @@ function deleteBuffersNamed (bufferNames) {
 
 let x = 0
 
-function getRenderID() {
+function getRenderID () {
   x += 1
   return x
 }

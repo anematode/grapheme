@@ -6,7 +6,7 @@ emit demarcations of a variety of classes corresponding to various methods of
 dividing up a line. */
 
 class DemarcationStrategizer {
-  constructor(params={}) {
+  constructor (params = {}) {
     const {
       start = 0,
       end = 1,
@@ -29,7 +29,7 @@ const MAX_DEMARCATIONS = 1000
 and sub. The axis distance between main demarcations is mainLength and the number of
 subdivisions is subdivs */
 class MainSubDemarcationStrategizer extends DemarcationStrategizer {
-  constructor(params = {}) {
+  constructor (params = {}) {
     super(params)
 
     const {
@@ -41,27 +41,27 @@ class MainSubDemarcationStrategizer extends DemarcationStrategizer {
     this.subdivs = subdivs
   }
 
-  getDemarcations() {
+  getDemarcations () {
     // Whee!!
-    let end = this.end, start = this.start
+    let end = this.end; let start = this.start
 
     if (end < start) {
-      let t = end
+      const t = end
       end = start
       start = t
     }
 
-    let zero = []
-    let main = []
-    let sub = []
+    const zero = []
+    const main = []
+    const sub = []
 
-    let { mainLength, subdivs } = this
+    const { mainLength, subdivs } = this
 
-    let xS = Math.ceil(start / mainLength)
-    let xE = Math.floor(end / mainLength)
+    const xS = Math.ceil(start / mainLength)
+    const xE = Math.floor(end / mainLength)
 
     if (subdivs * (xS - xE) > MAX_DEMARCATIONS) {
-      throw new Error("too many demarcations!!")
+      throw new Error('too many demarcations!!')
     }
 
     for (let i = xS; i <= xE; ++i) {
@@ -70,19 +70,19 @@ class MainSubDemarcationStrategizer extends DemarcationStrategizer {
         continue
       }
 
-      let pos = mainLength * i
+      const pos = mainLength * i
       main.push(pos)
     }
 
-    let yS = Math.ceil(subdivs * start / mainLength)
-    let yE = Math.floor(subdivs * end / mainLength)
+    const yS = Math.ceil(subdivs * start / mainLength)
+    const yE = Math.floor(subdivs * end / mainLength)
 
     for (let i = yS; i <= yE; ++i) {
       if (i % subdivs === 0) { // already emitted as a main
         continue
       }
 
-      let pos = mainLength / subdivs * i
+      const pos = mainLength / subdivs * i
       sub.push(pos)
     }
 
@@ -108,14 +108,14 @@ the ideal distance between those demarcations, idealSubDist. If multiple pattern
 satisfy this, the last one in the list of demarcations will be chosen.
 */
 class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     const {
       patterns = [
-        {main: 10, sub: 5},
-        {main: 5, sub: 5},
-        {main: 4, sub: 4},
+        { main: 10, sub: 5 },
+        { main: 5, sub: 5 },
+        { main: 4, sub: 4 }
       ],
       idealSubDist = 60 // CSS pixels
     } = params
@@ -124,8 +124,8 @@ class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
     this.patterns = patterns
   }
 
-  getDemarcations() {
-    let {patterns, idealSubDist, start, end, length} = this
+  getDemarcations () {
+    const { patterns, idealSubDist, start, end, length } = this
 
     // for each pattern, find the most optimal pattern based on powers of 10 and
     // see if that is indeed the best
@@ -134,12 +134,12 @@ class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
     let currentError = Infinity
 
     for (let i = 0; i < patterns.length; ++i) {
-      let pattern = patterns[i]
+      const pattern = patterns[i]
 
-      let ne = Math.round(Math.log10(this.idealSubDist * (end - start) / length * pattern.sub / pattern.main))
-      let scaling = Math.pow(10, ne)
+      const ne = Math.round(Math.log10(idealSubDist * (end - start) / length * pattern.sub / pattern.main))
+      const scaling = Math.pow(10, ne)
 
-      let error = Math.abs(pattern.main / pattern.sub * length / (end-start) * scaling - this.idealSubDist)
+      const error = Math.abs(pattern.main / pattern.sub * length / (end - start) * scaling - idealSubDist)
 
       if (error < currentError) {
         bestMain = pattern.main * scaling
@@ -149,7 +149,7 @@ class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
     }
 
     if (currentError === Infinity) {
-      throw new Error("No happy demarcations")
+      throw new Error('No happy demarcations')
     }
 
     this.mainLength = bestMain
@@ -159,4 +159,4 @@ class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
   }
 }
 
-export {DemarcationStrategizer, StandardDemarcationStrategizer}
+export { DemarcationStrategizer, StandardDemarcationStrategizer }

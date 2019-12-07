@@ -1,15 +1,15 @@
-import {Color} from "./color"
+import { Color } from './color'
 
 class LineStyle {
-  constructor(params={}) {
+  constructor (params = {}) {
     const {
       color = new Color(),
       thickness = 2, // in CSS pixels
       dashPattern = [], // lengths of alternating dashes
       dashOffset = 0, // length of dash offset
-      endcap = "round", // endcap, among "butt", "round", "square"
+      endcap = 'round', // endcap, among "butt", "round", "square"
       endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
-      join = "miter", // join type, among "miter", "round", "bevel"
+      join = 'miter', // join type, among "miter", "round", "bevel"
       joinRes = 0.3, // angle between consecutive join roundings
       useNative = true, // whether to use native line drawing, only used in WebGL
       arrowhead = null, // arrowhead to draw
@@ -29,7 +29,7 @@ class LineStyle {
     this.arrowLocations = arrowLocations
   }
 
-  prepareContext(ctx) {
+  prepareContext (ctx) {
     ctx.fillStyle = ctx.strokeStyle = this.color.hex()
     ctx.lineWidth = this.thickness
     ctx.setLineDash(this.dashPattern)
@@ -40,4 +40,4 @@ class LineStyle {
   }
 }
 
-export {LineStyle}
+export { LineStyle }

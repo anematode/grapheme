@@ -1,6 +1,6 @@
 import { Group as GraphemeGroup } from './grapheme_group'
-import { Element as GraphemeElement} from "./grapheme_element"
-import { WebGLElement } from "./webgl_grapheme_element"
+import { Element as GraphemeElement } from './grapheme_element'
+import { WebGLElement } from './webgl_grapheme_element'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
 
@@ -84,7 +84,7 @@ class GraphemeWindow extends GraphemeGroup {
     this.canvasHeight = this.height * utils.dpr
 
     // Set the canvas CSS size using CSS
-    let canvas = this.canvas
+    const canvas = this.canvas
 
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
@@ -153,12 +153,12 @@ class GraphemeWindow extends GraphemeGroup {
     return (this.context.currentWindow === this)
   }
 
-  clear() {
+  clear () {
     // Clear the canvas
     this.canvasCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
   }
 
-  beforeRender(element) {
+  beforeRender (element) {
     if (element instanceof WebGLElement) {
       if (this.needsContextPrepared) {
         this.context.prepareForWindow(this)
@@ -196,7 +196,7 @@ class GraphemeWindow extends GraphemeGroup {
     // Set the active window to this window, since this is the window being rendered
     this.context.currentWindow = this
 
-    const {cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx} = this;
+    const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this
 
     // ID of this render
     const renderID = utils.getRenderID()
@@ -208,7 +208,7 @@ class GraphemeWindow extends GraphemeGroup {
     // canvasCtx
     // window
     const renderInfo = {
-      dims: {cssWidth, cssHeight, canvasWidth, canvasHeight},
+      dims: { cssWidth, cssHeight, canvasWidth, canvasHeight },
       labelManager,
       canvasCtx,
       window: this

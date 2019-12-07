@@ -32,13 +32,12 @@ class GraphemeElement {
     }
   }
 
-  updateGeometries() {
-    
+  updateGeometries () {
+
   }
 
   render (elementInfo) {
-    if (this.alwaysUpdate)
-      this.updateGeometries()
+    if (this.alwaysUpdate) { this.updateGeometries() }
 
     elementInfo.window.beforeRender(this)
   }

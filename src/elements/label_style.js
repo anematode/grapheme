@@ -1,30 +1,30 @@
-import { Color } from "../other/color"
+import { Color } from '../other/color'
 
 const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE']
 const labelClasses = validDirs.map(s => 'grapheme-label-' + s)
 
 class BasicLabelStyle {
-  constructor(params={}) {
+  constructor (params = {}) {
     const {
-      mode = "latex", // valid values: latex, html
-      dir = "C"    // valid values:
+      mode = 'latex', // valid values: latex, html
+      dir = 'C' // valid values:
     } = params
 
     this.mode = mode
     this.dir = dir
   }
 
-  labelClass() {
+  labelClass () {
     let dir = this.dir
 
     if (!validDirs.includes(dir)) {
       dir = 'C'
     }
 
-    return "grapheme-label-" + this.dir
+    return 'grapheme-label-' + this.dir
   }
 
-  setLabelClass(labelElement) {
+  setLabelClass (labelElement) {
     const labelClass = this.labelClass()
 
     if (!labelElement.classList.contains(labelClass)) {
@@ -53,8 +53,8 @@ class Label2DStyle extends BasicLabelStyle {
     this.shadowSize = shadowSize
   }
 
-  prepareContextTextAlignment(ctx) {
-    const dir = this.dir
+  prepareContextTextAlignment (ctx) {
+    let dir = this.dir
 
     let textBaseline
     let textAlign
@@ -93,17 +93,17 @@ class Label2DStyle extends BasicLabelStyle {
     ctx.textAlign = textAlign
   }
 
-  prepareContextTextStyle(ctx) {
+  prepareContextTextStyle (ctx) {
     this.prepareContextTextAlignment(ctx)
     ctx.font = `${this.fontSize}px ${this.fontFamily}`
   }
 
-  prepareContextShadow(ctx) {
+  prepareContextShadow (ctx) {
     ctx.fillStyle = this.shadowColor.hex()
     ctx.lineWidth = this.shadowSize * 2
   }
 
-  prepareContextFill(ctx) {
+  prepareContextFill (ctx) {
     ctx.fillStyle = this.color.hex()
   }
 }

@@ -1,8 +1,8 @@
-import {Element as GraphemeElement} from "../grapheme_element"
-import {LineStyle} from "../other/line_style"
+import { Element as GraphemeElement } from '../grapheme_element'
+import { LineStyle } from '../other/line_style'
 
 class PolylineBase extends GraphemeElement {
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     let {
@@ -19,4 +19,4 @@ class PolylineBase extends GraphemeElement {
   }
 }
 
-export {PolylineBase}
+export { PolylineBase }

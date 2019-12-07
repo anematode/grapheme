@@ -66,7 +66,7 @@ class Vec2 {
     return [this.x, this.y]
   }
 
-  hasNaN() {
+  hasNaN () {
     return Number.isNaN(this.x) || Number.isNaN(this.y)
   }
 }
