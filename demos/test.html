@@ -25,6 +25,15 @@ let grapheme_window = grapheme_context.createWindow();
 grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
 
+let axis = new Grapheme.AutoAxis()
+grapheme_window.add(axis)
+
+axis.start.set(100, 100)
+axis.end.set(2500, 100)
+
+axis.style.arrowhead = Grapheme.Arrowheads.Normal
+axis.style.arrowLocations = ["end"]
+
 let ia = 0;
 function render() {
   ia += 0.1;

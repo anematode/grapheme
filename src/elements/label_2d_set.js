@@ -1,17 +1,18 @@
-import {GraphemeElement} from "../grapheme_element"
+import {Element as GraphemeElement} from "../grapheme_element"
+import {Label2DStyle} from "./label_style"
 
 class Label2DSet extends GraphemeElement {
   constructor(params = {}) {
     super(params)
 
-    this.style = this._label.style
+    this.style = new Label2DStyle()
 
     // Format: {text: "5", pos: Vec2(3,4)}
     this.texts = params.texts ? params.texts : []
   }
 
   render(renderInfo) {
-    let texts = this.texts, ctx = renderInfo.ctx
+    let texts = this.texts, ctx = renderInfo.canvasCtx
 
     ctx.save()
 
@@ -40,3 +41,5 @@ class Label2DSet extends GraphemeElement {
     ctx.restore()
   }
 }
+
+export {Label2DSet}

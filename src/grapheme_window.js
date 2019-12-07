@@ -1,9 +1,12 @@
 import { Group as GraphemeGroup } from './grapheme_group'
+import { Element as GraphemeElement} from "./grapheme_element"
+import { WebGLElement } from "./webgl_grapheme_element"
 import * as utils from './utils'
-import { rgba } from './color'
 import { LabelManager } from './label_manager'
 
-const DEFAULT_SIZE = [640, 480]
+// Empty element drawn at the end of every render to copy the webgl canvas over
+// if necessary LOL
+const FINAL_ELEMENT = new GraphemeElement()
 
 /** A grapheme window is an actual viewable instance of Grapheme.
 That is, it is a div that can be put into the DOM and manipulated (and seen).
@@ -13,6 +16,8 @@ domElement = the div that the user adds to the webpage
 textCanvas = the canvas that text and stuff is done on
 context = the parent Grapheme.Context of this window
 textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
+cssWidth, cssHeight = the size of the canvas in CSS pixels
+canvasWidth, canvasHeight = the actual size of the canvas in pixels
 */
 class GraphemeWindow extends GraphemeGroup {
   constructor (graphemeContext) {
@@ -21,35 +26,43 @@ class GraphemeWindow extends GraphemeGroup {
     // Grapheme context this window is a child of
     this.context = graphemeContext
 
+    // Add this window to the context's list of windows
+    graphemeContext.windows.push(this)
+
     // Element to be put into the webpage
     this.domElement = document.createElement('div')
 
-    // The two canvases of a GraphemeWindow
-    this.mainCanvas = document.createElement('canvas')
-    this.domElement.appendChild(this.mainCanvas)
+    // The canvas of a GraphemeWindow
+    this.canvas = document.createElement('canvas')
+    this.domElement.appendChild(this.canvas)
 
     // CSS stuffs
-    this.mainCanvas.classList.add('grapheme-canvas')
+    this.canvas.classList.add('grapheme-canvas')
     this.domElement.classList.add('grapheme-window')
 
     // Get the contexts
-    this.canvasContext = this.mainCanvas.getContext('2d')
+    this.canvasCtx = this.canvas.getContext('2d')
+    utils.assert(this.canvasCtx, "This browser doesn't support 2D canvas, what the heck")
 
     // label manager
     this.labelManager = new LabelManager(this.domElement)
 
-    // Add this window to the context's list of windows
-    graphemeContext.windows.push(this)
+    // Whether, on the drawing of a normal GraphemeElement, the webgl canvas should
+    // be copied to this canvas
+    this.needsContextCopy = false
+
+    // Has the webgl canvas been prepared to fit this window?
+    this.needsContextPrepared = false
 
     // Set the default size to 640 by 480 in CSS pixels
-    this.setSize(...DEFAULT_SIZE)
+    this.setSize(640, 480)
 
     // Scale text canvas as needed due to DPR
-    this._scaleTextCanvasToDPR()
+    this.resetCanvasCtxTransform()
   }
 
-  _scaleTextCanvasToDPR () {
-    const ctx = this.canvasContext
+  resetCanvasCtxTransform () {
+    const ctx = this.canvasCtx
 
     for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
       ctx.restore()
@@ -62,15 +75,16 @@ class GraphemeWindow extends GraphemeGroup {
   // Set the size of this window (including adjusting the canvas size)
   // Note that this width and height are in CSS pixels
   setSize (width, height) {
-    // cssWidth and cssHeight are in CSS pixels
-    this.cssWidth = width
-    this.cssHeight = height
+    // width and weight are in CSS pixels
+    this.width = width
+    this.height = height
 
     // Update the canvas size, factoring in the device pixel ratio
-    this._updateCanvasSize();
+    this.canvasWidth = this.width * utils.dpr
+    this.canvasHeight = this.height * utils.dpr
 
     // Set the canvas CSS size using CSS
-    let canvas = this.mainCanvas
+    let canvas = this.canvas
 
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
@@ -80,20 +94,14 @@ class GraphemeWindow extends GraphemeGroup {
     this.context.updateSize()
   }
 
-  // Set the actual canvas pixel size based on the desired width and the DPR
-  _updateCanvasSize () {
-    this.canvasWidth = this.cssWidth * utils.dpr
-    this.canvasHeight = this.cssHeight * utils.dpr
-  }
-
   // Returns the pixel width of the canvas
   get canvasWidth () {
-    return this.mainCanvas.width
+    return this.canvas.width
   }
 
   // Returns the pixel height of the canvas
   get canvasHeight () {
-    return this.mainCanvas.height
+    return this.canvas.height
   }
 
   // Sets the pixel width of the canvas
@@ -102,7 +110,7 @@ class GraphemeWindow extends GraphemeGroup {
     x = Math.round(x)
     utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]')
 
-    this.mainCanvas.width = x
+    this.canvas.width = x
   }
 
   // Sets the pixel height of the canvas
@@ -110,24 +118,24 @@ class GraphemeWindow extends GraphemeGroup {
     x = Math.round(x)
     utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]')
 
-    this.mainCanvas.height = x
+    this.canvas.height = x
   }
 
   // Event triggered when the device pixel ratio changes
-  _onDPRChanged () {
-    this._updateCanvasWidth()
-    this._scaleTextCanvasToDPR()
+  onDPRChanged () {
+    // This will resize the canvas accordingly
+    this.setSize(this.width, this.height)
+
+    this.resetCanvasCtxTransform()
   }
 
   // Destroy this window.
   destroy () {
     // Destroy the domElement
-    try {
-      this.domElement.parentNode.remove(this.domElement)
-    } catch (e) {}
+    this.domElement.remove()
 
     // Delete this window from the parent context
-    this.context._removeWindow(this)
+    this.context.removeWindow(this)
 
     // Update the canvas size of the parent context
     this.context.updateSize()
@@ -136,73 +144,93 @@ class GraphemeWindow extends GraphemeGroup {
     super.destroy()
 
     // Delete some references
-    delete this.mainCanvas
+    delete this.canvas
     delete this.domElement
-    delete this.canvasContext
+    delete this.canvasCtx
   }
 
   isActive () {
-    return (this.context.activeWindow === this)
+    return (this.context.currentWindow === this)
   }
 
-  clearToColor (color = this.backgroundColor) {
-    utils.assert(this.isActive(), 'Window is not currently being rendered')
+  clear() {
+    // Clear the canvas
+    this.canvasCtx.clearRect(0, 0, this.cssWidth, this.cssHeight)
+  }
 
-    // color.r, color.g, color.b, color.a
-    const glColor = color.glColor()
+  beforeRender(element) {
+    if (element instanceof WebGLElement) {
+      if (this.needsContextPrepared) {
+        this.context.prepareForWindow(this)
 
-    const gl = this.context.glContext
+        this.needsCanvasPrepared = false
+      }
 
-    gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a)
-    gl.clear(gl.COLOR_BUFFER_BIT)
+      this.needsCanvasCopy = true
+    } else {
+      if (this.needsContextCopy) {
+        const ctx = this.canvasCtx
 
-    // Clear the text canvas
-    this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+        ctx.save()
+
+        ctx.resetTransform()
+        ctx.imageSmoothingEnabled = false
+
+        // Copy the glCanvas over
+        ctx.drawImage(this.context.glCanvas)
+
+        ctx.restore()
+
+        this.needsCanvasCopy = false
+      }
+
+      this.needsCanvasPrepared = true
+    }
   }
 
   render () {
+    // Canvas may need to do some stuff
+    this.needsCanvasPrepared = true
+    this.needsCanvasCopy = false
+
     // Set the active window to this window, since this is the window being rendered
-    this.context.activeWindow = this
+    this.context.currentWindow = this
+
+    const {cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx} = this;
 
     // ID of this render
-    const renderID = utils.generateUUID()
+    const renderID = utils.getRenderID()
+    labelManager.currentRenderID = renderID
 
-    let err // potential error in try {...} catch
-    const { glCanvas } = this.context
-
-    const width = this.cssWidth
-    const height = this.cssHeight
-    const pxWidth = this.canvasWidth
-    const pxHeight = this.canvasHeight
-    const dpr = utils.dpr
-
-    // Render information to be given to elements
+    // Render information to be given to elements. Namely,
+    // dims: {cssWidth, cssHeight, canvasWidth, canvasHeight, dpr}
+    // labelManager
+    // canvasCtx
+    // window
     const renderInfo = {
-      // gl: this.context.glContext,
-      // glResourceManager: this.context.glResourceManager,
-      labelManager: this.labelManager,
-      ctx: this.canvasContext,
-      canvas: this.mainCanvas,
-      width,
-      height,
-      pxWidth,
-      pxHeight,
-      dpr
+      dims: {cssWidth, cssHeight, canvasWidth, canvasHeight},
+      labelManager,
+      canvasCtx,
+      window: this
     }
 
-    this.labelManager.currentRenderID = renderID
-    
+    let err // potential error in try {...} catch
     try {
-      // sort our elements by drawing precedence
-      this.sortChildrenByPrecedence()
+      // Clear this canvas
+      this.clear()
 
+      // Render all children
       super.render(renderInfo)
 
-      this.labelManager.cleanOldRenders()
+      // Copy the webgl canvas over if needed
+      FINAL_ELEMENT.render(renderInfo)
+
+      // Get rid of old labels
+      labelManager.cleanOldRenders()
     } catch (e) {
       err = e
     } finally {
-      this.context.activeWindow = null
+      this.context.currentWindow = null
     }
 
     if (err) throw err

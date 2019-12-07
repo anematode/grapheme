@@ -1,5 +1,4 @@
 import { Window as GraphemeWindow } from './grapheme_window'
-import { InteractiveWindow } from './interactive_window'
 import { GLResourceManager } from './gl_manager'
 import * as utils from './utils'
 
@@ -9,7 +8,7 @@ class GraphemeContext {
     this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1, 1) : document.createElement('canvas')
 
     // Create the webgl context!
-    const gl = this.glContext = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl')
+    const gl = this.gl = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl')
 
     // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
     utils.assert(gl, 'Grapheme requires WebGL to run; please get a competent browser')
@@ -20,10 +19,8 @@ class GraphemeContext {
     // The list of windows that this context has jurisdiction over
     this.windows = []
 
-    // The portion of the glCanvas being used
-    this.currentViewport = {
-      x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height
-    }
+    // The window that is currently being drawn (null if none)
+    this.currentWindow = null
 
     // Add this to the list of contexts to receive event updates and such
     utils.CONTEXTS.push(this)
@@ -31,7 +28,7 @@ class GraphemeContext {
 
   // Set the drawing viewport on glCanvas
   setViewport (width, height, x = 0, y = 0, setScissor = true) {
-    const gl = this.glContext
+    const gl = this.gl
 
     // Check to make sure the viewport dimensions are acceptable
     utils.assert(utils.isPositiveInteger(width) && utils.isPositiveInteger(height) &&
@@ -39,22 +36,28 @@ class GraphemeContext {
     'x, y, width, height must be integers greater than 0 (or = for x,y)')
     utils.assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, 'viewport must be within canvas bounds')
 
-    // Set this.currentViewport to the desired viewport
-    this.currentViewport.x = x
-    this.currentViewport.y = y
-    this.currentViewport.width = width
-    this.currentViewport.height = height
-
     // Set the gl viewport accordingly
     gl.viewport(x, y, width, height)
 
     // If desired, enable scissoring over that rectangle
     if (setScissor) {
       gl.enable(gl.SCISSOR_TEST)
-      this.glContext.scissor(x, y, width, height)
+      this.gl.scissor(x, y, width, height)
     } else {
       gl.disable(gl.SCISSOR_TEST)
     }
+  }
+
+  prepareForWindow(window) {
+    const gl = this.gl
+
+    this.setViewport(window.canvasWidth, window.canvasHeight)
+
+    gl.clearColor(0, 0, 0, 0)
+    gl.clearDepth(1)
+
+    // Clear depth and color buffers
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
   }
 
   get canvasHeight () {
@@ -79,8 +82,8 @@ class GraphemeContext {
     this.glCanvas.width = x
   }
 
-  _onDPRChanged () {
-    this.windows.forEach((window) => window._onDPRChanged())
+  onDPRChanged () {
+    this.windows.forEach((window) => window.onDPRChanged())
   }
 
   isDestroyed () {
@@ -108,16 +111,16 @@ class GraphemeContext {
     // Delete references to various stuff
     delete this.glResourceManager
     delete this.glCanvas
-    delete this.glContext
+    delete this.gl
   }
 
   // Create a window using this context
-  createWindow (interactive = true) {
-    return new (interactive ? InteractiveWindow : GraphemeWindow)(this)
+  createWindow () {
+    return new GraphemeWindow(this)
   }
 
   // Remove a window from this context
-  _removeWindow (window) {
+  removeWindow (window) {
     const allWindows = this.context.windows
     const thisIndex = allWindows.indexOf(window)
 

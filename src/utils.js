@@ -103,7 +103,7 @@ function updateDPR () {
     dpr = window.devicePixelRatio
 
     // Tell the babies that the device pixel ratio has changed
-    CONTEXTS.forEach((context) => context._onDPRChanged())
+    CONTEXTS.forEach(context => context.onDPRChanged())
   }
 }
 
@@ -204,7 +204,14 @@ function deleteBuffersNamed (bufferNames) {
   })
 }
 
+let x = 0
+
+function getRenderID() {
+  x += 1
+  return x
+}
+
 export {
   generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, deleteBuffersNamed
+  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID
 }

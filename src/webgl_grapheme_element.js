@@ -5,6 +5,7 @@ class WebGLGraphemeElement extends GraphemeElement {
     super(params)
 
     this.usedBufferNames = []
+    this.usedProgramNames = []
   }
 
   addUsedBufferName (bufferName) {
@@ -20,10 +21,15 @@ class WebGLGraphemeElement extends GraphemeElement {
     }
   }
 
+  // TODO
+  addUsedProgramName (programName) {
+
+  }
+
   destroy() {
     if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames)
     super.destroy()
   }
 }
 
-export {WebGLGraphemeElement}
+export {WebGLGraphemeElement as WebGLElement}

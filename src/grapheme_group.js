@@ -8,8 +8,8 @@ class GraphemeGroup extends GraphemeElement {
     this.children = []
   }
 
-  _onDPRChanged () {
-    this.children.forEach(child => child._onDPRChanged())
+  onDPRChanged () {
+    this.children.forEach(child => child.onDPRChanged())
   }
 
   sortChildrenByPrecedence () {
@@ -18,6 +18,9 @@ class GraphemeGroup extends GraphemeElement {
   }
 
   render (renderInfo) {
+    super.render(renderInfo)
+    
+    // sort our elements by drawing precedence
     this.sortChildrenByPrecedence()
 
     this.children.forEach((child) => child.render(renderInfo))

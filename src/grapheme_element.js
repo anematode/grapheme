@@ -32,8 +32,15 @@ class GraphemeElement {
     }
   }
 
+  updateGeometries() {
+    
+  }
+
   render (elementInfo) {
-    // No need to call this as a child class
+    if (this.alwaysUpdate)
+      this.updateGeometries()
+
+    elementInfo.window.beforeRender(this)
   }
 
   hasChild () {
@@ -44,7 +51,7 @@ class GraphemeElement {
     this.orphanize()
   }
 
-  _onDPRChanged () {
+  onDPRChanged () {
 
   }
 }

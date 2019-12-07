@@ -1,13 +1,75 @@
 import * as utils from '../utils'
-import { Color } from '../color'
+import { Color } from '../other/color'
 import { Vec2 } from '../math/vec2'
-import { Simple2DGeometry } from './simple_geometry'
 import { Label2DStyle } from './label_style'
 
-// TEMP: must transfer from old grapheme
-function defaultLabel (x) {
-  return x + ''
+/* Unicode characters for exponent signs, LOL */
+const exponent_reference = {
+  '-': String.fromCharCode(8315),
+  '0': String.fromCharCode(8304),
+  '1': String.fromCharCode(185),
+  '2': String.fromCharCode(178),
+  '3': String.fromCharCode(179),
+  '4': String.fromCharCode(8308),
+  '5': String.fromCharCode(8309),
+  '6': String.fromCharCode(8310),
+  '7': String.fromCharCode(8311),
+  '8': String.fromCharCode(8312),
+  '9': String.fromCharCode(8313)
+};
+
+/* Convert a digit into its exponent form */
+function convert_char(c) {
+  return exponent_reference[c];
 }
+
+/* Convert an integer into its exponent form (of Unicode characters) */
+function exponentify(integer) {
+  utils.assert(utils.isInteger(integer), "needs to be an integer");
+
+  let stringi = integer + '';
+  let out = '';
+
+  for (let i = 0; i < stringi.length; ++i) {
+    out += convert_char(stringi[i]);
+  }
+
+  return out;
+}
+
+// Credit: https://stackoverflow.com/a/20439411
+/* Turns a float into a pretty float by removing dumb floating point things */
+function beautifyFloat(f, prec=12) {
+  let strf = f.toFixed(prec);
+  if (strf.includes('.')) {
+    return strf.replace(/\.?0+$/g,'');
+  } else {
+    return strf;
+  }
+}
+
+// Multiplication character
+const CDOT = String.fromCharCode(183);
+
+const defaultLabel = x => {
+    if (x === 0) return "0"; // special case
+    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+      // non-extreme floats displayed normally
+      return beautifyFloat(x);
+    else {
+      // scientific notation for the very fat and very small!
+
+      let exponent = Math.floor(Math.log10(Math.abs(x)));
+      let mantissa = x / (10 ** exponent);
+
+      let prefix = (utils.isApproxEqual(mantissa,1) ? '' :
+        (beautifyFloat(mantissa, 8) + CDOT));
+      let exponent_suffix = "10" + exponentify(exponent);
+
+      return prefix + exponent_suffix;
+    }
+  }
+
 
 /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
 class AxisTickmarkStyle {
@@ -21,13 +83,13 @@ class AxisTickmarkStyle {
    * @param {Boolean} params.displayText - Whether to display text.
    */
   constructor ({
-    length = 16,
+    length = 10,
     positioning = 0,
     thickness = 2,
     color = new Color(),
     displayLabels = false,
-    labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
-    labelDir = 'S',
+    displayTicks = true,
+    labelAnchoredTo = 1, // 1 is right of tickmark, 0 is middle of tickmark, -1 is left of tickmark
     labelPadding = 2,
     labelStyle = new Label2DStyle(),
     labelFunc = defaultLabel
@@ -37,20 +99,11 @@ class AxisTickmarkStyle {
     this.thickness = thickness
     this.color = color
     this.displayLabels = displayLabels
+    this.displayTicks = displayTicks
     this.labelAnchoredTo = labelAnchoredTo
-    this.labelDir = labelDir
     this.labelPadding = labelPadding
     this.labelStyle = labelStyle
     this.labelFunc = labelFunc
-  }
-
-  /**
-   * Check whether the tickmark is geometrically valid.
-   * @returns {Boolean} Whether the tickmark is valid.
-   */
-  isValid () {
-    return (this.length > 0 && (this.positioning >= -1 && this.positioning <= 1) &&
-      (this.thickness > 0))
   }
 
   /**
@@ -64,41 +117,24 @@ class AxisTickmarkStyle {
    * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
    * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
    */
-  createTickmarks (transformation, positions, geometry, labels) {
-    utils.checkType(geometry, Simple2DGeometry)
+  createTickmarks (transformation, positions, polyline, label2dset) {
+    polyline.vertices = []
+    polyline.style.thickness = this.thickness
+    polyline.style.color = this.color
+    polyline.endcapType = "butt"
 
     const tickmarkCount = positions.length
-    const vertexCount = tickmarkCount * 5 // 5 vertices per thing
-
-    // The tickmarks will be drawn as triangles
-    geometry.renderMode = 'TRIANGLE_STRIP'
-    geometry.color = this.color
-
-    // Create the glVertices array if necessary
-    if (!geometry.glVertices || geometry.glVertices.length !== 2 * vertexCount) {
-      geometry.glVertices = new Float32Array(2 * vertexCount)
-    }
-
-    const vertices = geometry.glVertices
 
     // Note that "s" in class theory is positioning, and "t" is thickness
     const { positioning, thickness, length } = this
     const { v1, v2, x1, x2 } = transformation
-    const axisDisplacement = v2.minus(v1)
+    const axisDisplacement = v2.subtract(v1)
 
     // vectors as defined in class_theory
-    const xi = axisDisplacement.unit().scale(thickness / 2)
     const upsilon = axisDisplacement.unit().rotate(Math.PI / 2)
-    const nanVertex = new Vec2(NaN, NaN)
 
-    let index = 0
-
-    function addVertex (v) {
-      // Convert to canvas coordinates
-      vertices[index] = v.x
-      vertices[index + 1] = v.y
-      index += 2
-    }
+    label2dset.texts = []
+    label2dset.style = this.labelStyle
 
     for (let i = 0; i < positions.length; ++i) {
       let givenPos = positions[i]
@@ -109,23 +145,15 @@ class AxisTickmarkStyle {
       const omicron = upsilon.scale((positioning - 1) / 2 * length).add(pos)
 
       // Create a rectangle for the tick
-      addVertex(omicron.minus(xi))
-      addVertex(lambda.minus(xi))
-      addVertex(omicron.add(xi))
-      addVertex(lambda.add(xi))
-      addVertex(nanVertex)
+      polyline.vertices.push(...omicron.asArray(), ...lambda.asArray(), NaN, NaN)
 
       if (this.displayLabels) {
         const textS = this.labelAnchoredTo
         const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
 
-        /*const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle })
-
-        labels.push(label)*/
+        label2dset.texts.push({text: this.labelFunc(givenPos), pos: position})
       }
     }
-
-    geometry.glVerticesCount = vertexCount
   }
 }
 

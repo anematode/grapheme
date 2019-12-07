@@ -1,11 +1,10 @@
 import { Group as GraphemeGroup } from '../grapheme_group'
-import { Simple2DGeometry } from './simple_geometry'
 import { PolylineElement } from './polyline'
 import { Vec2 } from '../math/vec2'
-import { Color } from '../color'
-import { arrowLengths } from './arrows'
+import { Color } from '../other/color'
 import * as utils from '../utils'
 import { AxisTickmarkStyle } from './axis_tickmarks'
+import {Label2DSet} from "./label_2d_set"
 
 /**
 A displayed axis, potentially with tick marks of various types,
@@ -88,9 +87,9 @@ class Axis extends GraphemeGroup {
     // Used internally, no need for the user to touch it. Unless there's a bug.
     // Then I have to touch it. Ugh.
     this.axisComponents = {
-      tickmarkGeometries: {},
-      tickmarkLabels: [],
-      axisGeometry: new PolylineElement(Object.assign({
+      tickmarkPolylines: {},
+      tickmarkLabels: {},
+      axispolyline: new PolylineElement(Object.assign({
         // Some sensible default values
         arrowLocations: -1,
         arrowType: 0,
@@ -100,7 +99,7 @@ class Axis extends GraphemeGroup {
     }
 
     // Style of the main axis line
-    this.style = this.axisComponents.axisGeometry.style
+    this.style = this.axisComponents.axispolyline.style
   }
 
   /**
@@ -119,27 +118,30 @@ class Axis extends GraphemeGroup {
    * calculateMargins - Calculate the margins of the axis, given the size of the arrows.
    */
   calculateMargins () {
-    const arrowLoc = this.style.arrowLocations
-    const arrowLength = arrowLengths[this.style.arrowType]
+    let style = this.style
+
+    const arrowLocations = style.arrowLocations
+    const arrowLength = style.arrowhead ? style.arrowhead.length : 0
 
     this.margins.start = 0
     this.margins.end = 0
 
-    if ([1, 2, 4, 5].includes(arrowLoc)) {
-      this.margins.start = 1.5 * arrowLength * this.style.thickness / 2
+    if (arrowLocations.includes("start") || arrowLocations.includes("substart")) {
+      this.margins.start = 3 * arrowLength * this.style.thickness
     }
 
-    if ([0, 2, 3, 5].includes(arrowLoc)) {
-      this.margins.end = 1.5 * arrowLength * this.style.thickness / 2
+    if (arrowLocations.includes("end") || arrowLocations.includes("subend")) {
+      this.margins.end = 3 * arrowLength * this.style.thickness
     }
   }
 
   /**
-   * updateTickmarkGeometries - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
+   * updatetickmarkPolylines - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
    */
-  updateTickmarkGeometries () {
-    const tickmarkGeometries = this.axisComponents.tickmarkGeometries
-    const axisDisplacement = this.end.minus(this.start)
+  updatetickmarkPolylines () {
+    const tickmarkPolylines = this.axisComponents.tickmarkPolylines
+    const tickmarkLabels = this.axisComponents.tickmarkLabels
+    const axisDisplacement = this.end.subtract(this.start)
     const axisLength = axisDisplacement.length()
 
     if (axisLength < 3 * (this.marginStart + this.marginEnd) ||
@@ -153,18 +155,10 @@ class Axis extends GraphemeGroup {
     // The transformation defined by this axis
     const transformation = {
       v1: this.start.add(axisDisplacementDir.scale(this.margins.start)),
-      v2: this.end.minus(axisDisplacementDir.scale(this.margins.end)),
+      v2: this.end.subtract(axisDisplacementDir.scale(this.margins.end)),
       x1: this.xStart,
       x2: this.xEnd
     }
-
-    let labels = this.axisComponents.tickmarkLabels
-
-    for (let i = 0; i < labels.length; ++i) {
-      this.remove(labels[i])
-    }
-
-    labels = this.axisComponents.tickmarkLabels = []
 
     // For every type of tickmark
     for (const styleName in this.tickmarkStyles) {
@@ -173,47 +167,65 @@ class Axis extends GraphemeGroup {
 
       if (!positions) continue
 
-      let geometry = tickmarkGeometries[styleName]
-      if (!geometry) {
-        geometry = new Simple2DGeometry()
-        geometry.alwaysUpdate = false
-        this.add(geometry)
+      let polyline = tickmarkPolylines[styleName]
+      if (!polyline) {
+        polyline = new PolylineElement()
+        polyline.alwaysUpdate = false
+        this.add(polyline)
 
-        tickmarkGeometries[styleName] = geometry
+        tickmarkPolylines[styleName] = polyline
+      }
+
+      let labels = tickmarkLabels[styleName]
+      if (!labels) {
+        labels = new Label2DSet()
+        this.add(labels)
+
+        tickmarkLabels[styleName] = labels
       }
 
       // Create some tickmarks!
-      style.createTickmarks(transformation, positions, geometry, labels)
+      style.createTickmarks(transformation, positions, polyline, labels)
+      polyline.updateGeometries()
     }
 
-    labels.forEach(label => this.add(label))
+    for (const polylineName in this.tickmarkPolylines) {
+      if (!this.tickmarkStyles[polylineName]) {
+        const unusedpolyline = this.tickmarkPolylines[polylineName]
 
-    for (const geometryName in this.tickmarkGeometries) {
-      if (!this.tickmarkStyles[geometryName]) {
-        const unusedGeometry = this.tickmarkGeometries[geometryName]
+        // unused polyline, destroy it
+        this.remove(unusedpolyline)
+        unusedpolyline.destroy()
 
-        // unused geometry, destroy it
-        this.remove(unusedGeometry)
-        unusedGeometry.destroy()
+        delete this.tickmarkPolylines[polylineName]
+      }
+    }
 
-        delete this.tickmarkGeometries[geometryName]
+    for (const labelName in this.tickmarkLabels) {
+      if (!this.tickmarkStyles[labelName]) {
+        const unusedLabels = this.tickmarkLabels[labelName]
+
+        this.remove(unusedLabels)
+        unusedLabels.destroy()
+
+        delete this.tickmarkLabels[labelName]
       }
     }
   }
 
   /**
-   * updateAxisGeometry - Update the PolylineElement which is the main axis itself.
+   * updateAxispolyline - Update the PolylineElement which is the main axis itself.
    */
-  updateAxisGeometry () {
-    const axisGeometry = this.axisComponents.axisGeometry
-    axisGeometry.precedence = 1 // put it on top of the tickmarks
-    axisGeometry.alwaysUpdate = false
+  updateAxispolyline () {
+    const axispolyline = this.axisComponents.axispolyline
+    axispolyline.precedence = 1 // put it on top of the tickmarks
+    axispolyline.alwaysUpdate = false
 
-    // Axis geometry connects these two vertices
-    axisGeometry.vertices = [...this.start.asArray(), ...this.end.asArray()]
-    axisGeometry.updateGeometries()
+    // Axis polyline connects these two vertices
+    axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()]
+    axispolyline.updateGeometries()
 
-    if (!this.hasChild(axisGeometry)) { this.add(axisGeometry) }
+    if (!this.hasChild(axispolyline)) { this.add(axispolyline) }
   }
 
   /**
@@ -221,8 +233,8 @@ class Axis extends GraphemeGroup {
    */
   updateGeometries () {
     if (this.margins.automatic) { this.calculateMargins() }
-    this.updateTickmarkGeometries()
-    this.updateAxisGeometry()
+    this.updatetickmarkPolylines()
+    this.updateAxispolyline()
   }
 
   destroy () {
@@ -232,10 +244,6 @@ class Axis extends GraphemeGroup {
   }
 
   render (renderInfo) {
-    if (this.alwaysUpdate) {
-      this.updateGeometries()
-    }
-
     super.render(renderInfo)
   }
 }

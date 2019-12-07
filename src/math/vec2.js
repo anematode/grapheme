@@ -12,11 +12,11 @@ class Vec2 {
     return new Vec2(this.x + vec.x, this.y + vec.y)
   }
 
-  minus (vec) {
+  subtract (vec) {
     return new Vec2(this.x - vec.x, this.y - vec.y)
   }
 
-  lengthSquared (vec) {
+  lengthSquared () {
     return (this.x * this.x + this.y * this.y)
   }
 
@@ -28,12 +28,12 @@ class Vec2 {
     return this.x * vec.x + this.y * vec.y
   }
 
-  scale (x) {
-    return new Vec2(this.x * x, this.y * x)
+  scale (s) {
+    return new Vec2(this.x * s, this.y * s)
   }
 
-  scaleAround (vec, x) {
-    return new Vec2((this.x - vec.x) * x + vec.x, (this.y - vec.y) * x + vec.y)
+  scaleAround (vec, s) {
+    return new Vec2((this.x - vec.x) * s + vec.x, (this.y - vec.y) * s + vec.y)
   }
 
   rotate (angleRad) { // counterclockwise about origin
@@ -64,6 +64,10 @@ class Vec2 {
 
   asArray () {
     return [this.x, this.y]
+  }
+
+  hasNaN() {
+    return Number.isNaN(this.x) || Number.isNaN(this.y)
   }
 }
 

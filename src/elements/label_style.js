@@ -1,4 +1,4 @@
-import { Color } from "../color"
+import { Color } from "../other/color"
 
 const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE']
 const labelClasses = validDirs.map(s => 'grapheme-label-' + s)

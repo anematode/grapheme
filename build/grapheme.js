@@ -30,35 +30,9 @@ var Grapheme = (function (exports) {
     return Number.isInteger(z) && z > 0
   }
 
-  // https://stackoverflow.com/a/34749873
-  function isObject (item) {
-    return (item && typeof item === 'object' && !Array.isArray(item))
-  }
-
-  // This merges the characteristics of two objects, typically parameters
-  // or styles or something like that
-  // https://stackoverflow.com/a/34749873
-  function mergeDeep (target, ...sources) {
-    if (!sources.length) return target
-    const source = sources.shift();
-
-    if (isObject(target) && isObject(source)) {
-      for (const key in source) {
-        if (isObject(source[key])) {
-          if (!target[key]) Object.assign(target, { [key]: {} });
-          mergeDeep(target[key], source[key]);
-        } else {
-          Object.assign(target, { [key]: source[key] });
-        }
-      }
-    }
-
-    return mergeDeep(target, ...sources)
-  }
-
-  // Non-stupid mod function
-  function mod (n, m) {
-    return ((n % m) + m) % m
+  // Check if two numbers are within epsilon of each other
+  function isApproxEqual (v, w, eps = 1e-5) {
+    return Math.abs(v - w) < eps
   }
 
   // device pixel ratio... duh
@@ -68,7 +42,7 @@ var Grapheme = (function (exports) {
       dpr = window.devicePixelRatio;
 
       // Tell the babies that the device pixel ratio has changed
-      CONTEXTS.forEach((context) => context._onDPRChanged());
+      CONTEXTS.forEach(context => context.onDPRChanged());
     }
   }
 
@@ -155,6 +129,13 @@ var Grapheme = (function (exports) {
     })
   }
 
+  let x = 0;
+
+  function getRenderID() {
+    x += 1;
+    return x
+  }
+
   /**
   A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
   (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
@@ -187,8 +168,15 @@ var Grapheme = (function (exports) {
       }
     }
 
+    updateGeometries() {
+      
+    }
+
     render (elementInfo) {
-      // No need to call this as a child class
+      if (this.alwaysUpdate)
+        this.updateGeometries();
+
+      elementInfo.window.beforeRender(this);
     }
 
     hasChild () {
@@ -199,7 +187,7 @@ var Grapheme = (function (exports) {
       this.orphanize();
     }
 
-    _onDPRChanged () {
+    onDPRChanged () {
 
     }
   }
@@ -211,8 +199,8 @@ var Grapheme = (function (exports) {
       this.children = [];
     }
 
-    _onDPRChanged () {
-      this.children.forEach(child => child._onDPRChanged());
+    onDPRChanged () {
+      this.children.forEach(child => child.onDPRChanged());
     }
 
     sortChildrenByPrecedence () {
@@ -221,6 +209,9 @@ var Grapheme = (function (exports) {
     }
 
     render (renderInfo) {
+      super.render(renderInfo);
+      
+      // sort our elements by drawing precedence
       this.sortChildrenByPrecedence();
 
       this.children.forEach((child) => child.render(renderInfo));
@@ -294,56 +285,48 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // Implementation of basic color functions
-  // Could use a library, but... good experience for me too
+  class WebGLGraphemeElement extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
 
-  function isValidColorComponent (x) {
-    return (x >= 0 && x <= 255)
-  }
-
-  class Color {
-    constructor ({
-      r = 0, g = 0, b = 0, a = 255
-    } = {}) {
-      this.r = r;
-      this.g = g;
-      this.b = b;
-      this.a = a;
-
-      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
+      this.usedBufferNames = [];
+      this.usedProgramNames = [];
     }
 
-    rounded () {
-      return {
-        r: Math.round(this.r),
-        g: Math.round(this.g),
-        b: Math.round(this.b),
-        a: Math.round(this.a)
+    addUsedBufferName (bufferName) {
+      if (this.usedBufferNames.indexOf(bufferName) === -1) {
+        this.usedBufferNames.push(bufferName);
       }
     }
 
-    hex () {
-      const rnd = this.rounded();
-      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
+    removeUsedBufferName (bufferName) {
+      const index = this.usedBufferNames.indexOf(bufferName);
+      if (index !== -1) {
+        this.usedBufferNames.splice(index, 1);
+      }
     }
 
-    glColor () {
-      return {
-        r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
-      }
+    // TODO
+    addUsedProgramName (programName) {
+
+    }
+
+    destroy() {
+      if (this.usedBufferNames) utils.deleteBuffersNamed(this.usedBufferNames);
+      super.destroy();
     }
   }
 
   /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
   class LabelManager {
-    constructor (domElement) {
-      // Pass it the container for grapheme_window
-      this.domElement = domElement;
+    constructor (container) {
+      // Pass it the dom element div for grapheme_window
+      this.container = container;
 
       // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
       this.labels = new Map();
 
-      this.currentRenderID = '';
+      this.currentRenderID = -1;
     }
 
     cleanOldRenders () {
@@ -352,6 +335,7 @@ var Grapheme = (function (exports) {
       labelInfos.forEach((labelInfo, label) => {
         if (labelInfo.renderID !== this.currentRenderID) {
           labelInfo.domElement.remove();
+
           labelInfos.delete(label);
         }
       });
@@ -364,7 +348,7 @@ var Grapheme = (function (exports) {
       if (!labelInfo) {
         domElement = document.createElement('div');
         domElement.classList.add('grapheme-label');
-        this.domElement.appendChild(domElement);
+        this.container.appendChild(domElement);
 
         this.labels.set(label, { renderID: this.currentRenderID, domElement });
       } else {
@@ -376,7 +360,9 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const DEFAULT_SIZE = [640, 480];
+  // Empty element drawn at the end of every render to copy the webgl canvas over
+  // if necessary LOL
+  const FINAL_ELEMENT = new GraphemeElement();
 
   /** A grapheme window is an actual viewable instance of Grapheme.
   That is, it is a div that can be put into the DOM and manipulated (and seen).
@@ -386,6 +372,8 @@ var Grapheme = (function (exports) {
   textCanvas = the canvas that text and stuff is done on
   context = the parent Grapheme.Context of this window
   textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
+  cssWidth, cssHeight = the size of the canvas in CSS pixels
+  canvasWidth, canvasHeight = the actual size of the canvas in pixels
   */
   class GraphemeWindow extends GraphemeGroup {
     constructor (graphemeContext) {
@@ -394,35 +382,43 @@ var Grapheme = (function (exports) {
       // Grapheme context this window is a child of
       this.context = graphemeContext;
 
+      // Add this window to the context's list of windows
+      graphemeContext.windows.push(this);
+
       // Element to be put into the webpage
       this.domElement = document.createElement('div');
 
-      // The two canvases of a GraphemeWindow
-      this.mainCanvas = document.createElement('canvas');
-      this.domElement.appendChild(this.mainCanvas);
+      // The canvas of a GraphemeWindow
+      this.canvas = document.createElement('canvas');
+      this.domElement.appendChild(this.canvas);
 
       // CSS stuffs
-      this.mainCanvas.classList.add('grapheme-canvas');
+      this.canvas.classList.add('grapheme-canvas');
       this.domElement.classList.add('grapheme-window');
 
       // Get the contexts
-      this.canvasContext = this.mainCanvas.getContext('2d');
+      this.canvasCtx = this.canvas.getContext('2d');
+      assert(this.canvasCtx, "This browser doesn't support 2D canvas, what the heck");
 
       // label manager
       this.labelManager = new LabelManager(this.domElement);
 
-      // Add this window to the context's list of windows
-      graphemeContext.windows.push(this);
+      // Whether, on the drawing of a normal GraphemeElement, the webgl canvas should
+      // be copied to this canvas
+      this.needsContextCopy = false;
+
+      // Has the webgl canvas been prepared to fit this window?
+      this.needsContextPrepared = false;
 
       // Set the default size to 640 by 480 in CSS pixels
-      this.setSize(...DEFAULT_SIZE);
+      this.setSize(640, 480);
 
       // Scale text canvas as needed due to DPR
-      this._scaleTextCanvasToDPR();
+      this.resetCanvasCtxTransform();
     }
 
-    _scaleTextCanvasToDPR () {
-      const ctx = this.canvasContext;
+    resetCanvasCtxTransform () {
+      const ctx = this.canvasCtx;
 
       for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
         ctx.restore();
@@ -435,15 +431,16 @@ var Grapheme = (function (exports) {
     // Set the size of this window (including adjusting the canvas size)
     // Note that this width and height are in CSS pixels
     setSize (width, height) {
-      // cssWidth and cssHeight are in CSS pixels
-      this.cssWidth = width;
-      this.cssHeight = height;
+      // width and weight are in CSS pixels
+      this.width = width;
+      this.height = height;
 
       // Update the canvas size, factoring in the device pixel ratio
-      this._updateCanvasSize();
+      this.canvasWidth = this.width * dpr;
+      this.canvasHeight = this.height * dpr;
 
       // Set the canvas CSS size using CSS
-      let canvas = this.mainCanvas;
+      let canvas = this.canvas;
 
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
@@ -453,20 +450,14 @@ var Grapheme = (function (exports) {
       this.context.updateSize();
     }
 
-    // Set the actual canvas pixel size based on the desired width and the DPR
-    _updateCanvasSize () {
-      this.canvasWidth = this.cssWidth * dpr;
-      this.canvasHeight = this.cssHeight * dpr;
-    }
-
     // Returns the pixel width of the canvas
     get canvasWidth () {
-      return this.mainCanvas.width
+      return this.canvas.width
     }
 
     // Returns the pixel height of the canvas
     get canvasHeight () {
-      return this.mainCanvas.height
+      return this.canvas.height
     }
 
     // Sets the pixel width of the canvas
@@ -475,7 +466,7 @@ var Grapheme = (function (exports) {
       x = Math.round(x);
       assert(isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]');
 
-      this.mainCanvas.width = x;
+      this.canvas.width = x;
     }
 
     // Sets the pixel height of the canvas
@@ -483,24 +474,24 @@ var Grapheme = (function (exports) {
       x = Math.round(x);
       assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
 
-      this.mainCanvas.height = x;
+      this.canvas.height = x;
     }
 
     // Event triggered when the device pixel ratio changes
-    _onDPRChanged () {
-      this._updateCanvasWidth();
-      this._scaleTextCanvasToDPR();
+    onDPRChanged () {
+      // This will resize the canvas accordingly
+      this.setSize(this.width, this.height);
+
+      this.resetCanvasCtxTransform();
     }
 
     // Destroy this window.
     destroy () {
       // Destroy the domElement
-      try {
-        this.domElement.parentNode.remove(this.domElement);
-      } catch (e) {}
+      this.domElement.remove();
 
       // Delete this window from the parent context
-      this.context._removeWindow(this);
+      this.context.removeWindow(this);
 
       // Update the canvas size of the parent context
       this.context.updateSize();
@@ -509,82 +500,96 @@ var Grapheme = (function (exports) {
       super.destroy();
 
       // Delete some references
-      delete this.mainCanvas;
+      delete this.canvas;
       delete this.domElement;
-      delete this.canvasContext;
+      delete this.canvasCtx;
     }
 
     isActive () {
-      return (this.context.activeWindow === this)
+      return (this.context.currentWindow === this)
     }
 
-    clearToColor (color = this.backgroundColor) {
-      assert(this.isActive(), 'Window is not currently being rendered');
+    clear() {
+      // Clear the canvas
+      this.canvasCtx.clearRect(0, 0, this.cssWidth, this.cssHeight);
+    }
 
-      // color.r, color.g, color.b, color.a
-      const glColor = color.glColor();
+    beforeRender(element) {
+      if (element instanceof WebGLGraphemeElement) {
+        if (this.needsContextPrepared) {
+          this.context.prepareForWindow(this);
 
-      const gl = this.context.glContext;
+          this.needsCanvasPrepared = false;
+        }
 
-      gl.clearColor(glColor.r, glColor.g, glColor.b, glColor.a);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+        this.needsCanvasCopy = true;
+      } else {
+        if (this.needsContextCopy) {
+          const ctx = this.canvasCtx;
 
-      // Clear the text canvas
-      this.textCanvasContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+          ctx.save();
+
+          ctx.resetTransform();
+          ctx.imageSmoothingEnabled = false;
+
+          // Copy the glCanvas over
+          ctx.drawImage(this.context.glCanvas);
+
+          ctx.restore();
+
+          this.needsCanvasCopy = false;
+        }
+
+        this.needsCanvasPrepared = true;
+      }
     }
 
     render () {
+      // Canvas may need to do some stuff
+      this.needsCanvasPrepared = true;
+      this.needsCanvasCopy = false;
+
       // Set the active window to this window, since this is the window being rendered
-      this.context.activeWindow = this;
+      this.context.currentWindow = this;
+
+      const {cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx} = this;
 
       // ID of this render
-      const renderID = generateUUID();
+      const renderID = getRenderID();
+      labelManager.currentRenderID = renderID;
 
-      let err; // potential error in try {...} catch
-      const { glCanvas } = this.context;
-
-      const width = this.cssWidth;
-      const height = this.cssHeight;
-      const pxWidth = this.canvasWidth;
-      const pxHeight = this.canvasHeight;
-      const dpr$1 = dpr;
-
-      // Render information to be given to elements
+      // Render information to be given to elements. Namely,
+      // dims: {cssWidth, cssHeight, canvasWidth, canvasHeight, dpr}
+      // labelManager
+      // canvasCtx
+      // window
       const renderInfo = {
-        // gl: this.context.glContext,
-        // glResourceManager: this.context.glResourceManager,
-        labelManager: this.labelManager,
-        ctx: this.canvasContext,
-        canvas: this.mainCanvas,
-        width,
-        height,
-        pxWidth,
-        pxHeight,
-        dpr: dpr$1
+        dims: {cssWidth, cssHeight, canvasWidth, canvasHeight},
+        labelManager,
+        canvasCtx,
+        window: this
       };
 
-      this.labelManager.currentRenderID = renderID;
-      
+      let err; // potential error in try {...} catch
       try {
-        // sort our elements by drawing precedence
-        this.sortChildrenByPrecedence();
+        // Clear this canvas
+        this.clear();
 
+        // Render all children
         super.render(renderInfo);
 
-        this.labelManager.cleanOldRenders();
+        // Copy the webgl canvas over if needed
+        FINAL_ELEMENT.render(renderInfo);
+
+        // Get rid of old labels
+        labelManager.cleanOldRenders();
       } catch (e) {
         err = e;
       } finally {
-        this.context.activeWindow = null;
+        this.context.currentWindow = null;
       }
 
       if (err) throw err
-    }
-  }
-
-  class InteractiveWindow extends GraphemeWindow {
-    constructor (graphemeContext, params = {}) {
-      super(graphemeContext, params);
     }
   }
 
@@ -703,7 +708,7 @@ var Grapheme = (function (exports) {
       this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
 
       // Create the webgl context!
-      const gl = this.glContext = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl');
+      const gl = this.gl = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl');
 
       // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
       assert(gl, 'Grapheme requires WebGL to run; please get a competent browser');
@@ -714,10 +719,8 @@ var Grapheme = (function (exports) {
       // The list of windows that this context has jurisdiction over
       this.windows = [];
 
-      // The portion of the glCanvas being used
-      this.currentViewport = {
-        x: 0, y: 0, width: this.glCanvas.width, height: this.glCanvas.height
-      };
+      // The window that is currently being drawn (null if none)
+      this.currentWindow = null;
 
       // Add this to the list of contexts to receive event updates and such
       CONTEXTS.push(this);
@@ -725,7 +728,7 @@ var Grapheme = (function (exports) {
 
     // Set the drawing viewport on glCanvas
     setViewport (width, height, x = 0, y = 0, setScissor = true) {
-      const gl = this.glContext;
+      const gl = this.gl;
 
       // Check to make sure the viewport dimensions are acceptable
       assert(isPositiveInteger(width) && isPositiveInteger(height) &&
@@ -733,22 +736,28 @@ var Grapheme = (function (exports) {
       'x, y, width, height must be integers greater than 0 (or = for x,y)');
       assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, 'viewport must be within canvas bounds');
 
-      // Set this.currentViewport to the desired viewport
-      this.currentViewport.x = x;
-      this.currentViewport.y = y;
-      this.currentViewport.width = width;
-      this.currentViewport.height = height;
-
       // Set the gl viewport accordingly
       gl.viewport(x, y, width, height);
 
       // If desired, enable scissoring over that rectangle
       if (setScissor) {
         gl.enable(gl.SCISSOR_TEST);
-        this.glContext.scissor(x, y, width, height);
+        this.gl.scissor(x, y, width, height);
       } else {
         gl.disable(gl.SCISSOR_TEST);
       }
+    }
+
+    prepareForWindow(window) {
+      const gl = this.gl;
+
+      this.setViewport(window.canvasWidth, window.canvasHeight);
+
+      gl.clearColor(0, 0, 0, 0);
+      gl.clearDepth(1);
+
+      // Clear depth and color buffers
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     }
 
     get canvasHeight () {
@@ -773,8 +782,8 @@ var Grapheme = (function (exports) {
       this.glCanvas.width = x;
     }
 
-    _onDPRChanged () {
-      this.windows.forEach((window) => window._onDPRChanged());
+    onDPRChanged () {
+      this.windows.forEach((window) => window.onDPRChanged());
     }
 
     isDestroyed () {
@@ -802,16 +811,16 @@ var Grapheme = (function (exports) {
       // Delete references to various stuff
       delete this.glResourceManager;
       delete this.glCanvas;
-      delete this.glContext;
+      delete this.gl;
     }
 
     // Create a window using this context
-    createWindow (interactive = true) {
-      return new (interactive ? InteractiveWindow : GraphemeWindow)(this)
+    createWindow () {
+      return new GraphemeWindow(this)
     }
 
     // Remove a window from this context
-    _removeWindow (window) {
+    removeWindow (window) {
       const allWindows = this.context.windows;
       const thisIndex = allWindows.indexOf(window);
 
@@ -844,6 +853,179 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // Implementation of basic color functions
+  // Could use a library, but... good experience for me too
+
+  function isValidColorComponent (x) {
+    return (x >= 0 && x <= 255)
+  }
+
+  class Color {
+    constructor ({
+      r = 0, g = 0, b = 0, a = 255
+    } = {}) {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      this.a = a;
+
+      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
+    }
+
+    rounded () {
+      return {
+        r: Math.round(this.r),
+        g: Math.round(this.g),
+        b: Math.round(this.b),
+        a: Math.round(this.a)
+      }
+    }
+
+    hex () {
+      const rnd = this.rounded();
+      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
+    }
+
+    glColor () {
+      return {
+        r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
+      }
+    }
+  }
+
+  class LineStyle {
+    constructor(params={}) {
+      const {
+        color = new Color(),
+        thickness = 2, // in CSS pixels
+        dashPattern = [], // lengths of alternating dashes
+        dashOffset = 0, // length of dash offset
+        endcap = "round", // endcap, among "butt", "round", "square"
+        endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
+        join = "miter", // join type, among "miter", "round", "bevel"
+        joinRes = 0.3, // angle between consecutive join roundings
+        useNative = true, // whether to use native line drawing, only used in WebGL
+        arrowhead = null, // arrowhead to draw
+        arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
+      } = params;
+
+      this.color = color;
+      this.thickness = thickness;
+      this.dashPattern = dashPattern;
+      this.dashOffset = dashOffset;
+      this.endcap = endcap;
+      this.endcapRes = endcapRes;
+      this.join = join;
+      this.joinRes = joinRes;
+      this.useNative = useNative;
+      this.arrowhead = arrowhead;
+      this.arrowLocations = arrowLocations;
+    }
+
+    prepareContext(ctx) {
+      ctx.fillStyle = ctx.strokeStyle = this.color.hex();
+      ctx.lineWidth = this.thickness;
+      ctx.setLineDash(this.dashPattern);
+      ctx.lineDashOffset = this.dashOffset;
+      ctx.miterLimit = this.thickness / Math.cos(this.joinRes / 2);
+      ctx.lineCap = this.endcap;
+      ctx.lineJoin = this.join;
+    }
+  }
+
+  class PolylineBase extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      let {
+        style,
+        vertices = []
+      } = params;
+
+      if (!(style instanceof LineStyle)) {
+        style = new LineStyle(style || {});
+      }
+
+      this.style = style;
+      this.vertices = vertices;
+    }
+  }
+
+  class PolylineElement extends PolylineBase {
+    constructor(params={}) {
+      super(params);
+
+      this.mainPath = null;
+      this.arrowPath = null;
+    }
+
+    updateGeometries() {
+      const path = new Path2D();
+      this.mainPath = path;
+
+      const arrowPath = new Path2D();
+      this.arrowPath = arrowPath;
+
+      const vertices = this.vertices;
+
+      if (vertices.length < 4) // Nothing to draw
+        return
+
+      let coordinateCount = vertices.length;
+      let {arrowhead, arrowLocations, thickness} = this.style;
+
+      let inclStart = arrowLocations.includes("start") && arrowhead;
+      let inclSubstart = arrowLocations.includes("substart") && arrowhead;
+      let inclEnd = arrowLocations.includes("end") && arrowhead;
+      let inclSubend = arrowLocations.includes("subend") && arrowhead;
+
+      let x2 = NaN;
+      let x3 = NaN;
+
+      let y2 = NaN;
+      let y3 = NaN;
+
+      for (let i = 0; i <= coordinateCount; i += 2) {
+        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
+        // If any of these is NaN, that vertex is considered undefined
+        const x1 = x2;
+        x2 = x3;
+        x3 = (i === coordinateCount) ? NaN : vertices[i];
+
+        const y1 = y2;
+        y2 = y3;
+        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
+
+        if (i === 0) continue
+
+        const isStartingEndcap = Number.isNaN(x1);
+        const isEndingEndcap = Number.isNaN(x3);
+
+        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
+          let newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
+          path.moveTo(newV.x, newV.y);
+        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
+          let newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
+          path.lineTo(newV.x, newV.y);
+        } else if (isStartingEndcap) {
+          path.moveTo(x2, y2);
+        } else {
+          path.lineTo(x2, y2);
+        }
+      }
+    }
+
+    render (renderInfo) {
+      super.render(renderInfo);
+
+      const ctx = renderInfo.canvasCtx;
+
+      this.style.prepareContext(ctx);
+      ctx.stroke(this.mainPath);
+      ctx.fill(this.arrowPath);
+    }
+  }
+
   class Vec2 {
     constructor (x, y) {
       this.x = x;
@@ -858,11 +1040,11 @@ var Grapheme = (function (exports) {
       return new Vec2(this.x + vec.x, this.y + vec.y)
     }
 
-    minus (vec) {
+    subtract (vec) {
       return new Vec2(this.x - vec.x, this.y - vec.y)
     }
 
-    lengthSquared (vec) {
+    lengthSquared () {
       return (this.x * this.x + this.y * this.y)
     }
 
@@ -874,12 +1056,12 @@ var Grapheme = (function (exports) {
       return this.x * vec.x + this.y * vec.y
     }
 
-    scale (x) {
-      return new Vec2(this.x * x, this.y * x)
+    scale (s) {
+      return new Vec2(this.x * s, this.y * s)
     }
 
-    scaleAround (vec, x) {
-      return new Vec2((this.x - vec.x) * x + vec.x, (this.y - vec.y) * x + vec.y)
+    scaleAround (vec, s) {
+      return new Vec2((this.x - vec.x) * s + vec.x, (this.y - vec.y) * s + vec.y)
     }
 
     rotate (angleRad) { // counterclockwise about origin
@@ -911,6 +1093,10 @@ var Grapheme = (function (exports) {
     asArray () {
       return [this.x, this.y]
     }
+
+    hasNaN() {
+      return Number.isNaN(this.x) || Number.isNaN(this.y)
+    }
   }
 
   const N = new Vec2(0, -1);
@@ -923,971 +1109,96 @@ var Grapheme = (function (exports) {
   const SE = S.add(E).unit();
   const SW = S.add(W).unit();
 
-  // Some functions to draw arrows
-
-  /**
-   * TriangularArrow - Constructs a triangular arrow with specified dimensions.
-   *
-   * @param  {number} arrowLenScale   How many times the thickness of the line the length of the arrow should be
-   * @param  {number} arrowWidthScale How many times the thickness of the line the width of the arrow should be
-   * @param  {Function} addVertex     Function to call when adding a vertex
-   * @param  {number} x2              description
-   * @param  {number} y2              description
-   * @param  {number} xa              description
-   * @param  {number} ya              description
-   * @param  {number} th              HALF the thickness of the line this arrow is connected to.
-   * @param  {number} duX             description
-   * @param  {number} duY             description
-   * @param  {number} isStarting      description
-   * @return {type}                 description
-   */
-  function TriangularArrow (arrowLenScale, arrowWidthScale, addVertex, x2, y2, xa, ya, th, duX, duY, isStarting) {
-    // Constructs a "triangular arrow" on (x2, y2) facing away from (xa, ya)
-    const arrowLen = 2 * th * arrowLenScale;
-    const arrowWidth = th * arrowWidthScale;
-
-    let v1x = xa - x2;
-    let v1y = ya - y2;
-    const v1l = Math.hypot(v1x, v1y);
-
-    if (v1l === 0) return // yeah, I'm not dealing with that
-
-    v1x /= v1l;
-    v1y /= v1l;
-
-    // (abx, aby) is base of the arrow
-    const abx = x2 + v1x * arrowLen;
-    const aby = y2 + v1y * arrowLen;
-
-    const av1x = abx + v1y * arrowWidth;
-    const av1y = aby - v1x * arrowWidth;
-
-    const av2x = abx - v1y * arrowWidth;
-    const av2y = aby + v1x * arrowWidth;
-
-    function addArrowBaseVertices () {
-      addVertex(abx + duY, aby - duX);
-      addVertex(abx - duY, aby + duX);
-    }
-
-    if (!isStarting) addArrowBaseVertices();
-
-    addVertex(x2, y2);
-    addVertex(av1x, av1y);
-    addVertex(av2x, av2y);
-
-    if (isStarting) addArrowBaseVertices();
-  }
-
-  function ArrowFromPattern (pattern, addVertex, x2, y2, xa, ya, th, duX, duY, isStarting) {
-    // The way this works is we take an array of points to feed to TRIANGLE_STRIP,
-    // from an idealized arrowhead with vertex at (0, 0) and facing from the right
-    // (pointing left) on a line with th = 1. We then rotate, translate and scale this arrowhead
-    // to the desired position, thickness and orientation.
-    // The last vertex is special, specifying the "base" of the arrow where it will connect
-    // to the rest of the polyline.
-
-    const vertices = pattern;
-
-    const angleToRotate = Math.atan2(ya - y2, xa - x2);
-    const scaleFactor = th;
-    const translationVector = new Vec2(x2, y2);
-
-    for (let i = 0; i < vertices.length; ++i) {
-      // trickery to add the last vertex first when on the ending endcap
-      const realI = isStarting ? i : ((i === 0) ? vertices.length - 1 : i - 1);
-
-      // transformed vertex
-      const transV = vertices[realI].rotate(angleToRotate).scale(scaleFactor).add(translationVector);
-
-      if (realI === vertices.length - 1) {
-        // last vertex, add base of arrow
-
-        // duplicate this vertex to fully detach it from the arrowhead
-        // depending on whether this is a starting or ending arrowhead, duplicate the
-        // first or second vertex
-        let times = 2;
-
-        do {
-          addVertex(transV.x + duY, transV.y - duX);
-          times -= 1;
-          // eslint-disable-next-line no-unmodified-loop-condition
-        } while (isStarting && times > 0)
-
-        do {
-          addVertex(transV.x - duY, transV.y + duX);
-          times -= 1;
-          // eslint-disable-next-line no-unmodified-loop-condition
-        } while (!isStarting && times > 0)
-      } else {
-        // add the vertex normally
-        addVertex(transV.x, transV.y);
-      }
-    }
-  }
-
-  function StandardArrow (...args) {
-    TriangularArrow(15 / 2, 5, ...args);
-  }
-
-  function SquatArrow (...args) {
-    TriangularArrow(4, 5, ...args);
-  }
-
-  const SQRT2 = Math.SQRT2;
-
-  function generateSkeletonPattern (size = 1, count = 3) {
-    const pattern = [];
-    const len = size * 5;
-
-    for (let i = 0; i < count; ++i) {
-      const x = i * 4;
-
-      pattern.push(new Vec2(x, 0), new Vec2(x, 0), new Vec2(x + len, len), new Vec2(x + len + SQRT2, len - SQRT2),
-        new Vec2(x + 2, 0), new Vec2(x, 0), new Vec2(x + len + SQRT2, -len + SQRT2), new Vec2(x + len, -len),
-        new Vec2(x, 0), new Vec2(x, 0));
-    }
-
-    pattern.push(new Vec2(2, 0));
-
-    return pattern
-  }
-
-  function SkeletonArrowFunctionFactory (size, count) {
-    const pattern = generateSkeletonPattern(size, count);
-    return function (...args) {
-      ArrowFromPattern(pattern, ...args);
-    }
-  }
-
-  // list of built-in arrow types
-  const ARROW_TYPES = {
-    CUSTOM: -1,
-    STANDARD: 0,
-    SQUAT: 1,
-    SHORT_SKELETON: 2,
-    SHORT_SKELETON2: 3,
-    SHORT_SKELETON3: 4,
-    LONG_SKELETON: 5,
-    LONG_SKELETON2: 6,
-    LONG_SKELETON3: 7
-  };
-
-  const arrowDrawers = {
-    0: StandardArrow,
-    1: SquatArrow,
-    2: SkeletonArrowFunctionFactory(1, 1),
-    3: SkeletonArrowFunctionFactory(1, 2),
-    4: SkeletonArrowFunctionFactory(1, 3),
-    5: SkeletonArrowFunctionFactory(2, 1),
-    6: SkeletonArrowFunctionFactory(2, 2),
-    7: SkeletonArrowFunctionFactory(2, 3)
-  };
-
-  // Length of arrow in pixels for a line with th=1
-  const arrowLengths = {};
-
-  (function () {
-    // Calculate the arrow lengths experimentally!!
-
-    // fake addVertex which keeps track of the max X value
-    let maxX;
-    const addVertex = (x, y) => {
-      if (x > maxX) { maxX = x; }
-    };
-
-    for (const key in arrowDrawers) {
-      const drawer = arrowDrawers[key];
-      maxX = 0;
-
-      // "draw" the arrow head in the untransformed direction, with th=1
-      drawer(addVertex, 0, 0, 1, 0, 1, 0, 0, true);
-
-      // record the length
-      arrowLengths[key] = maxX;
-    }
-  })();
-
-  // list of arrow position types
-  const ARROW_LOCATION_TYPES = {
-    NONE: -1,
-    ARROW_F: 0, // arrow on every ending endcap
-    ARROW_B: 1, // arrow on every starting endcap
-    ARROW_FB: 2, // arrow on every endcap
-    ARROW_F_END_ONLY: 3, // arrow on the end of the whole path
-    ARROW_B_START_ONLY: 4, // arrow at the start of the whole path
-    ARROW_FB_ENDS_ONLY: 5 // arrows at both ends of the path
-  };
-
-  const monochromeShader = {
-    vertex: `// set the float precision of the shader to medium precision
-  precision mediump float;
-  // a vector containing the 2D position of the vertex
-  attribute vec2 v_position;
-  uniform vec2 xy_scale;
-  vec2 displace = vec2(-1, 1);
-
-  void main() {
-    // set the vertex's resultant position
-    gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-  }`,
-    fragment: `// set the float precision of the shader to medium precision
-  precision mediump float;
-  // vec4 containing the color of the line to be drawn
-  uniform vec4 line_color;
-  void main() {
-    gl_FragColor = line_color;
-  }`,
-    name: 'monochrome-shader'
-  };
-
-  const multicoloredShader = {
-    vertex: `// set the float precision of the shader to medium precision
-  precision mediump float;
-  // a vector containing the 2D position of the vertex
-  attribute vec2 v_position;
-  attribute vec4 v_color;
-  uniform vec2 xy_scale;
-  vec2 displace = vec2(-1, 1);
-
-  varying lowp vec4 vColor;
-
-  void main() {
-    // set the vertex's resultant position
-    gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-    vColor = v_color;
-  }`,
-    fragment: `varying lowp vec4 vColor;
-    void main(void) {
-      gl_FragColor = vColor;
-    }`,
-    name: 'multicolored-shader'
-  };
-
-  // Direct correspondence with gl modes
-  const RENDER_MODES = {
-    POINTS: 'POINTS',
-    LINE_STRIP: 'LINE_STRIP',
-    LINE_LOOP: 'LINE_LOOP',
-    LINES: 'LINES',
-    TRIANGLE_STRIP: 'TRIANGLE_STRIP',
-    TRIANGLE_FAN: 'TRIANGLE_FAN',
-    TRIANGLES: 'TRIANGLES'
-  };
-
-  /**
-  A 2D geometry, consisting of only one color.
-  No edges, nothing crazy, just some (possibly disjoint) areas colored in a single color.
-  The float array of vertices is glVertices, and the actual number of vertices to draw is
-  glVertexCount.
-  */
-  class Simple2DGeometry extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      this.color = new Color(0, 0, 0, 255);
-      this.glVertices = null;
-      this.glVerticesCount = 0;
-
-      this.renderMode = RENDER_MODES.POINTS;
-    }
-
-    render (renderInfo) {
-      // Early exit condition
-      if (!this.glVertices) return
-
-      const vertexCount = this.glVerticesCount;
-
-      const gl = renderInfo.gl;
-      const glManager = renderInfo.glResourceManager;
-
-      // If there is no simple geometry program yet, compile one!
-      if (!glManager.hasProgram(monochromeShader.name)) {
-        glManager.compileProgram(monochromeShader.name,
-          monochromeShader.vertex, monochromeShader.fragment,
-          ['v_position'], ['xy_scale', 'line_color']);
-      }
-
-      // Obtain the program we want to use
-      const programInfo = glManager.getProgram(monochromeShader.name);
-
-      // Single buffer used for position
-      const glBuffer = glManager.getBuffer(this.uuid);
-      this.addUsedBufferName(this.uuid);
-
-      // tell webgl to start using the geometry program
-      gl.useProgram(programInfo.program);
-
-      // Get the desired color of our geometry
-      const color = this.color.glColor();
-
-      // set the vec4 at colorLocation to (r, g, b, a)
-      gl.uniform4f(programInfo.uniforms.line_color, color.r, color.g, color.b, color.a);
-
-      // set the scaling factors
-      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight);
-
-      // bind our webgl buffer to gl.ARRAY_BUFFER access point
-      gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-
-      // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-      // enable the vertices location attribute to be used in the program
-      gl.enableVertexAttribArray(programInfo.attribs.v_position);
-
-      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
-      // that it shouldn't normalize floats, and something i don't understand
-      gl.vertexAttribPointer(programInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
-
-      // draw the vertices
-      gl.drawArrays(gl[this.renderMode], 0, vertexCount);
-    }
-  }
-
-  class Multicolored2DGeometry extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      this.glVertices = null;
-      this.glColors = null;
-      this.glVerticesCount = 0;
-
-      this.renderMode = RENDER_MODES.POINTS;
-    }
-
-    render (renderInfo) {
-      if (!this.glVertices || !this.glColors || !this.glVerticesCount) return
-
-      const vertexCount = this.glVerticesCount;
-
-      const gl = renderInfo.gl;
-      const glManager = renderInfo.glResourceManager;
-
-      // If there is no simple geometry program yet, compile one!
-      if (!glManager.hasProgram(multicoloredShader.name)) {
-        glManager.compileProgram(multicoloredShader.name,
-          multicoloredShader.vertex, multicoloredShader.fragment,
-          ['v_position', 'v_color'], ['xy_scale']);
-      }
-
-      // Obtain the program we want to use
-      const programInfo = glManager.getProgram(multicoloredShader.name);
-
-      if (!this.glPositionBufferID) {
-        this.glPositionBufferID = this.uuid + '-position';
-        this.addUsedBufferName(this.glPositionBufferID);
-      }
-
-      const glPositionBufferID = this.glPositionBufferID;
-
-      if (!this.glColorBufferID) {
-        this.glColorBufferID = this.uuid + '-color';
-        this.addUsedBufferName(this.glColorBufferID);
-      }
-
-      const glColorBufferID = this.glColorBufferID;
-
-      // buffer used for position
-      const glPositionBuffer = glManager.getBuffer(glPositionBufferID);
-
-      // buffer used for colors
-      const glColorBuffer = glManager.getBuffer(glColorBufferID);
-
-      // tell webgl to start using the geometry program
-      gl.useProgram(programInfo.program);
-
-      // set the scaling factors
-      gl.uniform2f(programInfo.uniforms.xy_scale, 2 / renderInfo.textWidth, -2 / renderInfo.textHeight);
-
-      // bind our webgl buffer to gl.ARRAY_BUFFER access point
-      gl.bindBuffer(gl.ARRAY_BUFFER, glPositionBuffer);
-
-      // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-      // enable the vertices location attribute to be used in the program
-      gl.enableVertexAttribArray(programInfo.attribs.v_position);
-
-      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
-      // that it shouldn't normalize floats, and something i don't understand
-      gl.vertexAttribPointer(programInfo.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
-
-      // bind our webgl buffer to gl.ARRAY_BUFFER access point
-      gl.bindBuffer(gl.ARRAY_BUFFER, glColorBuffer);
-
-      // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this.glColors, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-      // Same business for colors
-      gl.enableVertexAttribArray(programInfo.attribs.v_color);
-      gl.vertexAttribPointer(programInfo.attribs.v_color, 4, gl.FLOAT, false, 0, 0);
-
-      // draw the vertices
-      gl.drawArrays(gl[this.renderMode], 0, vertexCount);
-    }
-  }
-
-  // A union of multicolored and simple geometries to allow drawing them all in
-  // a single gl.drawArrays call
-
-  // TODO
-  class GeometryUnion extends Multicolored2DGeometry {
-    constructor (params = {}) {
-      super(params);
-
-      this.geometries = [];
-    }
-
-    computeGeometry () {
-      if (this.renderMode === 'TRIANGLE_FAN' || this.renderMode === 'LINE_LOOP') {
-        throw new Error('Unsupported render mode for geometry union')
-      }
-
-      let vertexCount = 0;
-
-      for (let i = 0; i < this.geometries.length; ++i) {
-        vertexCount += this.geometries[i];
-      }
-
-      return vertexCount
-    }
-  }
-
-  // list of endcap types
-  const ENDCAP_TYPES = {
-    NONE: 0,
-    ROUND: 1,
-    SQUARE: 2
-  };
-
-  // list of join types
-  const JOIN_TYPES = {
-    NONE: 0,
-    ROUND: 1,
-    MITER: 2,
-    DYNAMIC: 3
-  };
-
-  // Check whether x is an integer in the range [min, max]
-  function integerInRange (x, min, max) {
-    return isInteger(x) && min <= x && x <= max
-  }
-
-  // Find the next power of two after x
-  function nextPowerOfTwo (x) {
-    return 2 ** Math.ceil(Math.log2(x))
-  }
-
-  // minimum angle in radians between roundings in a polyline
-  const MIN_RES_ANGLE = 0.05;
-
-  // Parameters for the expanding/contracting float array for polyline
-  const MIN_SIZE = 16;
-  const MAX_SIZE = 2 ** 24;
-
-  /**
-  PolylineElement draws a sequence of line segments connecting points. Put the points
-  as ordered pairs, in CANVAS COORDINATES, in polyline.vertices. To disconnect
-  points, intersperse them with two consecutive NaNs.
-
-  For example, [100, 100, 500, 500, 505, 500, NaN, NaN, 100, 150, 500, 150] draws
-  a line from (100,100)->(500,500)->(505,500), then from (100,150)->(500,150).
-
-  Other parameters:
-  */
-  class PolylineElement extends Simple2DGeometry {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        vertices = [],
-        useNative = false
-      } = params;
-
-      // Array (or FloatArray) storing the pairs of vertices which are to be connected.
-      // To prevent a join, put two NaNs in a row.
+  // A glyph to be fill drawn in some fashion.
+  class Glyph {
+    constructor(params={}) {
+      // vertices is array of Vec2s
+      const {vertices=[]} = params;
       this.vertices = vertices;
-
-      // Whether or not to use native GL.LINE_STRIP
-      this.useNative = useNative;
-
-      // Contains useful style information
-      this.style = {};
-      const style = this.style;
-
-      // color is a property of Simple2DGeometry, but we want it to be accessible
-      // in style
-      Object.defineProperty(style, 'color', {
-        get: () => this.color,
-        set: (color) => { this.color = color; }
-      });
-
-      // If params.style, merge it with the defaults and send it to this.style
-      mergeDeep(style, {
-        color: new Color(0, 0, 0, 255), // Color of the polyline
-        thickness: 2, // Thickness in CSS pixels
-        endcapType: 1, // The type of endcap to be used (refer to the ENDCAPS enum)
-        endcapRes: 0.4, // The resolution of the endcaps in radians. Namely, the angle between consecutive roundings
-        joinType: 3, // The type of join between consecutive line segments (refer to the JOIN_TYPES enum)
-        joinRes: 0.4, // angle in radians between consecutive roundings, including in dynamic mode
-        arrowLocations: -1, // Location of arrows (default is none)
-        arrowType: 0 // Type of arrows to be drawn
-      }, params.style || {});
-
-      // used internally for gl vertices
-      this.glVertices = null;
-      this.glVerticesCount = 0;
     }
 
-    static get ENDCAP_TYPES () {
-      return ENDCAP_TYPES
-    }
-
-    static get JOIN_TYPES () {
-      return JOIN_TYPES
-    }
-
-    static get ARROW_TYPES () {
-      return ARROW_TYPES
-    }
-
-    static get ARROW_LOCATION_TYPES () {
-      return ARROW_LOCATION_TYPES
-    }
-
-    updateGeometries () {
-      // Calculate the vertices
-      if (!this.useNative) {
-        this.calculateTriangles();
-      } else {
-        this.calculateNativeLines();
-      }
-    }
-
-    calculateTriangles () {
-      // Conditions to just say there are 0 vertices and exit early
-      if (this.style.thickness <= 0 ||
-          !integerInRange(this.style.endcapType, 0, 1) ||
-          !integerInRange(this.style.joinType, 0, 3) ||
-          this.style.endcapRes < MIN_RES_ANGLE ||
-          this.style.joinRes < MIN_RES_ANGLE ||
-          this.vertices.length <= 3) {
-        this.glVerticesCount = 0;
-        return
-      }
-
-      // If glVertices isn't an array, make it an array with size MIN_SIZE
-      if (!this.glVertices) {
-        this.glVertices = new Float32Array(MIN_SIZE);
-      }
-
-      // The vertices that WebGL would use
-      let glVertices = this.glVertices;
-
-      let glVerticesIndex = 0; // the array position we are on (2x which vertex we're on)
-      let needToDupeVertex = false; // whether we need to duplicate the CURRENT vertex
-
-      // if glVerticesIndex > glVerticesThreshold, we need to expand glVertices
-      let glVerticesThreshold = glVertices.length - 2;
-
-      // To allow this to be accessed within addVertex
-      const that = this;
-
-      // Push a GL vertex back
-      function addVertex (x, y) {
-        if (glVerticesIndex > glVerticesThreshold) {
-          // Not enough space in the FloatArray, reallocate one with twice the size
-
-          const newFloatArray = new Float32Array(2 * glVertices.length);
-          newFloatArray.set(glVertices); // copy over the old data
-
-          that.glVertices = newFloatArray;
-          glVertices = that.glVertices;
-
-          // Update the new threshold
-          glVerticesThreshold = glVertices.length - 2;
-        }
-
-        // Set the next two entries to x and y
-        glVertices[glVerticesIndex] = x;
-        glVerticesIndex += 1;
-        glVertices[glVerticesIndex] = y;
-        glVerticesIndex += 1;
-
-        // If we need to duplicate the CURRENT vertex, do it again
-        if (needToDupeVertex) {
-          needToDupeVertex = false;
-          addVertex(x, y);
-        }
-      }
-
-      // Duplicate the LAST vertex immediately
-      function duplicateVertex () {
-        addVertex(glVertices[glVerticesIndex - 2], glVertices[glVerticesIndex - 1]);
-      }
-
-      const arrowType = this.style.arrowType;
-      const arrowDrawer = arrowDrawers[arrowType];
-
-      function drawArrow (...args) {
-        // isStarting = true if it is a starting endcap, false if it is an
-        // ending endcap
-
-        if (arrowType === -1) { // custom arrow type
-          that.customArrowDrawer(addVertex, ...args);
-        } else {
-          // Draw using one of the defined arrow drawers
-          arrowDrawer(addVertex, ...args);
-        }
-      }
-
-      // The vertices of the polyline
+    addGlyphToPath(path, x=0, y=0, scale=1, angle=0) {
       const vertices = this.vertices;
 
-      // Number of polyline vertex coordinates
-      const coordinateCount = vertices.length;
+      let translateV = new Vec2(x, y);
 
-      // Thickness of the polyline from the edge to the center. We divide it by two
-      // because this.style.thickness is considered to be the total width of the line
-      const th = this.style.thickness / 2;
+      if (vertices.length < 2) // Nothing to draw
+        return
 
-      // Type of endcap to draw, angular resolution of endcap, join type of joins, angular resolution of joins
-      const { endcapType, endcapRes, joinType, joinRes } = this.style;
+      let p1 = vertices[0].scale(scale).rotate(angle).add(translateV);
+      let jumpToNext = false;
 
-      // Arrow locations
-      const arrowLocations = this.style.arrowLocations;
+      path.moveTo(p1.x, p1.y);
 
-      // Threshold distance from the corner of the miter to the center of the join
-      // which would imply that the corner should be ROUNDED, in DYNAMIC mode.
-      // That is, if the miter length is larger than this quantity, we should round
-      // the vertex instead
-      const maxMiterLength = th / Math.cos(joinRes / 2);
+      for (let i = 1; i < vertices.length; ++i) {
+        let p = vertices[i].scale(scale).rotate(angle).add(translateV);
 
-      // Lots of variables
-      let x2, x3, y2, y3, v2x, v2y, v2l;
-
-      x2 = NaN;
-      x3 = NaN;
-
-      y2 = NaN;
-      y3 = NaN;
-
-      for (let i = 0; i <= coordinateCount; i += 2) {
-        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
-        // If any of these is NaN, that vertex is considered undefined
-        const x1 = x2;
-        x2 = x3;
-        x3 = (i === coordinateCount) ? NaN : vertices[i];
-
-        const y1 = y2;
-        y2 = y3;
-        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
-
-        if (i === 0) {
+        if (p.hasNaN()) {
+          jumpToNext = true;
           continue
         }
 
-        // Shift the previous values of (v2x, v2y) back to (v1x, v1y), so that
-        // (v1x, v1y) is the vector from (x2, y2) to (x1, y1). Note the order in
-        // those points; this is why it is negated.
-        const v1x = -v2x;
-        const v1y = -v2y;
-
-        // (v2x, v2y) is the vector from (x2, y2) to (x3, y3)
-        v2x = x3 - x2;
-        v2y = y3 - y2;
-
-        // Give v2l's value to v1l
-        const v1l = v2l;
-
-        // v2l is the length of vector (v2x, v2y)
-        v2l = Math.hypot(v2x, v2y);
-
-        // Whether a starting endcap should be emitted. Note that x !== x <-> isNaN(x)
-        const isStartingEndcap = Number.isNaN(x1);
-        const isEndingEndcap = Number.isNaN(x3);
-
-        // If we need to emit a (starting or ending) endcap. Note that we emit
-        // a starting endcap when p1 is undefined, and thus the endcap should be
-        // on p2 facing away from p3. We emit an ending endcap when p3 is undefined,
-        // and thus the endcap should be on p2, facing away from p1
-        if (isStartingEndcap || isEndingEndcap) {
-          // (duX, duY) is a vector of length th (thickness) from the center of the endcap
-          // facing towards the rest of the (semicircular) endcap. That is, it
-          // is facing towards the bulb of the endcap, not away from it. Illustration
-          // for an ending endcap:
-          //
-          //  p1 -> • ------------ •) <- p2, endcap
-          //  (duX, duY) = -->
-
-          let duX, duY;
-
-          if (isEndingEndcap) {
-            // Multiplying by th / v1l makes the vector length th, while preserving
-            // its direction
-            duX = -v1x * th / v1l;
-            duY = -v1y * th / v1l;
-          } else {
-            duX = v2x * th / v2l;
-            duY = v2y * th / v2l;
-          }
-
-          // If we can't create an endcap because of various undefined coordinates,
-          // just give up. This might happen if x2 is defined but y2 is not, something
-          // like that.
-          if (Number.isNaN(duX) || Number.isNaN(duY)) continue
-
-          if (isStartingEndcap) {
-            // check if we should draw an arrow
-
-            const ALT = ARROW_LOCATION_TYPES;
-            if (arrowLocations === ALT.ARROW_B || // if arrows at starting endcaps
-                arrowLocations === ALT.ARROW_FB || // if arrows at all endcaps
-                ((arrowLocations === ALT.ARROW_B_START_ONLY || // if arrow at beginning
-                arrowLocations === ALT.ARROW_FB_ENDS_ONLY) && i === 2)) {
-              // TODO: more nuanced drawing methods
-              drawArrow(x2, y2, x3, y3, th, duX, duY, true);
-
-              continue
-            }
-          }
-
-          if (isEndingEndcap) {
-            // check if we should draw an arrow
-            const ALT = ARROW_LOCATION_TYPES;
-            if (arrowLocations === ALT.ARROW_F || // if arrows at ending endcaps
-                arrowLocations === ALT.ARROW_FB || // if arrows at all endcaps
-                ((arrowLocations === ALT.ARROW_F_END_ONLY || // if arrow at end
-                arrowLocations === ALT.ARROW_FB_ENDS_ONLY) && i === coordinateCount)) {
-              // TODO: more nuanced drawing methods
-              drawArrow(x2, y2, x1, y1, th, duX, duY, false);
-
-              continue
-            }
-          }
-
-          // Two starting vertices of the endcap. Note that these are (x2, y2) ± (duY, -duX);
-          // the second vector is rotated 90 degrees counterclockwise from (duY, duX).
-          addVertex(x2 + duY, y2 - duX);
-          addVertex(x2 - duY, y2 + duX);
-
-          // Code for making a rounded endcap
-          if (endcapType === 1) {
-            // Starting theta value
-            const theta = Math.atan2(duY, duX) + (isStartingEndcap ? Math.PI / 2 : 3 * Math.PI / 2);
-
-            // Number of steps needed so that the angular resolution is smaller than or
-            // equal to endcapRes
-            const stepsNeeded = Math.ceil(Math.PI / endcapRes);
-
-            // (cX, cY) is a fixed point; in fact, they are the last vertex before
-            // this loop. This defines a point on the boundary of the semicircle
-            // to which a "triangle fan" can be drawn which fills in the entire
-            // semicircle.
-            const cX = x2 - duY;
-            const cY = y2 + duX;
-
-            // Iterate through each step
-            for (let i = 1; i <= stepsNeeded; ++i) {
-              // Calculate an intermediate angle
-              const thetaC = theta + i / stepsNeeded * Math.PI;
-
-              // Vertex on the circle subtending that intermediate angle
-              addVertex(x2 + th * Math.cos(thetaC), y2 + th * Math.sin(thetaC));
-              addVertex(cX, cY);
-            }
-          }
-
-          continue
-        }
-
-        // If the middle vertex is undefined, we need to duplicate the previous and next
-        // gl vertices. This creates a degenerate (0-width) triangle which disconnects the
-        // two triangle strips. To duplicate the previous vertex, we use duplicateVertex().
-        // To duplicate the next vertex, we set needToDupeVertex = true, which will
-        // duplicate the next call to addVertex.
-        if (Number.isNaN(x2)) {
-          duplicateVertex();
-          needToDupeVertex = true;
-        } else {
-          // all vertices are defined, time to draw a joiner!
-          if (joinType === 2 || joinType === 3) {
-            // find the angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
-            // After this section of code, (b1x, b1y) is a unit vector bisecting
-            // the vectors (v1x, v1y) and (v2x, v2y)
-            let b1x = v2l * v1x + v1l * v2x;
-            let b1y = v2l * v1y + v1l * v2y;
-            let scale = 1 / Math.hypot(b1x, b1y);
-
-            // If the scale is infinite, that means b1x = b1y = 0, so the vectors
-            // are opposite each other. We thus choose a vector perpendicular to both
-            // vectors because that bisects the 180 degree angle they subtend
-            if (scale === Infinity || scale === -Infinity) {
-              b1x = -v1y;
-              b1y = v1x;
-              scale = 1 / Math.hypot(b1x, b1y);
-            }
-
-            // Scale it to be a unit vector
-            b1x *= scale;
-            b1y *= scale;
-
-            // Set scale to the length of a miter. (b1x, b1y) is now in the direction
-            // of a proper miter, but we multiply it by this value to make it the correct
-            // length.
-            scale = th * v1l / (b1x * v1y - b1y * v1x);
-
-            if (joinType === 2 || (Math.abs(scale) < maxMiterLength)) {
-              // if the length of the miter is massive and we're in dynamic mode,
-              // we reject this if statement and do a rounded join. More precisely,
-              // |scale| exceeds maxMiterLength when the angle between the two vectors
-              // is greater than the angular resolution mandated by joinRes.
-
-              // Scale by the length of a miter
-              b1x *= scale;
-              b1y *= scale;
-
-              // Add the two miter vertices. This is all that is necessary to join
-              // the vertices, since both points lie on the infinite rectangles determined
-              // by each of the pairs ((x1, y1), (x2, y2)) and ((x2, y2), (x3, y3)).
-              addVertex(x2 - b1x, y2 - b1y);
-              addVertex(x2 + b1x, y2 + b1y);
-
-              continue
-            }
-          }
-
-          // These are scaling factors associated with scaling the displacement vectors
-          // (v1x, v1y) and (v2x, v2y) to have length th (thickness)
-          const puFactor = -th / v1l;
-          const nuFactor = th / v2l;
-
-          // Add two points which end the current rectangle. This is all we need
-          // if there is no join to be computed (i.e. if the join mode is NONE)
-          addVertex(x2 + puFactor * v1y, y2 - puFactor * v1x);
-          addVertex(x2 - puFactor * v1y, y2 + puFactor * v1x);
-
-          if (joinType === 1 || joinType === 3) {
-            // If the join type is round or dynamic, we need to make a rounded join.
-            // a1 and a2 are angles associated with the direction of where the rounded
-            // join should start and end.
-            const a1 = Math.atan2(v1y, v1x) - Math.PI / 2;
-            const a2 = Math.atan2(v2y, v2x) - Math.PI / 2;
-
-            // If the join is a right turn viewed from above, we flip a2 by adding π
-            // if left turn, flip a1 by adding π
-
-            let startA, endA;
-
-            // The below condition is satisfied when the join is a left turn
-            if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
-              // starting angle is a1 + π, ending angle is a2
-              startA = Math.PI + a1;
-              endA = a2;
-            } else {
-              // starting angle is a2 + π, ending angle is a1
-              startA = Math.PI + a2;
-              endA = a1;
-            }
-
-            // The absolute angle subtended by endA and startA
-            // TODO: not sure if the mod function here is necessary
-            const angleSubtended = mod(endA - startA, 2 * Math.PI);
-
-            // The number of angle steps needed to make sure the angular resolution
-            // is less than or equal to joinRes
-            const stepsNeeded = Math.ceil(angleSubtended / joinRes);
-
-            for (let i = 0; i <= stepsNeeded; ++i) {
-              // For every intermediate angle
-              const thetaC = startA + angleSubtended * i / stepsNeeded;
-
-              // Add a point on the circular sector, then connect back to (x2, y2)
-              // to create a "circular fan"
-              addVertex(x2 + th * Math.cos(thetaC), y2 + th * Math.sin(thetaC));
-              addVertex(x2, y2);
-            }
-          }
-
-          // Add the starting vertices for the next rectangle!
-          addVertex(x2 + nuFactor * v2y, y2 - nuFactor * v2x);
-          addVertex(x2 - nuFactor * v2y, y2 + nuFactor * v2x);
-        }
+        if (jumpToNext) {
+          jumpToNext = false;
+          path.moveTo(p.x, p.y);
+        } else path.lineTo(p.x, p.y);
       }
 
-      // If the number of glVertices we computed is less than four times the total buffer size,
-      // we reallocate the buffer to be two times the next power of two after the number of
-      // glVertices we compute. This prevents excess memory from being forever wasted by
-      // a polyline history with lots of vertices.
-      if (glVerticesIndex * 4 < glVertices.length) {
-        const newFloatArray = new Float32Array(Math.min(Math.max(MIN_SIZE,
-          2 * nextPowerOfTwo(glVerticesIndex)), MAX_SIZE));
-
-        // Copy old values to the new float array
-        newFloatArray.set(glVertices.subarray(0, glVerticesIndex));
-
-        glVertices = this.glVertices = newFloatArray;
-      }
-
-      // Set the number of glVertices to be used later when rendered with gl!
-      this.glVerticesCount = Math.ceil(glVerticesIndex / 2);
+      path.closePath();
     }
 
-    calculateNativeLines () {
-      const vertices = this.vertices;
-
-      // Early exit condition
-      if (vertices.length <= 3) {
-        this.glVerticesCount = 0;
-        return
-      }
-
-      // If glVertices doesn't exist yet, set it to a newly-created Float32Array
-      let glVertices = this.glVertices;
-      if (!glVertices) {
-        glVertices = this.glVertices = new Float32Array(MIN_SIZE);
-      }
-
-      // Adjust our array size as necessary.
-      const undersized = glVertices.length < vertices.length;
-      const oversized = glVertices.length > vertices.length * 4;
-      if (undersized || oversized) {
-        glVertices = this.glVertices = new Float32Array(Math.min(Math.max(MIN_SIZE,
-          ((oversized) ? 2 : 1) * nextPowerOfTwo(vertices.length)), MAX_SIZE));
-      }
-
-      // If vertices is a plain array, we copy it manually. Otherwise, we use
-      // the built in ArrayBuffer.set function for I AM SPEED
-      if (Array.isArray(vertices)) {
-        for (let i = 0; i < vertices.length; ++i) {
-          glVertices[i] = vertices[i];
-        }
-      } else {
-        glVertices.set(vertices);
-      }
-
-      // Set the number of vertices for gl to render!
-      this.glVerticesCount = Math.ceil(vertices.length / 2);
-    }
-
-    render (renderInfo) {
-      // Calculate the vertices
-      if (this.alwaysUpdate) { this.updateGeometries(); }
-
-      // Potential early exit
-      const vertexCount = this.glVerticesCount;
-      if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
-
-      if (this.useNative) {
-        this.renderMode = 'LINE_STRIP';
-      } else {
-        this.renderMode = 'TRIANGLE_STRIP';
-      }
-
-      super.render(renderInfo);
+    getGlyphPath2D(x=0, y=0, scale=1, angle=0) {
+      let path = new Path2D();
+      addGlyphToPath(path, x, y, scale, angle);
+      return path
     }
   }
+
+  /**
+  A glyph which creates an arrowhead. Tells you where the arrowhead will be with a Path2D
+  return value, but also tells you where the base of the arrowhead is so that you can join it
+  up properly.
+
+  Use glyph vertices with thickness 2 */
+  class Arrowhead extends Glyph {
+    constructor(params={}) {
+      super(params);
+
+      const {length = 0} = params;
+      this.length = length;
+    }
+
+    getPath2D(x1, y1, x2, y2, thickness) { // draw an arrow at x2, y2 facing away from x1, y1
+      let path = new Path2D();
+      let pos = this.addPath2D(path, x1, y1, x2, y2, thickness);
+
+      return {
+        path, pos
+      }
+    }
+
+    addPath2D(path, x1, y1, x2, y2, thickness) {
+      let arrowTipAt = new Vec2(x2, y2);
+      let displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
+
+      this.addGlyphToPath(path, x2, y2, 2 * thickness, Math.atan2(y2 - y1, x2 - x1));
+
+      return arrowTipAt.add(displacement)
+    }
+  }
+
+  function createTriangleArrowhead(width, length) {
+    return new Arrowhead({vertices: [
+      new Vec2(0, 0),
+      new Vec2(-length, width / 2),
+      new Vec2(-length, -width / 2)
+    ], length})
+  }
+
+  const Arrowheads = {
+    Normal: createTriangleArrowhead(3, 6),
+    Squat: createTriangleArrowhead(3, 3)
+  };
 
   const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
   const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
@@ -1997,10 +1308,73 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // TEMP: must transfer from old grapheme
-  function defaultLabel (x) {
-    return x + ''
+  /* Unicode characters for exponent signs, LOL */
+  const exponent_reference = {
+    '-': String.fromCharCode(8315),
+    '0': String.fromCharCode(8304),
+    '1': String.fromCharCode(185),
+    '2': String.fromCharCode(178),
+    '3': String.fromCharCode(179),
+    '4': String.fromCharCode(8308),
+    '5': String.fromCharCode(8309),
+    '6': String.fromCharCode(8310),
+    '7': String.fromCharCode(8311),
+    '8': String.fromCharCode(8312),
+    '9': String.fromCharCode(8313)
+  };
+
+  /* Convert a digit into its exponent form */
+  function convert_char(c) {
+    return exponent_reference[c];
   }
+
+  /* Convert an integer into its exponent form (of Unicode characters) */
+  function exponentify(integer) {
+    assert(isInteger(integer), "needs to be an integer");
+
+    let stringi = integer + '';
+    let out = '';
+
+    for (let i = 0; i < stringi.length; ++i) {
+      out += convert_char(stringi[i]);
+    }
+
+    return out;
+  }
+
+  // Credit: https://stackoverflow.com/a/20439411
+  /* Turns a float into a pretty float by removing dumb floating point things */
+  function beautifyFloat(f, prec=12) {
+    let strf = f.toFixed(prec);
+    if (strf.includes('.')) {
+      return strf.replace(/\.?0+$/g,'');
+    } else {
+      return strf;
+    }
+  }
+
+  // Multiplication character
+  const CDOT = String.fromCharCode(183);
+
+  const defaultLabel = x => {
+      if (x === 0) return "0"; // special case
+      else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+        // non-extreme floats displayed normally
+        return beautifyFloat(x);
+      else {
+        // scientific notation for the very fat and very small!
+
+        let exponent = Math.floor(Math.log10(Math.abs(x)));
+        let mantissa = x / (10 ** exponent);
+
+        let prefix = (isApproxEqual(mantissa,1) ? '' :
+          (beautifyFloat(mantissa, 8) + CDOT));
+        let exponent_suffix = "10" + exponentify(exponent);
+
+        return prefix + exponent_suffix;
+      }
+    };
+
 
   /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
   class AxisTickmarkStyle {
@@ -2014,13 +1388,13 @@ var Grapheme = (function (exports) {
      * @param {Boolean} params.displayText - Whether to display text.
      */
     constructor ({
-      length = 16,
+      length = 10,
       positioning = 0,
       thickness = 2,
       color = new Color(),
       displayLabels = false,
-      labelAnchoredTo = 1, // 1 is left of tickmark, 0 is middle of tickmark, -1 is right of tickmark
-      labelDir = 'S',
+      displayTicks = true,
+      labelAnchoredTo = 1, // 1 is right of tickmark, 0 is middle of tickmark, -1 is left of tickmark
       labelPadding = 2,
       labelStyle = new Label2DStyle(),
       labelFunc = defaultLabel
@@ -2030,20 +1404,11 @@ var Grapheme = (function (exports) {
       this.thickness = thickness;
       this.color = color;
       this.displayLabels = displayLabels;
+      this.displayTicks = displayTicks;
       this.labelAnchoredTo = labelAnchoredTo;
-      this.labelDir = labelDir;
       this.labelPadding = labelPadding;
       this.labelStyle = labelStyle;
       this.labelFunc = labelFunc;
-    }
-
-    /**
-     * Check whether the tickmark is geometrically valid.
-     * @returns {Boolean} Whether the tickmark is valid.
-     */
-    isValid () {
-      return (this.length > 0 && (this.positioning >= -1 && this.positioning <= 1) &&
-        (this.thickness > 0))
     }
 
     /**
@@ -2057,41 +1422,24 @@ var Grapheme = (function (exports) {
      * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
      * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
      */
-    createTickmarks (transformation, positions, geometry, labels) {
-      checkType(geometry, Simple2DGeometry);
+    createTickmarks (transformation, positions, polyline, label2dset) {
+      polyline.vertices = [];
+      polyline.style.thickness = this.thickness;
+      polyline.style.color = this.color;
+      polyline.endcapType = "butt";
 
       const tickmarkCount = positions.length;
-      const vertexCount = tickmarkCount * 5; // 5 vertices per thing
-
-      // The tickmarks will be drawn as triangles
-      geometry.renderMode = 'TRIANGLE_STRIP';
-      geometry.color = this.color;
-
-      // Create the glVertices array if necessary
-      if (!geometry.glVertices || geometry.glVertices.length !== 2 * vertexCount) {
-        geometry.glVertices = new Float32Array(2 * vertexCount);
-      }
-
-      const vertices = geometry.glVertices;
 
       // Note that "s" in class theory is positioning, and "t" is thickness
       const { positioning, thickness, length } = this;
       const { v1, v2, x1, x2 } = transformation;
-      const axisDisplacement = v2.minus(v1);
+      const axisDisplacement = v2.subtract(v1);
 
       // vectors as defined in class_theory
-      const xi = axisDisplacement.unit().scale(thickness / 2);
       const upsilon = axisDisplacement.unit().rotate(Math.PI / 2);
-      const nanVertex = new Vec2(NaN, NaN);
 
-      let index = 0;
-
-      function addVertex (v) {
-        // Convert to canvas coordinates
-        vertices[index] = v.x;
-        vertices[index + 1] = v.y;
-        index += 2;
-      }
+      label2dset.texts = [];
+      label2dset.style = this.labelStyle;
 
       for (let i = 0; i < positions.length; ++i) {
         let givenPos = positions[i];
@@ -2102,23 +1450,56 @@ var Grapheme = (function (exports) {
         const omicron = upsilon.scale((positioning - 1) / 2 * length).add(pos);
 
         // Create a rectangle for the tick
-        addVertex(omicron.minus(xi));
-        addVertex(lambda.minus(xi));
-        addVertex(omicron.add(xi));
-        addVertex(lambda.add(xi));
-        addVertex(nanVertex);
+        polyline.vertices.push(...omicron.asArray(), ...lambda.asArray(), NaN, NaN);
 
         if (this.displayLabels) {
           const textS = this.labelAnchoredTo;
           const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
 
-          /*const label = new Label({ position, text: this.labelFunc(givenPos), dir: this.labelDir, style: this.labelStyle })
+          label2dset.texts.push({text: this.labelFunc(givenPos), pos: position});
+        }
+      }
+    }
+  }
 
-          labels.push(label)*/
+  class Label2DSet extends GraphemeElement {
+    constructor(params = {}) {
+      super(params);
+
+      this.style = new Label2DStyle();
+
+      // Format: {text: "5", pos: Vec2(3,4)}
+      this.texts = params.texts ? params.texts : [];
+    }
+
+    render(renderInfo) {
+      let texts = this.texts, ctx = renderInfo.canvasCtx;
+
+      ctx.save();
+
+      this.style.prepareContextTextStyle(ctx);
+
+      if (this.style.shadowSize > 0) {
+        this.style.prepareContextShadow(ctx);
+
+        for (let i = 0; i < texts.length; ++i) {
+          let textInfo = texts[i];
+          let {text, pos} = textInfo;
+
+          ctx.strokeText(text, pos.x, pos.y);
         }
       }
 
-      geometry.glVerticesCount = vertexCount;
+      this.style.prepareContextFill(ctx);
+
+      for (let i = 0; i < texts.length; ++i) {
+        let textInfo = texts[i];
+        let {text, pos} = textInfo;
+
+        ctx.fillText(text, pos.x, pos.y);
+      }
+
+      ctx.restore();
     }
   }
 
@@ -2203,9 +1584,9 @@ var Grapheme = (function (exports) {
       // Used internally, no need for the user to touch it. Unless there's a bug.
       // Then I have to touch it. Ugh.
       this.axisComponents = {
-        tickmarkGeometries: {},
-        tickmarkLabels: [],
-        axisGeometry: new PolylineElement(Object.assign({
+        tickmarkPolylines: {},
+        tickmarkLabels: {},
+        axispolyline: new PolylineElement(Object.assign({
           // Some sensible default values
           arrowLocations: -1,
           arrowType: 0,
@@ -2215,7 +1596,7 @@ var Grapheme = (function (exports) {
       };
 
       // Style of the main axis line
-      this.style = this.axisComponents.axisGeometry.style;
+      this.style = this.axisComponents.axispolyline.style;
     }
 
     /**
@@ -2234,27 +1615,30 @@ var Grapheme = (function (exports) {
      * calculateMargins - Calculate the margins of the axis, given the size of the arrows.
      */
     calculateMargins () {
-      const arrowLoc = this.style.arrowLocations;
-      const arrowLength = arrowLengths[this.style.arrowType];
+      let style = this.style;
+
+      const arrowLocations = style.arrowLocations;
+      const arrowLength = style.arrowhead ? style.arrowhead.length : 0;
 
       this.margins.start = 0;
       this.margins.end = 0;
 
-      if ([1, 2, 4, 5].includes(arrowLoc)) {
-        this.margins.start = 1.5 * arrowLength * this.style.thickness / 2;
+      if (arrowLocations.includes("start") || arrowLocations.includes("substart")) {
+        this.margins.start = 3 * arrowLength * this.style.thickness;
       }
 
-      if ([0, 2, 3, 5].includes(arrowLoc)) {
-        this.margins.end = 1.5 * arrowLength * this.style.thickness / 2;
+      if (arrowLocations.includes("end") || arrowLocations.includes("subend")) {
+        this.margins.end = 3 * arrowLength * this.style.thickness;
       }
     }
 
     /**
-     * updateTickmarkGeometries - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
+     * updatetickmarkPolylines - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
      */
-    updateTickmarkGeometries () {
-      const tickmarkGeometries = this.axisComponents.tickmarkGeometries;
-      const axisDisplacement = this.end.minus(this.start);
+    updatetickmarkPolylines () {
+      const tickmarkPolylines = this.axisComponents.tickmarkPolylines;
+      const tickmarkLabels = this.axisComponents.tickmarkLabels;
+      const axisDisplacement = this.end.subtract(this.start);
       const axisLength = axisDisplacement.length();
 
       if (axisLength < 3 * (this.marginStart + this.marginEnd) ||
@@ -2268,18 +1652,10 @@ var Grapheme = (function (exports) {
       // The transformation defined by this axis
       const transformation = {
         v1: this.start.add(axisDisplacementDir.scale(this.margins.start)),
-        v2: this.end.minus(axisDisplacementDir.scale(this.margins.end)),
+        v2: this.end.subtract(axisDisplacementDir.scale(this.margins.end)),
         x1: this.xStart,
         x2: this.xEnd
       };
-
-      let labels = this.axisComponents.tickmarkLabels;
-
-      for (let i = 0; i < labels.length; ++i) {
-        this.remove(labels[i]);
-      }
-
-      labels = this.axisComponents.tickmarkLabels = [];
 
       // For every type of tickmark
       for (const styleName in this.tickmarkStyles) {
@@ -2288,47 +1664,65 @@ var Grapheme = (function (exports) {
 
         if (!positions) continue
 
-        let geometry = tickmarkGeometries[styleName];
-        if (!geometry) {
-          geometry = new Simple2DGeometry();
-          geometry.alwaysUpdate = false;
-          this.add(geometry);
+        let polyline = tickmarkPolylines[styleName];
+        if (!polyline) {
+          polyline = new PolylineElement();
+          polyline.alwaysUpdate = false;
+          this.add(polyline);
 
-          tickmarkGeometries[styleName] = geometry;
+          tickmarkPolylines[styleName] = polyline;
+        }
+
+        let labels = tickmarkLabels[styleName];
+        if (!labels) {
+          labels = new Label2DSet();
+          this.add(labels);
+
+          tickmarkLabels[styleName] = labels;
         }
 
         // Create some tickmarks!
-        style.createTickmarks(transformation, positions, geometry, labels);
+        style.createTickmarks(transformation, positions, polyline, labels);
+        polyline.updateGeometries();
       }
 
-      labels.forEach(label => this.add(label));
+      for (const polylineName in this.tickmarkPolylines) {
+        if (!this.tickmarkStyles[polylineName]) {
+          const unusedpolyline = this.tickmarkPolylines[polylineName];
 
-      for (const geometryName in this.tickmarkGeometries) {
-        if (!this.tickmarkStyles[geometryName]) {
-          const unusedGeometry = this.tickmarkGeometries[geometryName];
+          // unused polyline, destroy it
+          this.remove(unusedpolyline);
+          unusedpolyline.destroy();
 
-          // unused geometry, destroy it
-          this.remove(unusedGeometry);
-          unusedGeometry.destroy();
+          delete this.tickmarkPolylines[polylineName];
+        }
+      }
 
-          delete this.tickmarkGeometries[geometryName];
+      for (const labelName in this.tickmarkLabels) {
+        if (!this.tickmarkStyles[labelName]) {
+          const unusedLabels = this.tickmarkLabels[labelName];
+
+          this.remove(unusedLabels);
+          unusedLabels.destroy();
+
+          delete this.tickmarkLabels[labelName];
         }
       }
     }
 
     /**
-     * updateAxisGeometry - Update the PolylineElement which is the main axis itself.
+     * updateAxispolyline - Update the PolylineElement which is the main axis itself.
      */
-    updateAxisGeometry () {
-      const axisGeometry = this.axisComponents.axisGeometry;
-      axisGeometry.precedence = 1; // put it on top of the tickmarks
-      axisGeometry.alwaysUpdate = false;
+    updateAxispolyline () {
+      const axispolyline = this.axisComponents.axispolyline;
+      axispolyline.precedence = 1; // put it on top of the tickmarks
+      axispolyline.alwaysUpdate = false;
 
-      // Axis geometry connects these two vertices
-      axisGeometry.vertices = [...this.start.asArray(), ...this.end.asArray()];
-      axisGeometry.updateGeometries();
+      // Axis polyline connects these two vertices
+      axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()];
+      axispolyline.updateGeometries();
 
-      if (!this.hasChild(axisGeometry)) { this.add(axisGeometry); }
+      if (!this.hasChild(axispolyline)) { this.add(axispolyline); }
     }
 
     /**
@@ -2336,8 +1730,8 @@ var Grapheme = (function (exports) {
      */
     updateGeometries () {
       if (this.margins.automatic) { this.calculateMargins(); }
-      this.updateTickmarkGeometries();
-      this.updateAxisGeometry();
+      this.updatetickmarkPolylines();
+      this.updateAxispolyline();
     }
 
     destroy () {
@@ -2347,97 +1741,215 @@ var Grapheme = (function (exports) {
     }
 
     render (renderInfo) {
-      if (this.alwaysUpdate) {
-        this.updateGeometries();
-      }
-
       super.render(renderInfo);
     }
   }
 
-  class LabelBase extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
+  /** General class dealing with drawing demarcations of things. In particular, given
+  a length in CSS space corresponding to the length between which demarcations should
+  be drawn, as well as the x starting and x ending points of the demarcation, it will
+  emit demarcations of a variety of classes corresponding to various methods of
+  dividing up a line. */
 
+  class DemarcationStrategizer {
+    constructor(params={}) {
       const {
-        text = '',
-        position = new Vec2(0, 0)
+        start = 0,
+        end = 1,
+        length = 500 // in CSS pixels
       } = params;
 
-      this.text = text;
-      this.position = position;
+      this.start = start;
+      this.end = end;
+      this.length = length;
+    }
+
+    axisLength () {
+      return Math.abs(this.end - this.start)
     }
   }
 
-  // Creates html element of the form
-  // <div class="label label-S" > this.text ... </div>
-  class BasicLabel extends LabelBase {
+  const MAX_DEMARCATIONS = 1000;
+
+  /** A strategizer with three types: zero, main, and sub, where the main
+  and sub. The axis distance between main demarcations is mainLength and the number of
+  subdivisions is subdivs */
+  class MainSubDemarcationStrategizer extends DemarcationStrategizer {
     constructor(params = {}) {
       super(params);
 
-      this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
+      const {
+        mainLength = 10,
+        subdivs = 5
+      } = params;
+
+      this.mainLength = mainLength;
+      this.subdivs = subdivs;
     }
 
-    render (renderInfo) {
-      const { text, position } = this;
-      const mode = this.style.mode;
+    getDemarcations() {
+      // Whee!!
+      let end = this.end, start = this.start;
 
-      const labelElement = renderInfo.labelManager.getElement(this);
-
-      this.style.setLabelClass(labelElement);
-
-      labelElement.style.top = position.y + 'px';
-      labelElement.style.left = position.x + 'px';
-
-      const oldLatex = labelElement.getAttribute('latex-content');
-
-      if (mode === 'latex') {
-        // latex-content stores the latex to be rendered to this node, which means
-        // that if it is equal to text, it does not need to be recomputed, only maybe
-        // moved in some direction
-        if (oldLatex !== text) {
-          labelElement.setAttribute('latex-content', text);
-          // eslint-disable-next-line no-undef
-          katex.render(text, labelElement, { throwOnError: false });
-        }
-      } else {
-        if (oldLatex) { labelElement.removeAttribute('latex-content'); }
-
-        labelElement.innerHTML = text;
+      if (end < start) {
+        let t = end;
+        end = start;
+        start = t;
       }
+
+      let zero = [];
+      let main = [];
+      let sub = [];
+
+      let { mainLength, subdivs } = this;
+
+      let xS = Math.ceil(start / mainLength);
+      let xE = Math.floor(end / mainLength);
+
+      if (subdivs * (xS - xE) > MAX_DEMARCATIONS) {
+        throw new Error("too many demarcations!!")
+      }
+
+      for (let i = xS; i <= xE; ++i) {
+        if (i === 0) {
+          zero.push(0);
+          continue
+        }
+
+        let pos = mainLength * i;
+        main.push(pos);
+      }
+
+      let yS = Math.ceil(subdivs * start / mainLength);
+      let yE = Math.floor(subdivs * end / mainLength);
+
+      for (let i = yS; i <= yE; ++i) {
+        if (i % subdivs === 0) { // already emitted as a main
+          continue
+        }
+
+        let pos = mainLength / subdivs * i;
+        sub.push(pos);
+      }
+
+      return { zero, main, sub }
     }
   }
 
-  class Label2D extends LabelBase {
-    constructor(params) {
-      this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+  /** This strategizer divides the line into one of three classes:
+
+  zero: a demarcation reserved only for the value 0
+  main: a demarcation for major things (perhaps integers)
+  sub: a demarcation for less major things
+
+  The way that this works is that we give the strategizer some potential subdivisions.
+  In particular, we give it an array of potential subdivisions {main, sub}, where main
+  is the absolute distance (in axis coordinates) between main demarcations and sub
+  is the number of sub demarcations to be used within that distance. More precisely, the
+  distance between sub demarcations will be main / sub. This is used to prevent annoying
+  float errors. main and sub must be positive integers. The strategizer will consider
+  any demarcation pattern of the form 10^n * {main, sub}, where n is an integer. The best
+  such pattern is chosen by the closeness in CSS pixels between sub demarcations to
+  the ideal distance between those demarcations, idealSubDist. If multiple patterns
+  satisfy this, the last one in the list of demarcations will be chosen.
+  */
+  class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
+    constructor(params={}) {
+      super(params);
+
+      const {
+        patterns = [
+          {main: 10, sub: 5},
+          {main: 5, sub: 5},
+          {main: 4, sub: 4},
+        ],
+        idealSubDist = 60 // CSS pixels
+      } = params;
+
+      this.idealSubDist = idealSubDist;
+      this.patterns = patterns;
+    }
+
+    getDemarcations() {
+      let {patterns, idealSubDist, start, end, length} = this;
+
+      // for each pattern, find the most optimal pattern based on powers of 10 and
+      // see if that is indeed the best
+      let bestMain = 0;
+      let bestSubdivs = 0;
+      let currentError = Infinity;
+
+      for (let i = 0; i < patterns.length; ++i) {
+        let pattern = patterns[i];
+
+        let ne = Math.round(Math.log10(this.idealSubDist * (end - start) / length * pattern.sub / pattern.main));
+        let scaling = Math.pow(10, ne);
+
+        let error = Math.abs(pattern.main / pattern.sub * length / (end-start) * scaling - this.idealSubDist);
+
+        if (error < currentError) {
+          bestMain = pattern.main * scaling;
+          bestSubdivs = pattern.sub;
+          currentError = error;
+        }
+      }
+
+      if (currentError === Infinity) {
+        throw new Error("No happy demarcations")
+      }
+
+      this.mainLength = bestMain;
+      this.subdivs = bestSubdivs;
+
+      return super.getDemarcations()
     }
   }
 
-  exports.ARROW_LOCATION_TYPES = ARROW_LOCATION_TYPES;
-  exports.ARROW_TYPES = ARROW_TYPES;
-  exports.Axis = Axis;
-  exports.AxisTickmarkStyle = AxisTickmarkStyle;
-  exports.BasicLabel = BasicLabel;
+  class AutoAxis extends Axis {
+    constructor(params={}) {
+      super(Object.assign({tickmarkStyles: {
+          "main": new AxisTickmarkStyle({displayLabels: true, labelStyle: new Label2DStyle({fontSize: 24, dir: "S"})}),
+          "sub": new AxisTickmarkStyle({length: 5}),
+          "zero": new AxisTickmarkStyle({displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({fontSize: 24, dir: "S"})})
+        }
+      }, params));
+
+      const { strategizer = new StandardDemarcationStrategizer() } = params;
+
+      this.strategizer = strategizer;
+    }
+
+    autoTickmarks() {
+      let strategizer = this.strategizer;
+
+      strategizer.start = this.xStart;
+      strategizer.end = this.xEnd;
+      strategizer.length = this.start.subtract(this.end).length();
+
+      this.tickmarkPositions = strategizer.getDemarcations();
+    }
+
+    updateGeometries() {
+      this.autoTickmarks();
+
+      super.updateGeometries();
+    }
+  }
+
+  exports.Arrowheads = Arrowheads;
+  exports.AutoAxis = AutoAxis;
   exports.Context = GraphemeContext;
   exports.E = E;
-  exports.GeometryUnion = GeometryUnion;
   exports.Group = GraphemeGroup;
-  exports.Label2D = Label2D;
-  exports.Multicolored2DGeometry = Multicolored2DGeometry;
   exports.N = N;
   exports.NE = NE;
   exports.NW = NW;
   exports.PolylineElement = PolylineElement;
-  exports.RENDER_MODES = RENDER_MODES;
   exports.S = S;
   exports.SE = SE;
   exports.SW = SW;
-  exports.Simple2DGeometry = Simple2DGeometry;
   exports.Vec2 = Vec2;
   exports.W = W;
-  exports.arrowDrawers = arrowDrawers;
-  exports.arrowLengths = arrowLengths;
 
   return exports;
 
