@@ -36,6 +36,9 @@ axis.style.arrowLocations = ["end"]
 
 let ia = 0;
 function render() {
+
+if (ia === 4)
+  return
   ia += 0.1;
 
   grapheme_window.render();

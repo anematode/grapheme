@@ -511,7 +511,7 @@ var Grapheme = (function (exports) {
 
     clear() {
       // Clear the canvas
-      this.canvasCtx.clearRect(0, 0, this.cssWidth, this.cssHeight);
+      this.canvasCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
     beforeRender(element) {
