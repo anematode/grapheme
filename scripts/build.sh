@@ -2,4 +2,4 @@
 
 cd ..
 rollup -c
-cp src/grapheme.css build/grapheme.css
+cp src/core/grapheme.css build/grapheme.css

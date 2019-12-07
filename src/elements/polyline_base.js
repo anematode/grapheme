@@ -1,4 +1,4 @@
-import { Element as GraphemeElement } from '../grapheme_element'
+import { Element as GraphemeElement } from '../core/grapheme_element'
 import { LineStyle } from '../other/line_style'
 
 class PolylineBase extends GraphemeElement {

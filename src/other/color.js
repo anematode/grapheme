@@ -1,4 +1,4 @@
-import * as utils from '../utils'
+import * as utils from '../core/utils'
 
 // Implementation of basic color functions
 // Could use a library, but... good experience for me too

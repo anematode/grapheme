@@ -1,4 +1,4 @@
-import * as utils from '../utils'
+import * as utils from '../core/utils'
 import { Color } from '../other/color'
 import { Label2DStyle } from './label_style'
 

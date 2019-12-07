@@ -1,4 +1,4 @@
-import { Element as GraphemeElement } from '../grapheme_element'
+import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Label2DStyle } from './label_style'
 
 class Label2DSet extends GraphemeElement {

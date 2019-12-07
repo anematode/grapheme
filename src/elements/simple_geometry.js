@@ -1,4 +1,4 @@
-import { Element as GraphemeElement } from '../grapheme_element'
+import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Color } from '../other/color'
 
 class Path2DGeometry extends GraphemeElement {

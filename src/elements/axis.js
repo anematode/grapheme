@@ -1,8 +1,8 @@
-import { Group as GraphemeGroup } from '../grapheme_group'
+import { Group as GraphemeGroup } from '../core/grapheme_group'
 import { PolylineElement } from './polyline'
 import { Vec2 } from '../math/vec2'
 import { Color } from '../other/color'
-import * as utils from '../utils'
+import * as utils from '../core/utils'
 import { AxisTickmarkStyle } from './axis_tickmarks'
 import { Label2DSet } from './label_2d_set'
 
