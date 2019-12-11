@@ -1,5 +1,5 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
-import { LineStyle } from '../other/line_style'
+import { LineStyle } from '../styles/line_style'
 
 class PolylineBase extends GraphemeElement {
   constructor (params = {}) {

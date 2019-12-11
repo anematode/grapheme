@@ -200,7 +200,7 @@ function deleteBuffersNamed (bufferNames) {
   }
 
   CONTEXTS.forEach((context) => {
-    context.glResourceManager.deleteBuffer(bufferNames)
+    context.glManager.deleteBuffer(bufferNames)
   })
 }
 

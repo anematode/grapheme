@@ -16,12 +16,12 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Go through all of code and remove unused code, as well as improve code quality (rename long variables)
-- Make sure Labels work
 - Gridlines
 - Plot (with scissoring)
 - InteractiveWindow (and event handling, which will be tricky)
 - Mandelbrot
+- Go through all of code and remove unused code, as well as improve code quality (rename long variables)
+- Make sure Labels work
 - Interval Arithmetic
 - FunctionalGraph
 - FunctionalGraph inequality

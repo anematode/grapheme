@@ -6,35 +6,51 @@ class GraphemeGroup extends GraphemeElement {
     super(params)
 
     this.children = []
+    this.childrenSorted = true
   }
 
-  onDPRChanged () {
-    this.children.forEach(child => child.onDPRChanged())
+  onEvent (type, evt) {
+    const res = super.onEvent(type, evt)
+    if (res) { // this element stopped propagation, don't go to children
+      return true
+    }
+
+    this.sortChildren()
+    for (let i = 0; i < this.children.length; ++i) {
+      if (this.children[i].onEvent(type, evt)) {
+        return true
+      }
+    }
+
+    return true
   }
 
-  sortChildrenByPrecedence () {
+  sortChildren (force = false) {
     // Sort the children by their precedence value
-    this.children.sort((x, y) => x.precedence - y.precedence)
+    if (force || !this.childrenSorted) {
+      this.children.sort((x, y) => x.precedence - y.precedence)
+
+      this.childrenSorted = true
+    }
   }
 
   render (renderInfo) {
     super.render(renderInfo)
 
     // sort our elements by drawing precedence
-    this.sortChildrenByPrecedence()
+    this.sortChildren()
 
     this.children.forEach((child) => child.render(renderInfo))
   }
 
   isChild (element) {
-    return this.hasChild(element, false)
+    return super.hasChild(element, false)
   }
 
   hasChild (element, recursive = true) {
     if (recursive) {
-      if (this.hasChild(element, false)) return true
-      if (this.children.some((child) => child.hasChild(element, recursive))) return true
-      return false
+      if (super.hasChild(element, false)) return true
+      return this.children.some((child) => super.hasChild(element, recursive))
     }
 
     const index = this.children.indexOf(element)
@@ -48,7 +64,7 @@ class GraphemeGroup extends GraphemeElement {
       throw new Error('Element is already a child')
     }
 
-    utils.assert(!this.hasChild(element, true), 'Element is already a child of this group...')
+    utils.assert(!super.hasChild(element, true), 'Element is already a child of this group...')
 
     element.parent = this
     this.children.push(element)
@@ -56,11 +72,13 @@ class GraphemeGroup extends GraphemeElement {
     if (elements.length > 0) {
       this.add(elements)
     }
+
+    this.childrenSorted = false
   }
 
   remove (element, ...elements) {
     utils.checkType(element, GraphemeElement)
-    if (this.hasChild(element, false)) {
+    if (super.hasChild(element, false)) {
       // if element is an immediate child
       const index = this.children.indexOf(element)
       this.children.splice(index, 1)

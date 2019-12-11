@@ -1,5 +1,5 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
-import { Label2DStyle } from './label_style'
+import { Label2DStyle } from '../styles/label_style'
 
 class Label2DSet extends GraphemeElement {
   constructor (params = {}) {

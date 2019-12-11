@@ -1,9 +1,5 @@
 import * as utils from './utils'
 
-/**
-A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
-(i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
-*/
 class GraphemeElement {
   constructor ({
     precedence = 0,
@@ -16,33 +12,38 @@ class GraphemeElement {
     // Unique identifier for this object
     this.uuid = utils.generateUUID()
 
-    // Whether this element is drawn on render TODO
-    this.visible = visible
-
     // The parent of this element
     this.parent = null
 
     // Whether to always update geometries when render is called
     this.alwaysUpdate = alwaysUpdate
+
+    this.eventListeners = {}
   }
 
-  orphanize () {
-    if (this.parent) {
-      this.parent.remove(this)
-    }
+  set precedence (x) {
+    this._precedence = x
+    if (this.parent)
+      this.parent.childrenSorted = false
   }
 
-  updateGeometries () {
+  get precedence() {
+    return this._precedence
+  }
+
+  update () {
 
   }
 
   render (elementInfo) {
-    if (this.alwaysUpdate) { this.updateGeometries() }
+    if (this.alwaysUpdate) {
+      this.update()
+    }
 
     elementInfo.window.beforeRender(this)
   }
 
-  hasChild () {
+  static hasChild () {
     return false
   }
 
@@ -50,8 +51,19 @@ class GraphemeElement {
     this.orphanize()
   }
 
-  onDPRChanged () {
+  // Returns false if no event listener has returned true (meaning to stop propagation)
+  onEvent (type, evt) {
+    if (this.eventListeners[type]) {
+      return this.eventListeners[type].any(listener => listener(evt))
+    }
 
+    return false
+  }
+
+  orphanize () {
+    if (this.parent) {
+      this.parent.remove(this)
+    }
   }
 }
 

@@ -51,8 +51,11 @@ class GLResourceManager {
       vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName)
     }
 
-    const programInfo = { program: glProgram, uniforms, attribs: vertexAttribs }
-    this.programs[programName] = programInfo
+    this.programs[programName] = {
+      program: glProgram,
+      uniforms,
+      attribs: vertexAttribs
+    }
   }
 
   // Return whether this has a program with that name
@@ -85,9 +88,7 @@ class GLResourceManager {
     const { gl } = this
 
     // Create a new buffer
-    const buffer = gl.createBuffer()
-
-    this.buffers[bufferName] = buffer
+    this.buffers[bufferName] = gl.createBuffer()
   }
 
   hasBuffer (bufferName) {

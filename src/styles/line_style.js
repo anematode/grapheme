@@ -1,4 +1,4 @@
-import { Color } from './color'
+import { Color } from '../other/color'
 
 class LineStyle {
   constructor (params = {}) {

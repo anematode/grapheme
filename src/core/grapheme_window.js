@@ -59,23 +59,21 @@ class GraphemeWindow extends GraphemeGroup {
 
     // Scale text canvas as needed due to DPR
     this.resetCanvasCtxTransform()
+
+    this.addEventListener('dprchanged', () => this.update())
   }
 
   resetCanvasCtxTransform () {
     const ctx = this.canvasCtx
 
-    for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
-      ctx.restore()
-    }
-
+    ctx.resetTransform()
     ctx.scale(utils.dpr, utils.dpr)
-    ctx.save()
   }
 
   // Set the size of this window (including adjusting the canvas size)
   // Note that this width and height are in CSS pixels
   setSize (width, height) {
-    // width and weight are in CSS pixels
+    // width and height are in CSS pixels
     this.width = width
     this.height = height
 
@@ -114,11 +112,11 @@ class GraphemeWindow extends GraphemeGroup {
   }
 
   // Sets the pixel height of the canvas
-  set canvasHeight (x) {
-    x = Math.round(x)
-    utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]')
+  set canvasHeight (y) {
+    y = Math.round(y)
+    utils.assert(utils.isPositiveInteger(y) && y < 16384, 'canvas height must be in range [1,16383]')
 
-    this.canvas.height = x
+    this.canvas.height = y
   }
 
   // Event triggered when the device pixel ratio changes
@@ -147,10 +145,6 @@ class GraphemeWindow extends GraphemeGroup {
     delete this.canvas
     delete this.domElement
     delete this.canvasCtx
-  }
-
-  isActive () {
-    return (this.context.currentWindow === this)
   }
 
   clear () {
@@ -193,9 +187,6 @@ class GraphemeWindow extends GraphemeGroup {
     this.needsCanvasPrepared = true
     this.needsCanvasCopy = false
 
-    // Set the active window to this window, since this is the window being rendered
-    this.context.currentWindow = this
-
     const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this
 
     // ID of this render
@@ -229,8 +220,6 @@ class GraphemeWindow extends GraphemeGroup {
       labelManager.cleanOldRenders()
     } catch (e) {
       err = e
-    } finally {
-      this.context.currentWindow = null
     }
 
     if (err) throw err

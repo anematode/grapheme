@@ -15,3 +15,19 @@ Good question, Tim. I think the eventual goal of Grapheme is to be an online gra
 ### What will Grapheme do?
 
 Make client-side rendered graphs and diagrams fast. And hopefully be more lightweight and customizable (big on customizable) than Desmos. And Geogebra. GEOGEBRA
+
+
+## Thoughts
+
+I need to think. I can't let Grapheme fail as always. There are some good ideas in here though.
+
+Maybe I should make Grapheme a bit more Asymptote like, where we just draw things with pens and paths.
+
+No. Grapheme should have a tree structure. It should have elements and groups for organization. But the current setup is weird.
+
+I'm worried that Axis isn't generic enough. It can't do logarithmic axes without bending over backwards, for example.
+
+I think I need to take some inspiration from Asymptote though. I should implement my own Path2D class that piggy backs off of the built-in Path2D class, but implements important things like derivativeAt() and length() and pointAt().
+
+But I need to get my priorities straight. Grapheme needs to live. My first project will be a Mandelbrot set viewer. Even if the current setup is unnecessarily restrictive, I can generalize it LATER.
+

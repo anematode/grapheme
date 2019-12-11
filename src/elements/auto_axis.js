@@ -1,15 +1,15 @@
 import { Axis } from './axis'
 import { StandardDemarcationStrategizer } from '../other/demarcation_strategizer'
-import { AxisTickmarkStyle } from './axis_tickmarks'
-import { Label2DStyle } from './label_style'
+import { TickmarkStyle } from '../styles/tickmark_style'
+import { Label2DStyle } from '../styles/label_style'
 
 class AutoAxis extends Axis {
   constructor (params = {}) {
     super(Object.assign({
       tickmarkStyles: {
-        main: new AxisTickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
-        sub: new AxisTickmarkStyle({ length: 5 }),
-        zero: new AxisTickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
+        main: new TickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
+        sub: new TickmarkStyle({ length: 5 }),
+        zero: new TickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
       }
     }, params))
 
@@ -31,7 +31,7 @@ class AutoAxis extends Axis {
   updateGeometries () {
     this.autoTickmarks()
 
-    super.updateGeometries()
+    super.update()
   }
 }
 

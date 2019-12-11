@@ -3,7 +3,7 @@ import { PolylineElement } from './polyline'
 import { Vec2 } from '../math/vec2'
 import { Color } from '../other/color'
 import * as utils from '../core/utils'
-import { AxisTickmarkStyle } from './axis_tickmarks'
+import { TickmarkStyle } from '../styles/tickmark_style'
 import { Label2DSet } from './label_2d_set'
 
 /**
@@ -19,7 +19,7 @@ xStart is the REPRESENTED coordinate at marginStart in from start. xEnd is the
 REPRESENTED coordinate at marginEnd in from end.
 
 Tickmarks must be divided into certain style classes, though the number of such
-classes is unlimited. The style of each tickmark is defined by the AxisTickmarkStyle
+classes is unlimited. The style of each tickmark is defined by the TickmarkStyle
 class, which abstracts their relative position to the axis, thickness, etc. This
 style also deals with labels, and Axis doesn't have to think about labels too hard.
 These style classes are given as key value pairs in a "tickmarkStyles" object,
@@ -49,7 +49,7 @@ class Axis extends GraphemeGroup {
    * @param {Object} params.margins - Information about the margins of the axis.
    * @param {number} params.margins.start - Length in canvas pixels of the starting margin.
    * @param {number} params.margins.end - Length in canvas pixels of the ending margin.
-   * @param {Boolean} params.margins.automatic - Whether to calculate the margins automatically. If this is true, updateGeometries() will overwrite margins.start and margins.end.
+   * @param {Boolean} params.margins.automatic - Whether to calculate the margins automatically. If this is true, update() will overwrite margins.start and margins.end.
    * @param {number} params.xStart - The axis coordinate associated with the start of the axis.
    * @param {number} params.xEnd - The axis coordinate associated with the end of the axis.
    * @param {Object} params.tickmarkStyles - An optional object containing key value pairs of AxisTickmarkStyles, where the keys are the names of the styles and the values are the styles.
@@ -89,7 +89,7 @@ class Axis extends GraphemeGroup {
     this.axisComponents = {
       tickmarkPolylines: {},
       tickmarkLabels: {},
-      axispolyline: new PolylineElement(Object.assign({
+      axisPolyline: new PolylineElement(Object.assign({
         // Some sensible default values
         arrowLocations: -1,
         arrowType: 0,
@@ -99,7 +99,7 @@ class Axis extends GraphemeGroup {
     }
 
     // Style of the main axis line
-    this.style = this.axisComponents.axispolyline.style
+    this.style = this.axisComponents.axisPolyline.style
   }
 
   /**
@@ -186,7 +186,7 @@ class Axis extends GraphemeGroup {
 
       // Create some tickmarks!
       style.createTickmarks(transformation, positions, polyline, labels)
-      polyline.updateGeometries()
+      polyline.update()
     }
 
     for (const polylineName in this.tickmarkPolylines) {
@@ -217,19 +217,19 @@ class Axis extends GraphemeGroup {
    * updateAxispolyline - Update the PolylineElement which is the main axis itself.
    */
   updateAxispolyline () {
-    const axispolyline = this.axisComponents.axispolyline
+    const axispolyline = this.axisComponents.axisPolyline
     axispolyline.precedence = 1 // put it on top of the tickmarks
     axispolyline.alwaysUpdate = false
 
     // Axis polyline connects these two vertices
     axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()]
-    axispolyline.updateGeometries()
+    axispolyline.update()
 
-    if (!this.hasChild(axispolyline)) { this.add(axispolyline) }
+    if (!GraphemeElement.hasChild(axispolyline)) { this.add(axispolyline) }
   }
 
   /**
-   * updateGeometries - Update the geometries of this axis for rendering.
+   * update - Update the geometries of this axis for rendering.
    */
   updateGeometries () {
     if (this.margins.automatic) { this.calculateMargins() }
@@ -248,4 +248,4 @@ class Axis extends GraphemeGroup {
   }
 }
 
-export { Axis, AxisTickmarkStyle }
+export { Axis, TickmarkStyle }

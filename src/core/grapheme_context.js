@@ -14,13 +14,10 @@ class GraphemeContext {
     utils.assert(gl, 'Grapheme requires WebGL to run; please get a competent browser')
 
     // The gl resource manager for this context
-    this.glResourceManager = new GLResourceManager(gl)
+    this.glManager = new GLResourceManager(gl)
 
     // The list of windows that this context has jurisdiction over
     this.windows = []
-
-    // The window that is currently being drawn (null if none)
-    this.currentWindow = null
 
     // Add this to the list of contexts to receive event updates and such
     utils.CONTEXTS.push(this)
@@ -68,11 +65,11 @@ class GraphemeContext {
     return this.glCanvas.width
   }
 
-  set canvasHeight (x) {
-    x = Math.round(x)
+  set canvasHeight (y) {
+    y = Math.round(y)
 
-    utils.assert(utils.isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]')
-    this.glCanvas.height = x
+    utils.assert(utils.isPositiveInteger(y) && y < 16384, 'canvas height must be in range [1,16383]')
+    this.glCanvas.height = y
   }
 
   set canvasWidth (x) {
@@ -102,14 +99,14 @@ class GraphemeContext {
     this.windows.forEach((window) => window.destroy())
 
     // destroy resource manager
-    this.glResourceManager.destroy()
+    this.glManager.destroy()
 
     // Free up canvas space immediately
     this.canvasWidth = 1
     this.canvasHeight = 1
 
     // Delete references to various stuff
-    delete this.glResourceManager
+    delete this.glManager
     delete this.glCanvas
     delete this.gl
   }
@@ -124,11 +121,12 @@ class GraphemeContext {
     const allWindows = this.context.windows
     const thisIndex = allWindows.indexOf(window)
 
-    if (thisIndex !== -1) allWindows.splice(thisIndex, 1)
-  }
-
-  destroyWindow (window) {
-    window.destroy()
+    if (thisIndex !== -1) {
+      allWindows.splice(thisIndex, 1)
+      if (window.context) {
+        window.context = null
+      }
+    }
   }
 
   // Update the size of this context based on the maximum size of its windows

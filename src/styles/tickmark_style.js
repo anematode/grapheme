@@ -70,9 +70,9 @@ const defaultLabel = x => {
 }
 
 /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
-class AxisTickmarkStyle {
+class TickmarkStyle {
   /**
-   * Create an AxisTickmarkStyle.
+   * Create an TickmarkStyle.
    * @param {Object} params - The parameters of the tickmark style.
    * @param {number} params.length - The length of the tickmark, measured perpendicular to the axis.
    * @param {number} params.positioning - The position of the tickmark relative to the axis. A value of 1 indicates it is entirely to the left of the axis, and a value of -1 indicates it is entirely to the right of the axis. The values in between give linear interpolations between these two positions.
@@ -113,44 +113,43 @@ class AxisTickmarkStyle {
    * @param {Vec2} transformation.v1 - The first canvas point, corresponding to the axis coordinate x1.
    * @param {Vec2} transformation.v2 - The second canvas point, corresponding to the axis coordinate x2.
    * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
-   * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
+   * @param {PolylineBase} polyline - The polyline to emit tickmarks to
+   * @param {Label2DSet} label2DSet - set of 2d labels to use
    */
-  createTickmarks (transformation, positions, polyline, label2dset) {
+  createTickmarks (transformation, positions, polyline, label2DSet) {
     polyline.vertices = []
     polyline.style.thickness = this.thickness
     polyline.style.color = this.color
-    polyline.endcapType = 'butt'
+    polyline.style.endcap = 'butt'
 
-    // Note that "s" in class theory is positioning, and "t" is thickness
     const { positioning, length } = this
     const { v1, v2, x1, x2 } = transformation
+
     const axisDisplacement = v2.subtract(v1)
+    const axisNormal = axisDisplacement.unit().rotate(Math.PI / 2)
 
-    // vectors as defined in class_theory
-    const upsilon = axisDisplacement.unit().rotate(Math.PI / 2)
-
-    label2dset.texts = []
-    label2dset.style = this.labelStyle
+    label2DSet.texts = []
+    label2DSet.style = this.labelStyle
 
     for (let i = 0; i < positions.length; ++i) {
       let givenPos = positions[i]
       if (givenPos.value) { givenPos = givenPos.value }
 
-      const pos = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1)
-      const lambda = upsilon.scale((positioning + 1) / 2 * length).add(pos)
-      const omicron = upsilon.scale((positioning - 1) / 2 * length).add(pos)
+      const tickmarkCenter = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1)
+      const tickmarkLeft = axisNormal.scale((positioning + 1) / 2 * length).add(tickmarkCenter)
+      const tickmarkRight = axisNormal.scale((positioning - 1) / 2 * length).add(tickmarkCenter)
 
       // Create a rectangle for the tick
-      polyline.vertices.push(...omicron.asArray(), ...lambda.asArray(), NaN, NaN)
+      polyline.vertices.push(...tickmarkRight.asArray(), ...tickmarkLeft.asArray(), NaN, NaN)
 
       if (this.displayLabels) {
         const textS = this.labelAnchoredTo
-        const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding))
+        const position = tickmarkLeft.scale((textS + 1) / 2).add(tickmarkRight.scale((1 - textS) / 2)).add(axisNormal.scale(this.labelPadding))
 
-        label2dset.texts.push({ text: this.labelFunc(givenPos), pos: position })
+        label2DSet.texts.push({ text: this.labelFunc(givenPos), pos: position })
       }
     }
   }
 }
 
-export { AxisTickmarkStyle }
+export { TickmarkStyle }

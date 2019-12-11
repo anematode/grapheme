@@ -139,7 +139,7 @@ var Grapheme = (function (exports) {
     }
 
     CONTEXTS.forEach((context) => {
-      context.glResourceManager.deleteBuffer(bufferNames);
+      context.glManager.deleteBuffer(bufferNames);
     });
   }
 
@@ -150,11 +150,7 @@ var Grapheme = (function (exports) {
     return x
   }
 
-  /**
-  A GraphemeElement is a part of a GraphemeWindow. It has a certain precedence
-  (i.e. the order in which it will be drawn onto the GL portion and the 2D canvas portion.)
-  */
-  class GraphemeElement {
+  class GraphemeElement$1 {
     constructor ({
       precedence = 0,
       visible = true,
@@ -166,33 +162,38 @@ var Grapheme = (function (exports) {
       // Unique identifier for this object
       this.uuid = generateUUID();
 
-      // Whether this element is drawn on render TODO
-      this.visible = visible;
-
       // The parent of this element
       this.parent = null;
 
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
+
+      this.eventListeners = {};
     }
 
-    orphanize () {
-      if (this.parent) {
-        this.parent.remove(this);
-      }
+    set precedence (x) {
+      this._precedence = x;
+      if (this.parent)
+        this.parent.childrenSorted = false;
     }
 
-    updateGeometries () {
+    get precedence() {
+      return this._precedence
+    }
+
+    update () {
 
     }
 
     render (elementInfo) {
-      if (this.alwaysUpdate) { this.updateGeometries(); }
+      if (this.alwaysUpdate) {
+        this.update();
+      }
 
       elementInfo.window.beforeRender(this);
     }
 
-    hasChild () {
+    static hasChild () {
       return false
     }
 
@@ -200,45 +201,72 @@ var Grapheme = (function (exports) {
       this.orphanize();
     }
 
-    onDPRChanged () {
+    // Returns false if no event listener has returned true (meaning to stop propagation)
+    onEvent (type, evt) {
+      if (this.eventListeners[type]) {
+        return this.eventListeners[type].any(listener => listener(evt))
+      }
 
+      return false
+    }
+
+    orphanize () {
+      if (this.parent) {
+        this.parent.remove(this);
+      }
     }
   }
 
-  class GraphemeGroup extends GraphemeElement {
+  class GraphemeGroup extends GraphemeElement$1 {
     constructor (params = {}) {
       super(params);
 
       this.children = [];
+      this.childrenSorted = true;
     }
 
-    onDPRChanged () {
-      this.children.forEach(child => child.onDPRChanged());
+    onEvent (type, evt) {
+      const res = super.onEvent(type, evt);
+      if (res) { // this element stopped propagation, don't go to children
+        return true
+      }
+
+      this.sortChildren();
+      for (let i = 0; i < this.children.length; ++i) {
+        if (this.children[i].onEvent(type, evt)) {
+          return true
+        }
+      }
+
+      return true
     }
 
-    sortChildrenByPrecedence () {
+    sortChildren (force = false) {
       // Sort the children by their precedence value
-      this.children.sort((x, y) => x.precedence - y.precedence);
+      if (force || !this.childrenSorted) {
+        this.children.sort((x, y) => x.precedence - y.precedence);
+
+        this.childrenSorted = true;
+      }
     }
 
     render (renderInfo) {
       super.render(renderInfo);
 
       // sort our elements by drawing precedence
-      this.sortChildrenByPrecedence();
+      this.sortChildren();
 
       this.children.forEach((child) => child.render(renderInfo));
     }
 
     isChild (element) {
-      return this.hasChild(element, false)
+      return super.hasChild(element, false)
     }
 
     hasChild (element, recursive = true) {
       if (recursive) {
-        if (this.hasChild(element, false)) return true
-        if (this.children.some((child) => child.hasChild(element, recursive))) return true
-        return false
+        if (super.hasChild(element, false)) return true
+        return this.children.some((child) => super.hasChild(element, recursive))
       }
 
       const index = this.children.indexOf(element);
@@ -246,13 +274,13 @@ var Grapheme = (function (exports) {
     }
 
     add (element, ...elements) {
-      checkType(element, GraphemeElement);
+      checkType(element, GraphemeElement$1);
 
       if (element.parent !== null) {
         throw new Error('Element is already a child')
       }
 
-      assert(!this.hasChild(element, true), 'Element is already a child of this group...');
+      assert(!super.hasChild(element, true), 'Element is already a child of this group...');
 
       element.parent = this;
       this.children.push(element);
@@ -260,11 +288,13 @@ var Grapheme = (function (exports) {
       if (elements.length > 0) {
         this.add(elements);
       }
+
+      this.childrenSorted = false;
     }
 
     remove (element, ...elements) {
-      checkType(element, GraphemeElement);
-      if (this.hasChild(element, false)) {
+      checkType(element, GraphemeElement$1);
+      if (super.hasChild(element, false)) {
         // if element is an immediate child
         const index = this.children.indexOf(element);
         this.children.splice(index, 1);
@@ -298,7 +328,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class WebGLGraphemeElement extends GraphemeElement {
+  class WebGLGraphemeElement extends GraphemeElement$1 {
     constructor (params = {}) {
       super(params);
 
@@ -375,7 +405,7 @@ var Grapheme = (function (exports) {
 
   // Empty element drawn at the end of every render to copy the webgl canvas over
   // if necessary LOL
-  const FINAL_ELEMENT = new GraphemeElement();
+  const FINAL_ELEMENT = new GraphemeElement$1();
 
   /** A grapheme window is an actual viewable instance of Grapheme.
   That is, it is a div that can be put into the DOM and manipulated (and seen).
@@ -428,23 +458,21 @@ var Grapheme = (function (exports) {
 
       // Scale text canvas as needed due to DPR
       this.resetCanvasCtxTransform();
+
+      this.addEventListener('dprchanged', () => this.update());
     }
 
     resetCanvasCtxTransform () {
       const ctx = this.canvasCtx;
 
-      for (let i = 0; i < 5; ++i) { // pop off any canvas transforms from the stack
-        ctx.restore();
-      }
-
+      ctx.resetTransform();
       ctx.scale(dpr, dpr);
-      ctx.save();
     }
 
     // Set the size of this window (including adjusting the canvas size)
     // Note that this width and height are in CSS pixels
     setSize (width, height) {
-      // width and weight are in CSS pixels
+      // width and height are in CSS pixels
       this.width = width;
       this.height = height;
 
@@ -483,11 +511,11 @@ var Grapheme = (function (exports) {
     }
 
     // Sets the pixel height of the canvas
-    set canvasHeight (x) {
-      x = Math.round(x);
-      assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
+    set canvasHeight (y) {
+      y = Math.round(y);
+      assert(isPositiveInteger(y) && y < 16384, 'canvas height must be in range [1,16383]');
 
-      this.canvas.height = x;
+      this.canvas.height = y;
     }
 
     // Event triggered when the device pixel ratio changes
@@ -516,10 +544,6 @@ var Grapheme = (function (exports) {
       delete this.canvas;
       delete this.domElement;
       delete this.canvasCtx;
-    }
-
-    isActive () {
-      return (this.context.currentWindow === this)
     }
 
     clear () {
@@ -562,9 +586,6 @@ var Grapheme = (function (exports) {
       this.needsCanvasPrepared = true;
       this.needsCanvasCopy = false;
 
-      // Set the active window to this window, since this is the window being rendered
-      this.context.currentWindow = this;
-
       const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this;
 
       // ID of this render
@@ -598,8 +619,6 @@ var Grapheme = (function (exports) {
         labelManager.cleanOldRenders();
       } catch (e) {
         err = e;
-      } finally {
-        this.context.currentWindow = null;
       }
 
       if (err) throw err
@@ -657,8 +676,11 @@ var Grapheme = (function (exports) {
         vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
       }
 
-      const programInfo = { program: glProgram, uniforms, attribs: vertexAttribs };
-      this.programs[programName] = programInfo;
+      this.programs[programName] = {
+        program: glProgram,
+        uniforms,
+        attribs: vertexAttribs
+      };
     }
 
     // Return whether this has a program with that name
@@ -691,9 +713,7 @@ var Grapheme = (function (exports) {
       const { gl } = this;
 
       // Create a new buffer
-      const buffer = gl.createBuffer();
-
-      this.buffers[bufferName] = buffer;
+      this.buffers[bufferName] = gl.createBuffer();
     }
 
     hasBuffer (bufferName) {
@@ -727,13 +747,10 @@ var Grapheme = (function (exports) {
       assert(gl, 'Grapheme requires WebGL to run; please get a competent browser');
 
       // The gl resource manager for this context
-      this.glResourceManager = new GLResourceManager(gl);
+      this.glManager = new GLResourceManager(gl);
 
       // The list of windows that this context has jurisdiction over
       this.windows = [];
-
-      // The window that is currently being drawn (null if none)
-      this.currentWindow = null;
 
       // Add this to the list of contexts to receive event updates and such
       CONTEXTS.push(this);
@@ -781,11 +798,11 @@ var Grapheme = (function (exports) {
       return this.glCanvas.width
     }
 
-    set canvasHeight (x) {
-      x = Math.round(x);
+    set canvasHeight (y) {
+      y = Math.round(y);
 
-      assert(isPositiveInteger(x) && x < 16384, 'canvas height must be in range [1,16383]');
-      this.glCanvas.height = x;
+      assert(isPositiveInteger(y) && y < 16384, 'canvas height must be in range [1,16383]');
+      this.glCanvas.height = y;
     }
 
     set canvasWidth (x) {
@@ -815,14 +832,14 @@ var Grapheme = (function (exports) {
       this.windows.forEach((window) => window.destroy());
 
       // destroy resource manager
-      this.glResourceManager.destroy();
+      this.glManager.destroy();
 
       // Free up canvas space immediately
       this.canvasWidth = 1;
       this.canvasHeight = 1;
 
       // Delete references to various stuff
-      delete this.glResourceManager;
+      delete this.glManager;
       delete this.glCanvas;
       delete this.gl;
     }
@@ -837,11 +854,12 @@ var Grapheme = (function (exports) {
       const allWindows = this.context.windows;
       const thisIndex = allWindows.indexOf(window);
 
-      if (thisIndex !== -1) allWindows.splice(thisIndex, 1);
-    }
-
-    destroyWindow (window) {
-      window.destroy();
+      if (thisIndex !== -1) {
+        allWindows.splice(thisIndex, 1);
+        if (window.context) {
+          window.context = null;
+        }
+      }
     }
 
     // Update the size of this context based on the maximum size of its windows
@@ -946,7 +964,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class PolylineBase extends GraphemeElement {
+  class PolylineBase extends GraphemeElement$1 {
     constructor (params = {}) {
       super(params);
 
@@ -1398,9 +1416,9 @@ var Grapheme = (function (exports) {
   };
 
   /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
-  class AxisTickmarkStyle {
+  class TickmarkStyle {
     /**
-     * Create an AxisTickmarkStyle.
+     * Create an TickmarkStyle.
      * @param {Object} params - The parameters of the tickmark style.
      * @param {number} params.length - The length of the tickmark, measured perpendicular to the axis.
      * @param {number} params.positioning - The position of the tickmark relative to the axis. A value of 1 indicates it is entirely to the left of the axis, and a value of -1 indicates it is entirely to the right of the axis. The values in between give linear interpolations between these two positions.
@@ -1441,47 +1459,46 @@ var Grapheme = (function (exports) {
      * @param {Vec2} transformation.v1 - The first canvas point, corresponding to the axis coordinate x1.
      * @param {Vec2} transformation.v2 - The second canvas point, corresponding to the axis coordinate x2.
      * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
-     * @param {Simple2DGeometry} geometry - A Simple2DGeometry to which the tickmarks should be emitted.
+     * @param {PolylineBase} polyline - The polyline to emit tickmarks to
+     * @param {Label2DSet} label2DSet - set of 2d labels to use
      */
-    createTickmarks (transformation, positions, polyline, label2dset) {
+    createTickmarks (transformation, positions, polyline, label2DSet) {
       polyline.vertices = [];
       polyline.style.thickness = this.thickness;
       polyline.style.color = this.color;
-      polyline.endcapType = 'butt';
+      polyline.style.endcap = 'butt';
 
-      // Note that "s" in class theory is positioning, and "t" is thickness
       const { positioning, length } = this;
       const { v1, v2, x1, x2 } = transformation;
+
       const axisDisplacement = v2.subtract(v1);
+      const axisNormal = axisDisplacement.unit().rotate(Math.PI / 2);
 
-      // vectors as defined in class_theory
-      const upsilon = axisDisplacement.unit().rotate(Math.PI / 2);
-
-      label2dset.texts = [];
-      label2dset.style = this.labelStyle;
+      label2DSet.texts = [];
+      label2DSet.style = this.labelStyle;
 
       for (let i = 0; i < positions.length; ++i) {
         let givenPos = positions[i];
         if (givenPos.value) { givenPos = givenPos.value; }
 
-        const pos = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1);
-        const lambda = upsilon.scale((positioning + 1) / 2 * length).add(pos);
-        const omicron = upsilon.scale((positioning - 1) / 2 * length).add(pos);
+        const tickmarkCenter = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1);
+        const tickmarkLeft = axisNormal.scale((positioning + 1) / 2 * length).add(tickmarkCenter);
+        const tickmarkRight = axisNormal.scale((positioning - 1) / 2 * length).add(tickmarkCenter);
 
         // Create a rectangle for the tick
-        polyline.vertices.push(...omicron.asArray(), ...lambda.asArray(), NaN, NaN);
+        polyline.vertices.push(...tickmarkRight.asArray(), ...tickmarkLeft.asArray(), NaN, NaN);
 
         if (this.displayLabels) {
           const textS = this.labelAnchoredTo;
-          const position = lambda.scale((textS + 1) / 2).add(omicron.scale((1 - textS) / 2)).add(upsilon.scale(this.labelPadding));
+          const position = tickmarkLeft.scale((textS + 1) / 2).add(tickmarkRight.scale((1 - textS) / 2)).add(axisNormal.scale(this.labelPadding));
 
-          label2dset.texts.push({ text: this.labelFunc(givenPos), pos: position });
+          label2DSet.texts.push({ text: this.labelFunc(givenPos), pos: position });
         }
       }
     }
   }
 
-  class Label2DSet extends GraphemeElement {
+  class Label2DSet extends GraphemeElement$1 {
     constructor (params = {}) {
       super(params);
 
@@ -1535,7 +1552,7 @@ var Grapheme = (function (exports) {
   REPRESENTED coordinate at marginEnd in from end.
 
   Tickmarks must be divided into certain style classes, though the number of such
-  classes is unlimited. The style of each tickmark is defined by the AxisTickmarkStyle
+  classes is unlimited. The style of each tickmark is defined by the TickmarkStyle
   class, which abstracts their relative position to the axis, thickness, etc. This
   style also deals with labels, and Axis doesn't have to think about labels too hard.
   These style classes are given as key value pairs in a "tickmarkStyles" object,
@@ -1565,7 +1582,7 @@ var Grapheme = (function (exports) {
      * @param {Object} params.margins - Information about the margins of the axis.
      * @param {number} params.margins.start - Length in canvas pixels of the starting margin.
      * @param {number} params.margins.end - Length in canvas pixels of the ending margin.
-     * @param {Boolean} params.margins.automatic - Whether to calculate the margins automatically. If this is true, updateGeometries() will overwrite margins.start and margins.end.
+     * @param {Boolean} params.margins.automatic - Whether to calculate the margins automatically. If this is true, update() will overwrite margins.start and margins.end.
      * @param {number} params.xStart - The axis coordinate associated with the start of the axis.
      * @param {number} params.xEnd - The axis coordinate associated with the end of the axis.
      * @param {Object} params.tickmarkStyles - An optional object containing key value pairs of AxisTickmarkStyles, where the keys are the names of the styles and the values are the styles.
@@ -1605,7 +1622,7 @@ var Grapheme = (function (exports) {
       this.axisComponents = {
         tickmarkPolylines: {},
         tickmarkLabels: {},
-        axispolyline: new PolylineElement(Object.assign({
+        axisPolyline: new PolylineElement(Object.assign({
           // Some sensible default values
           arrowLocations: -1,
           arrowType: 0,
@@ -1615,7 +1632,7 @@ var Grapheme = (function (exports) {
       };
 
       // Style of the main axis line
-      this.style = this.axisComponents.axispolyline.style;
+      this.style = this.axisComponents.axisPolyline.style;
     }
 
     /**
@@ -1702,7 +1719,7 @@ var Grapheme = (function (exports) {
 
         // Create some tickmarks!
         style.createTickmarks(transformation, positions, polyline, labels);
-        polyline.updateGeometries();
+        polyline.update();
       }
 
       for (const polylineName in this.tickmarkPolylines) {
@@ -1733,19 +1750,19 @@ var Grapheme = (function (exports) {
      * updateAxispolyline - Update the PolylineElement which is the main axis itself.
      */
     updateAxispolyline () {
-      const axispolyline = this.axisComponents.axispolyline;
+      const axispolyline = this.axisComponents.axisPolyline;
       axispolyline.precedence = 1; // put it on top of the tickmarks
       axispolyline.alwaysUpdate = false;
 
       // Axis polyline connects these two vertices
       axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()];
-      axispolyline.updateGeometries();
+      axispolyline.update();
 
-      if (!this.hasChild(axispolyline)) { this.add(axispolyline); }
+      if (!GraphemeElement.hasChild(axispolyline)) { this.add(axispolyline); }
     }
 
     /**
-     * updateGeometries - Update the geometries of this axis for rendering.
+     * update - Update the geometries of this axis for rendering.
      */
     updateGeometries () {
       if (this.margins.automatic) { this.calculateMargins(); }
@@ -1928,9 +1945,9 @@ var Grapheme = (function (exports) {
     constructor (params = {}) {
       super(Object.assign({
         tickmarkStyles: {
-          main: new AxisTickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
-          sub: new AxisTickmarkStyle({ length: 5 }),
-          zero: new AxisTickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
+          main: new TickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
+          sub: new TickmarkStyle({ length: 5 }),
+          zero: new TickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
         }
       }, params));
 
@@ -1952,7 +1969,7 @@ var Grapheme = (function (exports) {
     updateGeometries () {
       this.autoTickmarks();
 
-      super.updateGeometries();
+      super.update();
     }
   }
 
