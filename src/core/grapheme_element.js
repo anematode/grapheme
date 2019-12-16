@@ -15,6 +15,9 @@ class GraphemeElement {
     // The parent of this element
     this.parent = null
 
+    // whether this element is visible
+    this.visible = true
+
     // Whether to always update geometries when render is called
     this.alwaysUpdate = alwaysUpdate
 
@@ -23,6 +26,7 @@ class GraphemeElement {
 
   set precedence (x) {
     this._precedence = x
+    
     if (this.parent)
       this.parent.childrenSorted = false
   }
@@ -36,6 +40,10 @@ class GraphemeElement {
   }
 
   render (elementInfo) {
+    if (!this.visible) {
+      return
+    }
+
     if (this.alwaysUpdate) {
       this.update()
     }
@@ -43,7 +51,7 @@ class GraphemeElement {
     elementInfo.window.beforeRender(this)
   }
 
-  static hasChild () {
+  hasChild () {
     return false
   }
 
@@ -58,6 +66,15 @@ class GraphemeElement {
     }
 
     return false
+  }
+
+  addEventListener (type, listener) {
+    let listenerArray = this.eventListeners[type]
+    if (!listenerArray) {
+      this.eventListeners[type] = [listener]
+    } else {
+      this.eventListeners[type].push(listener)
+    }
   }
 
   orphanize () {

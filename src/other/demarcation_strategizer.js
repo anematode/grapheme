@@ -117,7 +117,7 @@ class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
         { main: 5, sub: 5 },
         { main: 4, sub: 4 }
       ],
-      idealSubDist = 60 // CSS pixels
+      idealSubDist = 25 // CSS pixels
     } = params
 
     this.idealSubDist = idealSubDist

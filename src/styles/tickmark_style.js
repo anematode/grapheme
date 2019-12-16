@@ -131,6 +131,15 @@ class TickmarkStyle {
     label2DSet.texts = []
     label2DSet.style = this.labelStyle
 
+
+      const textS = this.labelAnchoredTo
+
+      let paddingSc = this.labelPadding
+      if (textS < 0)
+        paddingSc *= -1
+      else if (textS === 0)
+        paddingSc = 0
+
     for (let i = 0; i < positions.length; ++i) {
       let givenPos = positions[i]
       if (givenPos.value) { givenPos = givenPos.value }
@@ -143,8 +152,8 @@ class TickmarkStyle {
       polyline.vertices.push(...tickmarkRight.asArray(), ...tickmarkLeft.asArray(), NaN, NaN)
 
       if (this.displayLabels) {
-        const textS = this.labelAnchoredTo
-        const position = tickmarkLeft.scale((textS + 1) / 2).add(tickmarkRight.scale((1 - textS) / 2)).add(axisNormal.scale(this.labelPadding))
+
+        const position = tickmarkLeft.scale((textS + 1) / 2).add(tickmarkRight.scale((1 - textS) / 2)).add(axisNormal.scale(paddingSc))
 
         label2DSet.texts.push({ text: this.labelFunc(givenPos), pos: position })
       }

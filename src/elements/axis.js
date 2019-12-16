@@ -102,6 +102,15 @@ class Axis extends GraphemeGroup {
     this.style = this.axisComponents.axisPolyline.style
   }
 
+  applyToTickmarkStyles(func) {
+    let ts = this.tickmarkStyles
+    for (const styleName in ts) {
+      let style = ts[styleName]
+
+      func(style)
+    }
+  }
+
   /**
    * setAllColorsTo - Set the color of the axis and the colors of all tickmarkstyles under this axis to a given color.
    *
@@ -136,9 +145,9 @@ class Axis extends GraphemeGroup {
   }
 
   /**
-   * updatetickmarkPolylines - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
+   * updateTickmarkPolylines - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
    */
-  updatetickmarkPolylines () {
+  updateTickmarkPolylines () {
     const tickmarkPolylines = this.axisComponents.tickmarkPolylines
     const tickmarkLabels = this.axisComponents.tickmarkLabels
     const axisDisplacement = this.end.subtract(this.start)
@@ -168,6 +177,7 @@ class Axis extends GraphemeGroup {
       if (!positions) continue
 
       let polyline = tickmarkPolylines[styleName]
+
       if (!polyline) {
         polyline = new PolylineElement()
         polyline.alwaysUpdate = false
@@ -177,6 +187,7 @@ class Axis extends GraphemeGroup {
       }
 
       let labels = tickmarkLabels[styleName]
+
       if (!labels) {
         labels = new Label2DSet()
         this.add(labels)
@@ -214,9 +225,9 @@ class Axis extends GraphemeGroup {
   }
 
   /**
-   * updateAxispolyline - Update the PolylineElement which is the main axis itself.
+   * updateAxisPolyline - Update the PolylineElement which is the main axis itself.
    */
-  updateAxispolyline () {
+  updateAxisPolyline () {
     const axispolyline = this.axisComponents.axisPolyline
     axispolyline.precedence = 1 // put it on top of the tickmarks
     axispolyline.alwaysUpdate = false
@@ -225,16 +236,16 @@ class Axis extends GraphemeGroup {
     axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()]
     axispolyline.update()
 
-    if (!GraphemeElement.hasChild(axispolyline)) { this.add(axispolyline) }
+    if (!this.hasChild(axispolyline)) { this.add(axispolyline) }
   }
 
   /**
    * update - Update the geometries of this axis for rendering.
    */
-  updateGeometries () {
+  update () {
     if (this.margins.automatic) { this.calculateMargins() }
-    this.updatetickmarkPolylines()
-    this.updateAxispolyline()
+    this.updateTickmarkPolylines()
+    this.updateAxisPolyline()
   }
 
   destroy () {

@@ -8,7 +8,7 @@ class PolylineElement extends PolylineBase {
     this.arrowPath = null
   }
 
-  updateGeometries () {
+  update () {
     const path = new Path2D()
     this.mainPath = path
 

@@ -44,13 +44,13 @@ class GraphemeGroup extends GraphemeElement {
   }
 
   isChild (element) {
-    return super.hasChild(element, false)
+    return this.hasChild(element, false)
   }
 
   hasChild (element, recursive = true) {
     if (recursive) {
-      if (super.hasChild(element, false)) return true
-      return this.children.some((child) => super.hasChild(element, recursive))
+      if (this.hasChild(element, false)) return true
+      return this.children.some((child) => child.hasChild(element, recursive))
     }
 
     const index = this.children.indexOf(element)
@@ -64,7 +64,7 @@ class GraphemeGroup extends GraphemeElement {
       throw new Error('Element is already a child')
     }
 
-    utils.assert(!super.hasChild(element, true), 'Element is already a child of this group...')
+    utils.assert(!this.hasChild(element, true), 'Element is already a child of this group...')
 
     element.parent = this
     this.children.push(element)
@@ -78,7 +78,7 @@ class GraphemeGroup extends GraphemeElement {
 
   remove (element, ...elements) {
     utils.checkType(element, GraphemeElement)
-    if (super.hasChild(element, false)) {
+    if (this.hasChild(element, false)) {
       // if element is an immediate child
       const index = this.children.indexOf(element)
       this.children.splice(index, 1)

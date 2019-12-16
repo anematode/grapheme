@@ -28,7 +28,7 @@ class AutoAxis extends Axis {
     this.tickmarkPositions = strategizer.getDemarcations()
   }
 
-  updateGeometries () {
+  update () {
     this.autoTickmarks()
 
     super.update()

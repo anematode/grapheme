@@ -46,6 +46,7 @@ class Label2DStyle extends BasicLabelStyle {
     } = params
     super(params)
 
+    this.mode = "2d"
     this.color = color
     this.fontSize = fontSize
     this.fontFamily = fontFamily

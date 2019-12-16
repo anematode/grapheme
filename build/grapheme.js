@@ -16,23 +16,12 @@ var Grapheme = (function (exports) {
     assert(obj instanceof type, `Object must be instance of ${type}`);
   }
 
-  // The following functions are self-explanatory.
-
-  function isInteger (z) {
-    return Number.isInteger(z) // didn't know about this lol
-  }
-
   function isNonnegativeInteger (z) {
     return Number.isInteger(z) && z >= 0
   }
 
   function isPositiveInteger (z) {
     return Number.isInteger(z) && z > 0
-  }
-
-  // Check if two numbers are within epsilon of each other
-  function isApproxEqual (v, w, eps = 1e-5) {
-    return Math.abs(v - w) < eps
   }
 
   // device pixel ratio... duh
@@ -150,7 +139,7 @@ var Grapheme = (function (exports) {
     return x
   }
 
-  class GraphemeElement$1 {
+  class GraphemeElement {
     constructor ({
       precedence = 0,
       visible = true,
@@ -165,6 +154,9 @@ var Grapheme = (function (exports) {
       // The parent of this element
       this.parent = null;
 
+      // whether this element is visible
+      this.visible = true;
+
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
 
@@ -173,6 +165,7 @@ var Grapheme = (function (exports) {
 
     set precedence (x) {
       this._precedence = x;
+      
       if (this.parent)
         this.parent.childrenSorted = false;
     }
@@ -186,6 +179,10 @@ var Grapheme = (function (exports) {
     }
 
     render (elementInfo) {
+      if (!this.visible) {
+        return
+      }
+
       if (this.alwaysUpdate) {
         this.update();
       }
@@ -193,7 +190,7 @@ var Grapheme = (function (exports) {
       elementInfo.window.beforeRender(this);
     }
 
-    static hasChild () {
+    hasChild () {
       return false
     }
 
@@ -210,6 +207,15 @@ var Grapheme = (function (exports) {
       return false
     }
 
+    addEventListener (type, listener) {
+      let listenerArray = this.eventListeners[type];
+      if (!listenerArray) {
+        this.eventListeners[type] = [listener];
+      } else {
+        this.eventListeners[type].push(listener);
+      }
+    }
+
     orphanize () {
       if (this.parent) {
         this.parent.remove(this);
@@ -217,7 +223,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class GraphemeGroup extends GraphemeElement$1 {
+  class GraphemeGroup extends GraphemeElement {
     constructor (params = {}) {
       super(params);
 
@@ -260,13 +266,13 @@ var Grapheme = (function (exports) {
     }
 
     isChild (element) {
-      return super.hasChild(element, false)
+      return this.hasChild(element, false)
     }
 
     hasChild (element, recursive = true) {
       if (recursive) {
-        if (super.hasChild(element, false)) return true
-        return this.children.some((child) => super.hasChild(element, recursive))
+        if (this.hasChild(element, false)) return true
+        return this.children.some((child) => child.hasChild(element, recursive))
       }
 
       const index = this.children.indexOf(element);
@@ -274,13 +280,13 @@ var Grapheme = (function (exports) {
     }
 
     add (element, ...elements) {
-      checkType(element, GraphemeElement$1);
+      checkType(element, GraphemeElement);
 
       if (element.parent !== null) {
         throw new Error('Element is already a child')
       }
 
-      assert(!super.hasChild(element, true), 'Element is already a child of this group...');
+      assert(!this.hasChild(element, true), 'Element is already a child of this group...');
 
       element.parent = this;
       this.children.push(element);
@@ -293,8 +299,8 @@ var Grapheme = (function (exports) {
     }
 
     remove (element, ...elements) {
-      checkType(element, GraphemeElement$1);
-      if (super.hasChild(element, false)) {
+      checkType(element, GraphemeElement);
+      if (this.hasChild(element, false)) {
         // if element is an immediate child
         const index = this.children.indexOf(element);
         this.children.splice(index, 1);
@@ -328,7 +334,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class WebGLGraphemeElement extends GraphemeElement$1 {
+  class WebGLGraphemeElement extends GraphemeElement {
     constructor (params = {}) {
       super(params);
 
@@ -405,7 +411,7 @@ var Grapheme = (function (exports) {
 
   // Empty element drawn at the end of every render to copy the webgl canvas over
   // if necessary LOL
-  const FINAL_ELEMENT = new GraphemeElement$1();
+  const FINAL_ELEMENT = new GraphemeElement();
 
   /** A grapheme window is an actual viewable instance of Grapheme.
   That is, it is a div that can be put into the DOM and manipulated (and seen).
@@ -603,6 +609,8 @@ var Grapheme = (function (exports) {
         canvasCtx,
         window: this
       };
+
+      this.resetCanvasCtxTransform();
 
       let err; // potential error in try {...} catch
       try {
@@ -884,181 +892,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // Implementation of basic color functions
-  // Could use a library, but... good experience for me too
-
-  function isValidColorComponent (x) {
-    return (x >= 0 && x <= 255)
-  }
-
-  class Color {
-    constructor ({
-      r = 0, g = 0, b = 0, a = 255
-    } = {}) {
-      this.r = r;
-      this.g = g;
-      this.b = b;
-      this.a = a;
-
-      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
-    }
-
-    rounded () {
-      return {
-        r: Math.round(this.r),
-        g: Math.round(this.g),
-        b: Math.round(this.b),
-        a: Math.round(this.a)
-      }
-    }
-
-    hex () {
-      const rnd = this.rounded();
-      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
-    }
-
-    glColor () {
-      return {
-        r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
-      }
-    }
-  }
-
-  class LineStyle {
-    constructor (params = {}) {
-      const {
-        color = new Color(),
-        thickness = 2, // in CSS pixels
-        dashPattern = [], // lengths of alternating dashes
-        dashOffset = 0, // length of dash offset
-        endcap = 'round', // endcap, among "butt", "round", "square"
-        endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
-        join = 'miter', // join type, among "miter", "round", "bevel"
-        joinRes = 0.3, // angle between consecutive join roundings
-        useNative = true, // whether to use native line drawing, only used in WebGL
-        arrowhead = null, // arrowhead to draw
-        arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
-      } = params;
-
-      this.color = color;
-      this.thickness = thickness;
-      this.dashPattern = dashPattern;
-      this.dashOffset = dashOffset;
-      this.endcap = endcap;
-      this.endcapRes = endcapRes;
-      this.join = join;
-      this.joinRes = joinRes;
-      this.useNative = useNative;
-      this.arrowhead = arrowhead;
-      this.arrowLocations = arrowLocations;
-    }
-
-    prepareContext (ctx) {
-      ctx.fillStyle = ctx.strokeStyle = this.color.hex();
-      ctx.lineWidth = this.thickness;
-      ctx.setLineDash(this.dashPattern);
-      ctx.lineDashOffset = this.dashOffset;
-      ctx.miterLimit = this.thickness / Math.cos(this.joinRes / 2);
-      ctx.lineCap = this.endcap;
-      ctx.lineJoin = this.join;
-    }
-  }
-
-  class PolylineBase extends GraphemeElement$1 {
-    constructor (params = {}) {
-      super(params);
-
-      let {
-        style,
-        vertices = []
-      } = params;
-
-      if (!(style instanceof LineStyle)) {
-        style = new LineStyle(style || {});
-      }
-
-      this.style = style;
-      this.vertices = vertices;
-    }
-  }
-
-  class PolylineElement extends PolylineBase {
-    constructor (params = {}) {
-      super(params);
-
-      this.mainPath = null;
-      this.arrowPath = null;
-    }
-
-    updateGeometries () {
-      const path = new Path2D();
-      this.mainPath = path;
-
-      const arrowPath = new Path2D();
-      this.arrowPath = arrowPath;
-
-      const vertices = this.vertices;
-
-      // Nothing to draw
-      if (vertices.length < 4) {
-        return
-      }
-
-      const coordinateCount = vertices.length;
-      const { arrowhead, arrowLocations, thickness } = this.style;
-
-      const inclStart = arrowLocations.includes('start') && arrowhead;
-      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
-      const inclEnd = arrowLocations.includes('end') && arrowhead;
-      const inclSubend = arrowLocations.includes('subend') && arrowhead;
-
-      let x2 = NaN;
-      let x3 = NaN;
-
-      let y2 = NaN;
-      let y3 = NaN;
-
-      for (let i = 0; i <= coordinateCount; i += 2) {
-        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
-        // If any of these is NaN, that vertex is considered undefined
-        const x1 = x2;
-        x2 = x3;
-        x3 = (i === coordinateCount) ? NaN : vertices[i];
-
-        const y1 = y2;
-        y2 = y3;
-        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
-
-        if (i === 0) continue
-
-        const isStartingEndcap = Number.isNaN(x1);
-        const isEndingEndcap = Number.isNaN(x3);
-
-        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
-          path.moveTo(newV.x, newV.y);
-        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
-          path.lineTo(newV.x, newV.y);
-        } else if (isStartingEndcap) {
-          path.moveTo(x2, y2);
-        } else {
-          path.lineTo(x2, y2);
-        }
-      }
-    }
-
-    render (renderInfo) {
-      super.render(renderInfo);
-
-      const ctx = renderInfo.canvasCtx;
-
-      this.style.prepareContext(ctx);
-      ctx.stroke(this.mainPath);
-      ctx.fill(this.arrowPath);
-    }
-  }
-
   class Vec2 {
     constructor (x, y) {
       this.x = x;
@@ -1142,851 +975,73 @@ var Grapheme = (function (exports) {
   const SE = S.add(E).unit();
   const SW = S.add(W).unit();
 
-  // A glyph to be fill drawn in some fashion.
-  class Glyph {
-    constructor (params = {}) {
-      // vertices is array of Vec2s
-      const { vertices = [] } = params;
-      this.vertices = vertices;
-    }
-
-    addGlyphToPath (path, x = 0, y = 0, scale = 1, angle = 0) {
-      const vertices = this.vertices;
-
-      const translateV = new Vec2(x, y);
-
-      // Nothing to draw
-      if (vertices.length < 2) {
-        return
-      }
-
-      const p1 = vertices[0].scale(scale).rotate(angle).add(translateV);
-      let jumpToNext = false;
-
-      path.moveTo(p1.x, p1.y);
-
-      for (let i = 1; i < vertices.length; ++i) {
-        const p = vertices[i].scale(scale).rotate(angle).add(translateV);
-
-        if (p.hasNaN()) {
-          jumpToNext = true;
-          continue
-        }
-
-        if (jumpToNext) {
-          jumpToNext = false;
-          path.moveTo(p.x, p.y);
-        } else path.lineTo(p.x, p.y);
-      }
-
-      path.closePath();
-    }
-
-    getGlyphPath2D (x = 0, y = 0, scale = 1, angle = 0) {
-      const path = new Path2D();
-
-      this.addGlyphToPath(path, x, y, scale, angle);
-
-      return path
-    }
-  }
-
-  /**
-  A glyph which creates an arrowhead. Tells you where the arrowhead will be with a Path2D
-  return value, but also tells you where the base of the arrowhead is so that you can join it
-  up properly.
-
-  Use glyph vertices with thickness 2 */
-  class Arrowhead extends Glyph {
-    constructor (params = {}) {
+  class Plot2D extends GraphemeGroup {
+    constructor(params={}) {
       super(params);
 
-      const { length = 0 } = params;
-      this.length = length;
+      this.box = {x: 0, y: 0, width: 640, height: 320};
+
+      this.margins = {top: 50, left: 50, bottom: 50, right: 50, automatic: false};
+
+      this.plotBox = {x: 0, y: 0, width: 640, height: 320};
+
+      this.fullscreen = false;
+
+      this.preserveAspectRatio = true;
+      this.aspectRatio = 1;
     }
 
-    getPath2D (x1, y1, x2, y2, thickness) { // draw an arrow at x2, y2 facing away from x1, y1
-      const path = new Path2D();
-      const pos = this.addPath2D(path, x1, y1, x2, y2, thickness);
-
-      return {
-        path, pos
-      }
+    setPosition(x, y) {
+      this.box.x = x;
+      this.box.y = y;
     }
 
-    addPath2D (path, x1, y1, x2, y2, thickness) {
-      const arrowTipAt = new Vec2(x2, y2);
-      const displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
-
-      this.addGlyphToPath(path, x2, y2, 2 * thickness, Math.atan2(y2 - y1, x2 - x1));
-
-      return arrowTipAt.add(displacement)
-    }
-  }
-
-  function createTriangleArrowhead (width, length) {
-    return new Arrowhead({
-      vertices: [
-        new Vec2(0, 0),
-        new Vec2(-length, width / 2),
-        new Vec2(-length, -width / 2)
-      ],
-      length
-    })
-  }
-
-  const Arrowheads = {
-    Normal: createTriangleArrowhead(3, 6),
-    Squat: createTriangleArrowhead(3, 3)
-  };
-
-  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
-  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
-
-  class BasicLabelStyle {
-    constructor (params = {}) {
-      const {
-        mode = 'latex', // valid values: latex, html
-        dir = 'C' // valid values:
-      } = params;
-
-      this.mode = mode;
-      this.dir = dir;
+    setSize(width, height) {
+      this.box.width = width;
+      this.box.height = height;
     }
 
-    labelClass () {
-      let dir = this.dir;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
-
-      return 'grapheme-label-' + this.dir
+    containsX(x) {
+      return this.innerBBox.containsX(x)
     }
 
-    setLabelClass (labelElement) {
-      const labelClass = this.labelClass();
+    containsY(y) {
+      return this.innerBBox.containsY(y)
+    }
 
-      if (!labelElement.classList.contains(labelClass)) {
-        labelElement.classList.remove(...labelClasses);
-        labelElement.classList.add(labelClass);
+    transformX(x) {
+      return (this.innerBBox.width * (x - this.limits.x) + this.innerBBox.x)
+    }
+
+    transformY(y) {
+      return (this.innerBBox.height * (this.limits.y - y) + this.innerBBox.y)
+    }
+
+    updateLimits() {
+
+    }
+
+    updateInnerBBox() {
+      this.innerBBox = this.bbox.marginIn(this.margins);
+    }
+
+    update() {
+      this.updateInnerBBox();
+    }
+
+    expandIfFullscreen(renderInfo) {
+      if (this.fullscreen) {
+        this.bbox.x = 0;
+        this.bbox.y = 0;
+
+        this.bbox.width = renderInfo.dims.width;
+        this.bbox.height = renderInfo.dims.height;
       }
     }
   }
 
-  class Label2DStyle extends BasicLabelStyle {
-    // TODO: rotation
-    constructor (params = {}) {
-      const {
-        color = new Color(),
-        fontSize = 12,
-        fontFamily = 'Helvetica',
-        shadowColor = new Color(),
-        shadowSize = 0
-      } = params;
-      super(params);
-
-      this.color = color;
-      this.fontSize = fontSize;
-      this.fontFamily = fontFamily;
-      this.shadowColor = shadowColor;
-      this.shadowSize = shadowSize;
-    }
-
-    prepareContextTextAlignment (ctx) {
-      let dir = this.dir;
-
-      let textBaseline;
-      let textAlign;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
-
-      // text align
-      switch (dir) {
-        case 'C': case 'N': case 'S':
-          textAlign = 'center';
-          break
-        case 'NW': case 'W': case 'SW':
-          textAlign = 'left';
-          break
-        case 'NE': case 'E': case 'SE':
-          textAlign = 'right';
-          break
-      }
-
-      // text baseline
-      switch (dir) {
-        case 'C': case 'W': case 'E':
-          textBaseline = 'middle';
-          break
-        case 'SW': case 'S': case 'SE':
-          textBaseline = 'top';
-          break
-        case 'NW': case 'N': case 'NE':
-          textBaseline = 'bottom';
-          break
-      }
-
-      ctx.textBaseline = textBaseline;
-      ctx.textAlign = textAlign;
-    }
-
-    prepareContextTextStyle (ctx) {
-      this.prepareContextTextAlignment(ctx);
-      ctx.font = `${this.fontSize}px ${this.fontFamily}`;
-    }
-
-    prepareContextShadow (ctx) {
-      ctx.fillStyle = this.shadowColor.hex();
-      ctx.lineWidth = this.shadowSize * 2;
-    }
-
-    prepareContextFill (ctx) {
-      ctx.fillStyle = this.color.hex();
-    }
-  }
-
-  /* Unicode characters for exponent signs, LOL */
-  const exponentReference = {
-    '-': String.fromCharCode(8315),
-    0: String.fromCharCode(8304),
-    1: String.fromCharCode(185),
-    2: String.fromCharCode(178),
-    3: String.fromCharCode(179),
-    4: String.fromCharCode(8308),
-    5: String.fromCharCode(8309),
-    6: String.fromCharCode(8310),
-    7: String.fromCharCode(8311),
-    8: String.fromCharCode(8312),
-    9: String.fromCharCode(8313)
-  };
-
-  /* Convert a digit into its exponent form */
-  function convertChar (c) {
-    return exponentReference[c]
-  }
-
-  /* Convert an integer into its exponent form (of Unicode characters) */
-  function exponentify (integer) {
-    assert(isInteger(integer), 'needs to be an integer');
-
-    const stringi = integer + '';
-    let out = '';
-
-    for (let i = 0; i < stringi.length; ++i) {
-      out += convertChar(stringi[i]);
-    }
-
-    return out
-  }
-
-  // Credit: https://stackoverflow.com/a/20439411
-  /* Turns a float into a pretty float by removing dumb floating point things */
-  function beautifyFloat (f, prec = 12) {
-    const strf = f.toFixed(prec);
-    if (strf.includes('.')) {
-      return strf.replace(/\.?0+$/g, '')
-    } else {
-      return strf
-    }
-  }
-
-  // Multiplication character
-  const CDOT = String.fromCharCode(183);
-
-  const defaultLabel = x => {
-    if (x === 0) return '0' // special case
-    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) {
-    // non-extreme floats displayed normally
-      return beautifyFloat(x)
-    } else {
-      // scientific notation for the very fat and very small!
-
-      const exponent = Math.floor(Math.log10(Math.abs(x)));
-      const mantissa = x / (10 ** exponent);
-
-      const prefix = (isApproxEqual(mantissa, 1) ? ''
-        : (beautifyFloat(mantissa, 8) + CDOT));
-      const exponentSuffix = '10' + exponentify(exponent);
-
-      return prefix + exponentSuffix
-    }
-  };
-
-  /** Class representing a style of tickmark, with a certain thickness, color position, and possibly with text */
-  class TickmarkStyle {
-    /**
-     * Create an TickmarkStyle.
-     * @param {Object} params - The parameters of the tickmark style.
-     * @param {number} params.length - The length of the tickmark, measured perpendicular to the axis.
-     * @param {number} params.positioning - The position of the tickmark relative to the axis. A value of 1 indicates it is entirely to the left of the axis, and a value of -1 indicates it is entirely to the right of the axis. The values in between give linear interpolations between these two positions.
-     * @param {number} params.thickness - The thickness of the tickmark.
-     * @param {Color} params.color - The color of the tickmark.
-     * @param {Boolean} params.displayText - Whether to display text.
-     */
-    constructor ({
-      length = 10,
-      positioning = 0,
-      thickness = 2,
-      color = new Color(),
-      displayLabels = false,
-      displayTicks = true,
-      labelAnchoredTo = 1, // 1 is right of tickmark, 0 is middle of tickmark, -1 is left of tickmark
-      labelPadding = 2,
-      labelStyle = new Label2DStyle(),
-      labelFunc = defaultLabel
-    } = {}) {
-      this.length = length;
-      this.positioning = positioning;
-      this.thickness = thickness;
-      this.color = color;
-      this.displayLabels = displayLabels;
-      this.displayTicks = displayTicks;
-      this.labelAnchoredTo = labelAnchoredTo;
-      this.labelPadding = labelPadding;
-      this.labelStyle = labelStyle;
-      this.labelFunc = labelFunc;
-    }
-
-    /**
-     * Add a set of tickmarks with given positions and a certain linear transformation to a Simple2DGeometry for later rendering.
-     * Reference theory/class_theory/axis_tickmark_style.jpg for explanation.
-     * @param {Object} transformation - A transformation from axis coordinates (x1-x2) to canvas coordinates (v1-v2)
-     * @param {number} transformation.x1 - The first axis coordinate, corresponding to the point v1.
-     * @param {number} transformation.x2 - The second axis coordinate, corresponding to the point v2.
-     * @param {Vec2} transformation.v1 - The first canvas point, corresponding to the axis coordinate x1.
-     * @param {Vec2} transformation.v2 - The second canvas point, corresponding to the axis coordinate x2.
-     * @param {Array} positions - An array of numbers or objects containing a .value property which are the locations, in axis coordinates, of where the tickmarks should be generated.
-     * @param {PolylineBase} polyline - The polyline to emit tickmarks to
-     * @param {Label2DSet} label2DSet - set of 2d labels to use
-     */
-    createTickmarks (transformation, positions, polyline, label2DSet) {
-      polyline.vertices = [];
-      polyline.style.thickness = this.thickness;
-      polyline.style.color = this.color;
-      polyline.style.endcap = 'butt';
-
-      const { positioning, length } = this;
-      const { v1, v2, x1, x2 } = transformation;
-
-      const axisDisplacement = v2.subtract(v1);
-      const axisNormal = axisDisplacement.unit().rotate(Math.PI / 2);
-
-      label2DSet.texts = [];
-      label2DSet.style = this.labelStyle;
-
-      for (let i = 0; i < positions.length; ++i) {
-        let givenPos = positions[i];
-        if (givenPos.value) { givenPos = givenPos.value; }
-
-        const tickmarkCenter = axisDisplacement.scale((givenPos - x1) / (x2 - x1)).add(v1);
-        const tickmarkLeft = axisNormal.scale((positioning + 1) / 2 * length).add(tickmarkCenter);
-        const tickmarkRight = axisNormal.scale((positioning - 1) / 2 * length).add(tickmarkCenter);
-
-        // Create a rectangle for the tick
-        polyline.vertices.push(...tickmarkRight.asArray(), ...tickmarkLeft.asArray(), NaN, NaN);
-
-        if (this.displayLabels) {
-          const textS = this.labelAnchoredTo;
-          const position = tickmarkLeft.scale((textS + 1) / 2).add(tickmarkRight.scale((1 - textS) / 2)).add(axisNormal.scale(this.labelPadding));
-
-          label2DSet.texts.push({ text: this.labelFunc(givenPos), pos: position });
-        }
-      }
-    }
-  }
-
-  class Label2DSet extends GraphemeElement$1 {
-    constructor (params = {}) {
-      super(params);
-
-      this.style = new Label2DStyle();
-
-      // Format: {text: "5", pos: Vec2(3,4)}
-      this.texts = params.texts ? params.texts : [];
-    }
-
-    render (renderInfo) {
-      const texts = this.texts; const ctx = renderInfo.canvasCtx;
-
-      ctx.save();
-
-      this.style.prepareContextTextStyle(ctx);
-
-      if (this.style.shadowSize > 0) {
-        this.style.prepareContextShadow(ctx);
-
-        for (let i = 0; i < texts.length; ++i) {
-          const textInfo = texts[i];
-          const { text, pos } = textInfo;
-
-          ctx.strokeText(text, pos.x, pos.y);
-        }
-      }
-
-      this.style.prepareContextFill(ctx);
-
-      for (let i = 0; i < texts.length; ++i) {
-        const textInfo = texts[i];
-        const { text, pos } = textInfo;
-
-        ctx.fillText(text, pos.x, pos.y);
-      }
-
-      ctx.restore();
-    }
-  }
-
-  /**
-  A displayed axis, potentially with tick marks of various types,
-  potentially with labels, and potentially with an arrow. The position of the axis
-  (and the transformation it entails) is determined by six variables: start, end,
-  marginStart, marginEnd, xStart and xEnd. start is a Vec2, in canvas pixels, of
-  the start of the axis; the same is true for end. marginStart is a number of canvas
-  pixels which represents an "unused" portion of the axis at the beginning of the axis;
-  it can be 0. marginEnd is the same for the end of the axis; if there is an arrow at
-  the end of the axis, it will automatically be set to 1.5 * the length of the arrowhead.
-  xStart is the REPRESENTED coordinate at marginStart in from start. xEnd is the
-  REPRESENTED coordinate at marginEnd in from end.
-
-  Tickmarks must be divided into certain style classes, though the number of such
-  classes is unlimited. The style of each tickmark is defined by the TickmarkStyle
-  class, which abstracts their relative position to the axis, thickness, etc. This
-  style also deals with labels, and Axis doesn't have to think about labels too hard.
-  These style classes are given as key value pairs in a "tickmarkStyles" object,
-  where the keys are the named of the style classes (ex: "big" to be used for integers,
-  "small" to be used for nonintegers). The positions of the tickmarks themselves are
-  given in the tickmarkPositions object, which is another set of key value pairs.
-  The keys are the style classes and the values are arrays of tickmark positions. To
-  support things like arbitrary-precision arithmetic in the future, these positions
-  may either be NUMBERS, which will be simply transformed using the Axis's defined
-  linear transformation to pixel space, or OBJECTS with a "value" property. The reason
-  we may want OBJECTS is for labeling reasons. For example, suppose we want to label
-  a bunch of rational numbers in (0,1). Then we could define a labelFunction which
-  takes in a number and outputs a string form of a rational number close to that number,
-  but that's annoying. Instead, we give the positions of the tickmarks as objects of
-  the form {num: p, den: q, value: p/q}, so that Axis transforms them according to their
-  numerical value while the labelFunction still has information on the numerator and
-  denominator.
-
-  @extends Group
-  */
-  class Axis extends GraphemeGroup {
-    /**
-     * Create an axis.
-     * @param {Object} params - The parameters of the axis. Also inherits parameters from GraphemeGroup.
-     * @param {Vec2} params.start - The position, in canvas pixels, of the start of the axis.
-     * @param {Vec2} params.end - The position, in canvas pixels, of the end of the axis.
-     * @param {Object} params.margins - Information about the margins of the axis.
-     * @param {number} params.margins.start - Length in canvas pixels of the starting margin.
-     * @param {number} params.margins.end - Length in canvas pixels of the ending margin.
-     * @param {Boolean} params.margins.automatic - Whether to calculate the margins automatically. If this is true, update() will overwrite margins.start and margins.end.
-     * @param {number} params.xStart - The axis coordinate associated with the start of the axis.
-     * @param {number} params.xEnd - The axis coordinate associated with the end of the axis.
-     * @param {Object} params.tickmarkStyles - An optional object containing key value pairs of AxisTickmarkStyles, where the keys are the names of the styles and the values are the styles.
-     * @param {Object} params.tickmarkPositions - An optional object containing key value pairs of tickmark position arrays, where the keys are the names of those tickmarks' styles and the values are the positions, in axis coordinates, of the tickmarks.
-     * @param {number} params.arrowLocations - Where the arrows of the axis are.
-     * @param {number} params.arrowType - The type of the arrows of the axis.
-     * @param {number} params.thickness - The thickness of the axis.
-     * @param {Color} params.color - The color of the axis.
-     * @param {number} params.endcapType - The type of endcap of the axis.
-     * @param {number} params.endcapRes - The angular resolution of the endcap.
-     */
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        start = new Vec2(0, 0),
-        end = new Vec2(100, 0),
-        xStart = 0,
-        xEnd = 1,
-        tickmarkStyles = {},
-        tickmarkPositions = {},
-        style = {}
-      } = params;
-
-      const margins = Object.assign({ start: 0, end: 0, automatic: true }, params.margins || {});
-
-      this.start = start;
-      this.end = end;
-      this.margins = margins;
-      this.xStart = xStart;
-      this.xEnd = xEnd;
-      this.tickmarkStyles = tickmarkStyles;
-      this.tickmarkPositions = tickmarkPositions;
-
-      // Used internally, no need for the user to touch it. Unless there's a bug.
-      // Then I have to touch it. Ugh.
-      this.axisComponents = {
-        tickmarkPolylines: {},
-        tickmarkLabels: {},
-        axisPolyline: new PolylineElement(Object.assign({
-          // Some sensible default values
-          arrowLocations: -1,
-          arrowType: 0,
-          thickness: 2,
-          color: new Color()
-        }, style))
-      };
-
-      // Style of the main axis line
-      this.style = this.axisComponents.axisPolyline.style;
-    }
-
-    /**
-     * setAllColorsTo - Set the color of the axis and the colors of all tickmarkstyles under this axis to a given color.
-     *
-     * @param  {Color} color The color to use.
-     */
-    setAllColorsTo (color) {
-      checkType(color, Color);
-      this.color = color;
-
-      this.tickmarkStyles.forEach(tickmarkStyle => { tickmarkStyle.color = color; });
-    }
-
-    /**
-     * calculateMargins - Calculate the margins of the axis, given the size of the arrows.
-     */
-    calculateMargins () {
-      const style = this.style;
-
-      const arrowLocations = style.arrowLocations;
-      const arrowLength = style.arrowhead ? style.arrowhead.length : 0;
-
-      this.margins.start = 0;
-      this.margins.end = 0;
-
-      if (arrowLocations.includes('start') || arrowLocations.includes('substart')) {
-        this.margins.start = 3 * arrowLength * this.style.thickness;
-      }
-
-      if (arrowLocations.includes('end') || arrowLocations.includes('subend')) {
-        this.margins.end = 3 * arrowLength * this.style.thickness;
-      }
-    }
-
-    /**
-     * updatetickmarkPolylines - Update the tickmark geometries by going through each tickmark style and generating the relevant geometries.
-     */
-    updatetickmarkPolylines () {
-      const tickmarkPolylines = this.axisComponents.tickmarkPolylines;
-      const tickmarkLabels = this.axisComponents.tickmarkLabels;
-      const axisDisplacement = this.end.subtract(this.start);
-      const axisLength = axisDisplacement.length();
-
-      if (axisLength < 3 * (this.marginStart + this.marginEnd) ||
-        this.marginStart < 0 || this.marginEnd < 0 || axisLength < 5) {
-        // No thx
-        return
-      }
-
-      const axisDisplacementDir = axisDisplacement.unit();
-
-      // The transformation defined by this axis
-      const transformation = {
-        v1: this.start.add(axisDisplacementDir.scale(this.margins.start)),
-        v2: this.end.subtract(axisDisplacementDir.scale(this.margins.end)),
-        x1: this.xStart,
-        x2: this.xEnd
-      };
-
-      // For every type of tickmark
-      for (const styleName in this.tickmarkStyles) {
-        const style = this.tickmarkStyles[styleName];
-        const positions = this.tickmarkPositions[styleName];
-
-        if (!positions) continue
-
-        let polyline = tickmarkPolylines[styleName];
-        if (!polyline) {
-          polyline = new PolylineElement();
-          polyline.alwaysUpdate = false;
-          this.add(polyline);
-
-          tickmarkPolylines[styleName] = polyline;
-        }
-
-        let labels = tickmarkLabels[styleName];
-        if (!labels) {
-          labels = new Label2DSet();
-          this.add(labels);
-
-          tickmarkLabels[styleName] = labels;
-        }
-
-        // Create some tickmarks!
-        style.createTickmarks(transformation, positions, polyline, labels);
-        polyline.update();
-      }
-
-      for (const polylineName in this.tickmarkPolylines) {
-        if (!this.tickmarkStyles[polylineName]) {
-          const unusedpolyline = this.tickmarkPolylines[polylineName];
-
-          // unused polyline, destroy it
-          this.remove(unusedpolyline);
-          unusedpolyline.destroy();
-
-          delete this.tickmarkPolylines[polylineName];
-        }
-      }
-
-      for (const labelName in this.tickmarkLabels) {
-        if (!this.tickmarkStyles[labelName]) {
-          const unusedLabels = this.tickmarkLabels[labelName];
-
-          this.remove(unusedLabels);
-          unusedLabels.destroy();
-
-          delete this.tickmarkLabels[labelName];
-        }
-      }
-    }
-
-    /**
-     * updateAxispolyline - Update the PolylineElement which is the main axis itself.
-     */
-    updateAxispolyline () {
-      const axispolyline = this.axisComponents.axisPolyline;
-      axispolyline.precedence = 1; // put it on top of the tickmarks
-      axispolyline.alwaysUpdate = false;
-
-      // Axis polyline connects these two vertices
-      axispolyline.vertices = [...this.start.asArray(), ...this.end.asArray()];
-      axispolyline.update();
-
-      if (!GraphemeElement.hasChild(axispolyline)) { this.add(axispolyline); }
-    }
-
-    /**
-     * update - Update the geometries of this axis for rendering.
-     */
-    updateGeometries () {
-      if (this.margins.automatic) { this.calculateMargins(); }
-      this.updatetickmarkPolylines();
-      this.updateAxispolyline();
-    }
-
-    destroy () {
-      super.destroy(); // this will destroy all the child geometries
-
-      delete this.axisComponents;
-    }
-
-    render (renderInfo) {
-      super.render(renderInfo);
-    }
-  }
-
-  /** General class dealing with drawing demarcations of things. In particular, given
-  a length in CSS space corresponding to the length between which demarcations should
-  be drawn, as well as the x starting and x ending points of the demarcation, it will
-  emit demarcations of a variety of classes corresponding to various methods of
-  dividing up a line. */
-
-  class DemarcationStrategizer {
-    constructor (params = {}) {
-      const {
-        start = 0,
-        end = 1,
-        length = 500 // in CSS pixels
-      } = params;
-
-      this.start = start;
-      this.end = end;
-      this.length = length;
-    }
-
-    axisLength () {
-      return Math.abs(this.end - this.start)
-    }
-  }
-
-  const MAX_DEMARCATIONS = 1000;
-
-  /** A strategizer with three types: zero, main, and sub, where the main
-  and sub. The axis distance between main demarcations is mainLength and the number of
-  subdivisions is subdivs */
-  class MainSubDemarcationStrategizer extends DemarcationStrategizer {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        mainLength = 10,
-        subdivs = 5
-      } = params;
-
-      this.mainLength = mainLength;
-      this.subdivs = subdivs;
-    }
-
-    getDemarcations () {
-      // Whee!!
-      let end = this.end; let start = this.start;
-
-      if (end < start) {
-        const t = end;
-        end = start;
-        start = t;
-      }
-
-      const zero = [];
-      const main = [];
-      const sub = [];
-
-      const { mainLength, subdivs } = this;
-
-      const xS = Math.ceil(start / mainLength);
-      const xE = Math.floor(end / mainLength);
-
-      if (subdivs * (xS - xE) > MAX_DEMARCATIONS) {
-        throw new Error('too many demarcations!!')
-      }
-
-      for (let i = xS; i <= xE; ++i) {
-        if (i === 0) {
-          zero.push(0);
-          continue
-        }
-
-        const pos = mainLength * i;
-        main.push(pos);
-      }
-
-      const yS = Math.ceil(subdivs * start / mainLength);
-      const yE = Math.floor(subdivs * end / mainLength);
-
-      for (let i = yS; i <= yE; ++i) {
-        if (i % subdivs === 0) { // already emitted as a main
-          continue
-        }
-
-        const pos = mainLength / subdivs * i;
-        sub.push(pos);
-      }
-
-      return { zero, main, sub }
-    }
-  }
-
-  /** This strategizer divides the line into one of three classes:
-
-  zero: a demarcation reserved only for the value 0
-  main: a demarcation for major things (perhaps integers)
-  sub: a demarcation for less major things
-
-  The way that this works is that we give the strategizer some potential subdivisions.
-  In particular, we give it an array of potential subdivisions {main, sub}, where main
-  is the absolute distance (in axis coordinates) between main demarcations and sub
-  is the number of sub demarcations to be used within that distance. More precisely, the
-  distance between sub demarcations will be main / sub. This is used to prevent annoying
-  float errors. main and sub must be positive integers. The strategizer will consider
-  any demarcation pattern of the form 10^n * {main, sub}, where n is an integer. The best
-  such pattern is chosen by the closeness in CSS pixels between sub demarcations to
-  the ideal distance between those demarcations, idealSubDist. If multiple patterns
-  satisfy this, the last one in the list of demarcations will be chosen.
-  */
-  class StandardDemarcationStrategizer extends MainSubDemarcationStrategizer {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        patterns = [
-          { main: 10, sub: 5 },
-          { main: 5, sub: 5 },
-          { main: 4, sub: 4 }
-        ],
-        idealSubDist = 60 // CSS pixels
-      } = params;
-
-      this.idealSubDist = idealSubDist;
-      this.patterns = patterns;
-    }
-
-    getDemarcations () {
-      const { patterns, idealSubDist, start, end, length } = this;
-
-      // for each pattern, find the most optimal pattern based on powers of 10 and
-      // see if that is indeed the best
-      let bestMain = 0;
-      let bestSubdivs = 0;
-      let currentError = Infinity;
-
-      for (let i = 0; i < patterns.length; ++i) {
-        const pattern = patterns[i];
-
-        const ne = Math.round(Math.log10(idealSubDist * (end - start) / length * pattern.sub / pattern.main));
-        const scaling = Math.pow(10, ne);
-
-        const error = Math.abs(pattern.main / pattern.sub * length / (end - start) * scaling - idealSubDist);
-
-        if (error < currentError) {
-          bestMain = pattern.main * scaling;
-          bestSubdivs = pattern.sub;
-          currentError = error;
-        }
-      }
-
-      if (currentError === Infinity) {
-        throw new Error('No happy demarcations')
-      }
-
-      this.mainLength = bestMain;
-      this.subdivs = bestSubdivs;
-
-      return super.getDemarcations()
-    }
-  }
-
-  class AutoAxis extends Axis {
-    constructor (params = {}) {
-      super(Object.assign({
-        tickmarkStyles: {
-          main: new TickmarkStyle({ displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) }),
-          sub: new TickmarkStyle({ length: 5 }),
-          zero: new TickmarkStyle({ displayTicks: false, displayLabels: true, labelStyle: new Label2DStyle({ fontSize: 24, dir: 'S' }) })
-        }
-      }, params));
-
-      const { strategizer = new StandardDemarcationStrategizer() } = params;
-
-      this.strategizer = strategizer;
-    }
-
-    autoTickmarks () {
-      const strategizer = this.strategizer;
-
-      strategizer.start = this.xStart;
-      strategizer.end = this.xEnd;
-      strategizer.length = this.start.subtract(this.end).length();
-
-      this.tickmarkPositions = strategizer.getDemarcations();
-    }
-
-    updateGeometries () {
-      this.autoTickmarks();
-
-      super.update();
-    }
-  }
-
-  exports.Arrowheads = Arrowheads;
-  exports.AutoAxis = AutoAxis;
   exports.Context = GraphemeContext;
-  exports.E = E;
-  exports.Group = GraphemeGroup;
-  exports.N = N;
-  exports.NE = NE;
-  exports.NW = NW;
-  exports.PolylineElement = PolylineElement;
-  exports.S = S;
-  exports.SE = SE;
-  exports.SW = SW;
-  exports.Vec2 = Vec2;
-  exports.W = W;
+  exports.Plot2D = Plot2D;
 
   return exports;
 

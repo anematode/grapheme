@@ -205,6 +205,8 @@ class GraphemeWindow extends GraphemeGroup {
       window: this
     }
 
+    this.resetCanvasCtxTransform()
+
     let err // potential error in try {...} catch
     try {
       // Clear this canvas
