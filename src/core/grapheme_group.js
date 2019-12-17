@@ -67,10 +67,11 @@ class GraphemeGroup extends GraphemeElement {
     utils.assert(!this.hasChild(element, true), 'Element is already a child of this group...')
 
     element.parent = this
+    element.window = this.window
     this.children.push(element)
 
     if (elements.length > 0) {
-      this.add(elements)
+      this.add(...elements)
     }
 
     this.childrenSorted = false
@@ -80,13 +81,16 @@ class GraphemeGroup extends GraphemeElement {
     utils.checkType(element, GraphemeElement)
     if (this.hasChild(element, false)) {
       // if element is an immediate child
+
       const index = this.children.indexOf(element)
       this.children.splice(index, 1)
+
       element.parent = null
+      element.window = null
     }
 
     if (elements.length > 0) {
-      this.remove(elements)
+      this.remove(...elements)
     }
   }
 

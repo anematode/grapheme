@@ -26,6 +26,8 @@ class GraphemeWindow extends GraphemeGroup {
     // Grapheme context this window is a child of
     this.context = graphemeContext
 
+    this.window = this
+
     // Add this window to the context's list of windows
     graphemeContext.windows.push(this)
 
@@ -90,6 +92,8 @@ class GraphemeWindow extends GraphemeGroup {
     // Update the parent context, in case it needs to be resized as well to fit
     // a potentially fatter canvas
     this.context.updateSize()
+
+    this.onEvent("resize", {width, height})
   }
 
   // Returns the pixel width of the canvas

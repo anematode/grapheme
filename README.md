@@ -16,21 +16,12 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Gridlines
-- Plot (with scissoring)
-- InteractiveWindow (and event handling, which will be tricky)
-- Mandelbrot
-- Go through all of code and remove unused code, as well as improve code quality (rename long variables)
-- Make sure Labels work
-- Interval Arithmetic
-- FunctionalGraph
-- FunctionalGraph inequality
-- Path2DGeometry
-- Point
-- PointSet
-- LineSegment
-- Circle
-- Arc
-- Complex
-- Path2
-- Path3
+- Plot2D cleanup
+- PlotElement cleanup
+- PlotAxes
+- Path2D
+- Dataset
+- FunctionGraph
+- PolarGraph
+- ParametricGraph
+- FunctionInequality

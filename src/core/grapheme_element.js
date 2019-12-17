@@ -9,11 +9,11 @@ class GraphemeElement {
     // precedence is a number from -Infinity to Infinity.
     this.precedence = precedence
 
-    // Unique identifier for this object
-    this.uuid = utils.generateUUID()
-
     // The parent of this element
     this.parent = null
+
+    // The window this element belongs to
+    this.window = null
 
     // whether this element is visible
     this.visible = true
@@ -26,12 +26,13 @@ class GraphemeElement {
 
   set precedence (x) {
     this._precedence = x
-    
-    if (this.parent)
+
+    if (this.parent) {
       this.parent.childrenSorted = false
+    }
   }
 
-  get precedence() {
+  get precedence () {
     return this._precedence
   }
 
@@ -69,11 +70,11 @@ class GraphemeElement {
   }
 
   addEventListener (type, listener) {
-    let listenerArray = this.eventListeners[type]
+    const listenerArray = this.eventListeners[type]
     if (!listenerArray) {
       this.eventListeners[type] = [listener]
     } else {
-      this.eventListeners[type].push(listener)
+      listenerArray.push(listener)
     }
   }
 

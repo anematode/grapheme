@@ -26,8 +26,13 @@ grapheme_window.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(grapheme_window.domElement);
 
 let plot = new Grapheme.Plot2D()
-
 grapheme_window.add(plot)
+
+plot.plotCoords.width = 4
+plot.plotCoords.cx = 0
+
+let mandelbrot = new Grapheme.Mandelbrot()
+plot.add(mandelbrot)
 
 let ia = 0;
 function render() {

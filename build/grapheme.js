@@ -110,14 +110,6 @@ var Grapheme = (function (exports) {
     throw new Error(gl.getProgramInfoLog(program))
   }
 
-  function generateUUID () {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0; const
-        v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16)
-    })
-  }
-
   // Delete buffers with the given name from all Grapheme contexts
   function deleteBuffersNamed (bufferNames) {
     if (Array.isArray(bufferNames)) {
@@ -148,11 +140,11 @@ var Grapheme = (function (exports) {
       // precedence is a number from -Infinity to Infinity.
       this.precedence = precedence;
 
-      // Unique identifier for this object
-      this.uuid = generateUUID();
-
       // The parent of this element
       this.parent = null;
+
+      // The window this element belongs to
+      this.window = null;
 
       // whether this element is visible
       this.visible = true;
@@ -165,12 +157,13 @@ var Grapheme = (function (exports) {
 
     set precedence (x) {
       this._precedence = x;
-      
-      if (this.parent)
+
+      if (this.parent) {
         this.parent.childrenSorted = false;
+      }
     }
 
-    get precedence() {
+    get precedence () {
       return this._precedence
     }
 
@@ -208,11 +201,11 @@ var Grapheme = (function (exports) {
     }
 
     addEventListener (type, listener) {
-      let listenerArray = this.eventListeners[type];
+      const listenerArray = this.eventListeners[type];
       if (!listenerArray) {
         this.eventListeners[type] = [listener];
       } else {
-        this.eventListeners[type].push(listener);
+        listenerArray.push(listener);
       }
     }
 
@@ -289,10 +282,11 @@ var Grapheme = (function (exports) {
       assert(!this.hasChild(element, true), 'Element is already a child of this group...');
 
       element.parent = this;
+      element.window = this.window;
       this.children.push(element);
 
       if (elements.length > 0) {
-        this.add(elements);
+        this.add(...elements);
       }
 
       this.childrenSorted = false;
@@ -302,13 +296,16 @@ var Grapheme = (function (exports) {
       checkType(element, GraphemeElement);
       if (this.hasChild(element, false)) {
         // if element is an immediate child
+
         const index = this.children.indexOf(element);
         this.children.splice(index, 1);
+
         element.parent = null;
+        element.window = null;
       }
 
       if (elements.length > 0) {
-        this.remove(elements);
+        this.remove(...elements);
       }
     }
 
@@ -431,6 +428,8 @@ var Grapheme = (function (exports) {
       // Grapheme context this window is a child of
       this.context = graphemeContext;
 
+      this.window = this;
+
       // Add this window to the context's list of windows
       graphemeContext.windows.push(this);
 
@@ -495,6 +494,8 @@ var Grapheme = (function (exports) {
       // Update the parent context, in case it needs to be resized as well to fit
       // a potentially fatter canvas
       this.context.updateSize();
+
+      this.onEvent("resize", {width, height});
     }
 
     // Returns the pixel width of the canvas
@@ -892,155 +893,240 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class Vec2 {
-    constructor (x, y) {
-      this.x = x;
-      this.y = y;
-    }
-
-    length () {
-      return Math.hypot(this.x, this.y)
-    }
-
-    add (vec) {
-      return new Vec2(this.x + vec.x, this.y + vec.y)
-    }
-
-    subtract (vec) {
-      return new Vec2(this.x - vec.x, this.y - vec.y)
-    }
-
-    lengthSquared () {
-      return (this.x * this.x + this.y * this.y)
-    }
-
-    clone () {
-      return new Vec2(this.x, this.y)
-    }
-
-    dot (vec) {
-      return this.x * vec.x + this.y * vec.y
-    }
-
-    scale (s) {
-      return new Vec2(this.x * s, this.y * s)
-    }
-
-    scaleAround (vec, s) {
-      return new Vec2((this.x - vec.x) * s + vec.x, (this.y - vec.y) * s + vec.y)
-    }
-
-    rotate (angleRad) { // counterclockwise about origin
-      const c = Math.cos(angleRad);
-      const s = Math.sin(angleRad);
-
-      return new Vec2(this.x * c - this.y * s, this.x * s + this.y * c)
-    }
-
-    rotateAround (vec, angleRad) {
-      return this.minus(vec).rotate(angleRad).add(vec)
-    }
-
-    refAngle () {
-      return Math.atan2(this.y, this.x)
-    }
-
-    unit () {
-      const len = this.length();
-
-      return new Vec2(this.x / len, this.y / len)
-    }
-
-    set (x, y) {
-      this.x = x;
-      this.y = y;
-    }
-
-    asArray () {
-      return [this.x, this.y]
-    }
-
-    hasNaN () {
-      return Number.isNaN(this.x) || Number.isNaN(this.y)
-    }
-  }
-
-  const N = new Vec2(0, -1);
-  const S = new Vec2(0, 1);
-  const E = new Vec2(1, 0);
-  const W = new Vec2(-1, 0);
-
-  const NE = N.add(E).unit();
-  const NW = N.add(W).unit();
-  const SE = S.add(E).unit();
-  const SW = S.add(W).unit();
-
-  class Plot2D extends GraphemeGroup {
+  class Plot2DElement extends GraphemeGroup {
     constructor(params={}) {
       super(params);
 
-      this.box = {x: 0, y: 0, width: 640, height: 320};
+      this.plot = null;
+    }
 
-      this.margins = {top: 50, left: 50, bottom: 50, right: 50, automatic: false};
+    setPlot(plot) {
+      this.plot = plot;
 
-      this.plotBox = {x: 0, y: 0, width: 640, height: 320};
+      this.children.forEach(child => (child.plot ? child.setPlot(plot) : 0));
+    }
 
-      this.fullscreen = false;
+    add(element, ...elements) {
 
-      this.preserveAspectRatio = true;
+      if (elements.length > 0) {
+        super.add(element, ...elements);
+      } else {
+        super.add(element);
+
+        if (element.setPlot) {
+          element.setPlot(this.plot);
+        }
+      }
+    }
+
+    remove(element, ...elements) {
+      if (elements.length > 0) {
+        super.remove(element, ...elements);
+      } else {
+        super.remove(element);
+
+        if (element.setPlot) {
+          element.setPlot(null);
+        }
+      }
+    }
+  }
+
+  class Plot2D extends Plot2DElement {
+    constructor (params = {}) {
+      super(params);
+
+      this.setPlot(this);
+
+      this.box = { x: 0, y: 0, width: 640, height: 480 };
+      this.plotCoords = { cx: 0, cy: 0, width: 5, height: 5 };
+      this.plottingBox = {};
+
+      this.preserveAspectRatio = false;
       this.aspectRatio = 1;
+
+      this.plottingBoxPath = null;
+      this.fullscreen = true;
+
+      this.updatePlotTransform();
     }
 
-    setPosition(x, y) {
-      this.box.x = x;
-      this.box.y = y;
+    resizeIfFullscreen () {
+      if (this.fullscreen && this.window) {
+        this.box.x = 0;
+        this.box.y = 0;
+
+        this.box.width = this.window.width;
+        this.box.height = this.window.height;
+      }
     }
 
-    setSize(width, height) {
-      this.box.width = width;
-      this.box.height = height;
+    updatePlotTransform () {
+      this.resizeIfFullscreen();
+
+      this.calculatePlottingBox();
+      this.updatePlotCoords();
     }
 
-    containsX(x) {
-      return this.innerBBox.containsX(x)
+    updatePlotCoords () {
+      const pc = this.plotCoords;
+      const pb = this.plottingBox;
+
+      if (this.preserveAspectRatio) {
+        const as = this.aspectRatio;
+
+        pc.height = pc.width / pb.width * as * pb.height;
+      }
+
+      pc.x1 = pc.cx - pc.width / 2;
+      pc.x2 = pc.cx + pc.width / 2;
+      pc.y1 = pc.cy - pc.height / 2;
+      pc.y2 = pc.cy + pc.height / 2;
     }
 
-    containsY(y) {
-      return this.innerBBox.containsY(y)
+    plotToPixelX (x) {
+      return (x - this.plotCoords.x1) * (this.plottingBox.width) / (this.plotCoords.width) + this.plottingBox.x1
     }
 
-    transformX(x) {
-      return (this.innerBBox.width * (x - this.limits.x) + this.innerBBox.x)
+    plotToPixelY (y) {
+      return (y - this.plotCoords.y1) * (this.plottingBox.height) / (this.plotCoords.height) + this.plottingBox.y1
     }
 
-    transformY(y) {
-      return (this.innerBBox.height * (this.limits.y - y) + this.innerBBox.y)
+    plotToPixel (x, y) {
+      return [this.plotToPixelX(x), this.plotToPixelY(y)]
     }
 
-    updateLimits() {
+    calculatePlottingBox () {
+      this.plottingBox.x1 = this.box.x + this.margins.left;
+      this.plottingBox.y1 = this.box.y + this.margins.top;
 
+      const width = this.box.width - this.margins.left - this.margins.right;
+      const height = this.box.height - this.margins.top - this.margins.bottom;
+
+      if (width < 50 || height < 50) {
+        throw new Error('Plotting box is too small')
+      }
+
+      this.plottingBox.width = width;
+      this.plottingBox.height = height;
+
+      this.plottingBox.x2 = this.plottingBox.x1 + width;
+      this.plottingBox.y2 = this.plottingBox.y1 + height;
+
+      const pb = this.plottingBox;
+      const plottingMaskPath = new Path2D();
+
+      plottingMaskPath.moveTo(pb.x1, pb.y1);
+      plottingMaskPath.lineTo(pb.x2, pb.y1);
+      plottingMaskPath.lineTo(pb.x2, pb.y2);
+      plottingMaskPath.lineTo(pb.x1, pb.y2);
+      plottingMaskPath.closePath();
+
+      this.plottingBoxPath = plottingMaskPath;
     }
 
-    updateInnerBBox() {
-      this.innerBBox = this.bbox.marginIn(this.margins);
+    update () {
+      this.updatePlotTransform();
     }
 
-    update() {
-      this.updateInnerBBox();
+    add (element, ...elements) {
+      if (element instanceof Plot2D) {
+        throw new Error("Can't have plot2d in plot2d")
+      }
+
+      super.add(element, ...elements);
+    }
+  }
+
+  function defaultMandelbrotColorFunction (iterations, r) {
+    if (iterations === -1) {
+      return [0, 0, 0, 255]
+    } else {
+      return [255, 255, 255, 255]
+    }
+  }
+
+  class Mandelbrot extends Plot2DElement {
+    constructor (params = {}) {
+      super(params);
+
+      this.alwaysUpdate = false;
+
+      this.imgData = false;
+
+      this.smoothColoring = true;
+
+      this.getColor = defaultMandelbrotColorFunction;
+
+      this.samples = 1;
+
+      this.pxWidth = 0;
+      this.pxHeight = 0;
+
+      this.iterations = 100;
     }
 
-    expandIfFullscreen(renderInfo) {
-      if (this.fullscreen) {
-        this.bbox.x = 0;
-        this.bbox.y = 0;
+    update () {
+      this.pxWidth = this.plot.plottingBox.width * dpr;
+      this.pxHeight = this.plot.plottingBox.height * dpr;
 
-        this.bbox.width = renderInfo.dims.width;
-        this.bbox.height = renderInfo.dims.height;
+      const imgData = this.window.canvasCtx.createImageData(this.pxWidth, this.pxHeight);
+
+      const pc = this.plot.plotCoords;
+      const iterations = this.iterations;
+
+      for (let j = 0; j < this.pxHeight; ++j) {
+        const y = pc.height * j / this.pxHeight + pc.y1;
+        for (let i = 0; i < this.pxHeight; ++i) {
+          const x = pc.width * i / this.pxWidth + pc.x1;
+
+          const index = 4 * (this.pxWidth * j + i);
+
+          let xt = x;
+          let yt = y;
+          let mag2 = xt * xt + yt * yt;
+          let iter = 0;
+
+          while (mag2 < 4 && iter < iterations) {
+            const xtt = xt;
+
+            xt = xt * xt - yt * yt + x;
+            yt = 2 * xtt * yt + y;
+            mag2 = xt * xt + yt * yt;
+
+            iter += 1;
+          }
+
+          if (iter === iterations) {
+            iter = -1;
+          }
+
+          const color = this.getColor(iter, mag2 - 4);
+
+          imgData.data[index] = color[0];
+          imgData.data[index + 1] = color[1];
+          imgData.data[index + 2] = color[2];
+          imgData.data[index + 3] = color[3];
+        }
+      }
+
+      this.imgData = imgData;
+    }
+
+    render (renderInfo) {
+      if (this.imgData) {
+        const ctx = renderInfo.canvasCtx;
+        ctx.save();
+        ctx.resetTransform();
+
+        ctx.putImageData(this.imgData, dpr * this.plot.plottingBox.x1, dpr * this.plot.plottingBox.y1);
+        ctx.restore();
       }
     }
   }
 
   exports.Context = GraphemeContext;
+  exports.Mandelbrot = Mandelbrot;
   exports.Plot2D = Plot2D;
 
   return exports;
