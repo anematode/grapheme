@@ -1,86 +1,93 @@
 import * as utils from './utils'
 
 class GraphemeElement {
-  constructor ({
-    precedence = 0,
-    visible = true,
-    alwaysUpdate = true
-  } = {}) {
+  constructor () {
     // precedence is a number from -Infinity to Infinity.
-    this.precedence = precedence
-
-    // The parent of this element
-    this.parent = null
-
-    // The window this element belongs to
-    this.window = null
+    this.precedence = 0
 
     // whether this element is visible
     this.visible = true
 
     // Whether to always update geometries when render is called
-    this.alwaysUpdate = alwaysUpdate
+    this.alwaysUpdate = true
 
-    this.eventListeners = {}
+    // The parent of this element
+    this.parent = null
+
+    // The plot this element belongs to
+    this.plot = null
+
+    // List of children of this element
+    this.children = []
   }
 
-  set precedence (x) {
-    this._precedence = x
+  sortChildren () {
+    this.children.sort((x, y) => x.precedence - y.precedence)
+  }
 
-    if (this.parent) {
-      this.parent.childrenSorted = false
+  hasChildren () {
+    return this.children.length > 0
+  }
+
+  add (element) {
+    if (!(element instanceof GraphemeElement)) {
+      throw new Error("Element must be GraphemeElement")
     }
+
+    if (element.parent || element.plot) {
+      throw new Error('Element already has a parent or plot')
+    }
+
+    element.parent = this
+    element.setPlot(this.plot)
+
+    this.children.push(element)
   }
 
-  get precedence () {
-    return this._precedence
+  isChild(element, recursive=true) {
+    const isTopLevelChild = this.children.includes(element)
+
+    if (!recursive) {
+      return isTopLevelChild
+    }
+
+    return isTopLevelChild || this.children.some(child => child.isChild(element, true))
+  }
+
+  remove (element) {
+    if (!this.isChild(element, false)) {
+      throw new Error("Element is not a top level child of this")
+    }
+
+    const index = this.children.indexOf(element)
+
+    if (index !== -1) {
+      this.children.splice(index, 1)
+    } else {
+      throw new Error("Element is not a top level child of this")
+    }
+
+    element.parent = null
+    element.setPlot(null)
+  }
+
+  setPlot (plot) {
+    this.plot = plot
+
+    this.children.forEach(child => (child.plot = plot))
   }
 
   update () {
 
   }
 
-  render (elementInfo) {
+  render (renderInfo) {
     if (!this.visible) {
       return
     }
 
     if (this.alwaysUpdate) {
       this.update()
-    }
-
-    elementInfo.window.beforeRender(this)
-  }
-
-  hasChild () {
-    return false
-  }
-
-  destroy () {
-    this.orphanize()
-  }
-
-  // Returns false if no event listener has returned true (meaning to stop propagation)
-  onEvent (type, evt) {
-    if (this.eventListeners[type]) {
-      return this.eventListeners[type].any(listener => listener(evt))
-    }
-
-    return false
-  }
-
-  addEventListener (type, listener) {
-    const listenerArray = this.eventListeners[type]
-    if (!listenerArray) {
-      this.eventListeners[type] = [listener]
-    } else {
-      listenerArray.push(listener)
-    }
-  }
-
-  orphanize () {
-    if (this.parent) {
-      this.parent.remove(this)
     }
   }
 }

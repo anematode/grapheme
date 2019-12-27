@@ -38,28 +38,6 @@ function deepEquals (x, y) {
   ) : (x === y)
 }
 
-// The following functions are self-explanatory.
-
-function isInteger (z) {
-  return Number.isInteger(z) // didn't know about this lol
-}
-
-function isNonnegativeInteger (z) {
-  return Number.isInteger(z) && z >= 0
-}
-
-function isPositiveInteger (z) {
-  return Number.isInteger(z) && z > 0
-}
-
-function isNonpositiveInteger (z) {
-  return Number.isInteger(z) && z <= 0
-}
-
-function isNegativeInteger (z) {
-  return Number.isInteger(z) && z < 0
-}
-
 // https://stackoverflow.com/a/34749873
 function isObject (item) {
   return (item && typeof item === 'object' && !Array.isArray(item))
@@ -212,6 +190,5 @@ function getRenderID () {
 }
 
 export {
-  generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID
+  createShaderFromSource, createGLProgram, mod, dpr, deepEquals, mergeDeep
 }

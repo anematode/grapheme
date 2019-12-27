@@ -11,11 +11,6 @@ var Grapheme = (function (exports) {
     if (!statement) throw new Error(error)
   }
 
-  // Check that an object is of a given type
-  function checkType (obj, type) {
-    assert(obj instanceof type, `Object must be instance of ${type}`);
-  }
-
   function isNonnegativeInteger (z) {
     return Number.isInteger(z) && z >= 0
   }
@@ -140,31 +135,75 @@ var Grapheme = (function (exports) {
       // precedence is a number from -Infinity to Infinity.
       this.precedence = precedence;
 
-      // The parent of this element
-      this.parent = null;
-
-      // The window this element belongs to
-      this.window = null;
-
       // whether this element is visible
-      this.visible = true;
+      this.visible = visible;
 
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
 
-      this.eventListeners = {};
+      // The parent of this element
+      this.parent = null;
+
+      // The plot this element belongs to
+      this.plot = null;
+
+      // List of children of this element
+      this.children = [];
     }
 
-    set precedence (x) {
-      this._precedence = x;
+    sortChildren () {
+      this.children.sort((x, y) => x.precedence - y.precedence);
+    }
 
-      if (this.parent) {
-        this.parent.childrenSorted = false;
+    hasChildren () {
+      return this.children.length > 0
+    }
+
+    add (element) {
+      if (!(element instanceof GraphemeElement))
+        throw new Error("Element must be GraphemeElement")
+
+      if (element.parent || element.plot) {
+        throw new Error('Element already has a parent or plot')
       }
+
+      element.parent = this;
+      element.setPlot(this.plot);
+
+      this.children.push(element);
     }
 
-    get precedence () {
-      return this._precedence
+    isChild(element, recursive=true) {
+      const isTopLevelChild = this.children.includes(element);
+
+      if (!recursive) {
+        return isTopLevelChild
+      }
+
+      return isTopLevelChild || this.children.forEach(child => child.isChild(element, true))
+    }
+
+    remove (element) {
+      if (!this.isChild(element, false)) {
+        throw new Error("Element is not a top level child of this")
+      }
+
+      const index = this.children.indexOf(element);
+      if (index !== -1) {
+        this.children.splice(index, 1);
+      } else {
+        throw new Error("Element is not a top level child of this")
+      }
+
+      element.parent = null;
+      element.setPlot(null);
+    }
+
+    setPlot(plot) {
+      this.plot = plot;
+
+      // eslint-disable-next-line no-return-assign
+      this.children.forEach(child => child.plot = plot);
     }
 
     update () {
@@ -186,148 +225,11 @@ var Grapheme = (function (exports) {
     hasChild () {
       return false
     }
-
-    destroy () {
-      this.orphanize();
-    }
-
-    // Returns false if no event listener has returned true (meaning to stop propagation)
-    onEvent (type, evt) {
-      if (this.eventListeners[type]) {
-        return this.eventListeners[type].any(listener => listener(evt))
-      }
-
-      return false
-    }
-
-    addEventListener (type, listener) {
-      const listenerArray = this.eventListeners[type];
-      if (!listenerArray) {
-        this.eventListeners[type] = [listener];
-      } else {
-        listenerArray.push(listener);
-      }
-    }
-
-    orphanize () {
-      if (this.parent) {
-        this.parent.remove(this);
-      }
-    }
   }
 
   class GraphemeGroup extends GraphemeElement {
-    constructor (params = {}) {
+    constructor(params={}) {
       super(params);
-
-      this.children = [];
-      this.childrenSorted = true;
-    }
-
-    onEvent (type, evt) {
-      const res = super.onEvent(type, evt);
-      if (res) { // this element stopped propagation, don't go to children
-        return true
-      }
-
-      this.sortChildren();
-      for (let i = 0; i < this.children.length; ++i) {
-        if (this.children[i].onEvent(type, evt)) {
-          return true
-        }
-      }
-
-      return true
-    }
-
-    sortChildren (force = false) {
-      // Sort the children by their precedence value
-      if (force || !this.childrenSorted) {
-        this.children.sort((x, y) => x.precedence - y.precedence);
-
-        this.childrenSorted = true;
-      }
-    }
-
-    render (renderInfo) {
-      super.render(renderInfo);
-
-      // sort our elements by drawing precedence
-      this.sortChildren();
-
-      this.children.forEach((child) => child.render(renderInfo));
-    }
-
-    isChild (element) {
-      return this.hasChild(element, false)
-    }
-
-    hasChild (element, recursive = true) {
-      if (recursive) {
-        if (this.hasChild(element, false)) return true
-        return this.children.some((child) => child.hasChild(element, recursive))
-      }
-
-      const index = this.children.indexOf(element);
-      return (index !== -1)
-    }
-
-    add (element, ...elements) {
-      checkType(element, GraphemeElement);
-
-      if (element.parent !== null) {
-        throw new Error('Element is already a child')
-      }
-
-      assert(!this.hasChild(element, true), 'Element is already a child of this group...');
-
-      element.parent = this;
-      element.window = this.window;
-      this.children.push(element);
-
-      if (elements.length > 0) {
-        this.add(...elements);
-      }
-
-      this.childrenSorted = false;
-    }
-
-    remove (element, ...elements) {
-      checkType(element, GraphemeElement);
-      if (this.hasChild(element, false)) {
-        // if element is an immediate child
-
-        const index = this.children.indexOf(element);
-        this.children.splice(index, 1);
-
-        element.parent = null;
-        element.window = null;
-      }
-
-      if (elements.length > 0) {
-        this.remove(...elements);
-      }
-    }
-
-    destroy () {
-      this.children.forEach((child) => child.destroy());
-
-      super.destroy();
-    }
-
-    /**
-    Apply a function to the children of this group. If recursive = true, continue to
-    apply this function to the children of all children, etc.
-    */
-    applyToChildren (func, recursive = true) {
-      this.children.forEach(child => {
-        if (recursive && child.children) {
-          // if child is also a group, apply the function to all children
-          child.applyToChildren(func, true);
-        }
-
-        func(child);
-      });
     }
   }
 
