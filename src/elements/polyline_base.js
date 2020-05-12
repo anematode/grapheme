@@ -1,0 +1,22 @@
+import { Element as GraphemeElement } from '../core/grapheme_element'
+import { LineStyle } from '../styles/line_style'
+
+class PolylineBase extends GraphemeElement {
+  constructor (params = {}) {
+    super(params)
+
+    let {
+      style,
+      vertices = []
+    } = params
+
+    if (!(style instanceof LineStyle)) {
+      style = new LineStyle(style || {})
+    }
+
+    this.style = style
+    this.vertices = vertices
+  }
+}
+
+export { PolylineBase }
