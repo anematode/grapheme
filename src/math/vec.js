@@ -1,6 +1,4 @@
 
-const Origin = new Vec2(0,0)
-
 class Vec2 {
   constructor (x, y) {
     this.x = x
@@ -70,5 +68,7 @@ class Vec2 {
     return this
   }
 }
+const Origin = new Vec2(0,0)
+
 
 export {Vec2}

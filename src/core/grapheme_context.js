@@ -1,4 +1,4 @@
-import { Window as GraphemeWindow } from './grapheme_window'
+import { Canvas as GraphemeCanvas } from './grapheme_canvas'
 import { GLResourceManager } from './gl_manager'
 import * as utils from './utils'
 
@@ -109,11 +109,6 @@ class GraphemeContext {
     delete this.glManager
     delete this.glCanvas
     delete this.gl
-  }
-
-  // Create a window using this context
-  createWindow () {
-    return new GraphemeWindow(this)
   }
 
   // Remove a window from this context

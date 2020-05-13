@@ -19,14 +19,12 @@ textCanvasContext = the Canvas2DRenderingContext associated with the textCanvas
 cssWidth, cssHeight = the size of the canvas in CSS pixels
 canvasWidth, canvasHeight = the actual size of the canvas in pixels
 */
-class GraphemeWindow extends GraphemeGroup {
+class GraphemeCanvas extends GraphemeGroup {
   constructor (graphemeContext) {
     super()
 
     // Grapheme context this window is a child of
     this.context = graphemeContext
-
-    this.window = this
 
     // Add this window to the context's list of windows
     graphemeContext.windows.push(this)
@@ -48,13 +46,6 @@ class GraphemeWindow extends GraphemeGroup {
 
     // label manager
     this.labelManager = new LabelManager(this.domElement)
-
-    // Whether, on the drawing of a normal GraphemeElement, the webgl canvas should
-    // be copied to this canvas
-    this.needsContextCopy = false
-
-    // Has the webgl canvas been prepared to fit this window?
-    this.needsContextPrepared = false
 
     // Set the default size to 640 by 480 in CSS pixels
     this.setSize(640, 480)
@@ -232,4 +223,4 @@ class GraphemeWindow extends GraphemeGroup {
   }
 }
 
-export { GraphemeWindow as Window }
+export { GraphemeCanvas as Canvas }

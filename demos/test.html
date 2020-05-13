@@ -20,32 +20,29 @@
 
 <script>
 let grapheme_context = new Grapheme.Context();
-let grapheme_window = grapheme_context.createWindow();
+let plot = new Grapheme.Plot2D(grapheme_context)
 
-grapheme_window.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(grapheme_window.domElement);
-
-let plot = new Grapheme.Plot2D()
-grapheme_window.add(plot)
+plot.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(plot.domElement);
 
 plot.plotCoords.width = 4
 plot.plotCoords.cx = 0
 
-let mandelbrot = new Grapheme.Mandelbrot()
-plot.add(mandelbrot)
+let test = new Grapheme.TestObject()
+plot.add(test)
 
 let ia = 0;
 function render() {
   ia += 0.1;
 
-  grapheme_window.render();
+  plot.render();
   requestAnimationFrame(render);
 }
 
 render();
 
 window.onresize = () => {
-  grapheme_window.setSize(window.innerWidth, window.innerHeight);
+  plot.setSize(window.innerWidth, window.innerHeight);
 }
 </script>
 
