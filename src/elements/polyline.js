@@ -1,6 +1,6 @@
-import { PolylineBase } from './polyline_base'
+import {Element as GraphemeElement} from "../core/grapheme_element.js"
 
-class PolylineElement extends PolylineBase {
+class PolylineElement extends GraphemeElement {
   constructor (params = {}) {
     super(params)
 

@@ -16,8 +16,8 @@ class GraphemeContext {
     // The gl resource manager for this context
     this.glManager = new GLResourceManager(gl)
 
-    // The list of windows that this context has jurisdiction over
-    this.windows = []
+    // The list of canvases that this context has jurisdiction over
+    this.canvases = []
 
     // Add this to the list of contexts to receive event updates and such
     utils.CONTEXTS.push(this)
@@ -45,10 +45,10 @@ class GraphemeContext {
     }
   }
 
-  prepareForWindow (window) {
+  prepareForCanvas (canv) {
     const gl = this.gl
 
-    this.setViewport(window.canvasWidth, window.canvasHeight)
+    this.setViewport(canv.canvasWidth, canv.canvasHeight)
 
     gl.clearColor(0, 0, 0, 0)
     gl.clearDepth(1)
@@ -59,6 +59,10 @@ class GraphemeContext {
 
   get canvasHeight () {
     return this.glCanvas.height
+  }
+
+  onDPRChanged() {
+    this.canvases.forEach(canvas => canvas.triggerEvent("dprchanged"))
   }
 
   get canvasWidth () {
@@ -79,10 +83,6 @@ class GraphemeContext {
     this.glCanvas.width = x
   }
 
-  onDPRChanged () {
-    this.windows.forEach((window) => window.onDPRChanged())
-  }
-
   isDestroyed () {
     return utils.CONTEXTS.indexOf(this) === -1
   }
@@ -96,7 +96,7 @@ class GraphemeContext {
     index !== -1 && utils.CONTEXTS.splice(index, 1)
 
     // Destroy all children
-    this.windows.forEach((window) => window.destroy())
+    this.canvases.forEach(canvas => canvas.destroy())
 
     // destroy resource manager
     this.glManager.destroy()
@@ -111,26 +111,13 @@ class GraphemeContext {
     delete this.gl
   }
 
-  // Remove a window from this context
-  removeWindow (window) {
-    const allWindows = this.context.windows
-    const thisIndex = allWindows.indexOf(window)
-
-    if (thisIndex !== -1) {
-      allWindows.splice(thisIndex, 1)
-      if (window.context) {
-        window.context = null
-      }
-    }
-  }
-
   // Update the size of this context based on the maximum size of its windows
   updateSize () {
     let maxWidth = 1
     let maxHeight = 1
 
     // Find the max width and height (independently)
-    this.windows.forEach((window) => {
+    this.canvases.forEach((window) => {
       if (window.canvasWidth > maxWidth) {
         maxWidth = window.canvasWidth
       }

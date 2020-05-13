@@ -14,9 +14,9 @@
 <body>
 
 
-<!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
---><script src="../build/grapheme.js"></script>
+<script src="../build/grapheme.js"></script>
 
 <script>
 let grapheme_context = new Grapheme.Context();
@@ -28,8 +28,8 @@ document.body.appendChild(plot.domElement);
 plot.plotCoords.width = 4
 plot.plotCoords.cx = 0
 
-let test = new Grapheme.TestObject()
-plot.add(test)
+let label = new Grapheme.BasicLabel()
+plot.add(label)
 
 let ia = 0;
 function render() {

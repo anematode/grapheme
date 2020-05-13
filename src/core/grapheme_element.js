@@ -21,16 +21,23 @@ class GraphemeElement {
     // Whether to always update geometries when render is called
     this.alwaysUpdate = alwaysUpdate
 
+    // Custom event listeners
     this.eventListeners = {}
 
+    // Children of this element
     this.children = []
+
+    this.logEvents = true
   }
 
   update () {
 
   }
 
-  onEvent (type, evt) {
+  triggerEvent (type, evt) {
+    if (this.logEvents)
+      console.log(type, evt)
+
     if (this.eventListeners[type]) {
       let res = this.eventListeners[type].any(listener => listener(evt))
       if (res)
@@ -38,8 +45,9 @@ class GraphemeElement {
     }
 
     this.sortChildren()
+
     for (let i = 0; i < this.children.length; ++i) {
-      if (this.children[i].onEvent(type, evt)) {
+      if (this.children[i].triggerEvent(type, evt)) {
         return true
       }
     }
@@ -125,36 +133,16 @@ class GraphemeElement {
   destroy () {
     this.children.forEach((child) => child.destroy())
 
-    this.orphanize()
+    if (this.parent)
+      this.parent.remove(this)
   }
 
-  /**
-   Apply a function to the children of this group. If recursive = true, continue to
-   apply this function to the children of all children, etc.
-   */
-  applyToChildren (func, recursive = true) {
-    this.children.forEach(child => {
-      if (recursive && child.children) {
-        // if child is also a group, apply the function to all children
-        child.applyToChildren(func, true)
-      }
-
-      func(child)
-    })
-  }
-
-  addEventListener (type, listener) {
+  addEventListener (type, callback) {
     const listenerArray = this.eventListeners[type]
     if (!listenerArray) {
-      this.eventListeners[type] = [listener]
+      this.eventListeners[type] = [callback]
     } else {
-      listenerArray.push(listener)
-    }
-  }
-
-  orphanize () {
-    if (this.parent) {
-      this.parent.remove(this)
+      listenerArray.push(callback)
     }
   }
 }

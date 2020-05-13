@@ -27,7 +27,7 @@ class GraphemeCanvas extends GraphemeGroup {
     this.context = graphemeContext
 
     // Add this window to the context's list of windows
-    graphemeContext.windows.push(this)
+    graphemeContext.canvases.push(this)
 
     // Element to be put into the webpage
     this.domElement = document.createElement('div')
@@ -53,7 +53,10 @@ class GraphemeCanvas extends GraphemeGroup {
     // Scale text canvas as needed due to DPR
     this.resetCanvasCtxTransform()
 
-    this.addEventListener('dprchanged', () => this.update())
+    this.addEventListener('dprchanged', () => {
+      this.update();
+      return true;
+    })
   }
 
   resetCanvasCtxTransform () {
@@ -84,7 +87,7 @@ class GraphemeCanvas extends GraphemeGroup {
     // a potentially fatter canvas
     this.context.updateSize()
 
-    this.onEvent("resize", {width, height})
+    this.triggerEvent("resize", {width, height})
   }
 
   // Returns the pixel width of the canvas

@@ -60,6 +60,10 @@ function isNegativeInteger (z) {
   return Number.isInteger(z) && z < 0
 }
 
+function isTypedArray(arr) {
+  return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
+}
+
 // https://stackoverflow.com/a/34749873
 function isObject (item) {
   return (item && typeof item === 'object' && !Array.isArray(item))
@@ -213,5 +217,5 @@ function getRenderID () {
 
 export {
   generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID
+  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID
 }

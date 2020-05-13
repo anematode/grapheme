@@ -24,6 +24,10 @@ var Grapheme = (function (exports) {
     return Number.isInteger(z) && z > 0
   }
 
+  function isTypedArray(arr) {
+    return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
+  }
+
   // device pixel ratio... duh
   let dpr = window.devicePixelRatio;
   function updateDPR () {
@@ -124,11 +128,11 @@ var Grapheme = (function (exports) {
     });
   }
 
-  let x = 0;
+  let x$1 = 0;
 
   function getRenderID () {
-    x += 1;
-    return x
+    x$1 += 1;
+    return x$1
   }
 
   class GraphemeElement {
@@ -152,16 +156,23 @@ var Grapheme = (function (exports) {
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
 
+      // Custom event listeners
       this.eventListeners = {};
 
+      // Children of this element
       this.children = [];
+
+      this.logEvents = true;
     }
 
     update () {
 
     }
 
-    onEvent (type, evt) {
+    triggerEvent (type, evt) {
+      if (this.logEvents)
+        console.log(type, evt);
+
       if (this.eventListeners[type]) {
         let res = this.eventListeners[type].any(listener => listener(evt));
         if (res)
@@ -169,8 +180,9 @@ var Grapheme = (function (exports) {
       }
 
       this.sortChildren();
+
       for (let i = 0; i < this.children.length; ++i) {
-        if (this.children[i].onEvent(type, evt)) {
+        if (this.children[i].triggerEvent(type, evt)) {
           return true
         }
       }
@@ -256,36 +268,16 @@ var Grapheme = (function (exports) {
     destroy () {
       this.children.forEach((child) => child.destroy());
 
-      this.orphanize();
+      if (this.parent)
+        this.parent.remove(this);
     }
 
-    /**
-     Apply a function to the children of this group. If recursive = true, continue to
-     apply this function to the children of all children, etc.
-     */
-    applyToChildren (func, recursive = true) {
-      this.children.forEach(child => {
-        if (recursive && child.children) {
-          // if child is also a group, apply the function to all children
-          child.applyToChildren(func, true);
-        }
-
-        func(child);
-      });
-    }
-
-    addEventListener (type, listener) {
+    addEventListener (type, callback) {
       const listenerArray = this.eventListeners[type];
       if (!listenerArray) {
-        this.eventListeners[type] = [listener];
+        this.eventListeners[type] = [callback];
       } else {
-        listenerArray.push(listener);
-      }
-    }
-
-    orphanize () {
-      if (this.parent) {
-        this.parent.remove(this);
+        listenerArray.push(callback);
       }
     }
   }
@@ -293,10 +285,7 @@ var Grapheme = (function (exports) {
   class GraphemeGroup extends GraphemeElement {
     constructor (params = {}) {
       super(params);
-
     }
-
-
   }
 
   class WebGLGraphemeElement extends GraphemeElement {
@@ -397,7 +386,7 @@ var Grapheme = (function (exports) {
       this.context = graphemeContext;
 
       // Add this window to the context's list of windows
-      graphemeContext.windows.push(this);
+      graphemeContext.canvases.push(this);
 
       // Element to be put into the webpage
       this.domElement = document.createElement('div');
@@ -423,7 +412,10 @@ var Grapheme = (function (exports) {
       // Scale text canvas as needed due to DPR
       this.resetCanvasCtxTransform();
 
-      this.addEventListener('dprchanged', () => this.update());
+      this.addEventListener('dprchanged', () => {
+        this.update();
+        return true;
+      });
     }
 
     resetCanvasCtxTransform () {
@@ -454,7 +446,7 @@ var Grapheme = (function (exports) {
       // a potentially fatter canvas
       this.context.updateSize();
 
-      this.onEvent("resize", {width, height});
+      this.triggerEvent("resize", {width, height});
     }
 
     // Returns the pixel width of the canvas
@@ -717,8 +709,8 @@ var Grapheme = (function (exports) {
       // The gl resource manager for this context
       this.glManager = new GLResourceManager(gl);
 
-      // The list of windows that this context has jurisdiction over
-      this.windows = [];
+      // The list of canvases that this context has jurisdiction over
+      this.canvases = [];
 
       // Add this to the list of contexts to receive event updates and such
       CONTEXTS.push(this);
@@ -746,10 +738,10 @@ var Grapheme = (function (exports) {
       }
     }
 
-    prepareForWindow (window) {
+    prepareForCanvas (canv) {
       const gl = this.gl;
 
-      this.setViewport(window.canvasWidth, window.canvasHeight);
+      this.setViewport(canv.canvasWidth, canv.canvasHeight);
 
       gl.clearColor(0, 0, 0, 0);
       gl.clearDepth(1);
@@ -760,6 +752,10 @@ var Grapheme = (function (exports) {
 
     get canvasHeight () {
       return this.glCanvas.height
+    }
+
+    onDPRChanged() {
+      this.canvases.forEach(canvas => canvas.triggerEvent("dprchanged"));
     }
 
     get canvasWidth () {
@@ -780,10 +776,6 @@ var Grapheme = (function (exports) {
       this.glCanvas.width = x;
     }
 
-    onDPRChanged () {
-      this.windows.forEach((window) => window.onDPRChanged());
-    }
-
     isDestroyed () {
       return CONTEXTS.indexOf(this) === -1
     }
@@ -797,7 +789,7 @@ var Grapheme = (function (exports) {
       index !== -1 && CONTEXTS.splice(index, 1);
 
       // Destroy all children
-      this.windows.forEach((window) => window.destroy());
+      this.canvases.forEach(canvas => canvas.destroy());
 
       // destroy resource manager
       this.glManager.destroy();
@@ -812,26 +804,13 @@ var Grapheme = (function (exports) {
       delete this.gl;
     }
 
-    // Remove a window from this context
-    removeWindow (window) {
-      const allWindows = this.context.windows;
-      const thisIndex = allWindows.indexOf(window);
-
-      if (thisIndex !== -1) {
-        allWindows.splice(thisIndex, 1);
-        if (window.context) {
-          window.context = null;
-        }
-      }
-    }
-
     // Update the size of this context based on the maximum size of its windows
     updateSize () {
       let maxWidth = 1;
       let maxHeight = 1;
 
       // Find the max width and height (independently)
-      this.windows.forEach((window) => {
+      this.canvases.forEach((window) => {
         if (window.canvasWidth > maxWidth) {
           maxWidth = window.canvasWidth;
         }
@@ -844,6 +823,39 @@ var Grapheme = (function (exports) {
       // Set the canvas size accordingly
       this.canvasHeight = maxHeight;
       this.canvasWidth = maxWidth;
+    }
+  }
+
+  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove"];
+
+  class InteractiveCanvas extends GraphemeCanvas {
+    constructor(params={}) {
+      super(params);
+
+      this.interactivityListeners = {};
+      this.interactivityEnabled = true;
+    }
+
+    get interactivityEnabled() {
+      return this._interactivityEnabled
+    }
+
+    set interactivityEnabled(v) {
+      this._interactivityEnabled = v;
+
+      if (v) {
+        EVENTS.forEach(evtName => {
+          let callback = (evt) => {this.triggerEvent(evtName, evt);};
+
+          this.interactivityListeners[evtName] = callback;
+
+          this.domElement.addEventListener(evtName, callback);
+        });
+      } else {
+        EVENTS.forEach(evtName => {
+          this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
+        });
+      }
     }
   }
 
@@ -960,6 +972,22 @@ var Grapheme = (function (exports) {
       return this
     }
 
+    set cx(cx) {
+      this.top_left.x = cx - this.width / 2;
+    }
+
+    set cy(cy) {
+      this.top_left.y = cy - this.width / 2;
+    }
+
+    get cx() {
+      return this.top_left.x + this.width / 2
+    }
+
+    get cy() {
+      return this.top_left.y + this.width / 2
+    }
+
     setSize(width, height) {
       this.width = width;
       this.height = height;
@@ -1008,9 +1036,93 @@ var Grapheme = (function (exports) {
 
       return this
     }
+
+    get x1() {
+      return this.top_left.x
+    }
+
+    get x2() {
+      return this.top_left.x + this.width
+    }
+
+    set x1(x) {
+      this.top_left.x = x;
+    }
+
+    set x2(x) {
+      this.width = x - this.top_left.x;
+    }
+
+    get y1() {
+      return this.top_left.y
+    }
+
+    get y2() {
+      return this.top_left.y + this.height
+    }
+
+    set y1(y) {
+      this.top_left.y = y;
+    }
+
+    set y2(y) {
+      this.height = y - this.top_left.y;
+    }
   }
 
-  class Plot2D extends GraphemeCanvas {
+  const boundingBoxTransform = {
+    X: (x, box1, box2, flipX=false) => {
+      if (Array.isArray(x) || isTypedArray(x)) {
+        for (let i = 0; i < x.length; ++i) {
+          let fractionAlong = (x[i] - box1.x1) / box1.width;
+
+          if (flipX)
+            fractionAlong = 1 - fractionAlong;
+
+          x[i] = fractionAlong * box2.width + box2.x1;
+        }
+      } else {
+        return boundingBoxTransform.X([x], box1, box2)[0]
+      }
+    },
+    Y: (y, box1, box2, flipY=true) => {
+      if (Array.isArray(y) || isTypedArray(y)) {
+        for (let i = 0; i < y.length; ++i) {
+          let fractionAlong = (y[i] - box1.y1) / box1.height;
+
+          if (flipY)
+            fractionAlong = 1 - fractionAlong;
+
+          y[i] = fractionAlong * box2.height + box2.y1;
+        }
+      } else {
+        return boundingBoxTransform.Y([y], box1, box2)[0]
+      }
+    },
+    XY: (xy, box1, box2, flipX=false, flipY=true) => {
+      if (Array.isArray(xy) || isTypedArray(x)) {
+        for (let i = 0; i < x.length; i += 2) {
+          let fractionAlong = (x[i] - box1.x1) / box1.width;
+
+          if (flipX)
+            fractionAlong = 1 - fractionAlong;
+
+          x[i] = fractionAlong * box2.width + box2.x1;
+
+          fractionAlong = (y[i+1] - box1.y1) / box1.height;
+
+          if (flipY)
+            fractionAlong = 1 - fractionAlong;
+
+          y[i+1] = fractionAlong * box2.height + box2.y1;
+        }
+      } else {
+        throw new Error("No")
+      }
+    }
+  };
+
+  class Plot2D extends InteractiveCanvas {
     constructor (context) {
       super(context);
 
@@ -1024,20 +1136,28 @@ var Grapheme = (function (exports) {
       this.update();
     }
 
-    pixelToPlotX() {
-
+    pixelToPlotX(x) {
+      return boundingBoxTransform.X(x, this.plotBox, this.plotCoords)
     }
 
-    pixelToPlotY() {
-
+    pixelToPlotY(y) {
+      return boundingBoxTransform.Y(y, this.plotBox, this.plotCoords)
     }
 
-    pixelToPlotArr() {
-
+    pixelToPlot(xy) {
+      return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
     }
 
     plotToPixelX() {
-      
+      return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
+    }
+
+    plotToPixelY() {
+      return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
+    }
+
+    plotToPixel() {
+      return boundingBoxTransform.XY(x, this.plotCoords, this.plotBox)
     }
 
     render() {
@@ -1067,11 +1187,228 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // Implementation of basic color functions
+  // Could use a library, but... good experience for me too
+
+  function isValidColorComponent (x) {
+    return (x >= 0 && x <= 255)
+  }
+
+  class Color {
+    constructor ({
+      r = 0, g = 0, b = 0, a = 255
+    } = {}) {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      this.a = a;
+
+      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
+    }
+
+    rounded () {
+      return {
+        r: Math.round(this.r),
+        g: Math.round(this.g),
+        b: Math.round(this.b),
+        a: Math.round(this.a)
+      }
+    }
+
+    hex () {
+      const rnd = this.rounded();
+      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
+    }
+
+    glColor () {
+      return {
+        r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
+      }
+    }
+
+    clone() {
+      return new Color(this)
+    }
+  }
+
+  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
+  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
+
+  class BasicLabelStyle {
+    constructor (params = {}) {
+      const {
+        mode = 'latex', // valid values: latex, html
+        dir = 'C' // valid values:
+      } = params;
+
+      this.mode = mode;
+      this.dir = dir;
+    }
+
+    labelClass () {
+      let dir = this.dir;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      return 'grapheme-label-' + this.dir
+    }
+
+    setLabelClass (labelElement) {
+      const labelClass = this.labelClass();
+
+      if (!labelElement.classList.contains(labelClass)) {
+        labelElement.classList.remove(...labelClasses);
+        labelElement.classList.add(labelClass);
+      }
+    }
+  }
+
+  class Label2DStyle extends BasicLabelStyle {
+    // TODO: rotation
+    constructor (params = {}) {
+      const {
+        color = new Color(),
+        fontSize = 12,
+        fontFamily = 'Helvetica',
+        shadowColor = new Color(),
+        shadowSize = 0
+      } = params;
+      super(params);
+
+      this.mode = "2d";
+      this.color = color;
+      this.fontSize = fontSize;
+      this.fontFamily = fontFamily;
+      this.shadowColor = shadowColor;
+      this.shadowSize = shadowSize;
+    }
+
+    prepareContextTextAlignment (ctx) {
+      let dir = this.dir;
+
+      let textBaseline;
+      let textAlign;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      // text align
+      switch (dir) {
+        case 'C': case 'N': case 'S':
+          textAlign = 'center';
+          break
+        case 'NW': case 'W': case 'SW':
+          textAlign = 'left';
+          break
+        case 'NE': case 'E': case 'SE':
+          textAlign = 'right';
+          break
+      }
+
+      // text baseline
+      switch (dir) {
+        case 'C': case 'W': case 'E':
+          textBaseline = 'middle';
+          break
+        case 'SW': case 'S': case 'SE':
+          textBaseline = 'top';
+          break
+        case 'NW': case 'N': case 'NE':
+          textBaseline = 'bottom';
+          break
+      }
+
+      ctx.textBaseline = textBaseline;
+      ctx.textAlign = textAlign;
+    }
+
+    prepareContextTextStyle (ctx) {
+      this.prepareContextTextAlignment(ctx);
+      ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+    }
+
+    prepareContextShadow (ctx) {
+      ctx.fillStyle = this.shadowColor.hex();
+      ctx.lineWidth = this.shadowSize * 2;
+    }
+
+    prepareContextFill (ctx) {
+      ctx.fillStyle = this.color.hex();
+    }
+  }
+
+  class LabelBase extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      const {
+        text = '',
+        position = new Vec2(0, 0)
+      } = params;
+
+      this.text = text;
+      this.position = position;
+    }
+  }
+
+  // Creates html element of the form
+  // <div class="label label-S" > this.text ... </div>
+  class BasicLabel extends LabelBase {
+    constructor (params = {}) {
+      super(params);
+
+      this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
+    }
+
+    render (renderInfo) {
+      const { text, position } = this;
+      const mode = this.style.mode;
+
+      const labelElement = renderInfo.labelManager.getElement(this);
+
+      this.style.setLabelClass(labelElement);
+
+      labelElement.style.top = position.y + 'px';
+      labelElement.style.left = position.x + 'px';
+
+      const oldLatex = labelElement.getAttribute('latex-content');
+
+      if (mode === 'latex') {
+        // latex-content stores the latex to be rendered to this node, which means
+        // that if it is equal to text, it does not need to be recomputed, only maybe
+        // moved in some direction
+        if (oldLatex !== text) {
+          labelElement.setAttribute('latex-content', text);
+          // eslint-disable-next-line no-undef
+          katex.render(text, labelElement, { throwOnError: false });
+        }
+      } else {
+        if (oldLatex) { labelElement.removeAttribute('latex-content'); }
+
+        labelElement.innerHTML = text;
+      }
+    }
+  }
+
+  class Label2D extends LabelBase {
+    constructor (params) {
+      super(params);
+
+      this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+    }
+  }
+
+  exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.Context = GraphemeContext;
+  exports.Label2D = Label2D;
   exports.Plot2D = Plot2D;
   exports.TestObject = TestObject;
   exports.Vec2 = Vec2;
+  exports.boundingBoxTransform = boundingBoxTransform;
 
   return exports;
 

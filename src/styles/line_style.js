@@ -29,6 +29,11 @@ class LineStyle {
     this.arrowLocations = arrowLocations
   }
 
+  clone() {
+    let copy = new LineStyle(this)
+    copy.color = this.color.clone()
+  }
+
   prepareContext (ctx) {
     ctx.fillStyle = ctx.strokeStyle = this.color.hex()
     ctx.lineWidth = this.thickness

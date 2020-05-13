@@ -1,8 +1,8 @@
-import { Canvas as GraphemeCanvas } from './grapheme_canvas'
-import { BoundingBox } from "../math/boundingbox.js"
+import {InteractiveCanvas} from './interactive_canvas'
+import { BoundingBox, boundingBoxTransform } from "../math/boundingbox.js"
 import { Vec2 } from "../math/vec.js"
 
-class Plot2D extends GraphemeCanvas {
+class Plot2D extends InteractiveCanvas {
   constructor (context) {
     super(context)
 
@@ -17,27 +17,27 @@ class Plot2D extends GraphemeCanvas {
   }
 
   pixelToPlotX(x) {
-    if (Array.isArray(x) || )
+    return boundingBoxTransform.X(x, this.plotBox, this.plotCoords)
   }
 
-  pixelToPlotY() {
-
+  pixelToPlotY(y) {
+    return boundingBoxTransform.Y(y, this.plotBox, this.plotCoords)
   }
 
-  pixelToPlotArr() {
-
+  pixelToPlot(xy) {
+    return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
   }
 
   plotToPixelX() {
-
+    return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
   }
 
   plotToPixelY() {
-
+    return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
   }
 
-  plotToPixelArr() {
-
+  plotToPixel() {
+    return boundingBoxTransform.XY(x, this.plotCoords, this.plotBox)
   }
 
   render() {

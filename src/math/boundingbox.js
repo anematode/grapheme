@@ -1,4 +1,5 @@
 import {Vec2} from "./vec.js"
+import * as utils from "../core/utils.js"
 
 export class BoundingBox {
   //_width;
@@ -40,6 +41,22 @@ export class BoundingBox {
   setTL(top_left) {
     this.top_left = top_left
     return this
+  }
+
+  set cx(cx) {
+    this.top_left.x = cx - this.width / 2
+  }
+
+  set cy(cy) {
+    this.top_left.y = cy - this.width / 2
+  }
+
+  get cx() {
+    return this.top_left.x + this.width / 2
+  }
+
+  get cy() {
+    return this.top_left.y + this.width / 2
   }
 
   setSize(width, height) {
@@ -90,4 +107,90 @@ export class BoundingBox {
 
     return this
   }
+
+  get x1() {
+    return this.top_left.x
+  }
+
+  get x2() {
+    return this.top_left.x + this.width
+  }
+
+  set x1(x) {
+    this.top_left.x = x
+  }
+
+  set x2(x) {
+    this.width = x - this.top_left.x
+  }
+
+  get y1() {
+    return this.top_left.y
+  }
+
+  get y2() {
+    return this.top_left.y + this.height
+  }
+
+  set y1(y) {
+    this.top_left.y = y
+  }
+
+  set y2(y) {
+    this.height = y - this.top_left.y
+  }
 }
+
+const boundingBoxTransform = {
+  X: (x, box1, box2, flipX=false) => {
+    if (Array.isArray(x) || utils.isTypedArray(x)) {
+      for (let i = 0; i < x.length; ++i) {
+        let fractionAlong = (x[i] - box1.x1) / box1.width
+
+        if (flipX)
+          fractionAlong = 1 - fractionAlong
+
+        x[i] = fractionAlong * box2.width + box2.x1
+      }
+    } else {
+      return boundingBoxTransform.X([x], box1, box2)[0]
+    }
+  },
+  Y: (y, box1, box2, flipY=true) => {
+    if (Array.isArray(y) || utils.isTypedArray(y)) {
+      for (let i = 0; i < y.length; ++i) {
+        let fractionAlong = (y[i] - box1.y1) / box1.height
+
+        if (flipY)
+          fractionAlong = 1 - fractionAlong
+
+        y[i] = fractionAlong * box2.height + box2.y1
+      }
+    } else {
+      return boundingBoxTransform.Y([y], box1, box2)[0]
+    }
+  },
+  XY: (xy, box1, box2, flipX=false, flipY=true) => {
+    if (Array.isArray(xy) || utils.isTypedArray(x)) {
+      for (let i = 0; i < x.length; i += 2) {
+        let fractionAlong = (x[i] - box1.x1) / box1.width
+
+        if (flipX)
+          fractionAlong = 1 - fractionAlong
+
+        x[i] = fractionAlong * box2.width + box2.x1
+
+        fractionAlong = (y[i+1] - box1.y1) / box1.height
+
+        if (flipY)
+          fractionAlong = 1 - fractionAlong
+
+        y[i+1] = fractionAlong * box2.height + box2.y1
+      }
+    } else {
+      throw new Error("No")
+    }
+  }
+}
+
+export {boundingBoxTransform}

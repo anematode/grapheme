@@ -38,6 +38,10 @@ class Color {
       r: this.r / 255, g: this.g / 255, b: this.b / 255, a: this.a / 255
     }
   }
+
+  clone() {
+    return new Color(this)
+  }
 }
 
 // all colors represented as object {r: x, g: x, b: x, a: x}. 0 <= r,g,b,a <= 255,

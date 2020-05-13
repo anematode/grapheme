@@ -1,5 +1,5 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
-import { Vec2 } from '../math/vec2'
+import { Vec2 } from '../math/vec'
 import { Label2DStyle, BasicLabelStyle } from '../styles/label_style'
 
 class LabelBase extends GraphemeElement {
