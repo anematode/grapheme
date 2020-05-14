@@ -1,6 +1,6 @@
 import {Canvas as GraphemeCanvas} from "./grapheme_canvas.js"
 
-const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove"]
+const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"]
 
 class InteractiveCanvas extends GraphemeCanvas {
   constructor(params={}) {

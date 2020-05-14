@@ -27,10 +27,22 @@ class Vec2 {
     return this
   }
 
+  hasNaN() {
+    return isNaN(this.x) || isNaN(this.y)
+  }
+
+  scale(s) {
+    return this.multiply(s)
+  }
+
   divide(s) {
     this.x /= s
     this.y /= s
     return this
+  }
+
+  asArray() {
+    return [this.x, this.y]
   }
 
   length() {

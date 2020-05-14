@@ -1,6 +1,6 @@
 
 import { Arrowhead } from './arrowhead'
-import { Vec2 } from '../math/vec2'
+import { Vec2 } from '../math/vec'
 
 function createTriangleArrowhead (width, length) {
   return new Arrowhead({

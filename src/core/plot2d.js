@@ -1,5 +1,5 @@
 import {InteractiveCanvas} from './interactive_canvas'
-import { BoundingBox, boundingBoxTransform } from "../math/boundingbox.js"
+import { BoundingBox, boundingBoxTransform } from "../math/bounding_box.js"
 import { Vec2 } from "../math/vec.js"
 
 class Plot2D extends InteractiveCanvas {
@@ -28,16 +28,16 @@ class Plot2D extends InteractiveCanvas {
     return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
   }
 
-  plotToPixelX() {
+  plotToPixelX(x) {
     return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
   }
 
-  plotToPixelY() {
+  plotToPixelY(y) {
     return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
   }
 
-  plotToPixel() {
-    return boundingBoxTransform.XY(x, this.plotCoords, this.plotBox)
+  plotToPixel(xy) {
+    return boundingBoxTransform.XY(xy, this.plotCoords, this.plotBox)
   }
 
   render() {

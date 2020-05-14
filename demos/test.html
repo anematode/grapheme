@@ -28,14 +28,15 @@ document.body.appendChild(plot.domElement);
 plot.plotCoords.width = 4
 plot.plotCoords.cx = 0
 
-let label = new Grapheme.BasicLabel()
-plot.add(label)
+let test = new Grapheme.TestObject()
+
+plot.add(test)
 
 let ia = 0;
 function render() {
   ia += 0.1;
 
-  plot.render();
+  // plot.render();
   requestAnimationFrame(render);
 }
 

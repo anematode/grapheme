@@ -826,7 +826,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove"];
+  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"];
 
   class InteractiveCanvas extends GraphemeCanvas {
     constructor(params={}) {
@@ -887,10 +887,22 @@ var Grapheme = (function (exports) {
       return this
     }
 
+    hasNaN() {
+      return isNaN(this.x) || isNaN(this.y)
+    }
+
+    scale(s) {
+      return this.multiply(s)
+    }
+
     divide(s) {
       this.x /= s;
       this.y /= s;
       return this
+    }
+
+    asArray() {
+      return [this.x, this.y]
     }
 
     length() {
@@ -1081,6 +1093,7 @@ var Grapheme = (function (exports) {
 
           x[i] = fractionAlong * box2.width + box2.x1;
         }
+        return x
       } else {
         return boundingBoxTransform.X([x], box1, box2)[0]
       }
@@ -1095,27 +1108,29 @@ var Grapheme = (function (exports) {
 
           y[i] = fractionAlong * box2.height + box2.y1;
         }
+        return y
       } else {
         return boundingBoxTransform.Y([y], box1, box2)[0]
       }
     },
     XY: (xy, box1, box2, flipX=false, flipY=true) => {
       if (Array.isArray(xy) || isTypedArray(x)) {
-        for (let i = 0; i < x.length; i += 2) {
-          let fractionAlong = (x[i] - box1.x1) / box1.width;
+        for (let i = 0; i < xy.length; i += 2) {
+          let fractionAlong = (xy[i] - box1.x1) / box1.width;
 
           if (flipX)
             fractionAlong = 1 - fractionAlong;
 
-          x[i] = fractionAlong * box2.width + box2.x1;
+          xy[i] = fractionAlong * box2.width + box2.x1;
 
-          fractionAlong = (y[i+1] - box1.y1) / box1.height;
+          fractionAlong = (xy[i+1] - box1.y1) / box1.height;
 
           if (flipY)
             fractionAlong = 1 - fractionAlong;
 
-          y[i+1] = fractionAlong * box2.height + box2.y1;
+          xy[i+1] = fractionAlong * box2.height + box2.y1;
         }
+        return xy
       } else {
         throw new Error("No")
       }
@@ -1148,16 +1163,16 @@ var Grapheme = (function (exports) {
       return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
     }
 
-    plotToPixelX() {
+    plotToPixelX(x) {
       return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
     }
 
-    plotToPixelY() {
+    plotToPixelY(y) {
       return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
     }
 
-    plotToPixel() {
-      return boundingBoxTransform.XY(x, this.plotCoords, this.plotBox)
+    plotToPixel(xy) {
+      return boundingBoxTransform.XY(xy, this.plotCoords, this.plotBox)
     }
 
     render() {
@@ -1172,18 +1187,6 @@ var Grapheme = (function (exports) {
 
     calculatePlotBox () {
       this.plotBox = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding);
-    }
-  }
-
-  class TestObject extends GraphemeElement {
-    constructor() {
-      super();
-    }
-
-    render(renderInfo) {
-      super.render(renderInfo);
-
-      this.plot.plotBox.draw(renderInfo.canvasCtx);
     }
   }
 
@@ -1228,6 +1231,242 @@ var Grapheme = (function (exports) {
 
     clone() {
       return new Color(this)
+    }
+  }
+
+  class LineStyle {
+    constructor (params = {}) {
+      const {
+        color = new Color(),
+        thickness = 2, // in CSS pixels
+        dashPattern = [], // lengths of alternating dashes
+        dashOffset = 0, // length of dash offset
+        endcap = 'round', // endcap, among "butt", "round", "square"
+        endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
+        join = 'miter', // join type, among "miter", "round", "bevel"
+        joinRes = 0.3, // angle between consecutive join roundings
+        useNative = true, // whether to use native line drawing, only used in WebGL
+        arrowhead = null, // arrowhead to draw
+        arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
+      } = params;
+
+      this.color = color;
+      this.thickness = thickness;
+      this.dashPattern = dashPattern;
+      this.dashOffset = dashOffset;
+      this.endcap = endcap;
+      this.endcapRes = endcapRes;
+      this.join = join;
+      this.joinRes = joinRes;
+      this.useNative = useNative;
+      this.arrowhead = arrowhead;
+      this.arrowLocations = arrowLocations;
+    }
+
+    clone() {
+      let copy = new LineStyle(this);
+      copy.color = this.color.clone();
+    }
+
+    prepareContext (ctx) {
+      ctx.fillStyle = ctx.strokeStyle = this.color.hex();
+      ctx.lineWidth = this.thickness;
+      ctx.setLineDash(this.dashPattern);
+      ctx.lineDashOffset = this.dashOffset;
+      ctx.miterLimit = this.thickness / Math.cos(this.joinRes / 2);
+      ctx.lineCap = this.endcap;
+      ctx.lineJoin = this.join;
+    }
+  }
+
+  class PolylineBase extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      let {
+        style,
+        vertices = []
+      } = params;
+
+      if (!(style instanceof LineStyle)) {
+        style = new LineStyle(style || {});
+      }
+
+      this.style = style;
+      this.vertices = vertices;
+    }
+  }
+
+
+  class PolylineElement extends PolylineBase {
+    constructor (params = {}) {
+      super(params);
+
+      this.mainPath = null;
+      this.arrowPath = null;
+    }
+
+    update () {
+      const path = new Path2D();
+      this.mainPath = path;
+
+      const arrowPath = new Path2D();
+      this.arrowPath = arrowPath;
+
+      const vertices = this.vertices;
+
+      // Nothing to draw
+      if (vertices.length < 4) {
+        return
+      }
+
+      const coordinateCount = vertices.length;
+      const { arrowhead, arrowLocations, thickness } = this.style;
+
+      const inclStart = arrowLocations.includes('start') && arrowhead;
+      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
+      const inclEnd = arrowLocations.includes('end') && arrowhead;
+      const inclSubend = arrowLocations.includes('subend') && arrowhead;
+
+      let x2 = NaN;
+      let x3 = NaN;
+
+      let y2 = NaN;
+      let y3 = NaN;
+
+      for (let i = 0; i <= coordinateCount; i += 2) {
+        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
+        // If any of these is NaN, that vertex is considered undefined
+        const x1 = x2;
+        x2 = x3;
+        x3 = (i === coordinateCount) ? NaN : vertices[i];
+
+        const y1 = y2;
+        y2 = y3;
+        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
+
+        if (i === 0) continue
+
+        const isStartingEndcap = Number.isNaN(x1);
+        const isEndingEndcap = Number.isNaN(x3);
+
+        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
+          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
+          path.moveTo(newV.x, newV.y);
+        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
+          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
+          path.lineTo(newV.x, newV.y);
+        } else if (isStartingEndcap) {
+          path.moveTo(x2, y2);
+        } else {
+          path.lineTo(x2, y2);
+        }
+      }
+    }
+
+    render (renderInfo) {
+      super.render(renderInfo);
+
+      const ctx = renderInfo.canvasCtx;
+
+      this.style.prepareContext(ctx);
+      ctx.stroke(this.mainPath);
+      ctx.fill(this.arrowPath);
+    }
+  }
+
+  // A glyph to be fill drawn in some fashion.
+  class Glyph {
+    constructor (params = {}) {
+      // vertices is array of Vec2s
+      const { vertices = [] } = params;
+      this.vertices = vertices;
+    }
+
+    addGlyphToPath (path, x = 0, y = 0, scale = 1, angle = 0) {
+      const vertices = this.vertices;
+
+      const translateV = new Vec2(x, y);
+
+      // Nothing to draw
+      if (vertices.length < 2) {
+        return
+      }
+
+      const p1 = vertices[0].clone().scale(scale).rotate(angle).add(translateV);
+      let jumpToNext = false;
+
+      path.moveTo(p1.x, p1.y);
+
+      for (let i = 1; i < vertices.length; ++i) {
+        const p = vertices[i].clone().scale(scale).rotate(angle).add(translateV);
+
+        if (p.hasNaN()) {
+          jumpToNext = true;
+          continue
+        }
+
+        if (jumpToNext) {
+          jumpToNext = false;
+          path.moveTo(p.x, p.y);
+        } else path.lineTo(p.x, p.y);
+      }
+
+      path.closePath();
+    }
+  }
+
+  /**
+  A glyph which creates an arrowhead. Tells you where the arrowhead will be with a Path2D
+  return value, but also tells you where the base of the arrowhead is so that you can join it
+  up properly.
+
+  length is the length of the arrowhead, from tip to tail */
+  class Arrowhead extends Glyph {
+    constructor (params = {}) {
+      super(params);
+
+      const { length = 0 } = params;
+      this.length = length;
+    }
+
+    addPath2D (path, x1, y1, x2, y2, thickness) {
+      const arrowTipAt = new Vec2(x2, y2);
+      const displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
+
+      this.addGlyphToPath(path, x2, y2, 2 * thickness, Math.atan2(y2 - y1, x2 - x1));
+
+      return arrowTipAt.add(displacement)
+    }
+  }
+
+  function createTriangleArrowhead (width, length) {
+    return new Arrowhead({
+      vertices: [
+        new Vec2(0, 0),
+        new Vec2(-length, width / 2),
+        new Vec2(-length, -width / 2)
+      ],
+      length
+    })
+  }
+
+  const Arrowheads = {
+    Normal: createTriangleArrowhead(3, 6),
+    Squat: createTriangleArrowhead(3, 3)
+  };
+
+  class TestObject extends GraphemeElement {
+    constructor() {
+      super();
+    }
+
+    render(renderInfo) {
+      super.render(renderInfo);
+
+      let polyline = new PolylineElement({vertices: [...Array(200).keys()].map((i)=>((Math.random() < 0.03) ? NaN : ((i%2 === 0) ? (i%50) * 20 : i * 2 + Math.random() * 4))), style: {thickness: 1, arrowLocations: ["subend"], arrowhead: Arrowheads.Normal}});
+
+      polyline.render(renderInfo);
     }
   }
 
@@ -1401,9 +1640,102 @@ var Grapheme = (function (exports) {
     }
   }
 
+  const desiredDemarcationSeparation = 15;
+
+  // Array of potential demarcations [a,b], where the small demarcations are spaced every b * 10^n and the big ones are spaced every a * 10^n
+  const StandardDemarcations = [[1, 0.2], [1, 0.25], [2, 0.5]];
+
+  const DemarcationStrategizers = {
+    Standard: function* (start, end, distance) {
+
+      console.log(start,end,distance);
+      if (start === end)
+        throw new Error("No")
+      if (start > end) {
+        let temp = end;
+        end = start;
+        start = temp;
+      }
+
+      let approxDemarcations = distance / desiredDemarcationSeparation;
+
+      let approxDemarcationSeparation = (end - start) / approxDemarcations;
+      let selectedDemarcation;
+      let closestSeparationError = Infinity;
+
+      for (let i = 0; i < StandardDemarcations.length; ++i) {
+        let potentialDemarcation = StandardDemarcations[i];
+
+        let [a, b] = potentialDemarcation;
+
+        let n = Math.round(Math.log10(approxDemarcationSeparation / b));
+        let selectedSeparation = b * 10 ** n;
+
+        let error = Math.abs(selectedSeparation - approxDemarcationSeparation);
+        if (error < closestSeparationError) {
+          closestSeparationError = error;
+          selectedDemarcation = potentialDemarcation;
+        }
+      }
+
+      let [a, b] = selectedDemarcation;
+
+      for (let i = Math.ceil(start / b); i < end / b; ++i) {
+        console.log(i);
+        if (i === 0) {
+          yield {pos: 0, type: 0};
+        } else if (i % a === 0) {
+          yield {pos: i * b, type: 1};
+        } else {
+          yield {pos: i * b, type: 2};
+        }
+      }
+    }
+  };
+
+  // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
+  class Gridlines extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.x_strategizer = DemarcationStrategizers.Standard;
+      this.y_strategizer = DemarcationStrategizers.Standard;
+
+      this.polylines = {ticks: {'x': {}, 'y': {}}, lines: {'x': {}, 'y': {}}};
+    }
+
+
+    update() {
+      for (let key in this.polylines) {
+        for (let key2 in this.polylines[key]) {
+          for (let key3 in this.polylines[key][key2]) {
+            this.polylines[key][key2][key3].vertices = [];
+          }
+        }
+      }
+
+      let plot = this.plot;
+      let plotCoords = plot.plotCoords;
+      let plotBox = plot.plotBox;
+
+      const x_markers = this.x_strategizer(plotCoords.x1, plotCoords.x2, plotBox.width);
+      const y_markers = this.y_strategizer(plotCoords.y1, plotCoords.y2, plotBox.height);
+
+      while (!x_markers.done) {
+        let next = x_markers.next();
+      }
+    }
+
+    render(renderInfo) {
+
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.Context = GraphemeContext;
+  exports.DemarcationStrategizers = DemarcationStrategizers;
+  exports.Gridlines = Gridlines;
   exports.Label2D = Label2D;
   exports.Plot2D = Plot2D;
   exports.TestObject = TestObject;
