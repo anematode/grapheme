@@ -15,9 +15,6 @@ class GraphemeElement {
     // The plot this element belongs to
     this.plot = null
 
-    // whether this element is visible
-    this.visible = true
-
     // Whether to always update geometries when render is called
     this.alwaysUpdate = alwaysUpdate
 
@@ -26,8 +23,6 @@ class GraphemeElement {
 
     // Children of this element
     this.children = []
-
-    this.logEvents = true
   }
 
   update () {
@@ -35,15 +30,6 @@ class GraphemeElement {
   }
 
   triggerEvent (type, evt) {
-    if (this.logEvents)
-      console.log(type, evt)
-
-    if (this.eventListeners[type]) {
-      let res = this.eventListeners[type].any(listener => listener(evt))
-      if (res)
-        return true
-    }
-
     this.sortChildren()
 
     for (let i = 0; i < this.children.length; ++i) {
@@ -52,31 +38,28 @@ class GraphemeElement {
       }
     }
 
+    if (this.eventListeners[type]) {
+      let res = this.eventListeners[type].every(listener => listener(evt))
+      if (res)
+        return true
+    }
+
     return false
   }
 
-  sortChildren (force = false) {
+  sortChildren () {
     // Sort the children by their precedence value
     this.children.sort((x, y) => x.precedence - y.precedence)
   }
 
-  render (renderInfo) {
+  render (info) {
     this.sortChildren()
-
-    if (!this.visible) {
-      return
-    }
 
     if (this.alwaysUpdate) {
       this.update()
     }
 
-    renderInfo.window.beforeRender(this)
-
-    // sort our elements by drawing precedence
-    this.sortChildren()
-
-    this.children.forEach((child) => child.render(renderInfo))
+    this.children.forEach((child) => child.render(info))
   }
 
   isChild (element) {

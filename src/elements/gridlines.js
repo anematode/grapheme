@@ -1,7 +1,7 @@
 import { Element as GraphemeElement } from "../core/grapheme_element.js"
 import { PolylineElement } from "./polyline.js"
 import {DemarcationStrategizers} from '../other/demarcation_strategizer'
-import { LineStyle } from '../styles/line_style'
+import { Pen } from '../styles/pen'
 import { BasicLabelStyle } from '../styles/label_style'
 
 // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options

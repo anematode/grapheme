@@ -1,20 +1,22 @@
 import {Element as GraphemeElement} from "../core/grapheme_element.js"
-import { LineStyle } from '../styles/line_style'
+import { Pen } from '../styles/pen'
+import * as utils from "../core/utils"
+import { Arrowheads } from '../other/arrowheads'
 
 class PolylineBase extends GraphemeElement {
   constructor (params = {}) {
     super(params)
 
     let {
-      style,
+      pen,
       vertices = []
     } = params
 
-    if (!(style instanceof LineStyle)) {
-      style = new LineStyle(style || {})
+    if (!(pen instanceof Pen)) {
+      pen = new Pen(style || {})
     }
 
-    this.style = style
+    this.pen = pen
     this.vertices = vertices
   }
 }
@@ -35,7 +37,11 @@ class PolylineElement extends PolylineBase {
     const arrowPath = new Path2D()
     this.arrowPath = arrowPath
 
-    const vertices = this.vertices
+    let vertices = this.vertices
+
+    if (this.vertices[0] && (this.vertices[0].x || Array.isArray(this.vertices[0]))) {
+      vertices = utils.flattenVectors(vertices)
+    }
 
     // Nothing to draw
     if (vertices.length < 4) {
@@ -43,7 +49,9 @@ class PolylineElement extends PolylineBase {
     }
 
     const coordinateCount = vertices.length
-    const { arrowhead, arrowLocations, thickness } = this.style
+    const { arrowLocations, thickness } = this.pen
+
+    const arrowhead = Arrowheads[this.pen.arrowhead]
 
     const inclStart = arrowLocations.includes('start') && arrowhead
     const inclSubstart = arrowLocations.includes('substart') && arrowhead
@@ -86,12 +94,12 @@ class PolylineElement extends PolylineBase {
     }
   }
 
-  render (renderInfo) {
-    super.render(renderInfo)
+  render (info) {
+    super.render(info)
 
-    const ctx = renderInfo.canvasCtx
+    const ctx = info.ctx
 
-    this.style.prepareContext(ctx)
+    this.pen.prepareContext(ctx)
     ctx.stroke(this.mainPath)
     ctx.fill(this.arrowPath)
   }

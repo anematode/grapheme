@@ -1,12 +1,7 @@
 import { Group as GraphemeGroup } from './grapheme_group'
 import { Element as GraphemeElement } from './grapheme_element'
-import { WebGLElement } from './webgl_grapheme_element'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
-
-// Empty element drawn at the end of every render to copy the webgl canvas over
-// if necessary LOL
-const FINAL_ELEMENT = new GraphemeElement()
 
 /** A grapheme window is an actual viewable instance of Grapheme.
 That is, it is a div that can be put into the DOM and manipulated (and seen).
@@ -20,14 +15,8 @@ cssWidth, cssHeight = the size of the canvas in CSS pixels
 canvasWidth, canvasHeight = the actual size of the canvas in pixels
 */
 class GraphemeCanvas extends GraphemeGroup {
-  constructor (graphemeContext) {
-    super()
-
-    // Grapheme context this window is a child of
-    this.context = graphemeContext
-
-    // Add this window to the context's list of windows
-    graphemeContext.canvases.push(this)
+  constructor (params={}) {
+    super(params)
 
     // Element to be put into the webpage
     this.domElement = document.createElement('div')
@@ -41,8 +30,8 @@ class GraphemeCanvas extends GraphemeGroup {
     this.domElement.classList.add('grapheme-window')
 
     // Get the contexts
-    this.canvasCtx = this.canvas.getContext('2d')
-    utils.assert(this.canvasCtx, "This browser doesn't support 2D canvas, what the heck")
+    this.ctx = this.canvas.getContext('2d')
+    utils.assert(this.ctx, "This browser doesn't support 2D canvas, what the heck")
 
     // label manager
     this.labelManager = new LabelManager(this.domElement)
@@ -60,7 +49,7 @@ class GraphemeCanvas extends GraphemeGroup {
   }
 
   resetCanvasCtxTransform () {
-    const ctx = this.canvasCtx
+    const ctx = this.ctx
 
     ctx.resetTransform()
     ctx.scale(utils.dpr, utils.dpr)
@@ -82,10 +71,6 @@ class GraphemeCanvas extends GraphemeGroup {
 
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
-
-    // Update the parent context, in case it needs to be resized as well to fit
-    // a potentially fatter canvas
-    this.context.updateSize()
 
     this.triggerEvent("resize", {width, height})
   }
@@ -130,77 +115,34 @@ class GraphemeCanvas extends GraphemeGroup {
     // Destroy the domElement
     this.domElement.remove()
 
-    // Delete this window from the parent context
-    this.context.removeWindow(this)
-
-    // Update the canvas size of the parent context
-    this.context.updateSize()
-
     // Destroy the elements too, if desired
     super.destroy()
 
     // Delete some references
     delete this.canvas
     delete this.domElement
-    delete this.canvasCtx
+    delete this.ctx
   }
 
   clear () {
     // Clear the canvas
-    this.canvasCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
-  }
-
-  beforeRender (element) {
-    if (element instanceof WebGLElement) {
-      if (this.needsContextPrepared) {
-        this.context.prepareForWindow(this)
-
-        this.needsCanvasPrepared = false
-      }
-
-      this.needsCanvasCopy = true
-    } else {
-      if (this.needsContextCopy) {
-        const ctx = this.canvasCtx
-
-        ctx.save()
-
-        ctx.resetTransform()
-        ctx.imageSmoothingEnabled = false
-
-        // Copy the glCanvas over
-        ctx.drawImage(this.context.glCanvas)
-
-        ctx.restore()
-
-        this.needsCanvasCopy = false
-      }
-
-      this.needsCanvasPrepared = true
-    }
+    this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
   }
 
   render () {
-    // Canvas may need to do some stuff
-    this.needsCanvasPrepared = true
-    this.needsCanvasCopy = false
-
-    const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this
+    const { labelManager, ctx } = this
 
     // ID of this render
-    const renderID = utils.getRenderID()
-    labelManager.currentRenderID = renderID
+    labelManager.currentRenderID = utils.getRenderID()
 
     // Render information to be given to elements. Namely,
-    // dims: {cssWidth, cssHeight, canvasWidth, canvasHeight, dpr}
     // labelManager
-    // canvasCtx
+    // ctx
     // window
-    const renderInfo = {
-      dims: { cssWidth, cssHeight, canvasWidth, canvasHeight },
+    const info = {
       labelManager,
-      canvasCtx,
-      window: this
+      ctx,
+      plot: this
     }
 
     this.resetCanvasCtxTransform()
@@ -211,10 +153,7 @@ class GraphemeCanvas extends GraphemeGroup {
       this.clear()
 
       // Render all children
-      super.render(renderInfo)
-
-      // Copy the webgl canvas over if needed
-      FINAL_ELEMENT.render(renderInfo)
+      super.render(info)
 
       // Get rid of old labels
       labelManager.cleanOldRenders()

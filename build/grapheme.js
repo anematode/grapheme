@@ -6,6 +6,20 @@ var Grapheme = (function (exports) {
   // A list of all extant Grapheme Contexts
   const CONTEXTS = [];
 
+  // this function takes in a variadic list of arguments and returns the first
+  // one that's not undefined
+  function select (opt1, ...opts) {
+    if (opts.length === 0) { // if there are no other options, choose the first
+      return opt1
+    }
+    if (opt1 === undefined) { // if the first option is undefined, proceed
+      return select(...opts)
+    }
+
+    // If the first option is valid, return it
+    return opt1
+  }
+
   // Assert that a statement is true, and throw an error if it's not
   function assert (statement, error = 'Unknown error') {
     if (!statement) throw new Error(error)
@@ -16,6 +30,23 @@ var Grapheme = (function (exports) {
     assert(obj instanceof type, `Object must be instance of ${type}`);
   }
 
+  // Check if two objects are... deeply equal
+  // https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
+  function deepEquals (x, y) {
+    const ok = Object.keys; const tx = typeof x; const
+      ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (
+      ok(x).length === ok(y).length &&
+        ok(x).every((key) => deepEquals(x[key], y[key]))
+    ) : (x === y)
+  }
+
+  // The following functions are self-explanatory.
+
+  function isInteger (z) {
+    return Number.isInteger(z) // didn't know about this lol
+  }
+
   function isNonnegativeInteger (z) {
     return Number.isInteger(z) && z >= 0
   }
@@ -24,8 +55,52 @@ var Grapheme = (function (exports) {
     return Number.isInteger(z) && z > 0
   }
 
+  function isNonpositiveInteger (z) {
+    return Number.isInteger(z) && z <= 0
+  }
+
+  function isNegativeInteger (z) {
+    return Number.isInteger(z) && z < 0
+  }
+
   function isTypedArray(arr) {
     return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
+  }
+
+  // https://stackoverflow.com/a/34749873
+  function isObject (item) {
+    return (item && typeof item === 'object' && !Array.isArray(item))
+  }
+
+  // This merges the characteristics of two objects, typically parameters
+  // or styles or something like that
+  // https://stackoverflow.com/a/34749873
+  function mergeDeep (target, ...sources) {
+    if (!sources.length) return target
+    const source = sources.shift();
+
+    if (isObject(target) && isObject(source)) {
+      for (const key in source) {
+        if (isObject(source[key])) {
+          if (!target[key]) Object.assign(target, { [key]: {} });
+          mergeDeep(target[key], source[key]);
+        } else {
+          Object.assign(target, { [key]: source[key] });
+        }
+      }
+    }
+
+    return mergeDeep(target, ...sources)
+  }
+
+  // Check if two numbers are within epsilon of each other
+  function isApproxEqual (v, w, eps = 1e-5) {
+    return Math.abs(v - w) < eps
+  }
+
+  // Non-stupid mod function
+  function mod (n, m) {
+    return ((n % m) + m) % m
   }
 
   // device pixel ratio... duh
@@ -114,6 +189,14 @@ var Grapheme = (function (exports) {
     throw new Error(gl.getProgramInfoLog(program))
   }
 
+  function generateUUID () {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0; const
+        v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16)
+    })
+  }
+
   // Delete buffers with the given name from all Grapheme contexts
   function deleteBuffersNamed (bufferNames) {
     if (Array.isArray(bufferNames)) {
@@ -135,6 +218,49 @@ var Grapheme = (function (exports) {
     return x$1
   }
 
+  function flattenVectors(arr) {
+    let flattened = [];
+
+    for (let i = 0; i < arr.length; ++i) {
+      let item = arr[i];
+      if (item.x !== undefined) {
+        flattened.push(item.x);
+        flattened.push(item.y);
+      } else if (Array.isArray(item)) {
+        flattened.push(item[0]);
+        flattened.push(item[1]);
+      } else {
+        flattened.push(item);
+      }
+    }
+
+    return flattened
+  }
+
+  var utils = /*#__PURE__*/Object.freeze({
+    generateUUID: generateUUID,
+    createShaderFromSource: createShaderFromSource,
+    createGLProgram: createGLProgram,
+    CONTEXTS: CONTEXTS,
+    mod: mod,
+    get dpr () { return dpr; },
+    select: select,
+    assert: assert,
+    checkType: checkType,
+    deepEquals: deepEquals,
+    isInteger: isInteger,
+    isNonnegativeInteger: isNonnegativeInteger,
+    isNonpositiveInteger: isNonpositiveInteger,
+    isNegativeInteger: isNegativeInteger,
+    isPositiveInteger: isPositiveInteger,
+    isTypedArray: isTypedArray,
+    mergeDeep: mergeDeep,
+    isApproxEqual: isApproxEqual,
+    deleteBuffersNamed: deleteBuffersNamed,
+    getRenderID: getRenderID,
+    flattenVectors: flattenVectors
+  });
+
   class GraphemeElement {
     constructor ({
       precedence = 0,
@@ -150,9 +276,6 @@ var Grapheme = (function (exports) {
       // The plot this element belongs to
       this.plot = null;
 
-      // whether this element is visible
-      this.visible = true;
-
       // Whether to always update geometries when render is called
       this.alwaysUpdate = alwaysUpdate;
 
@@ -161,8 +284,6 @@ var Grapheme = (function (exports) {
 
       // Children of this element
       this.children = [];
-
-      this.logEvents = true;
     }
 
     update () {
@@ -170,15 +291,6 @@ var Grapheme = (function (exports) {
     }
 
     triggerEvent (type, evt) {
-      if (this.logEvents)
-        console.log(type, evt);
-
-      if (this.eventListeners[type]) {
-        let res = this.eventListeners[type].any(listener => listener(evt));
-        if (res)
-          return true
-      }
-
       this.sortChildren();
 
       for (let i = 0; i < this.children.length; ++i) {
@@ -187,31 +299,28 @@ var Grapheme = (function (exports) {
         }
       }
 
+      if (this.eventListeners[type]) {
+        let res = this.eventListeners[type].every(listener => listener(evt));
+        if (res)
+          return true
+      }
+
       return false
     }
 
-    sortChildren (force = false) {
+    sortChildren () {
       // Sort the children by their precedence value
       this.children.sort((x, y) => x.precedence - y.precedence);
     }
 
-    render (renderInfo) {
+    render (info) {
       this.sortChildren();
-
-      if (!this.visible) {
-        return
-      }
 
       if (this.alwaysUpdate) {
         this.update();
       }
 
-      renderInfo.window.beforeRender(this);
-
-      // sort our elements by drawing precedence
-      this.sortChildren();
-
-      this.children.forEach((child) => child.render(renderInfo));
+      this.children.forEach((child) => child.render(info));
     }
 
     isChild (element) {
@@ -288,38 +397,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class WebGLGraphemeElement extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      this.usedBufferNames = [];
-      this.usedProgramNames = [];
-    }
-
-    addUsedBufferName (bufferName) {
-      if (this.usedBufferNames.indexOf(bufferName) === -1) {
-        this.usedBufferNames.push(bufferName);
-      }
-    }
-
-    removeUsedBufferName (bufferName) {
-      const index = this.usedBufferNames.indexOf(bufferName);
-      if (index !== -1) {
-        this.usedBufferNames.splice(index, 1);
-      }
-    }
-
-    // TODO
-    addUsedProgramName (programName) {
-
-    }
-
-    destroy () {
-      if (this.usedBufferNames) deleteBuffersNamed(this.usedBufferNames);
-      super.destroy();
-    }
-  }
-
   /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
   class LabelManager {
     constructor (container) {
@@ -363,10 +440,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // Empty element drawn at the end of every render to copy the webgl canvas over
-  // if necessary LOL
-  const FINAL_ELEMENT = new GraphemeElement();
-
   /** A grapheme window is an actual viewable instance of Grapheme.
   That is, it is a div that can be put into the DOM and manipulated (and seen).
 
@@ -379,14 +452,8 @@ var Grapheme = (function (exports) {
   canvasWidth, canvasHeight = the actual size of the canvas in pixels
   */
   class GraphemeCanvas extends GraphemeGroup {
-    constructor (graphemeContext) {
-      super();
-
-      // Grapheme context this window is a child of
-      this.context = graphemeContext;
-
-      // Add this window to the context's list of windows
-      graphemeContext.canvases.push(this);
+    constructor (params={}) {
+      super(params);
 
       // Element to be put into the webpage
       this.domElement = document.createElement('div');
@@ -400,8 +467,8 @@ var Grapheme = (function (exports) {
       this.domElement.classList.add('grapheme-window');
 
       // Get the contexts
-      this.canvasCtx = this.canvas.getContext('2d');
-      assert(this.canvasCtx, "This browser doesn't support 2D canvas, what the heck");
+      this.ctx = this.canvas.getContext('2d');
+      assert(this.ctx, "This browser doesn't support 2D canvas, what the heck");
 
       // label manager
       this.labelManager = new LabelManager(this.domElement);
@@ -419,7 +486,7 @@ var Grapheme = (function (exports) {
     }
 
     resetCanvasCtxTransform () {
-      const ctx = this.canvasCtx;
+      const ctx = this.ctx;
 
       ctx.resetTransform();
       ctx.scale(dpr, dpr);
@@ -441,10 +508,6 @@ var Grapheme = (function (exports) {
 
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-
-      // Update the parent context, in case it needs to be resized as well to fit
-      // a potentially fatter canvas
-      this.context.updateSize();
 
       this.triggerEvent("resize", {width, height});
     }
@@ -489,77 +552,34 @@ var Grapheme = (function (exports) {
       // Destroy the domElement
       this.domElement.remove();
 
-      // Delete this window from the parent context
-      this.context.removeWindow(this);
-
-      // Update the canvas size of the parent context
-      this.context.updateSize();
-
       // Destroy the elements too, if desired
       super.destroy();
 
       // Delete some references
       delete this.canvas;
       delete this.domElement;
-      delete this.canvasCtx;
+      delete this.ctx;
     }
 
     clear () {
       // Clear the canvas
-      this.canvasCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-    }
-
-    beforeRender (element) {
-      if (element instanceof WebGLGraphemeElement) {
-        if (this.needsContextPrepared) {
-          this.context.prepareForWindow(this);
-
-          this.needsCanvasPrepared = false;
-        }
-
-        this.needsCanvasCopy = true;
-      } else {
-        if (this.needsContextCopy) {
-          const ctx = this.canvasCtx;
-
-          ctx.save();
-
-          ctx.resetTransform();
-          ctx.imageSmoothingEnabled = false;
-
-          // Copy the glCanvas over
-          ctx.drawImage(this.context.glCanvas);
-
-          ctx.restore();
-
-          this.needsCanvasCopy = false;
-        }
-
-        this.needsCanvasPrepared = true;
-      }
+      this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
     render () {
-      // Canvas may need to do some stuff
-      this.needsCanvasPrepared = true;
-      this.needsCanvasCopy = false;
-
-      const { cssWidth, cssHeight, canvasWidth, canvasHeight, labelManager, canvasCtx } = this;
+      const { labelManager, ctx } = this;
 
       // ID of this render
-      const renderID = getRenderID();
-      labelManager.currentRenderID = renderID;
+      labelManager.currentRenderID = getRenderID();
 
       // Render information to be given to elements. Namely,
-      // dims: {cssWidth, cssHeight, canvasWidth, canvasHeight, dpr}
       // labelManager
-      // canvasCtx
+      // ctx
       // window
-      const renderInfo = {
-        dims: { cssWidth, cssHeight, canvasWidth, canvasHeight },
+      const info = {
         labelManager,
-        canvasCtx,
-        window: this
+        ctx,
+        plot: this
       };
 
       this.resetCanvasCtxTransform();
@@ -570,10 +590,7 @@ var Grapheme = (function (exports) {
         this.clear();
 
         // Render all children
-        super.render(renderInfo);
-
-        // Copy the webgl canvas over if needed
-        FINAL_ELEMENT.render(renderInfo);
+        super.render(info);
 
         // Get rid of old labels
         labelManager.cleanOldRenders();
@@ -585,284 +602,18 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /**
-  The GLResourceManager stores GL resources on a per-context basis. This allows the
-  separation of elements and their drawing buffers in a relatively complete way.
-
-  It is given a gl context to operate on, and creates programs in manager.programs
-  and buffers in manager.buffers. programs and buffers are simply key-value pairs
-  which objects can create (and destroy) as they please.
-
-  It also (TODO) does some convenient gl manipulations, like setting uniforms and attrib
-  arrays... because I'm sick of writing that so much
-  */
-  class GLResourceManager {
-    // Compiled programs and created buffers
-
-    constructor (gl) {
-      this.gl = gl;
-      this.programs = {};
-      this.buffers = {};
-    }
-
-    // Compile a program and store it in this.programs
-    compileProgram (programName, vertexShaderSource, fragmentShaderSource,
-      vertexAttributeNames = [], uniformNames = []) {
-      if (this.hasProgram(programName)) {
-        // if this program name is already taken, delete the old one
-        this.deleteProgram(programName);
-      }
-
-      const { gl } = this;
-
-      // The actual gl program itself
-      const glProgram = createGLProgram(gl,
-        createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
-        createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
-
-      // pairs of uniform names and their respective locations
-      const uniforms = {};
-      for (let i = 0; i < uniformNames.length; ++i) {
-        const uniformName = uniformNames[i];
-
-        uniforms[uniformName] = gl.getUniformLocation(glProgram, uniformName);
-      }
-
-      // pairs of vertex attribute names and their respective locations
-      const vertexAttribs = {};
-      for (let i = 0; i < vertexAttributeNames.length; ++i) {
-        const vertexAttribName = vertexAttributeNames[i];
-
-        vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
-      }
-
-      this.programs[programName] = {
-        program: glProgram,
-        uniforms,
-        attribs: vertexAttribs
-      };
-    }
-
-    // Return whether this has a program with that name
-    hasProgram (programName) {
-      return !!this.programs[programName]
-    }
-
-    // Retrieve a program to use
-    getProgram (programName) {
-      return this.programs[programName]
-    }
-
-    // Delete a program
-    deleteProgram (programName) {
-      if (!this.hasProgram(programName)) return
-
-      {
-        const programInfo = this.programs[programName];
-        this.gl.deleteProgram(programInfo.program);
-      }
-
-      // Remove the key from this.programs
-      delete this.programs[programName];
-    }
-
-    // Create a buffer with the given name
-    createBuffer (bufferName) {
-      if (this.hasBuffer(bufferName)) return
-
-      const { gl } = this;
-
-      // Create a new buffer
-      this.buffers[bufferName] = gl.createBuffer();
-    }
-
-    hasBuffer (bufferName) {
-      return !!this.buffers[bufferName]
-    }
-
-    getBuffer (bufferName) {
-      if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName);
-      return this.buffers[bufferName]
-    }
-
-    deleteBuffer (bufferName) {
-      if (!this.hasBuffer(bufferName)) return
-      const buffer = this.getBuffer(bufferName);
-
-      // Delete the buffer from GL memory
-      this.gl.deleteBuffer(buffer);
-      delete this.buffers[bufferName];
-    }
-  }
-
-  class GraphemeContext {
-    constructor () {
-      // Creates an offscreen canvas to draw to, with an initial size of 1x1
-      this.glCanvas = OffscreenCanvas ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
-
-      // Create the webgl context!
-      const gl = this.gl = this.glCanvas.getContext('webgl') || this.glCanvas.getContext('experimental-webgl');
-
-      // The gl context must exist, otherwise Grapheme will be pissed (that rhymed)
-      assert(gl, 'Grapheme requires WebGL to run; please get a competent browser');
-
-      // The gl resource manager for this context
-      this.glManager = new GLResourceManager(gl);
-
-      // The list of canvases that this context has jurisdiction over
-      this.canvases = [];
-
-      // Add this to the list of contexts to receive event updates and such
-      CONTEXTS.push(this);
-    }
-
-    // Set the drawing viewport on glCanvas
-    setViewport (width, height, x = 0, y = 0, setScissor = true) {
-      const gl = this.gl;
-
-      // Check to make sure the viewport dimensions are acceptable
-      assert(isPositiveInteger(width) && isPositiveInteger(height) &&
-        isNonnegativeInteger(x) && isNonnegativeInteger(y),
-      'x, y, width, height must be integers greater than 0 (or = for x,y)');
-      assert(x + width <= this.canvasWidth && y + height <= this.canvasHeight, 'viewport must be within canvas bounds');
-
-      // Set the gl viewport accordingly
-      gl.viewport(x, y, width, height);
-
-      // If desired, enable scissoring over that rectangle
-      if (setScissor) {
-        gl.enable(gl.SCISSOR_TEST);
-        this.gl.scissor(x, y, width, height);
-      } else {
-        gl.disable(gl.SCISSOR_TEST);
-      }
-    }
-
-    prepareForCanvas (canv) {
-      const gl = this.gl;
-
-      this.setViewport(canv.canvasWidth, canv.canvasHeight);
-
-      gl.clearColor(0, 0, 0, 0);
-      gl.clearDepth(1);
-
-      // Clear depth and color buffers
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    }
-
-    get canvasHeight () {
-      return this.glCanvas.height
-    }
-
-    onDPRChanged() {
-      this.canvases.forEach(canvas => canvas.triggerEvent("dprchanged"));
-    }
-
-    get canvasWidth () {
-      return this.glCanvas.width
-    }
-
-    set canvasHeight (y) {
-      y = Math.round(y);
-
-      assert(isPositiveInteger(y) && y < 16384, 'canvas height must be in range [1,16383]');
-      this.glCanvas.height = y;
-    }
-
-    set canvasWidth (x) {
-      x = Math.round(x);
-
-      assert(isPositiveInteger(x) && x < 16384, 'canvas width must be in range [1,16383]');
-      this.glCanvas.width = x;
-    }
-
-    isDestroyed () {
-      return CONTEXTS.indexOf(this) === -1
-    }
-
-    // Destroy this context
-    destroy () {
-      if (this.isDestroyed()) return
-
-      // Remove from lists of contexts
-      const index = CONTEXTS.indexOf(this);
-      index !== -1 && CONTEXTS.splice(index, 1);
-
-      // Destroy all children
-      this.canvases.forEach(canvas => canvas.destroy());
-
-      // destroy resource manager
-      this.glManager.destroy();
-
-      // Free up canvas space immediately
-      this.canvasWidth = 1;
-      this.canvasHeight = 1;
-
-      // Delete references to various stuff
-      delete this.glManager;
-      delete this.glCanvas;
-      delete this.gl;
-    }
-
-    // Update the size of this context based on the maximum size of its windows
-    updateSize () {
-      let maxWidth = 1;
-      let maxHeight = 1;
-
-      // Find the max width and height (independently)
-      this.canvases.forEach((window) => {
-        if (window.canvasWidth > maxWidth) {
-          maxWidth = window.canvasWidth;
-        }
-
-        if (window.canvasHeight > maxHeight) {
-          maxHeight = window.canvasHeight;
-        }
-      });
-
-      // Set the canvas size accordingly
-      this.canvasHeight = maxHeight;
-      this.canvasWidth = maxWidth;
-    }
-  }
-
-  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"];
-
-  class InteractiveCanvas extends GraphemeCanvas {
-    constructor(params={}) {
-      super(params);
-
-      this.interactivityListeners = {};
-      this.interactivityEnabled = true;
-    }
-
-    get interactivityEnabled() {
-      return this._interactivityEnabled
-    }
-
-    set interactivityEnabled(v) {
-      this._interactivityEnabled = v;
-
-      if (v) {
-        EVENTS.forEach(evtName => {
-          let callback = (evt) => {this.triggerEvent(evtName, evt);};
-
-          this.interactivityListeners[evtName] = callback;
-
-          this.domElement.addEventListener(evtName, callback);
-        });
-      } else {
-        EVENTS.forEach(evtName => {
-          this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
-        });
-      }
-    }
-  }
-
   class Vec2 {
     constructor (x, y) {
-      this.x = x;
-      this.y = y;
+      if (x.x) {
+        this.x = x.x;
+        this.y = x.y;
+      } else if (Array.isArray(x)) {
+        this.x = x[0];
+        this.y = x[1];
+      } else {
+        this.x = x;
+        this.y = y;
+      }
     }
 
     clone() {
@@ -941,6 +692,43 @@ var Grapheme = (function (exports) {
     }
   }
   const Origin = new Vec2(0,0);
+
+  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"];
+
+  class InteractiveCanvas extends GraphemeCanvas {
+    constructor(params={}) {
+      super(params);
+
+      this.interactivityListeners = {};
+      this.interactivityEnabled = true;
+    }
+
+    get interactivityEnabled() {
+      return this._interactivityEnabled
+    }
+
+    set interactivityEnabled(v) {
+      this._interactivityEnabled = v;
+
+      if (v) {
+        EVENTS.forEach(evtName => {
+          let callback = (evt) => {
+            let rect = this.domElement.getBoundingClientRect();
+
+            this.triggerEvent(evtName, {pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top), rawEvent: evt});
+          };
+
+          this.interactivityListeners[evtName] = callback;
+
+          this.domElement.addEventListener(evtName, callback);
+        });
+      } else {
+        EVENTS.forEach(evtName => {
+          this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
+        });
+      }
+    }
+  }
 
   class BoundingBox {
     //_width;
@@ -1098,7 +886,7 @@ var Grapheme = (function (exports) {
         return boundingBoxTransform.X([x], box1, box2)[0]
       }
     },
-    Y: (y, box1, box2, flipY=true) => {
+    Y: (y, box1, box2, flipY=false) => {
       if (Array.isArray(y) || isTypedArray(y)) {
         for (let i = 0; i < y.length; ++i) {
           let fractionAlong = (y[i] - box1.y1) / box1.height;
@@ -1113,7 +901,7 @@ var Grapheme = (function (exports) {
         return boundingBoxTransform.Y([y], box1, box2)[0]
       }
     },
-    XY: (xy, box1, box2, flipX=false, flipY=true) => {
+    XY: (xy, box1, box2, flipX=false, flipY=false) => {
       if (Array.isArray(xy) || isTypedArray(x)) {
         for (let i = 0; i < xy.length; i += 2) {
           let fractionAlong = (xy[i] - box1.x1) / box1.width;
@@ -1137,42 +925,108 @@ var Grapheme = (function (exports) {
     }
   };
 
+  class Plot2DTransform {
+    constructor(params={}) {
+      this.box = params.box ? new BoundingBox(params.box) : new BoundingBox(new Vec2(0,0), this.width, this.height);
+      this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, 5), 10, 10);
+
+      this.preserveAspectRatio = true;
+      this.aspectRatio = 1; // Preserve the ratio coords.width / box.width
+
+      this.allowDragging = true;
+      this.allowScrolling = true;
+
+      this.mouseDown = false;
+      this.mouseAt = null;
+    }
+
+    centerOn(v, ...args) {
+      if (v instanceof Vec2) {
+        this.coords.cx = v.x;
+        this.coords.cy = v.y;
+      } else {
+        this.centerOn(new Vec2(v, ...args));
+      }
+    }
+
+    zoomOn(factor, v) {
+      let pixel = this.plotToPixel(v);
+
+      this.width *= factor;
+      this.height *= factor;
+
+      this.coincidePoints(this.pixelToPlot(pixel), v);
+    }
+
+    coincidePoints(v_old, v_new) {
+      this.translate(v_old.subtract(v_new));
+    }
+
+
+    pixelToPlotX(x) {
+      return boundingBoxTransform.X(x, this.box, this.coords)
+    }
+
+    pixelToPlotY(y) {
+      return boundingBoxTransform.Y(y, this.box, this.coords, true)
+    }
+
+    pixelToPlot(xy) {
+      return new Vec2(boundingBoxTransform.XY(flattenVectors([xy]), this.box, this.coords, false, true))
+    }
+
+    plotToPixelX(x) {
+      return boundingBoxTransform.X(x, this.coords, this.box)
+    }
+
+    plotToPixelY(y) {
+      return boundingBoxTransform.Y(y, this.coords, this.box, true)
+    }
+
+    plotToPixel(xy) {
+      return new Vec2(boundingBoxTransform.XY(flattenVectors([xy]), this.coords, this.box, false, true))
+    }
+  }
+
   class Plot2D extends InteractiveCanvas {
     constructor (context) {
       super(context);
 
       this.plot = this;
 
-      this.plotBox = new BoundingBox(new Vec2(0,0), this.width, this.height);
-      this.plotCoords = new BoundingBox(new Vec2(-5, 5), 10, 10);
+      this.transform = new Plot2DTransform();
+      this.padding = {top: 40, right: 40, left: 40, bottom: 40};
 
-      this.padding = {top: 0, right: 0, left: 0, bottom: 0};
+      this.enableDrag = true;
+      this.enableScroll = true;
+
+      this.addEventListener("mousedown", evt => this.mouseDown(evt));
+      this.addEventListener("mouseup", evt => this.mouseUp(evt));
+      this.addEventListener("mousemove", evt => this.mouseMove(evt));
+      this.addEventListener("scroll", evt => this.scroll(evt));
 
       this.update();
     }
 
-    pixelToPlotX(x) {
-      return boundingBoxTransform.X(x, this.plotBox, this.plotCoords)
+    mouseDown(evt) {
+      this.mouseDownAt = this.transform.pixelToPlot(evt.pos);
     }
 
-    pixelToPlotY(y) {
-      return boundingBoxTransform.Y(y, this.plotBox, this.plotCoords)
+    mouseUp(evt) {
+      this.mouseDownAt = null;
     }
 
-    pixelToPlot(xy) {
-      return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
+    mouseMove(evt) {
+      if (this.mouseDownAt) {
+        console.log("drag detected");
+      }
     }
 
-    plotToPixelX(x) {
-      return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
-    }
+    scroll(evt) {
+      console.log(evt);
+      let scrollY = evt.rawEvent.scrollY;
 
-    plotToPixelY(y) {
-      return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
-    }
-
-    plotToPixel(xy) {
-      return boundingBoxTransform.XY(xy, this.plotCoords, this.plotBox)
+      this.transform.zoomOn(scrollY / 100, this.transform.pixelToPlot(evt.pos));
     }
 
     render() {
@@ -1182,11 +1036,11 @@ var Grapheme = (function (exports) {
     }
 
     update () {
-      this.calculatePlotBox();
+      this.calculateTransform();
     }
 
-    calculatePlotBox () {
-      this.plotBox = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding);
+    calculateTransform () {
+      this.transform.box = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding);
     }
   }
 
@@ -1234,7 +1088,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class LineStyle {
+  class Pen {
     constructor (params = {}) {
       const {
         color = new Color(),
@@ -1246,7 +1100,7 @@ var Grapheme = (function (exports) {
         join = 'miter', // join type, among "miter", "round", "bevel"
         joinRes = 0.3, // angle between consecutive join roundings
         useNative = true, // whether to use native line drawing, only used in WebGL
-        arrowhead = null, // arrowhead to draw
+        arrowhead = "Normal", // arrowhead to draw
         arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
       } = params;
 
@@ -1264,7 +1118,7 @@ var Grapheme = (function (exports) {
     }
 
     clone() {
-      let copy = new LineStyle(this);
+      let copy = new Pen(this);
       copy.color = this.color.clone();
     }
 
@@ -1276,102 +1130,6 @@ var Grapheme = (function (exports) {
       ctx.miterLimit = this.thickness / Math.cos(this.joinRes / 2);
       ctx.lineCap = this.endcap;
       ctx.lineJoin = this.join;
-    }
-  }
-
-  class PolylineBase extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      let {
-        style,
-        vertices = []
-      } = params;
-
-      if (!(style instanceof LineStyle)) {
-        style = new LineStyle(style || {});
-      }
-
-      this.style = style;
-      this.vertices = vertices;
-    }
-  }
-
-
-  class PolylineElement extends PolylineBase {
-    constructor (params = {}) {
-      super(params);
-
-      this.mainPath = null;
-      this.arrowPath = null;
-    }
-
-    update () {
-      const path = new Path2D();
-      this.mainPath = path;
-
-      const arrowPath = new Path2D();
-      this.arrowPath = arrowPath;
-
-      const vertices = this.vertices;
-
-      // Nothing to draw
-      if (vertices.length < 4) {
-        return
-      }
-
-      const coordinateCount = vertices.length;
-      const { arrowhead, arrowLocations, thickness } = this.style;
-
-      const inclStart = arrowLocations.includes('start') && arrowhead;
-      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
-      const inclEnd = arrowLocations.includes('end') && arrowhead;
-      const inclSubend = arrowLocations.includes('subend') && arrowhead;
-
-      let x2 = NaN;
-      let x3 = NaN;
-
-      let y2 = NaN;
-      let y3 = NaN;
-
-      for (let i = 0; i <= coordinateCount; i += 2) {
-        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
-        // If any of these is NaN, that vertex is considered undefined
-        const x1 = x2;
-        x2 = x3;
-        x3 = (i === coordinateCount) ? NaN : vertices[i];
-
-        const y1 = y2;
-        y2 = y3;
-        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
-
-        if (i === 0) continue
-
-        const isStartingEndcap = Number.isNaN(x1);
-        const isEndingEndcap = Number.isNaN(x3);
-
-        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
-          path.moveTo(newV.x, newV.y);
-        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
-          path.lineTo(newV.x, newV.y);
-        } else if (isStartingEndcap) {
-          path.moveTo(x2, y2);
-        } else {
-          path.lineTo(x2, y2);
-        }
-      }
-    }
-
-    render (renderInfo) {
-      super.render(renderInfo);
-
-      const ctx = renderInfo.canvasCtx;
-
-      this.style.prepareContext(ctx);
-      ctx.stroke(this.mainPath);
-      ctx.fill(this.arrowPath);
     }
   }
 
@@ -1456,17 +1214,134 @@ var Grapheme = (function (exports) {
     Squat: createTriangleArrowhead(3, 3)
   };
 
+  class PolylineBase extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      let {
+        pen,
+        vertices = []
+      } = params;
+
+      if (!(pen instanceof Pen)) {
+        pen = new Pen(style || {});
+      }
+
+      this.pen = pen;
+      this.vertices = vertices;
+    }
+  }
+
+
+  class PolylineElement extends PolylineBase {
+    constructor (params = {}) {
+      super(params);
+
+      this.mainPath = null;
+      this.arrowPath = null;
+    }
+
+    update () {
+      const path = new Path2D();
+      this.mainPath = path;
+
+      const arrowPath = new Path2D();
+      this.arrowPath = arrowPath;
+
+      let vertices = this.vertices;
+
+      if (this.vertices[0] && (this.vertices[0].x || Array.isArray(this.vertices[0]))) {
+        vertices = flattenVectors(vertices);
+      }
+
+      // Nothing to draw
+      if (vertices.length < 4) {
+        return
+      }
+
+      const coordinateCount = vertices.length;
+      const { arrowLocations, thickness } = this.pen;
+
+      const arrowhead = Arrowheads[this.pen.arrowhead];
+
+      const inclStart = arrowLocations.includes('start') && arrowhead;
+      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
+      const inclEnd = arrowLocations.includes('end') && arrowhead;
+      const inclSubend = arrowLocations.includes('subend') && arrowhead;
+
+      let x2 = NaN;
+      let x3 = NaN;
+
+      let y2 = NaN;
+      let y3 = NaN;
+
+      for (let i = 0; i <= coordinateCount; i += 2) {
+        // [x1, y1] = previous vertex (p1), [x2, y2] = current (p2), [x3, y3] = next (p3)
+        // If any of these is NaN, that vertex is considered undefined
+        const x1 = x2;
+        x2 = x3;
+        x3 = (i === coordinateCount) ? NaN : vertices[i];
+
+        const y1 = y2;
+        y2 = y3;
+        y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
+
+        if (i === 0) continue
+
+        const isStartingEndcap = Number.isNaN(x1);
+        const isEndingEndcap = Number.isNaN(x3);
+
+        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
+          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
+          path.moveTo(newV.x, newV.y);
+        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
+          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
+          path.lineTo(newV.x, newV.y);
+        } else if (isStartingEndcap) {
+          path.moveTo(x2, y2);
+        } else {
+          path.lineTo(x2, y2);
+        }
+      }
+    }
+
+    render (info) {
+      super.render(info);
+
+      const ctx = info.ctx;
+
+      this.pen.prepareContext(ctx);
+      ctx.stroke(this.mainPath);
+      ctx.fill(this.arrowPath);
+    }
+  }
+
   class TestObject extends GraphemeElement {
     constructor() {
       super();
+
+      this.pen = new Pen({arrowLocations: ["subend"], arrowhead: "Squat"});
     }
 
-    render(renderInfo) {
-      super.render(renderInfo);
+    render(info) {
+      super.render(info);
 
-      let polyline = new PolylineElement({vertices: [...Array(200).keys()].map((i)=>((Math.random() < 0.03) ? NaN : ((i%2 === 0) ? (i%50) * 20 : i * 2 + Math.random() * 4))), style: {thickness: 1, arrowLocations: ["subend"], arrowhead: Arrowheads.Normal}});
+      let eggs = [];
 
-      polyline.render(renderInfo);
+      for (let i = -5; i <= 5; i += 0.5) {
+        for (let j = -5; j <= 5; j += 0.5) {
+          eggs.push(new Vec2(i, j));
+          eggs.push(new Vec2(i, j).add(new Vec2(Math.sin(i), Math.cos(j + Date.now() / 2000)).scale(0.4)));
+          eggs.push(new Vec2(NaN, NaN));
+        }
+      }
+
+      let polyline = new PolylineElement({
+        vertices: eggs.map(vertex => info.plot.transform.plotToPixel(vertex)),
+        pen: this.pen
+      });
+
+      polyline.render(info);
     }
   }
 
@@ -1733,7 +1608,6 @@ var Grapheme = (function (exports) {
 
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
-  exports.Context = GraphemeContext;
   exports.DemarcationStrategizers = DemarcationStrategizers;
   exports.Gridlines = Gridlines;
   exports.Label2D = Label2D;
@@ -1741,6 +1615,7 @@ var Grapheme = (function (exports) {
   exports.TestObject = TestObject;
   exports.Vec2 = Vec2;
   exports.boundingBoxTransform = boundingBoxTransform;
+  exports.utils = utils;
 
   return exports;
 

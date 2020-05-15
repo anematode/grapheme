@@ -157,7 +157,7 @@ const boundingBoxTransform = {
       return boundingBoxTransform.X([x], box1, box2)[0]
     }
   },
-  Y: (y, box1, box2, flipY=true) => {
+  Y: (y, box1, box2, flipY=false) => {
     if (Array.isArray(y) || utils.isTypedArray(y)) {
       for (let i = 0; i < y.length; ++i) {
         let fractionAlong = (y[i] - box1.y1) / box1.height
@@ -172,7 +172,7 @@ const boundingBoxTransform = {
       return boundingBoxTransform.Y([y], box1, box2)[0]
     }
   },
-  XY: (xy, box1, box2, flipX=false, flipY=true) => {
+  XY: (xy, box1, box2, flipX=false, flipY=false) => {
     if (Array.isArray(xy) || utils.isTypedArray(x)) {
       for (let i = 0; i < xy.length; i += 2) {
         let fractionAlong = (xy[i] - box1.x1) / box1.width

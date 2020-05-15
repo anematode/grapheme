@@ -1,18 +1,34 @@
 import {Element as GraphemeElement} from "../core/grapheme_element"
 import { PolylineElement } from './polyline'
-import {Arrowheads} from '../other/arrowheads'
+import { Pen } from "../styles/pen"
+import { Vec2 } from '../math/vec'
 
 class TestObject extends GraphemeElement {
   constructor() {
     super()
+
+    this.pen = new Pen({arrowLocations: ["subend"], arrowhead: "Squat"})
   }
 
-  render(renderInfo) {
-    super.render(renderInfo)
+  render(info) {
+    super.render(info)
 
-    let polyline = new PolylineElement({vertices: [...Array(200).keys()].map((i)=>((Math.random() < 0.03) ? NaN : ((i%2 === 0) ? (i%50) * 20 : i * 2 + Math.random() * 4))), style: {thickness: 1, arrowLocations: ["subend"], arrowhead: Arrowheads.Normal}})
+    let eggs = []
 
-    polyline.render(renderInfo)
+    for (let i = -5; i <= 5; i += 0.5) {
+      for (let j = -5; j <= 5; j += 0.5) {
+        eggs.push(new Vec2(i, j))
+        eggs.push(new Vec2(i, j).add(new Vec2(Math.sin(i), Math.cos(j + Date.now() / 2000)).scale(0.4)))
+        eggs.push(new Vec2(NaN, NaN))
+      }
+    }
+
+    let polyline = new PolylineElement({
+      vertices: eggs.map(vertex => info.plot.transform.plotToPixel(vertex)),
+      pen: this.pen
+    })
+
+    polyline.render(info)
   }
 }
 

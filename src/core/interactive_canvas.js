@@ -1,4 +1,5 @@
 import {Canvas as GraphemeCanvas} from "./grapheme_canvas.js"
+import {Vec2} from '../math/vec'
 
 const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"]
 
@@ -19,7 +20,11 @@ class InteractiveCanvas extends GraphemeCanvas {
 
     if (v) {
       EVENTS.forEach(evtName => {
-        let callback = (evt) => {this.triggerEvent(evtName, evt)}
+        let callback = (evt) => {
+          let rect = this.domElement.getBoundingClientRect()
+
+          this.triggerEvent(evtName, {pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top), rawEvent: evt})
+        }
 
         this.interactivityListeners[evtName] = callback
 

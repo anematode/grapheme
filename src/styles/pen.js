@@ -1,6 +1,6 @@
 import { Color } from '../other/color'
 
-class LineStyle {
+class Pen {
   constructor (params = {}) {
     const {
       color = new Color(),
@@ -12,7 +12,7 @@ class LineStyle {
       join = 'miter', // join type, among "miter", "round", "bevel"
       joinRes = 0.3, // angle between consecutive join roundings
       useNative = true, // whether to use native line drawing, only used in WebGL
-      arrowhead = null, // arrowhead to draw
+      arrowhead = "Normal", // arrowhead to draw
       arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
     } = params
 
@@ -30,7 +30,7 @@ class LineStyle {
   }
 
   clone() {
-    let copy = new LineStyle(this)
+    let copy = new Pen(this)
     copy.color = this.color.clone()
   }
 
@@ -45,4 +45,4 @@ class LineStyle {
   }
 }
 
-export { LineStyle }
+export { Pen }

@@ -215,7 +215,26 @@ function getRenderID () {
   return x
 }
 
+function flattenVectors(arr) {
+  let flattened = []
+
+  for (let i = 0; i < arr.length; ++i) {
+    let item = arr[i]
+    if (item.x !== undefined) {
+      flattened.push(item.x)
+      flattened.push(item.y)
+    } else if (Array.isArray(item)) {
+      flattened.push(item[0])
+      flattened.push(item[1])
+    } else {
+      flattened.push(item)
+    }
+  }
+
+  return flattened
+}
+
 export {
   generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID
+  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors
 }

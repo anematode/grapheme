@@ -1,5 +1,6 @@
 import {InteractiveCanvas} from './interactive_canvas'
-import { BoundingBox, boundingBoxTransform } from "../math/bounding_box.js"
+import { Plot2DTransform } from "../math/plot2d_transform.js"
+import { BoundingBox } from "../math/bounding_box"
 import { Vec2 } from "../math/vec.js"
 
 class Plot2D extends InteractiveCanvas {
@@ -8,36 +9,39 @@ class Plot2D extends InteractiveCanvas {
 
     this.plot = this
 
-    this.plotBox = new BoundingBox(new Vec2(0,0), this.width, this.height)
-    this.plotCoords = new BoundingBox(new Vec2(-5, 5), 10, 10)
+    this.transform = new Plot2DTransform()
+    this.padding = {top: 40, right: 40, left: 40, bottom: 40}
 
-    this.padding = {top: 0, right: 0, left: 0, bottom: 0}
+    this.enableDrag = true
+    this.enableScroll = true
+
+    this.addEventListener("mousedown", evt => this.mouseDown(evt))
+    this.addEventListener("mouseup", evt => this.mouseUp(evt))
+    this.addEventListener("mousemove", evt => this.mouseMove(evt))
+    this.addEventListener("scroll", evt => this.scroll(evt))
 
     this.update()
   }
 
-  pixelToPlotX(x) {
-    return boundingBoxTransform.X(x, this.plotBox, this.plotCoords)
+  mouseDown(evt) {
+    this.mouseDownAt = this.transform.pixelToPlot(evt.pos)
   }
 
-  pixelToPlotY(y) {
-    return boundingBoxTransform.Y(y, this.plotBox, this.plotCoords)
+  mouseUp(evt) {
+    this.mouseDownAt = null
   }
 
-  pixelToPlot(xy) {
-    return boundingBoxTransform.XY(xy, this.plotBox, this.plotCoords)
+  mouseMove(evt) {
+    if (this.mouseDownAt) {
+      console.log("drag detected")
+    }
   }
 
-  plotToPixelX(x) {
-    return boundingBoxTransform.X(x, this.plotCoords, this.plotBox)
-  }
+  scroll(evt) {
+    console.log(evt)
+    let scrollY = evt.rawEvent.scrollY
 
-  plotToPixelY(y) {
-    return boundingBoxTransform.Y(y, this.plotCoords, this.plotBox)
-  }
-
-  plotToPixel(xy) {
-    return boundingBoxTransform.XY(xy, this.plotCoords, this.plotBox)
+    this.transform.zoomOn(scrollY / 100, this.transform.pixelToPlot(evt.pos))
   }
 
   render() {
@@ -47,11 +51,11 @@ class Plot2D extends InteractiveCanvas {
   }
 
   update () {
-    this.calculatePlotBox()
+    this.calculateTransform()
   }
 
-  calculatePlotBox () {
-    this.plotBox = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding)
+  calculateTransform () {
+    this.transform.box = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding)
   }
 }
 
