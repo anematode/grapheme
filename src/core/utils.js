@@ -215,6 +215,10 @@ function getRenderID () {
   return x
 }
 
+function roundToCanvasPixel(x) {
+  return Math.round(x - 0.5) + 0.5
+}
+
 function flattenVectors(arr) {
   let flattened = []
 
@@ -236,5 +240,5 @@ function flattenVectors(arr) {
 
 export {
   generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors
+  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }

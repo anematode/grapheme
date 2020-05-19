@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>Grapheme WebGL Test</title>
+  <title>Grapheme Polyline Click</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * {
@@ -19,6 +19,12 @@
 <script src="../build/grapheme.js"></script>
 
 <script>
+
+  function addNumerous() {
+    for (let i = 0; i < 100; ++i) {
+      polyline.vertices.push(Math.random() * 500)
+    }
+  }
 let plot = new Grapheme.Plot2D()
 
 plot.setSize(window.innerWidth, window.innerHeight);
@@ -32,9 +38,13 @@ plot.add(polyline)
 var audio = new Audio('https://freesound.org/data/previews/91/91926_7037-lq.mp3');
 
 polyline.addEventListener("click", (evt) => {
+  let start = performance.now()
+
   if (polyline.isClick(evt.pos)) {
     console.log("Click!")
-    audio.pause()
+    let end = performance.now()
+
+    console.log("Calculation took " + (end - start) + " ms.")
     audio.play()
   } else {
     polyline.vertices.push(evt.pos.x, evt.pos.y)

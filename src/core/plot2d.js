@@ -18,7 +18,11 @@ class Plot2D extends InteractiveCanvas {
     this.addEventListener("mousedown", evt => this.mouseDown(evt))
     this.addEventListener("mouseup", evt => this.mouseUp(evt))
     this.addEventListener("mousemove", evt => this.mouseMove(evt))
-    this.addEventListener("scroll", evt => this.scroll(evt))
+    this.addEventListener("wheel", evt => this.wheel(evt))
+    this.addEventListener("resize", evt => {
+      this.update()
+      this.transform.correctAspectRatio()
+    })
 
     this.update()
   }
@@ -33,15 +37,17 @@ class Plot2D extends InteractiveCanvas {
 
   mouseMove(evt) {
     if (this.mouseDownAt) {
-      console.log("drag detected")
+      this.transform._coincideDragPoints(this.mouseDownAt, evt.pos)
+
+      return true
     }
   }
 
-  scroll(evt) {
+  wheel(evt) {
     console.log(evt)
-    let scrollY = evt.rawEvent.scrollY
+    let scrollY = evt.rawEvent.deltaY
 
-    this.transform.zoomOn(scrollY / 100, this.transform.pixelToPlot(evt.pos))
+    this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos))
   }
 
   render() {

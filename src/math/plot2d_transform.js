@@ -5,7 +5,7 @@ import * as utils from "../core/utils"
 class Plot2DTransform {
   constructor(params={}) {
     this.box = params.box ? new BoundingBox(params.box) : new BoundingBox(new Vec2(0,0), this.width, this.height)
-    this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, 5), 10, 10)
+    this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, -5), 10, 10)
 
     this.preserveAspectRatio = true
     this.aspectRatio = 1 // Preserve the ratio coords.width / box.width
@@ -15,30 +15,63 @@ class Plot2DTransform {
 
     this.mouseDown = false
     this.mouseAt = null
+
+    this.correctAspectRatio()
+  }
+
+  correctAspectRatio() {
+    if (this.preserveAspectRatio) {
+      let cx = this.coords.cx, cy = this.coords.cy
+
+      this.coords.width = this.aspectRatio / this.box.height * this.box.width * this.coords.height
+
+      this._centerOn(new Vec2(cx, cy))
+    }
+  }
+
+  _centerOn(v) {
+    this.coords.cx = v.x
+    this.coords.cy = v.y
   }
 
   centerOn(v, ...args) {
     if (v instanceof Vec2) {
-      this.coords.cx = v.x
-      this.coords.cy = v.y
+      this._centerOn(v)
     } else {
       this.centerOn(new Vec2(v, ...args))
     }
+
+    this.correctAspectRatio()
   }
 
-  zoomOn(factor, v) {
-    let pixel = this.plotToPixel(v)
-
-    this.width *= factor
-    this.height *= factor
-
-    this.coincidePoints(this.pixelToPlot(pixel), v)
+  translate(v, ...args) {
+    if (v instanceof Vec2) {
+      this.coords.top_left.add(v)
+    } else {
+      this.translate(new Vec2(v, ...args))
+    }
   }
 
-  coincidePoints(v_old, v_new) {
-    this.translate(v_old.subtract(v_new))
+  zoomOn(factor, v = new Vec2(0,0), ...args) {
+    if (this.allowScrolling) {
+      let pixel_s = this.plotToPixel(v)
+
+      this.coords.width *= factor
+      this.coords.height *= factor
+
+      this._internal_coincideDragPoints(v, pixel_s)
+    }
   }
 
+  _internal_coincideDragPoints(p1, p2) {
+    this.translate(this.pixelToPlot(p2).subtract(p1).scale(-1))
+  }
+
+  _coincideDragPoints(p1, p2) {
+    if (this.allowDragging) {
+      this._internal_coincideDragPoints(p1, p2)
+    }
+  }
 
   pixelToPlotX(x) {
     return boundingBoxTransform.X(x, this.box, this.coords)

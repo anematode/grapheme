@@ -1,0 +1,48 @@
+<!doctype html>
+
+<html>
+<head>
+    <title>Grapheme Gridlines Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        * {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
+<script src="../build/grapheme.js"></script>
+
+<script>
+
+  let plot = new Grapheme.Plot2D()
+  plot.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(plot.domElement);
+
+  let gridlines = new Grapheme.Gridlines()
+  plot.add(gridlines)
+
+  let ia = 0;
+  function render() {
+    ia += 0.1;
+
+    plot.render();
+    requestAnimationFrame(render);
+  }
+
+  render();
+
+  window.onresize = () => {
+    plot.setSize(window.innerWidth, window.innerHeight);
+  }
+</script>
+
+</body>
+
+</html>

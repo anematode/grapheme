@@ -48,7 +48,7 @@ export class BoundingBox {
   }
 
   set cy(cy) {
-    this.top_left.y = cy - this.width / 2
+    this.top_left.y = cy - this.height / 2
   }
 
   get cx() {
@@ -56,7 +56,7 @@ export class BoundingBox {
   }
 
   get cy() {
-    return this.top_left.y + this.width / 2
+    return this.top_left.y + this.height / 2
   }
 
   setSize(width, height) {
@@ -139,10 +139,14 @@ export class BoundingBox {
   set y2(y) {
     this.height = y - this.top_left.y
   }
+
+  getBoxVertices() {
+    return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
+  }
 }
 
 const boundingBoxTransform = {
-  X: (x, box1, box2, flipX=false) => {
+  X: (x, box1, box2, flipX) => {
     if (Array.isArray(x) || utils.isTypedArray(x)) {
       for (let i = 0; i < x.length; ++i) {
         let fractionAlong = (x[i] - box1.x1) / box1.width
@@ -154,10 +158,10 @@ const boundingBoxTransform = {
       }
       return x
     } else {
-      return boundingBoxTransform.X([x], box1, box2)[0]
+      return boundingBoxTransform.X([x], box1, box2, flipX)[0]
     }
   },
-  Y: (y, box1, box2, flipY=false) => {
+  Y: (y, box1, box2, flipY) => {
     if (Array.isArray(y) || utils.isTypedArray(y)) {
       for (let i = 0; i < y.length; ++i) {
         let fractionAlong = (y[i] - box1.y1) / box1.height
@@ -169,10 +173,10 @@ const boundingBoxTransform = {
       }
       return y
     } else {
-      return boundingBoxTransform.Y([y], box1, box2)[0]
+      return boundingBoxTransform.Y([y], box1, box2, flipY)[0]
     }
   },
-  XY: (xy, box1, box2, flipX=false, flipY=false) => {
+  XY: (xy, box1, box2, flipX, flipY) => {
     if (Array.isArray(xy) || utils.isTypedArray(x)) {
       for (let i = 0; i < xy.length; i += 2) {
         let fractionAlong = (xy[i] - box1.x1) / box1.width

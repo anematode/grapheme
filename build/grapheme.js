@@ -218,6 +218,10 @@ var Grapheme = (function (exports) {
     return x$1
   }
 
+  function roundToCanvasPixel(x) {
+    return Math.round(x - 0.5) + 0.5
+  }
+
   function flattenVectors(arr) {
     let flattened = [];
 
@@ -258,7 +262,8 @@ var Grapheme = (function (exports) {
     isApproxEqual: isApproxEqual,
     deleteBuffersNamed: deleteBuffersNamed,
     getRenderID: getRenderID,
-    flattenVectors: flattenVectors
+    flattenVectors: flattenVectors,
+    roundToCanvasPixel: roundToCanvasPixel
   });
 
   class GraphemeElement {
@@ -693,7 +698,7 @@ var Grapheme = (function (exports) {
   }
   const Origin = new Vec2(0,0);
 
-  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "scroll"];
+  const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"];
 
   class InteractiveCanvas extends GraphemeCanvas {
     constructor(params={}) {
@@ -777,7 +782,7 @@ var Grapheme = (function (exports) {
     }
 
     set cy(cy) {
-      this.top_left.y = cy - this.width / 2;
+      this.top_left.y = cy - this.height / 2;
     }
 
     get cx() {
@@ -785,7 +790,7 @@ var Grapheme = (function (exports) {
     }
 
     get cy() {
-      return this.top_left.y + this.width / 2
+      return this.top_left.y + this.height / 2
     }
 
     setSize(width, height) {
@@ -868,10 +873,14 @@ var Grapheme = (function (exports) {
     set y2(y) {
       this.height = y - this.top_left.y;
     }
+
+    getBoxVertices() {
+      return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
+    }
   }
 
   const boundingBoxTransform = {
-    X: (x, box1, box2, flipX=false) => {
+    X: (x, box1, box2, flipX) => {
       if (Array.isArray(x) || isTypedArray(x)) {
         for (let i = 0; i < x.length; ++i) {
           let fractionAlong = (x[i] - box1.x1) / box1.width;
@@ -883,10 +892,10 @@ var Grapheme = (function (exports) {
         }
         return x
       } else {
-        return boundingBoxTransform.X([x], box1, box2)[0]
+        return boundingBoxTransform.X([x], box1, box2, flipX)[0]
       }
     },
-    Y: (y, box1, box2, flipY=false) => {
+    Y: (y, box1, box2, flipY) => {
       if (Array.isArray(y) || isTypedArray(y)) {
         for (let i = 0; i < y.length; ++i) {
           let fractionAlong = (y[i] - box1.y1) / box1.height;
@@ -898,10 +907,10 @@ var Grapheme = (function (exports) {
         }
         return y
       } else {
-        return boundingBoxTransform.Y([y], box1, box2)[0]
+        return boundingBoxTransform.Y([y], box1, box2, flipY)[0]
       }
     },
-    XY: (xy, box1, box2, flipX=false, flipY=false) => {
+    XY: (xy, box1, box2, flipX, flipY) => {
       if (Array.isArray(xy) || isTypedArray(x)) {
         for (let i = 0; i < xy.length; i += 2) {
           let fractionAlong = (xy[i] - box1.x1) / box1.width;
@@ -928,7 +937,7 @@ var Grapheme = (function (exports) {
   class Plot2DTransform {
     constructor(params={}) {
       this.box = params.box ? new BoundingBox(params.box) : new BoundingBox(new Vec2(0,0), this.width, this.height);
-      this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, 5), 10, 10);
+      this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, -5), 10, 10);
 
       this.preserveAspectRatio = true;
       this.aspectRatio = 1; // Preserve the ratio coords.width / box.width
@@ -938,30 +947,63 @@ var Grapheme = (function (exports) {
 
       this.mouseDown = false;
       this.mouseAt = null;
+
+      this.correctAspectRatio();
+    }
+
+    correctAspectRatio() {
+      if (this.preserveAspectRatio) {
+        let cx = this.coords.cx, cy = this.coords.cy;
+
+        this.coords.width = this.aspectRatio / this.box.height * this.box.width * this.coords.height;
+
+        this._centerOn(new Vec2(cx, cy));
+      }
+    }
+
+    _centerOn(v) {
+      this.coords.cx = v.x;
+      this.coords.cy = v.y;
     }
 
     centerOn(v, ...args) {
       if (v instanceof Vec2) {
-        this.coords.cx = v.x;
-        this.coords.cy = v.y;
+        this._centerOn(v);
       } else {
         this.centerOn(new Vec2(v, ...args));
       }
+
+      this.correctAspectRatio();
     }
 
-    zoomOn(factor, v) {
-      let pixel = this.plotToPixel(v);
-
-      this.width *= factor;
-      this.height *= factor;
-
-      this.coincidePoints(this.pixelToPlot(pixel), v);
+    translate(v, ...args) {
+      if (v instanceof Vec2) {
+        this.coords.top_left.add(v);
+      } else {
+        this.translate(new Vec2(v, ...args));
+      }
     }
 
-    coincidePoints(v_old, v_new) {
-      this.translate(v_old.subtract(v_new));
+    zoomOn(factor, v = new Vec2(0,0), ...args) {
+      if (this.allowScrolling) {
+        let pixel_s = this.plotToPixel(v);
+
+        this.coords.width *= factor;
+        this.coords.height *= factor;
+
+        this._internal_coincideDragPoints(v, pixel_s);
+      }
     }
 
+    _internal_coincideDragPoints(p1, p2) {
+      this.translate(this.pixelToPlot(p2).subtract(p1).scale(-1));
+    }
+
+    _coincideDragPoints(p1, p2) {
+      if (this.allowDragging) {
+        this._internal_coincideDragPoints(p1, p2);
+      }
+    }
 
     pixelToPlotX(x) {
       return boundingBoxTransform.X(x, this.box, this.coords)
@@ -1003,7 +1045,11 @@ var Grapheme = (function (exports) {
       this.addEventListener("mousedown", evt => this.mouseDown(evt));
       this.addEventListener("mouseup", evt => this.mouseUp(evt));
       this.addEventListener("mousemove", evt => this.mouseMove(evt));
-      this.addEventListener("scroll", evt => this.scroll(evt));
+      this.addEventListener("wheel", evt => this.wheel(evt));
+      this.addEventListener("resize", evt => {
+        this.update();
+        this.transform.correctAspectRatio();
+      });
 
       this.update();
     }
@@ -1018,15 +1064,17 @@ var Grapheme = (function (exports) {
 
     mouseMove(evt) {
       if (this.mouseDownAt) {
-        console.log("drag detected");
+        this.transform._coincideDragPoints(this.mouseDownAt, evt.pos);
+
+        return true
       }
     }
 
-    scroll(evt) {
+    wheel(evt) {
       console.log(evt);
-      let scrollY = evt.rawEvent.scrollY;
+      let scrollY = evt.rawEvent.deltaY;
 
-      this.transform.zoomOn(scrollY / 100, this.transform.pixelToPlot(evt.pos));
+      this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos));
     }
 
     render() {
@@ -1727,100 +1775,201 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const desiredDemarcationSeparation = 15;
+  const desiredDemarcationSeparation = 100;
 
   // Array of potential demarcations [a,b], where the small demarcations are spaced every b * 10^n and the big ones are spaced every a * 10^n
   const StandardDemarcations = [[1, 0.2], [1, 0.25], [2, 0.5]];
 
-  const DemarcationStrategizers = {
-    Standard: function* (start, end, distance) {
+  function get_demarcation(start, end, distance) {
 
-      console.log(start,end,distance);
-      if (start === end)
-        throw new Error("No")
-      if (start > end) {
-        let temp = end;
-        end = start;
-        start = temp;
+    let lowestError = Infinity;
+    let bestDemarcation;
+    let dist = end - start;
+
+    let desiredDemarcationCount = distance / desiredDemarcationSeparation;
+    let desiredDemarcationSize = dist / desiredDemarcationCount;
+
+    for (let demarcation of StandardDemarcations) {
+      let a = demarcation[0];
+      let b = demarcation[1];
+
+      let power = Math.round(Math.log10(desiredDemarcationSize / b));
+      let minorSize = 10 ** power * b;
+
+      let err = Math.abs(desiredDemarcationSize - minorSize);
+      if (err < lowestError) {
+        lowestError = err;
+        bestDemarcation = {power, major: a, minor: b};
+      }
+    }
+
+    return bestDemarcation
+  }
+
+  function* demarcate(start, end, demarcation) {
+    let modulus = demarcation.major / demarcation.minor;
+
+    let factor = 10 ** demarcation.power * demarcation.minor;
+
+    let start_i = Math.ceil(start / factor);
+    let end_i = Math.ceil(end / factor);
+
+    for (let i = start_i; i < end_i; ++i) {
+      let pos = factor * i;
+
+      if (pos === 0) {
+        yield {pos, type: "axis"};
+      } else if (i % modulus === 0) {
+        yield {pos, type: "major"};
+      } else {
+        yield {pos, type: "minor"};
+      }
+    }
+  }
+
+  const GridlineStrategizers = {
+    Standard: function* (start1, end1, distance1, start2, end2, distance2) {
+      let eggRatio = (end1 - start1) / (end2 - start2) * distance2 / distance1;
+      let forceSameDemarcations = Math.abs(eggRatio - 1) < 0.3;
+
+      let demarcationX = get_demarcation(start1, end1, distance1);
+
+      let demarcationY;
+      if (forceSameDemarcations) {
+        demarcationY = demarcationX;
+      } else {
+        demarcationY = get_demarcation(start2, end2, distance2);
       }
 
-      let approxDemarcations = distance / desiredDemarcationSeparation;
-
-      let approxDemarcationSeparation = (end - start) / approxDemarcations;
-      let selectedDemarcation;
-      let closestSeparationError = Infinity;
-
-      for (let i = 0; i < StandardDemarcations.length; ++i) {
-        let potentialDemarcation = StandardDemarcations[i];
-
-        let [a, b] = potentialDemarcation;
-
-        let n = Math.round(Math.log10(approxDemarcationSeparation / b));
-        let selectedSeparation = b * 10 ** n;
-
-        let error = Math.abs(selectedSeparation - approxDemarcationSeparation);
-        if (error < closestSeparationError) {
-          closestSeparationError = error;
-          selectedDemarcation = potentialDemarcation;
-        }
+      for (let x_marker of demarcate(start1, end1, demarcationX)) {
+        yield Object.assign(x_marker, {dir: 'x'});
       }
 
-      let [a, b] = selectedDemarcation;
-
-      for (let i = Math.ceil(start / b); i < end / b; ++i) {
-        console.log(i);
-        if (i === 0) {
-          yield {pos: 0, type: 0};
-        } else if (i % a === 0) {
-          yield {pos: i * b, type: 1};
-        } else {
-          yield {pos: i * b, type: 2};
-        }
+      for (let y_marker of demarcate(start2, end2, demarcationY)) {
+        yield Object.assign(y_marker, {dir: 'y'});
       }
     }
   };
+
+  class GridlinesLabelStyle {
+    constructor(params={}) {
+      const {
+        visible = true,
+        locations = ["left"],
+        axis = false,
+        dir = 'x',
+        label_style = new Label2DStyle()
+      } = params;
+
+      this.visible = visible;
+      this.locations = locations;
+      this.axis = axis;
+      this.dir = dir;
+      this.label_style = (label_style instanceof Label2DStyle) ? label_style : new Label2DStyle(label_style);
+
+      this.computed_label_styles = {};
+    }
+
+    computeLabelStyles(plotTransform) {
+      for (let location of this.locations) {
+        let style = new Label2DStyle(this.label_style);
+
+
+      }
+    }
+  }
+
 
   // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
       super(params);
 
-      this.x_strategizer = DemarcationStrategizers.Standard;
-      this.y_strategizer = DemarcationStrategizers.Standard;
+      this.strategizer = GridlineStrategizers.Standard;
+      this.label_function = (val) => {
+        return `$${val}$`
+      };
 
-      this.polylines = {ticks: {'x': {}, 'y': {}}, lines: {'x': {}, 'y': {}}};
+      this.label_styles = {
+        "x" : {
+          "axis": new GridlinesLabelStyle({axis: true, dir: 'x'}),
+          "major": new GridlinesLabelStyle({dir: 'x'}),
+          "minor": new GridlinesLabelStyle({dir: 'x', visible: false})
+        },
+        "y" : {
+          "axis": new GridlinesLabelStyle({dir: 'y', axis: true}),
+          "major": new GridlinesLabelStyle({dir: 'y'}),
+          "minor": new GridlinesLabelStyle({dir: 'y', visible: false})
+        }
+      };
+
+      this.pens = {
+        "axis": new Pen({thickness: 3}),
+        "major": new Pen({thickness: 1}),
+        "minor": new Pen({thickness: 0.5}),
+        "box": new Pen({thickness: 2})
+      };
+
+      this._polylines = {};
+      this._labels = {};
     }
 
 
     update() {
-      for (let key in this.polylines) {
-        for (let key2 in this.polylines[key]) {
-          for (let key3 in this.polylines[key][key2]) {
-            this.polylines[key][key2][key3].vertices = [];
+      let transform = this.plot.transform;
+      let plotCoords = transform.coords;
+      let plotBox = transform.box;
+
+      const markers = this.strategizer(plotCoords.x1, plotCoords.x2, plotBox.width, plotCoords.y1, plotCoords.y2, plotBox.height);
+
+      let polylines = this._polylines = {};
+
+      for (let marker of markers) {
+        if (marker.dir === 'x') {
+          let polyline = polylines[marker.type];
+
+          if (!polyline) {
+            polyline = polylines[marker.type] = new PolylineElement({ pen: this.pens[marker.type] });
           }
+
+          let x_coord = roundToCanvasPixel(transform.plotToPixelX(marker.pos));
+          let sy = plotBox.y1, ey = plotBox.y2;
+
+          polyline.vertices.push(x_coord, sy, x_coord, ey, NaN, NaN);
+        } else if (marker.dir === 'y') {
+          let polyline = polylines[marker.type];
+
+          if (!polyline) {
+            polyline = polylines[marker.type] = new PolylineElement({pen: this.pens[marker.type]});
+          }
+
+          let y_coord = roundToCanvasPixel(transform.plotToPixelY(marker.pos));
+          let sx = plotBox.x1, ex = plotBox.x2;
+
+          polyline.vertices.push(sx, y_coord, ex, y_coord, NaN, NaN);
         }
       }
 
-      let plot = this.plot;
-      let plotCoords = plot.plotCoords;
-      let plotBox = plot.plotBox;
-
-      const x_markers = this.x_strategizer(plotCoords.x1, plotCoords.x2, plotBox.width);
-      const y_markers = this.y_strategizer(plotCoords.y1, plotCoords.y2, plotBox.height);
-
-      while (!x_markers.done) {
-        let next = x_markers.next();
+      if (this.pens["box"]) {
+        polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]});
       }
     }
 
-    render(renderInfo) {
+    render(info) {
+      super.render(info);
 
+      for (let key in this._polylines) {
+        if (this._polylines.hasOwnProperty(key)) {
+
+          this._polylines[key].render(info);
+        }
+      }
     }
   }
 
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
-  exports.DemarcationStrategizers = DemarcationStrategizers;
+  exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Label2D = Label2D;
   exports.Plot2D = Plot2D;

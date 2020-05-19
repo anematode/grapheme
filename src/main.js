@@ -6,5 +6,5 @@ export * from "./elements/label"
 export * from "./elements/gridlines"
 import * as utils from "./core/utils"
 export { utils }
-export * from "./other/demarcation_strategizer"
+export * from "./other/gridline_strategizer"
 export * from "./elements/polyline"
