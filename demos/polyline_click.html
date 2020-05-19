@@ -24,11 +24,22 @@ let plot = new Grapheme.Plot2D()
 plot.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(plot.domElement);
 
-plot.transform.centerOn(5, 5)
+let polyline = new Grapheme.PolylineElement()
 
-let test = new Grapheme.TestObject()
+polyline.pen.thickness = 8
+plot.add(polyline)
 
-plot.add(test)
+var audio = new Audio('https://freesound.org/data/previews/91/91926_7037-lq.mp3');
+
+polyline.addEventListener("click", (evt) => {
+  if (polyline.isClick(evt.pos)) {
+    console.log("Click!")
+    audio.pause()
+    audio.play()
+  } else {
+    polyline.vertices.push(evt.pos.x, evt.pos.y)
+  }
+})
 
 let ia = 0;
 function render() {

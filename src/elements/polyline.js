@@ -2,6 +2,7 @@ import {Element as GraphemeElement} from "../core/grapheme_element.js"
 import { Pen } from '../styles/pen'
 import * as utils from "../core/utils"
 import { Arrowheads } from '../other/arrowheads'
+import * as GEOCALC from '../math/geometry_calculations'
 
 class PolylineBase extends GraphemeElement {
   constructor (params = {}) {
@@ -13,7 +14,7 @@ class PolylineBase extends GraphemeElement {
     } = params
 
     if (!(pen instanceof Pen)) {
-      pen = new Pen(style || {})
+      pen = new Pen(pen || {})
     }
 
     this.pen = pen
@@ -92,6 +93,18 @@ class PolylineElement extends PolylineBase {
         path.lineTo(x2, y2)
       }
     }
+  }
+
+  isClick(point) {
+    return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
+  }
+
+  distanceFrom(point) {
+    return GEOCALC.point_line_segment_min_distance(point.x, point.y, this.vertices)
+  }
+
+  closestTo(point) {
+    return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
   }
 
   render (info) {

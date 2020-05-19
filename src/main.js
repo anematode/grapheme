@@ -7,3 +7,4 @@ export * from "./elements/gridlines"
 import * as utils from "./core/utils"
 export { utils }
 export * from "./other/demarcation_strategizer"
+export * from "./elements/polyline"
