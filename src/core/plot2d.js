@@ -44,7 +44,6 @@ class Plot2D extends InteractiveCanvas {
   }
 
   wheel(evt) {
-    console.log(evt)
     let scrollY = evt.rawEvent.deltaY
 
     this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos))

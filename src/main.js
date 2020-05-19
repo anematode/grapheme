@@ -8,3 +8,4 @@ import * as utils from "./core/utils"
 export { utils }
 export * from "./other/gridline_strategizer"
 export * from "./elements/polyline"
+export * from "./function_ast/parse_string"

@@ -1,4 +1,4 @@
-const desiredDemarcationSeparation = 100
+const desiredDemarcationSeparation = 50
 
 // Array of potential demarcations [a,b], where the small demarcations are spaced every b * 10^n and the big ones are spaced every a * 10^n
 const StandardDemarcations = [[1, 0.2], [1, 0.25], [2, 0.5]]

@@ -4,14 +4,8 @@
   top: 0;
   left: 0;
   margin: 0;
-}
-
-.grapheme-text-canvas {
-  z-index: 1;
-  position: absolute;
-  top: 0;
-  left: 0;
-  margin: 0;
+  touch-action: none;
+  -ms-touch-action: none;
 }
 
 .grapheme-label {

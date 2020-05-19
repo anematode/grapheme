@@ -1071,7 +1071,6 @@ var Grapheme = (function (exports) {
     }
 
     wheel(evt) {
-      console.log(evt);
       let scrollY = evt.rawEvent.deltaY;
 
       this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos));
@@ -1775,7 +1774,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const desiredDemarcationSeparation = 100;
+  const desiredDemarcationSeparation = 50;
 
   // Array of potential demarcations [a,b], where the small demarcations are spaced every b * 10^n and the big ones are spaced every a * 10^n
   const StandardDemarcations = [[1, 0.2], [1, 0.25], [2, 0.5]];
@@ -1967,6 +1966,140 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // a * b - c * d ^ g
+
+  let operator_regex = /^[*-\/+^]/;
+  let function_regex = /^([^\s\\*-\/+^]+)\(/;
+  let variable_regex = /^[^\s\\*-\/+^()]+/;
+  let paren_regex = /^[()\[\]]/;
+  let comma_regex = /^,/;
+
+  function check_parens_balanced(string) {
+    let stack = [];
+
+    let i;
+    let err = false;
+    for (i = 0; i < string.length; ++i) {
+      let chr = string[i];
+
+      if (chr === '(') {
+        stack.push('(');
+      } else if (chr === '[') {
+        stack.push('[');
+      } else if (chr === ')' || chr === ']') {
+        if (stack.length === 0) {
+          err = true;
+          break
+        }
+
+        if (chr === ')') {
+          let pop = stack.pop();
+
+          if (pop !== '(') {
+            err = true;
+            break
+          }
+        } else {
+          let pop = stack.pop();
+
+          if (pop !== '[') {
+            err = true;
+            break
+          }
+        }
+      }
+    }
+
+    if (stack.length !== 0)
+      err = true;
+
+    if (err) {
+      let spaces = "";
+
+      for (let j = 0; j < i; ++j) {
+        spaces += ' ';
+      }
+
+      throw new Error("Unbalanced parentheses/brackets at index " + i + ":\n" + string + "\n" + spaces + "^")
+    }
+
+  }
+
+  function* tokenizer(string) {
+    // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
+
+    while (string) {
+      string = string.trim();
+      let match;
+
+      do {
+        match = string.match(paren_regex);
+
+        if (match) {
+          yield {
+            type: "paren",
+            paren: match[0]
+          };
+          break
+        }
+
+        match = string.match(operator_regex);
+
+        if (match) {
+          yield {
+            type: "operator",
+            operator: match[0]
+          };
+          break
+        }
+
+        match = string.match(comma_regex);
+
+        if (match) {
+          yield { type: "comma" };
+          break
+        }
+
+        match = string.match(function_regex);
+
+        if (match) {
+          yield {
+            type: "function",
+            name: match[1]
+          };
+
+          yield {
+            type: "paren",
+            paren: '('
+          };
+
+          break
+        }
+
+        match = string.match(variable_regex);
+
+        if (match) {
+          yield {
+            type: "variable",
+            name: match[0]
+          };
+        }
+      } while (false)
+
+      let len = match[0].length;
+
+      string = string.slice(len);
+    }
+  }
+
+  function parse_string(string) {
+    check_parens_balanced(string);
+
+    for (let token of tokenizer(string)) {
+      
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.GridlineStrategizers = GridlineStrategizers;
@@ -1977,6 +2110,7 @@ var Grapheme = (function (exports) {
   exports.TestObject = TestObject;
   exports.Vec2 = Vec2;
   exports.boundingBoxTransform = boundingBoxTransform;
+  exports.parse_string = parse_string;
   exports.utils = utils;
 
   return exports;
