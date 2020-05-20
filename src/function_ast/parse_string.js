@@ -129,9 +129,13 @@ function* tokenizer(string) {
 function parse_string(string) {
   check_parens_balanced(string)
 
+  let tokens = []
+
   for (let token of tokenizer(string)) {
-    
+    tokens.push(token)
   }
+
+  
 }
 
 export {parse_string}

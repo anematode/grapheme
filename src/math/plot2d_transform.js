@@ -19,6 +19,18 @@ class Plot2DTransform {
     this.correctAspectRatio()
   }
 
+  getPixelToPlotTransform() {
+    // Returns the transform {x_m, x_b, y_m, y_b}
+
+    return boundingBoxTransform.getReducedTransform(this.box, this.coords, false, true)
+  }
+
+  getPlotToPixelTransform() {
+    // Returns the inverse transform of this.getPixelToPlotTransform()
+
+    return boundingBoxTransform.getReducedTransform(this.coords, this.box, false, true)
+  }
+
   correctAspectRatio() {
     if (this.preserveAspectRatio) {
       let cx = this.coords.cx, cy = this.coords.cy

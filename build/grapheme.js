@@ -931,6 +931,33 @@ var Grapheme = (function (exports) {
       } else {
         throw new Error("No")
       }
+    },
+    getReducedTransform(box1, box2, flipX, flipY) {
+      let x_m = 1 / box1.width;
+      let x_b = - box1.x1 / box1.width;
+
+      if (flipX) {
+        x_m *= -1;
+        x_b = 1 - x_b;
+      }
+
+      x_m *= box2.width;
+      x_b *= box2.width;
+      x_b += box2.x1;
+
+      let y_m = 1 / box1.height;
+      let y_b = - box1.y1 / box1.height;
+
+      if (flipY) {
+        y_m *= -1;
+        y_b = 1 - y_b;
+      }
+
+      y_m *= box2.height;
+      y_b *= box2.height;
+      y_b += box2.y1;
+
+      return {x_m, x_b, y_m, y_b}
     }
   };
 
@@ -949,6 +976,18 @@ var Grapheme = (function (exports) {
       this.mouseAt = null;
 
       this.correctAspectRatio();
+    }
+
+    getPixelToPlotTransform() {
+      // Returns the transform {x_m, x_b, y_m, y_b}
+
+      return boundingBoxTransform.getReducedTransform(this.box, this.coords, false, true)
+    }
+
+    getPlotToPixelTransform() {
+      // Returns the inverse transform of this.getPixelToPlotTransform()
+
+      return boundingBoxTransform.getReducedTransform(this.coords, this.box, false, true)
     }
 
     correctAspectRatio() {
@@ -2096,12 +2135,103 @@ var Grapheme = (function (exports) {
     check_parens_balanced(string);
 
     for (let token of tokenizer(string)) {
-      
+    }
+
+    
+  }
+
+  class ConwaysGameOfLifeElement extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      const {
+        size = {
+          x: 200,
+          y: 200
+        }
+      } = params;
+
+      this.setSize(size.x, size.y);
+    }
+
+    setSize(x, y) {
+      this.cells = new Uint8Array(x * y);
+      this.width = x;
+      this.height = y;
+    }
+
+    setCell(x, y, value) {
+      this.cells[x*this.height+y] = value;
+    }
+
+    tickGame() {
+      const cells = this.cells;
+
+      if (!this.new_cells) {
+        this.new_cells = new Uint8Array(this.width * this.height);
+      }
+
+      let new_cells = this.new_cells;
+      new_cells.set(cells);
+
+      for (let i = 0; i < this.width; ++i) {
+        for (let j = 0; j < this.height; ++j) {
+          let neighborCount = 0;
+
+          for (let x = -1; x <= 1; ++x) {
+            if (i+x < 0 || i+x >= this.width) {
+              continue
+            }
+
+            for (let y = -1; y <= 1; ++y) {
+              if ((x === 0 && y === 0) || (j+y < 0 || j+y >= this.height)) {
+                continue
+              }
+
+              if (cells[(x+i) * this.height + (y+j)]) {
+                neighborCount++;
+              }
+            }
+          }
+
+          if (neighborCount === 3) {
+            new_cells[i * this.height + j] = 1;
+          } else if (neighborCount < 2) {
+            new_cells[i * this.height + j] = 0;
+          } else if (neighborCount > 3) {
+            new_cells[i * this.height + j] = 0;
+          }
+        }
+      }
+
+      this.cells.set(new_cells);
+    }
+
+    render(info) {
+      const ctx = info.ctx;
+
+      let simpleTransform = this.plot.transform.getPlotToPixelTransform();
+
+      let {x_m, y_m, x_b, y_b} = simpleTransform;
+
+      ctx.fillStyle="green";
+
+      for (let i = 0; i < this.width; ++i) {
+        let offset = i * this.height;
+        for (let j = 0; j < this.height; ++j) {
+          let cell = this.cells[offset + j];
+
+          if (cell) {
+            ctx.fillRect(x_m * i + x_b, y_m * j + y_b, x_m, y_m);
+          }
+        }
+      }
     }
   }
 
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
+  exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Label2D = Label2D;

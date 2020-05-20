@@ -9,3 +9,4 @@ export { utils }
 export * from "./other/gridline_strategizer"
 export * from "./elements/polyline"
 export * from "./function_ast/parse_string"
+export * from "./elements/game_of_life.js"

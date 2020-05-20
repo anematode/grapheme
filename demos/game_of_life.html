@@ -1,0 +1,65 @@
+<!doctype html>
+
+<html>
+<head>
+    <title>Grapheme GoL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        * {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
+<script src="../build/grapheme.js"></script>
+
+<script>
+
+  let plot = new Grapheme.Plot2D()
+
+  plot.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(plot.domElement);
+
+  let gridlines = new Grapheme.Gridlines()
+  plot.add(gridlines)
+  
+  let gol = new Grapheme.ConwaysGameOfLifeElement()
+  plot.add(gol)
+
+  let gosper_gun = [[0,0],[0,1],[1,1],[1,0],[10,0],[10,-1],[10,1],[11,2],[12,3],[13,3],[11,-2],[12,-3],[13,-3],[14,0],[16,0],[17,0],[16,1],[16,-1],[15,2],[15,-2],[20,1],[20,2],[20,3],[21,1],[21,2],[21,3],[22,0],[22,4],[24,4],[24,5],[24,0],[24,-1],[34,2],[34,3],[35,2],[35,3]]
+
+  for (let cell of gosper_gun) {
+    let x = cell[0] + 100
+    let y = cell[1] + 100
+
+    gol.setCell(x, y, 1)
+  }
+
+  let ia = 0;
+  function render() {
+    ia += 0.1;
+
+    plot.render();
+    requestAnimationFrame(render);
+
+    gol.tickGame()
+  }
+
+  plot.transform.centerOn(120, 100)
+  plot.transform.zoomOn(5, {x: 120, y: 100})
+
+  render();
+
+  window.onresize = () => {
+    plot.setSize(window.innerWidth, window.innerHeight);
+  }
+</script>
+
+</body>
+
+</html>

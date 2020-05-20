@@ -197,6 +197,33 @@ const boundingBoxTransform = {
     } else {
       throw new Error("No")
     }
+  },
+  getReducedTransform(box1, box2, flipX, flipY) {
+    let x_m = 1 / box1.width
+    let x_b = - box1.x1 / box1.width
+
+    if (flipX) {
+      x_m *= -1
+      x_b = 1 - x_b
+    }
+
+    x_m *= box2.width
+    x_b *= box2.width
+    x_b += box2.x1
+
+    let y_m = 1 / box1.height
+    let y_b = - box1.y1 / box1.height
+
+    if (flipY) {
+      y_m *= -1
+      y_b = 1 - y_b
+    }
+
+    y_m *= box2.height
+    y_b *= box2.height
+    y_b += box2.y1
+
+    return {x_m, x_b, y_m, y_b}
   }
 }
 
