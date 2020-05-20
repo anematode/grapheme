@@ -143,6 +143,14 @@ export class BoundingBox {
   getBoxVertices() {
     return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
   }
+
+  clip(ctx) {
+    let path = new Path2D()
+
+    path.rect(this.x1, this.y1, this.width, this.height)
+
+    ctx.clip(path)
+  }
 }
 
 const boundingBoxTransform = {

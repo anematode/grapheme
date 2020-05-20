@@ -877,6 +877,14 @@ var Grapheme = (function (exports) {
     getBoxVertices() {
       return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
     }
+
+    clip(ctx) {
+      let path = new Path2D();
+
+      path.rect(this.x1, this.y1, this.width, this.height);
+
+      ctx.clip(path);
+    }
   }
 
   const boundingBoxTransform = {
@@ -1125,8 +1133,12 @@ var Grapheme = (function (exports) {
       this.calculateTransform();
     }
 
+    getCanvasBox() {
+      return new BoundingBox(new Vec2(0,0), this.width, this.height)
+    }
+
     calculateTransform () {
-      this.transform.box = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding);
+      this.transform.box = this.getCanvasBox().pad(this.padding);
     }
   }
 
@@ -2215,6 +2227,7 @@ var Grapheme = (function (exports) {
       let {x_m, y_m, x_b, y_b} = simpleTransform;
 
       ctx.fillStyle="green";
+      this.plot.transform.box.clip(ctx);
 
       for (let i = 0; i < this.width; ++i) {
         let offset = i * this.height;
@@ -2226,6 +2239,8 @@ var Grapheme = (function (exports) {
           }
         }
       }
+
+      this.plot.getCanvasBox().clip(ctx);
     }
   }
 

@@ -59,8 +59,12 @@ class Plot2D extends InteractiveCanvas {
     this.calculateTransform()
   }
 
+  getCanvasBox() {
+    return new BoundingBox(new Vec2(0,0), this.width, this.height)
+  }
+
   calculateTransform () {
-    this.transform.box = new BoundingBox(new Vec2(0,0), this.width, this.height).pad(this.padding)
+    this.transform.box = this.getCanvasBox().pad(this.padding)
   }
 }
 

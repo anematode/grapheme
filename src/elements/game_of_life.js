@@ -75,6 +75,7 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
     let {x_m, y_m, x_b, y_b} = simpleTransform
 
     ctx.fillStyle="green"
+    this.plot.transform.box.clip(ctx)
 
     for (let i = 0; i < this.width; ++i) {
       let offset = i * this.height
@@ -86,6 +87,8 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
         }
       }
     }
+
+    this.plot.getCanvasBox().clip(ctx)
   }
 }
 
