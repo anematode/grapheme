@@ -2140,13 +2140,18 @@ var Grapheme = (function (exports) {
 
   let operator_regex = /^[*-\/+^]/;
   let function_regex = /^([^\s\\*-\/+!^()]+)\(/;
-  let constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/;
+  let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
   let variable_regex = /^[^\s\\*-\/+^()!]+/;
   let paren_regex = /^[()\[\]]/;
   let comma_regex = /^,/;
 
   function get_angry_at(string, index=0, message="I'm angry!") {
-    throw new Error(message + " at index " + index + ":\n" + string + "\n" + index + "^")
+    let spaces = "";
+
+    for (let i = 0; i < index; ++i)
+      spaces += " ";
+
+    throw new Error(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
   }
 
   function check_parens_balanced(string) {
@@ -2223,6 +2228,17 @@ var Grapheme = (function (exports) {
           break
         }
 
+        match = string.match(constant_regex);
+
+        if (match) {
+          yield {
+            type: "constant",
+            value: match[0],
+            index: i
+          };
+          break
+        }
+
         match = string.match(operator_regex);
 
         if (match) {
@@ -2234,16 +2250,6 @@ var Grapheme = (function (exports) {
           break
         }
 
-        match = string.match(constant_regex);
-
-        if (match) {
-          yield {
-            type: "constant",
-            value: match[0],
-            index: i
-          };
-          break
-        }
 
         match = string.match(comma_regex);
 
