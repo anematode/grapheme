@@ -19,6 +19,10 @@ class ASTNode {
   getText() {
     return "(node)"
   }
+
+  compile() {
+
+  }
 }
 
 class VariableNode extends ASTNode {

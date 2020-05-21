@@ -2086,6 +2086,10 @@ var Grapheme = (function (exports) {
     getText() {
       return "(node)"
     }
+
+    compile() {
+
+    }
   }
 
   class VariableNode extends ASTNode {
@@ -2311,10 +2315,6 @@ var Grapheme = (function (exports) {
         get_angry_at(string, token2.index, "No operator followed by closing parenthesis");
       if (token1.type === "operator" && token2.paren === "]")
         get_angry_at(string, token2.index, "No operator followed by closing bracket");
-      if (token1.paren === '(' && token2.type === "operator")
-        get_angry_at(string, token2.index, "No operator after starting parenthesis");
-      if (token1.paren === '[' && token2.type === "operator")
-        get_angry_at(string, token2.index, "No operator after starting bracket");
       if (token1.type === "comma" && token2.paren === ")")
       get_angry_at(string, token2.index, "No comma followed by closing parenthesis");
       if (token1.type === "comma" && token2.paren === "]")
@@ -2378,6 +2378,20 @@ var Grapheme = (function (exports) {
         }
       });
     }
+
+    root.applyAll(child => {
+      let children = child.children;
+
+      if (children) {
+        let first_child = children[0];
+
+        if (first_child) {
+          if (first_child.op === '+' || first_child.op === '-') {
+            children.splice(0, 0, new ConstantNode({value: 0}));
+          }
+        }
+      }
+    });
 
     function combineOperators(operators) {
       let operators_remaining = true;
