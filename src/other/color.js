@@ -30,7 +30,7 @@ class Color {
 
   hex () {
     const rnd = this.rounded()
-    return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
+    return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => utils.zeroFill(x.toString(16), 2)).join('')}`
   }
 
   glColor () {
@@ -56,4 +56,13 @@ function rgba (r, g, b, a = 255) {
   })
 }
 
-export { Color, rgb, rgba }
+const Colors = {
+  get WHITE() {
+    return rgb(255, 255, 255)
+  },
+  get BLACK() {
+    return rgb(0, 0, 0)
+  }
+}
+
+export { Color, rgb, rgba, Colors }

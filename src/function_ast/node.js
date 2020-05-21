@@ -6,6 +6,19 @@ class ASTNode {
     this.parent = null
     this.children = []
   }
+
+  applyAll(func, depth=0) {
+    func(this, depth)
+
+    this.children.forEach(child => {
+      if (child.applyAll)
+        child.applyAll(func, depth + 1)
+    })
+  }
+
+  getText() {
+    return "(node)"
+  }
 }
 
 class VariableNode extends ASTNode {
@@ -18,12 +31,25 @@ class VariableNode extends ASTNode {
 
     this.name = name
   }
+
+  getText() {
+    return this.name
+  }
 }
 
 class OperatorNode extends ASTNode {
   constructor(params={}) {
     super()
 
+    const {
+      operator = '^'
+    } = params
+
+    this.operator = operator
+  }
+
+  getText() {
+    return this.operator
   }
 }
 
@@ -36,6 +62,10 @@ class ConstantNode extends ASTNode {
     } = params
 
     this.value = value
+  }
+
+  getText() {
+    return "" + this.value
   }
 }
 

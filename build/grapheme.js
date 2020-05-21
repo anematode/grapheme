@@ -241,7 +241,16 @@ var Grapheme = (function (exports) {
     return flattened
   }
 
+  function zeroFill(number, width) {
+    width -= number.toString().length;
+    if (width > 0) {
+      return new Array( width + (/\./.test( number ) ? 2 : 1) ).join( '0' ) + number;
+    }
+    return number + ""; // always return a string
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
+    zeroFill: zeroFill,
     generateUUID: generateUUID,
     createShaderFromSource: createShaderFromSource,
     createGLProgram: createGLProgram,
@@ -1075,6 +1084,15 @@ var Grapheme = (function (exports) {
     plotToPixel(xy) {
       return new Vec2(boundingBoxTransform.XY(flattenVectors([xy]), this.coords, this.box, false, true))
     }
+
+    plotToPixelArr(arr) {
+      let {x_m, x_b, y_m, y_b} = this.getPlotToPixelTransform();
+
+      for (let i = 0; i < arr.length; i += 2) {
+        arr[i] = x_m * arr[i] + x_b;
+        arr[i+1] = y_m * arr[i+1] + y_b;
+      }
+    }
   }
 
   class Plot2D extends InteractiveCanvas {
@@ -1172,7 +1190,7 @@ var Grapheme = (function (exports) {
 
     hex () {
       const rnd = this.rounded();
-      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => x.toString(16)).join()}`
+      return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => zeroFill(x.toString(16), 2)).join('')}`
     }
 
     glColor () {
@@ -1185,6 +1203,21 @@ var Grapheme = (function (exports) {
       return new Color(this)
     }
   }
+
+  // all colors represented as object {r: x, g: x, b: x, a: x}. 0 <= r,g,b,a <= 255,
+  // not necessarily integers
+  function rgb (r, g, b) {
+    return new Color({ r, g, b })
+  }
+
+  const Colors = {
+    get WHITE() {
+      return rgb(255, 255, 255)
+    },
+    get BLACK() {
+      return rgb(0, 0, 0)
+    }
+  };
 
   class Pen {
     constructor (params = {}) {
@@ -1709,6 +1742,17 @@ var Grapheme = (function (exports) {
       this.shadowSize = shadowSize;
     }
 
+    drawText(ctx, text, x, y) {
+      if (this.shadowSize) {
+        this.prepareContextShadow(ctx);
+        ctx.strokeText(text, x, y);
+      }
+
+      this.prepareContextTextStyle(ctx);
+      ctx.fillText(text, x, y);
+
+    }
+
     prepareContextTextAlignment (ctx) {
       let dir = this.dir;
 
@@ -1755,7 +1799,7 @@ var Grapheme = (function (exports) {
     }
 
     prepareContextShadow (ctx) {
-      ctx.fillStyle = this.shadowColor.hex();
+      ctx.strokeStyle = this.shadowColor.hex();
       ctx.lineWidth = this.shadowSize * 2;
     }
 
@@ -1822,6 +1866,10 @@ var Grapheme = (function (exports) {
       super(params);
 
       this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+    }
+
+    render(info) {
+      this.style.drawText(info.ctx, this.text, this.position.x, this.position.y);
     }
   }
 
@@ -2017,13 +2065,89 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // const fs = require( ...
+  // No, this is not node.js the language.
+
+  class ASTNode {
+    constructor() {
+      this.parent = null;
+      this.children = [];
+    }
+
+    applyAll(func, depth=0) {
+      func(this, depth);
+
+      this.children.forEach(child => {
+        if (child.applyAll)
+          child.applyAll(func, depth + 1);
+      });
+    }
+
+    getText() {
+      return "(node)"
+    }
+  }
+
+  class VariableNode extends ASTNode {
+    constructor(params={}) {
+      super();
+
+      const {
+        name = 'x'
+      } = params;
+
+      this.name = name;
+    }
+
+    getText() {
+      return this.name
+    }
+  }
+
+  class OperatorNode extends ASTNode {
+    constructor(params={}) {
+      super();
+
+      const {
+        operator = '^'
+      } = params;
+
+      this.operator = operator;
+    }
+
+    getText() {
+      return this.operator
+    }
+  }
+
+  class ConstantNode extends ASTNode {
+    constructor(params={}) {
+      super();
+
+      const {
+        value = 0
+      } = params;
+
+      this.value = value;
+    }
+
+    getText() {
+      return "" + this.value
+    }
+  }
+
   // a * b - c * d ^ g
 
   let operator_regex = /^[*-\/+^]/;
-  let function_regex = /^([^\s\\*-\/+^]+)\(/;
-  let variable_regex = /^[^\s\\*-\/+^()]+/;
+  let function_regex = /^([^\s\\*-\/+!^()]+)\(/;
+  let constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/;
+  let variable_regex = /^[^\s\\*-\/+^()!]+/;
   let paren_regex = /^[()\[\]]/;
   let comma_regex = /^,/;
+
+  function get_angry_at(string, index=0, message="I'm angry!") {
+    throw new Error(message + " at index " + index + ":\n" + string + "\n" + index + "^")
+  }
 
   function check_parens_balanced(string) {
     let stack = [];
@@ -2065,13 +2189,8 @@ var Grapheme = (function (exports) {
       err = true;
 
     if (err) {
-      let spaces = "";
 
-      for (let j = 0; j < i; ++j) {
-        spaces += ' ';
-      }
-
-      throw new Error("Unbalanced parentheses/brackets at index " + i + ":\n" + string + "\n" + spaces + "^")
+      get_angry_at(string, i, "Unbalanced parentheses/brackets");
     }
 
   }
@@ -2079,8 +2198,17 @@ var Grapheme = (function (exports) {
   function* tokenizer(string) {
     // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
 
+    string = string.trimEnd();
+
+    let i = 0;
+    let prev_len = string.length;
+
     while (string) {
       string = string.trim();
+
+      i += prev_len - string.length;
+      prev_len = string.length;
+
       let match;
 
       do {
@@ -2089,7 +2217,8 @@ var Grapheme = (function (exports) {
         if (match) {
           yield {
             type: "paren",
-            paren: match[0]
+            paren: match[0],
+            index: i
           };
           break
         }
@@ -2099,7 +2228,19 @@ var Grapheme = (function (exports) {
         if (match) {
           yield {
             type: "operator",
-            operator: match[0]
+            op: match[0],
+            index: i
+          };
+          break
+        }
+
+        match = string.match(constant_regex);
+
+        if (match) {
+          yield {
+            type: "constant",
+            value: match[0],
+            index: i
           };
           break
         }
@@ -2107,7 +2248,10 @@ var Grapheme = (function (exports) {
         match = string.match(comma_regex);
 
         if (match) {
-          yield { type: "comma" };
+          yield {
+            type: "comma",
+            index: i
+          };
           break
         }
 
@@ -2116,12 +2260,14 @@ var Grapheme = (function (exports) {
         if (match) {
           yield {
             type: "function",
-            name: match[1]
+            name: match[1],
+            index: i
           };
 
           yield {
             type: "paren",
-            paren: '('
+            paren: '(',
+            index: i + match[1].length
           };
 
           break
@@ -2132,7 +2278,8 @@ var Grapheme = (function (exports) {
         if (match) {
           yield {
             type: "variable",
-            name: match[0]
+            name: match[0],
+            index: i
           };
         }
       } while (false)
@@ -2143,13 +2290,171 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function check_valid(string, tokens) {
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      let token1 = tokens[i];
+      let token2 = tokens[i+1];
+
+      if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma"))
+        get_angry_at(string, token2.index, "No consecutive operators/commas");
+      if (token1.paren === "(" && token2.paren === ")")
+        get_angry_at(string, token2.index, "No empty parentheses");
+      if (token1.paren === "[" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No empty brackets");
+      if (token1.type === "operator" && token2.paren === ")")
+        get_angry_at(string, token2.index, "No operator followed by closing parenthesis");
+      if (token1.type === "operator" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No operator followed by closing bracket");
+      if (token1.paren === '(' && token2.type === "operator")
+        get_angry_at(string, token2.index, "No operator after starting parenthesis");
+      if (token1.paren === '[' && token2.type === "operator")
+        get_angry_at(string, token2.index, "No operator after starting bracket");
+      if (token1.type === "comma" && token2.paren === ")")
+      get_angry_at(string, token2.index, "No comma followed by closing parenthesis");
+      if (token1.type === "comma" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No comma followed by closing bracket");
+      if (token1.paren === '(' && token2.type === "comma")
+        get_angry_at(string, token2.index, "No comma after starting parenthesis");
+      if (token1.paren === '[' && token2.type === "comma")
+        get_angry_at(string, token2.index, "No comma after starting bracket");
+    }
+  }
+
+  function find_paren_indices(children) {
+    let start_paren_index;
+
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i];
+
+      if (child.paren === '(' || child.paren === '[')
+        start_paren_index = i;
+      if ((child.paren === ')' || child.paren === ']') && start_paren_index)
+        return [start_paren_index, i]
+    }
+  }
+
+  function parse_tokens(tokens) {
+    for (let i = 0; i < tokens.length; ++i) {
+      let token = tokens[i];
+
+      switch (token.type) {
+        case "constant":
+          tokens[i] = new ConstantNode({value: token.value});
+          break
+        case "variable":
+          tokens[i] = new VariableNode({name: token.name});
+          break
+      }
+    }
+
+    let root = new ASTNode();
+    root.children = tokens;
+
+    let parens_remaining = true;
+
+    while (parens_remaining) {
+      parens_remaining = false;
+
+      root.applyAll(child => {
+        if (!(child instanceof ASTNode))
+          return
+
+        let indices = find_paren_indices(child.children);
+
+        if (indices) {
+          parens_remaining = true;
+
+          let new_node = new ASTNode();
+          new_node.children = child.children.slice(indices[0] + 1, indices[1]);
+          child.children = child.children.slice(0, indices[0]).concat([
+            new_node
+          ]).concat(child.children.slice(indices[1] + 1));
+        }
+      });
+    }
+
+    function combineOperators(operators=['^']) {
+      let operators_remaining = true;
+
+      while (operators_remaining) {
+        operators_remaining = false;
+
+        root.applyAll(child => {
+          let children = child.children;
+
+          for (let i = 0; i < children.length; ++i) {
+            let child_test = children[i];
+
+            if (operators.includes(child_test.op)) {
+              let new_node = new OperatorNode({operator: child_test.op});
+
+              new_node.children = [children[i-1],children[i+1]];
+
+              child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2));
+              operators_remaining = true;
+
+              return
+            }
+          }
+        });
+      }
+    }
+
+    let functions_remaining = true;
+
+    while (functions_remaining) {
+      functions_remaining = false;
+
+      root.applyAll(child => {
+        if (child.children) {
+          let children = child.children;
+
+          for (let i = 0; i < children.length; ++i) {
+            let child_test = children[i];
+
+            if (child_test.type === "function") {
+              let function_node = new OperatorNode({ operator: child_test.name });
+
+              children[i] = function_node;
+
+              function_node.children = children[i + 1].children;
+              function_node.children = function_node.children.filter(node => node instanceof ASTNode);
+
+              functions_remaining = true;
+
+              children.splice(i + 1, 1);
+              return
+            }
+          }
+        }
+      });
+    }
+
+    combineOperators(['^']);
+    combineOperators(['*','/']);
+    combineOperators(['-','+']);
+
+
+    root.applyAll(child => {
+      if (child.children)
+        child.children.forEach(subchild => subchild.parent = child);
+    });
+
+    return root
+  }
+
   function parse_string(string) {
     check_parens_balanced(string);
 
+    let tokens = [];
+
     for (let token of tokenizer(string)) {
+      tokens.push(token);
     }
 
-    
+    check_valid(string, tokens);
+
+    return parse_tokens(tokens)
   }
 
   class ConwaysGameOfLifeElement extends GraphemeElement {
@@ -2244,6 +2549,95 @@ var Grapheme = (function (exports) {
     }
   }
 
+  class TreeElement extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.root = null;
+
+      this.pen = new Pen();
+      this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE});
+      this.getTextOfNode = (node) => {
+        return node.getText()
+      };
+
+      this.vertices = [];
+      this.labels = [];
+    }
+
+    update() {
+      this.vertices = [];
+      this.labels = [];
+
+      let flattened_nodes = [];
+      let node_positions = [];
+
+      this.root.applyAll((child, depth) => {
+        if (!flattened_nodes[depth]) {
+          flattened_nodes[depth] = [];
+        }
+
+        let flat_array = flattened_nodes[depth];
+        flat_array.push(child);
+      });
+
+      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+        let nodes = flattened_nodes[depth];
+
+        node_positions[depth] = nodes.map((node, i) => {
+          let x = (i - nodes.length / 2);
+          let y = -depth;
+
+          return new Vec2(x, y)
+        });
+      }
+
+      function getNodePosition(node) {
+        for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+          let nodes = flattened_nodes[depth];
+
+          for (let i = 0; i < nodes.length; ++i) {
+            if (nodes[i] === node) {
+              return node_positions[depth][i]
+            }
+          }
+        }
+      }
+
+      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+        let nodes = flattened_nodes[depth];
+        let positions = node_positions[depth];
+
+        nodes.forEach((node, i) => {
+          let parentPos = getNodePosition(node.parent);
+
+          if (parentPos)
+            this.vertices.push(positions[i].x, positions[i].y, parentPos.x, parentPos.y, NaN, NaN);
+
+          this.labels.push(new Label2D({
+            style: this.label_style,
+            text: this.getTextOfNode(node),
+            position: this.plot.transform.plotToPixel(positions[i])
+          }));
+        });
+      }
+
+    }
+
+    render(info) {
+      super.render(info);
+
+      let polyline = new PolylineElement({pen: this.pen});
+      polyline.vertices = this.vertices.slice();
+
+      this.plot.transform.plotToPixelArr(polyline.vertices);
+
+      polyline.render(info);
+
+      this.labels.forEach(label => label.render(info));
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -2253,6 +2647,7 @@ var Grapheme = (function (exports) {
   exports.Plot2D = Plot2D;
   exports.PolylineElement = PolylineElement;
   exports.TestObject = TestObject;
+  exports.TreeElement = TreeElement;
   exports.Vec2 = Vec2;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.parse_string = parse_string;

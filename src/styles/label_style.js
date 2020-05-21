@@ -54,6 +54,17 @@ class Label2DStyle extends BasicLabelStyle {
     this.shadowSize = shadowSize
   }
 
+  drawText(ctx, text, x, y) {
+    if (this.shadowSize) {
+      this.prepareContextShadow(ctx)
+      ctx.strokeText(text, x, y)
+    }
+
+    this.prepareContextTextStyle(ctx)
+    ctx.fillText(text, x, y)
+
+  }
+
   prepareContextTextAlignment (ctx) {
     let dir = this.dir
 
@@ -100,7 +111,7 @@ class Label2DStyle extends BasicLabelStyle {
   }
 
   prepareContextShadow (ctx) {
-    ctx.fillStyle = this.shadowColor.hex()
+    ctx.strokeStyle = this.shadowColor.hex()
     ctx.lineWidth = this.shadowSize * 2
   }
 

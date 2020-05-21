@@ -1,12 +1,17 @@
-import {OperatorNode, VariableNode, ConstantNode} from "./node"
+import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
 
 // a * b - c * d ^ g
 
 let operator_regex = /^[*-\/+^]/
-let function_regex = /^([^\s\\*-\/+^]+)\(/
-let variable_regex = /^[^\s\\*-\/+^()]+/
+let function_regex = /^([^\s\\*-\/+!^()]+)\(/
+let constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/
+let variable_regex = /^[^\s\\*-\/+^()!]+/
 let paren_regex = /^[()\[\]]/
 let comma_regex = /^,/
+
+function get_angry_at(string, index=0, message="I'm angry!") {
+  throw new Error(message + " at index " + index + ":\n" + string + "\n" + index + "^")
+}
 
 function check_parens_balanced(string) {
   let stack = []
@@ -54,7 +59,7 @@ function check_parens_balanced(string) {
       spaces += ' '
     }
 
-    throw new Error("Unbalanced parentheses/brackets at index " + i + ":\n" + string + "\n" + spaces + "^")
+    get_angry_at(string, i, "Unbalanced parentheses/brackets")
   }
 
 }
@@ -62,8 +67,17 @@ function check_parens_balanced(string) {
 function* tokenizer(string) {
   // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
 
+  string = string.trimEnd()
+
+  let i = 0
+  let prev_len = string.length
+
   while (string) {
     string = string.trim()
+
+    i += prev_len - string.length
+    prev_len = string.length
+
     let match
 
     do {
@@ -72,7 +86,8 @@ function* tokenizer(string) {
       if (match) {
         yield {
           type: "paren",
-          paren: match[0]
+          paren: match[0],
+          index: i
         }
         break
       }
@@ -82,7 +97,19 @@ function* tokenizer(string) {
       if (match) {
         yield {
           type: "operator",
-          operator: match[0]
+          op: match[0],
+          index: i
+        }
+        break
+      }
+
+      match = string.match(constant_regex)
+
+      if (match) {
+        yield {
+          type: "constant",
+          value: match[0],
+          index: i
         }
         break
       }
@@ -90,7 +117,10 @@ function* tokenizer(string) {
       match = string.match(comma_regex)
 
       if (match) {
-        yield { type: "comma" }
+        yield {
+          type: "comma",
+          index: i
+        }
         break
       }
 
@@ -99,12 +129,14 @@ function* tokenizer(string) {
       if (match) {
         yield {
           type: "function",
-          name: match[1]
+          name: match[1],
+          index: i
         }
 
         yield {
           type: "paren",
-          paren: '('
+          paren: '(',
+          index: i + match[1].length
         }
 
         break
@@ -115,7 +147,8 @@ function* tokenizer(string) {
       if (match) {
         yield {
           type: "variable",
-          name: match[0]
+          name: match[0],
+          index: i
         }
       }
     } while (false)
@@ -124,6 +157,159 @@ function* tokenizer(string) {
 
     string = string.slice(len)
   }
+}
+
+function check_valid(string, tokens) {
+  for (let i = 0; i < tokens.length - 1; ++i) {
+    let token1 = tokens[i]
+    let token2 = tokens[i+1]
+
+    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma"))
+      get_angry_at(string, token2.index, "No consecutive operators/commas")
+    if (token1.paren === "(" && token2.paren === ")")
+      get_angry_at(string, token2.index, "No empty parentheses")
+    if (token1.paren === "[" && token2.paren === "]")
+      get_angry_at(string, token2.index, "No empty brackets")
+    if (token1.type === "operator" && token2.paren === ")")
+      get_angry_at(string, token2.index, "No operator followed by closing parenthesis")
+    if (token1.type === "operator" && token2.paren === "]")
+      get_angry_at(string, token2.index, "No operator followed by closing bracket")
+    if (token1.paren === '(' && token2.type === "operator")
+      get_angry_at(string, token2.index, "No operator after starting parenthesis")
+    if (token1.paren === '[' && token2.type === "operator")
+      get_angry_at(string, token2.index, "No operator after starting bracket")
+    if (token1.type === "comma" && token2.paren === ")")
+    get_angry_at(string, token2.index, "No comma followed by closing parenthesis")
+    if (token1.type === "comma" && token2.paren === "]")
+      get_angry_at(string, token2.index, "No comma followed by closing bracket")
+    if (token1.paren === '(' && token2.type === "comma")
+      get_angry_at(string, token2.index, "No comma after starting parenthesis")
+    if (token1.paren === '[' && token2.type === "comma")
+      get_angry_at(string, token2.index, "No comma after starting bracket")
+  }
+}
+
+function find_paren_indices(children) {
+  let start_paren_index;
+
+  for (let i = 0; i < children.length; ++i) {
+    let child = children[i]
+
+    if (child.paren === '(' || child.paren === '[')
+      start_paren_index = i
+    if ((child.paren === ')' || child.paren === ']') && start_paren_index)
+      return [start_paren_index, i]
+  }
+}
+
+function parse_tokens(tokens) {
+  for (let i = 0; i < tokens.length; ++i) {
+    let token = tokens[i]
+
+    switch (token.type) {
+      case "constant":
+        tokens[i] = new ConstantNode({value: token.value})
+        break
+      case "variable":
+        tokens[i] = new VariableNode({name: token.name})
+        break
+    }
+  }
+
+  let root = new ASTNode()
+  root.children = tokens
+
+  let parens_remaining = true
+
+  while (parens_remaining) {
+    parens_remaining = false
+
+    root.applyAll(child => {
+      if (!(child instanceof ASTNode))
+        return
+
+      let indices = find_paren_indices(child.children)
+
+      if (indices) {
+        parens_remaining = true
+
+        let new_node = new ASTNode()
+        new_node.children = child.children.slice(indices[0] + 1, indices[1])
+        child.children = child.children.slice(0, indices[0]).concat([
+          new_node
+        ]).concat(child.children.slice(indices[1] + 1))
+      }
+    })
+  }
+
+  function combineOperators(operators=['^']) {
+    let operators_remaining = true
+
+    while (operators_remaining) {
+      operators_remaining = false
+
+      root.applyAll(child => {
+        let children = child.children
+
+        for (let i = 0; i < children.length; ++i) {
+          let child_test = children[i]
+
+          if (operators.includes(child_test.op)) {
+            let new_node = new OperatorNode({operator: child_test.op})
+
+            new_node.children = [children[i-1],children[i+1]]
+
+            child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2))
+            operators_remaining = true
+
+            return
+          }
+        }
+      })
+    }
+  }
+
+  let functions_remaining = true
+
+  while (functions_remaining) {
+    functions_remaining = false
+
+    root.applyAll(child => {
+      if (child.children) {
+        let children = child.children
+
+        for (let i = 0; i < children.length; ++i) {
+          let child_test = children[i]
+
+          if (child_test.type === "function") {
+            let function_node = new OperatorNode({ operator: child_test.name })
+
+            children[i] = function_node
+
+            function_node.children = children[i + 1].children
+            function_node.children = function_node.children.filter(node => node instanceof ASTNode)
+
+            functions_remaining = true
+
+            children.splice(i + 1, 1)
+            return
+          }
+        }
+      }
+    })
+  }
+
+  combineOperators(['^'])
+  combineOperators(['*','/'])
+  combineOperators(['-','+'])
+
+
+  root.applyAll(child => {
+    if (child.children)
+      child.children.forEach(subchild => subchild.parent = child)
+  })
+
+  return root
 }
 
 function parse_string(string) {
@@ -135,7 +321,9 @@ function parse_string(string) {
     tokens.push(token)
   }
 
-  
+  check_valid(string, tokens)
+
+  return parse_tokens(tokens)
 }
 
 export {parse_string}

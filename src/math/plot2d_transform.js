@@ -108,6 +108,15 @@ class Plot2DTransform {
   plotToPixel(xy) {
     return new Vec2(boundingBoxTransform.XY(utils.flattenVectors([xy]), this.coords, this.box, false, true))
   }
+
+  plotToPixelArr(arr) {
+    let {x_m, x_b, y_m, y_b} = this.getPlotToPixelTransform()
+
+    for (let i = 0; i < arr.length; i += 2) {
+      arr[i] = x_m * arr[i] + x_b
+      arr[i+1] = y_m * arr[i+1] + y_b
+    }
+  }
 }
 
 export {Plot2DTransform}

@@ -61,6 +61,10 @@ class Label2D extends LabelBase {
 
     this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {})
   }
+
+  render(info) {
+    this.style.drawText(info.ctx, this.text, this.position.x, this.position.y)
+  }
 }
 
 export { BasicLabel, Label2D }
