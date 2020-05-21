@@ -2373,7 +2373,7 @@ var Grapheme = (function (exports) {
       });
     }
 
-    function combineOperators(operators=['^']) {
+    function combineOperators(operators) {
       let operators_remaining = true;
 
       while (operators_remaining) {
@@ -2400,15 +2400,19 @@ var Grapheme = (function (exports) {
       }
     }
 
+    combineOperators(['^']);
+    combineOperators(['*','/']);
+    combineOperators(['-','+']);
+
     let functions_remaining = true;
 
     while (functions_remaining) {
       functions_remaining = false;
 
       root.applyAll(child => {
-        if (child.children) {
-          let children = child.children;
+        let children = child.children;
 
+        if (children) {
           for (let i = 0; i < children.length; ++i) {
             let child_test = children[i];
 
@@ -2429,11 +2433,6 @@ var Grapheme = (function (exports) {
         }
       });
     }
-
-    combineOperators(['^']);
-    combineOperators(['*','/']);
-    combineOperators(['-','+']);
-
 
     root.applyAll(child => {
       if (child.children)
