@@ -490,7 +490,7 @@ var Grapheme = (function (exports) {
       // Set the default size to 640 by 480 in CSS pixels
       this.setSize(640, 480);
 
-      // Scale text canvas as needed due to DPR
+      // Scale canvas as needed due to DPR
       this.resetCanvasCtxTransform();
 
       this.addEventListener('dprchanged', () => {
@@ -983,6 +983,8 @@ var Grapheme = (function (exports) {
       this.box = params.box ? new BoundingBox(params.box) : new BoundingBox(new Vec2(0,0), this.width, this.height);
       this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, -5), 10, 10);
 
+      this.plot = params.plot;
+
       this.preserveAspectRatio = true;
       this.aspectRatio = 1; // Preserve the ratio coords.width / box.width
 
@@ -1015,6 +1017,8 @@ var Grapheme = (function (exports) {
 
         this._centerOn(new Vec2(cx, cy));
       }
+
+      this.plot.triggerEvent("plotcoordschanged");
     }
 
     _centerOn(v) {
@@ -1030,6 +1034,7 @@ var Grapheme = (function (exports) {
       }
 
       this.correctAspectRatio();
+      this.plot.triggerEvent("plotcoordschanged");
     }
 
     translate(v, ...args) {
@@ -1038,6 +1043,8 @@ var Grapheme = (function (exports) {
       } else {
         this.translate(new Vec2(v, ...args));
       }
+
+      this.plot.triggerEvent("plotcoordschanged");
     }
 
     zoomOn(factor, v = new Vec2(0,0), ...args) {
@@ -1049,6 +1056,8 @@ var Grapheme = (function (exports) {
 
         this._internal_coincideDragPoints(v, pixel_s);
       }
+
+      this.plot.triggerEvent("plotcoordschanged");
     }
 
     _internal_coincideDragPoints(p1, p2) {
@@ -1101,7 +1110,7 @@ var Grapheme = (function (exports) {
 
       this.plot = this;
 
-      this.transform = new Plot2DTransform();
+      this.transform = new Plot2DTransform({plot: this});
       this.padding = {top: 40, right: 40, left: 40, bottom: 40};
 
       this.enableDrag = true;
@@ -1211,13 +1220,331 @@ var Grapheme = (function (exports) {
   }
 
   const Colors = {
-    get WHITE() {
-      return rgb(255, 255, 255)
-    },
-    get BLACK() {
-      return rgb(0, 0, 0)
-    }
+  get LIGHTSALMON() { return rgb(255,160,122); },
+  get SALMON() { return rgb(250,128,114); },
+  get DARKSALMON() { return rgb(233,150,122); },
+  get LIGHTCORAL() { return rgb(240,128,128); },
+  get INDIANRED() { return rgb(205,92,92); },
+  get CRIMSON() { return rgb(220,20,60); },
+  get FIREBRICK() { return rgb(178,34,34); },
+  get RED() { return rgb(255,0,0); },
+  get DARKRED() { return rgb(139,0,0); },
+  get CORAL() { return rgb(255,127,80); },
+  get TOMATO() { return rgb(255,99,71); },
+  get ORANGERED() { return rgb(255,69,0); },
+  get GOLD() { return rgb(255,215,0); },
+  get ORANGE() { return rgb(255,165,0); },
+  get DARKORANGE() { return rgb(255,140,0); },
+  get LIGHTYELLOW() { return rgb(255,255,224); },
+  get LEMONCHIFFON() { return rgb(255,250,205); },
+  get LIGHTGOLDENRODYELLOW() { return rgb(250,250,210); },
+  get PAPAYAWHIP() { return rgb(255,239,213); },
+  get MOCCASIN() { return rgb(255,228,181); },
+  get PEACHPUFF() { return rgb(255,218,185); },
+  get PALEGOLDENROD() { return rgb(238,232,170); },
+  get KHAKI() { return rgb(240,230,140); },
+  get DARKKHAKI() { return rgb(189,183,107); },
+  get YELLOW() { return rgb(255,255,0); },
+  get LAWNGREEN() { return rgb(124,252,0); },
+  get CHARTREUSE() { return rgb(127,255,0); },
+  get LIMEGREEN() { return rgb(50,205,50); },
+  get LIME() { return rgb(0, 255, 0); },
+  get FORESTGREEN() { return rgb(34,139,34); },
+  get GREEN() { return rgb(0,128,0); },
+  get DARKGREEN() { return rgb(0,100,0); },
+  get GREENYELLOW() { return rgb(173,255,47); },
+  get YELLOWGREEN() { return rgb(154,205,50); },
+  get SPRINGGREEN() { return rgb(0,255,127); },
+  get MEDIUMSPRINGGREEN() { return rgb(0,250,154); },
+  get LIGHTGREEN() { return rgb(144,238,144); },
+  get PALEGREEN() { return rgb(152,251,152); },
+  get DARKSEAGREEN() { return rgb(143,188,143); },
+  get MEDIUMSEAGREEN() { return rgb(60,179,113); },
+  get SEAGREEN() { return rgb(46,139,87); },
+  get OLIVE() { return rgb(128,128,0); },
+  get DARKOLIVEGREEN() { return rgb(85,107,47); },
+  get OLIVEDRAB() { return rgb(107,142,35); },
+  get LIGHTCYAN() { return rgb(224,255,255); },
+  get CYAN() { return rgb(0,255,255); },
+  get AQUA() { return rgb(0,255,255); },
+  get AQUAMARINE() { return rgb(127,255,212); },
+  get MEDIUMAQUAMARINE() { return rgb(102,205,170); },
+  get PALETURQUOISE() { return rgb(175,238,238); },
+  get TURQUOISE() { return rgb(64,224,208); },
+  get MEDIUMTURQUOISE() { return rgb(72,209,204); },
+  get DARKTURQUOISE() { return rgb(0,206,209); },
+  get LIGHTSEAGREEN() { return rgb(32,178,170); },
+  get CADETBLUE() { return rgb(95,158,160); },
+  get DARKCYAN() { return rgb(0,139,139); },
+  get TEAL() { return rgb(0,128,128); },
+  get POWDERBLUE() { return rgb(176,224,230); },
+  get LIGHTBLUE() { return rgb(173,216,230); },
+  get LIGHTSKYBLUE() { return rgb(135,206,250); },
+  get SKYBLUE() { return rgb(135,206,235); },
+  get DEEPSKYBLUE() { return rgb(0,191,255); },
+  get LIGHTSTEELBLUE() { return rgb(176,196,222); },
+  get DODGERBLUE() { return rgb(30,144,255); },
+  get CORNFLOWERBLUE() { return rgb(100,149,237); },
+  get STEELBLUE() { return rgb(70,130,180); },
+  get ROYALBLUE() { return rgb(65,105,225); },
+  get BLUE() { return rgb(0,0,255); },
+  get MEDIUMBLUE() { return rgb(0,0,205); },
+  get DARKBLUE() { return rgb(0,0,139); },
+  get NAVY() { return rgb(0,0,128); },
+  get MIDNIGHTBLUE() { return rgb(25,25,112); },
+  get MEDIUMSLATEBLUE() { return rgb(123,104,238); },
+  get SLATEBLUE() { return rgb(106,90,205); },
+  get DARKSLATEBLUE() { return rgb(72,61,139); },
+  get LAVENDER() { return rgb(230,230,250); },
+  get THISTLE() { return rgb(216,191,216); },
+  get PLUM() { return rgb(221,160,221); },
+  get VIOLET() { return rgb(238,130,238); },
+  get ORCHID() { return rgb(218,112,214); },
+  get FUCHSIA() { return rgb(255,0,255); },
+  get MAGENTA() { return rgb(255,0,255); },
+  get MEDIUMORCHID() { return rgb(186,85,211); },
+  get MEDIUMPURPLE() { return rgb(147,112,219); },
+  get BLUEVIOLET() { return rgb(138,43,226); },
+  get DARKVIOLET() { return rgb(148,0,211); },
+  get DARKORCHID() { return rgb(153,50,204); },
+  get DARKMAGENTA() { return rgb(139,0,139); },
+  get PURPLE() { return rgb(128,0,128); },
+  get INDIGO() { return rgb(75,0,130); },
+  get PINK() { return rgb(255,192,203); },
+  get LIGHTPINK() { return rgb(255,182,193); },
+  get HOTPINK() { return rgb(255,105,180); },
+  get DEEPPINK() { return rgb(255,20,147); },
+  get PALEVIOLETRED() { return rgb(219,112,147); },
+  get MEDIUMVIOLETRED() { return rgb(199,21,133); },
+  get WHITE() { return rgb(255,255,255); },
+  get SNOW() { return rgb(255,250,250); },
+  get HONEYDEW() { return rgb(240,255,240); },
+  get MINTCREAM() { return rgb(245,255,250); },
+  get AZURE() { return rgb(240,255,255); },
+  get ALICEBLUE() { return rgb(240,248,255); },
+  get GHOSTWHITE() { return rgb(248,248,255); },
+  get WHITESMOKE() { return rgb(245,245,245); },
+  get SEASHELL() { return rgb(255,245,238); },
+  get BEIGE() { return rgb(245,245,220); },
+  get OLDLACE() { return rgb(253,245,230); },
+  get FLORALWHITE() { return rgb(255,250,240); },
+  get IVORY() { return rgb(255,255,240); },
+  get ANTIQUEWHITE() { return rgb(250,235,215); },
+  get LINEN() { return rgb(250,240,230); },
+  get LAVENDERBLUSH() { return rgb(255,240,245); },
+  get MISTYROSE() { return rgb(255,228,225); },
+  get GAINSBORO() { return rgb(220,220,220); },
+  get LIGHTGRAY() { return rgb(211,211,211); },
+  get SILVER() { return rgb(192,192,192); },
+  get DARKGRAY() { return rgb(169,169,169); },
+  get GRAY() { return rgb(128,128,128); },
+  get DIMGRAY() { return rgb(105,105,105); },
+  get LIGHTSLATEGRAY() { return rgb(119,136,153); },
+  get SLATEGRAY() { return rgb(112,128,144); },
+  get DARKSLATEGRAY() { return rgb(47,79,79); },
+  get BLACK() { return rgb(0,0,0); },
+  get CORNSILK() { return rgb(255,248,220); },
+  get BLANCHEDALMOND() { return rgb(255,235,205); },
+  get BISQUE() { return rgb(255,228,196); },
+  get NAVAJOWHITE() { return rgb(255,222,173); },
+  get WHEAT() { return rgb(245,222,179); },
+  get BURLYWOOD() { return rgb(222,184,135); },
+  get TAN() { return rgb(210,180,140); },
+  get ROSYBROWN() { return rgb(188,143,143); },
+  get SANDYBROWN() { return rgb(244,164,96); },
+  get GOLDENROD() { return rgb(218,165,32); },
+  get PERU() { return rgb(205,133,63); },
+  get CHOCOLATE() { return rgb(210,105,30); },
+  get SADDLEBROWN() { return rgb(139,69,19); },
+  get SIENNA() { return rgb(160,82,45); },
+  get BROWN() { return rgb(165,42,42); },
+  get MAROON() { return rgb(128,0,0); }
   };
+
+  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
+  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
+
+  class BasicLabelStyle {
+    constructor (params = {}) {
+      const {
+        mode = 'latex', // valid values: latex, html
+        dir = 'C' // valid values:
+      } = params;
+
+      this.mode = mode;
+      this.dir = dir;
+    }
+
+    labelClass () {
+      let dir = this.dir;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      return 'grapheme-label-' + this.dir
+    }
+
+    setLabelClass (labelElement) {
+      const labelClass = this.labelClass();
+
+      if (!labelElement.classList.contains(labelClass)) {
+        labelElement.classList.remove(...labelClasses);
+        labelElement.classList.add(labelClass);
+      }
+    }
+  }
+
+  class Label2DStyle extends BasicLabelStyle {
+    // TODO: rotation
+    constructor (params = {}) {
+      const {
+        color = new Color(),
+        fontSize = 12,
+        fontFamily = 'Helvetica',
+        shadowColor = new Color(),
+        shadowSize = 0
+      } = params;
+      super(params);
+
+      this.mode = "2d";
+      this.color = color;
+      this.fontSize = fontSize;
+      this.fontFamily = fontFamily;
+      this.shadowColor = shadowColor;
+      this.shadowSize = shadowSize;
+    }
+
+    drawText(ctx, text, x, y) {
+      if (this.shadowSize) {
+        this.prepareContextShadow(ctx);
+        ctx.strokeText(text, x, y);
+      }
+
+      this.prepareContextTextStyle(ctx);
+      ctx.fillText(text, x, y);
+
+    }
+
+    prepareContextTextAlignment (ctx) {
+      let dir = this.dir;
+
+      let textBaseline;
+      let textAlign;
+
+      if (!validDirs.includes(dir)) {
+        dir = 'C';
+      }
+
+      // text align
+      switch (dir) {
+        case 'C': case 'N': case 'S':
+          textAlign = 'center';
+          break
+        case 'NW': case 'W': case 'SW':
+          textAlign = 'left';
+          break
+        case 'NE': case 'E': case 'SE':
+          textAlign = 'right';
+          break
+      }
+
+      // text baseline
+      switch (dir) {
+        case 'C': case 'W': case 'E':
+          textBaseline = 'middle';
+          break
+        case 'SW': case 'S': case 'SE':
+          textBaseline = 'top';
+          break
+        case 'NW': case 'N': case 'NE':
+          textBaseline = 'bottom';
+          break
+      }
+
+      ctx.textBaseline = textBaseline;
+      ctx.textAlign = textAlign;
+    }
+
+    prepareContextTextStyle (ctx) {
+      this.prepareContextTextAlignment(ctx);
+      ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+    }
+
+    prepareContextShadow (ctx) {
+      ctx.strokeStyle = this.shadowColor.hex();
+      ctx.lineWidth = this.shadowSize * 2;
+    }
+
+    prepareContextFill (ctx) {
+      ctx.fillStyle = this.color.hex();
+    }
+  }
+
+  class LabelBase extends GraphemeElement {
+    constructor (params = {}) {
+      super(params);
+
+      const {
+        text = '',
+        position = new Vec2(0, 0)
+      } = params;
+
+      this.text = text;
+      this.position = position;
+    }
+  }
+
+  // Creates html element of the form
+  // <div class="label label-S" > this.text ... </div>
+  class BasicLabel extends LabelBase {
+    constructor (params = {}) {
+      super(params);
+
+      this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
+    }
+
+    render (renderInfo) {
+      const { text, position } = this;
+      const mode = this.style.mode;
+
+      const labelElement = renderInfo.labelManager.getElement(this);
+
+      this.style.setLabelClass(labelElement);
+
+      labelElement.style.top = position.y + 'px';
+      labelElement.style.left = position.x + 'px';
+
+      const oldLatex = labelElement.getAttribute('latex-content');
+
+      if (mode === 'latex') {
+        // latex-content stores the latex to be rendered to this node, which means
+        // that if it is equal to text, it does not need to be recomputed, only maybe
+        // moved in some direction
+        if (oldLatex !== text) {
+          labelElement.setAttribute('latex-content', text);
+          // eslint-disable-next-line no-undef
+          katex.render(text, labelElement, { throwOnError: false });
+        }
+      } else {
+        if (oldLatex) { labelElement.removeAttribute('latex-content'); }
+
+        labelElement.innerHTML = text;
+      }
+    }
+  }
+
+  class Label2D extends LabelBase {
+    constructor (params) {
+      super(params);
+
+      this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+    }
+
+    render(info) {
+      this.style.drawText(info.ctx, this.text, this.position.x, this.position.y);
+    }
+  }
 
   class Pen {
     constructor (params = {}) {
@@ -1656,220 +1983,6 @@ var Grapheme = (function (exports) {
       this.pen.prepareContext(ctx);
       ctx.stroke(this.mainPath);
       ctx.fill(this.arrowPath);
-    }
-  }
-
-  class TestObject extends GraphemeElement {
-    constructor() {
-      super();
-
-      this.pen = new Pen({arrowLocations: ["subend"], arrowhead: "Squat"});
-    }
-
-    render(info) {
-      super.render(info);
-
-      let eggs = [];
-
-      for (let i = -5; i <= 5; i += 0.5) {
-        for (let j = -5; j <= 5; j += 0.5) {
-          eggs.push(new Vec2(i, j));
-          eggs.push(new Vec2(i, j).add(new Vec2(Math.sin(i), Math.cos(j + Date.now() / 2000)).scale(0.4)));
-          eggs.push(new Vec2(NaN, NaN));
-        }
-      }
-
-      let polyline = new PolylineElement({
-        vertices: eggs.map(vertex => info.plot.transform.plotToPixel(vertex)),
-        pen: this.pen
-      });
-
-      polyline.render(info);
-    }
-  }
-
-  const validDirs = ['C', 'N', 'S', 'W', 'E', 'NW', 'NE', 'SW', 'SE'];
-  const labelClasses = validDirs.map(s => 'grapheme-label-' + s);
-
-  class BasicLabelStyle {
-    constructor (params = {}) {
-      const {
-        mode = 'latex', // valid values: latex, html
-        dir = 'C' // valid values:
-      } = params;
-
-      this.mode = mode;
-      this.dir = dir;
-    }
-
-    labelClass () {
-      let dir = this.dir;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
-
-      return 'grapheme-label-' + this.dir
-    }
-
-    setLabelClass (labelElement) {
-      const labelClass = this.labelClass();
-
-      if (!labelElement.classList.contains(labelClass)) {
-        labelElement.classList.remove(...labelClasses);
-        labelElement.classList.add(labelClass);
-      }
-    }
-  }
-
-  class Label2DStyle extends BasicLabelStyle {
-    // TODO: rotation
-    constructor (params = {}) {
-      const {
-        color = new Color(),
-        fontSize = 12,
-        fontFamily = 'Helvetica',
-        shadowColor = new Color(),
-        shadowSize = 0
-      } = params;
-      super(params);
-
-      this.mode = "2d";
-      this.color = color;
-      this.fontSize = fontSize;
-      this.fontFamily = fontFamily;
-      this.shadowColor = shadowColor;
-      this.shadowSize = shadowSize;
-    }
-
-    drawText(ctx, text, x, y) {
-      if (this.shadowSize) {
-        this.prepareContextShadow(ctx);
-        ctx.strokeText(text, x, y);
-      }
-
-      this.prepareContextTextStyle(ctx);
-      ctx.fillText(text, x, y);
-
-    }
-
-    prepareContextTextAlignment (ctx) {
-      let dir = this.dir;
-
-      let textBaseline;
-      let textAlign;
-
-      if (!validDirs.includes(dir)) {
-        dir = 'C';
-      }
-
-      // text align
-      switch (dir) {
-        case 'C': case 'N': case 'S':
-          textAlign = 'center';
-          break
-        case 'NW': case 'W': case 'SW':
-          textAlign = 'left';
-          break
-        case 'NE': case 'E': case 'SE':
-          textAlign = 'right';
-          break
-      }
-
-      // text baseline
-      switch (dir) {
-        case 'C': case 'W': case 'E':
-          textBaseline = 'middle';
-          break
-        case 'SW': case 'S': case 'SE':
-          textBaseline = 'top';
-          break
-        case 'NW': case 'N': case 'NE':
-          textBaseline = 'bottom';
-          break
-      }
-
-      ctx.textBaseline = textBaseline;
-      ctx.textAlign = textAlign;
-    }
-
-    prepareContextTextStyle (ctx) {
-      this.prepareContextTextAlignment(ctx);
-      ctx.font = `${this.fontSize}px ${this.fontFamily}`;
-    }
-
-    prepareContextShadow (ctx) {
-      ctx.strokeStyle = this.shadowColor.hex();
-      ctx.lineWidth = this.shadowSize * 2;
-    }
-
-    prepareContextFill (ctx) {
-      ctx.fillStyle = this.color.hex();
-    }
-  }
-
-  class LabelBase extends GraphemeElement {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        text = '',
-        position = new Vec2(0, 0)
-      } = params;
-
-      this.text = text;
-      this.position = position;
-    }
-  }
-
-  // Creates html element of the form
-  // <div class="label label-S" > this.text ... </div>
-  class BasicLabel extends LabelBase {
-    constructor (params = {}) {
-      super(params);
-
-      this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
-    }
-
-    render (renderInfo) {
-      const { text, position } = this;
-      const mode = this.style.mode;
-
-      const labelElement = renderInfo.labelManager.getElement(this);
-
-      this.style.setLabelClass(labelElement);
-
-      labelElement.style.top = position.y + 'px';
-      labelElement.style.left = position.x + 'px';
-
-      const oldLatex = labelElement.getAttribute('latex-content');
-
-      if (mode === 'latex') {
-        // latex-content stores the latex to be rendered to this node, which means
-        // that if it is equal to text, it does not need to be recomputed, only maybe
-        // moved in some direction
-        if (oldLatex !== text) {
-          labelElement.setAttribute('latex-content', text);
-          // eslint-disable-next-line no-undef
-          katex.render(text, labelElement, { throwOnError: false });
-        }
-      } else {
-        if (oldLatex) { labelElement.removeAttribute('latex-content'); }
-
-        labelElement.innerHTML = text;
-      }
-    }
-  }
-
-  class Label2D extends LabelBase {
-    constructor (params) {
-      super(params);
-
-      this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
-    }
-
-    render(info) {
-      this.style.drawText(info.ctx, this.text, this.position.x, this.position.y);
     }
   }
 
@@ -2657,15 +2770,86 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // Allowed plotting modes:
+  // rough = linear sample, no refinement
+  // fine = linear sample with refinement
+
+  class FunctionPlot2D extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      const {
+        plotPoints = "auto"
+      } = params;
+
+      this.plotPoints = plotPoints;
+      this.plottingMode = "rough";
+      this.quality = 1;
+      this.function = (x) => Math.atan(x);
+
+      this.pen = new Pen({color: Colors.TEAL});
+      this.vertices = [];
+
+      this.alwaysUpdate = false;
+
+      this.addEventListener("plotcoordschanged", () => this.update());
+    }
+
+    update() {
+      let vertices = this.vertices = [];
+
+      let transform = this.plot.transform;
+      let simplifiedTransform = transform.getPlotToPixelTransform();
+
+      let plotPoints = this.plotPoints;
+
+      if (plotPoints === "auto") {
+        plotPoints = this.quality * transform.box.width;
+      }
+
+      let min_y = transform.coords.y1 - transform.coords.height / 4;
+      let max_y = transform.coords.y2 + transform.coords.height / 4;
+
+      for (let i = 0; i <= plotPoints; ++i) {
+        let x = i / plotPoints * transform.coords.width + transform.coords.x1;
+        let val = this.function(x);
+
+        if (!isNaN(val) && (val > min_y && val < max_y)) {
+          vertices.push(x, val);
+        } else {
+          vertices.push(NaN, NaN);
+        }
+      }
+
+      this.plot.transform.plotToPixelArr(vertices);
+
+      this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false});
+      this.polyline.update();
+
+      if (this.plottingMode === "rough")
+        return
+    }
+
+    render(info) {
+      super.render(info);
+
+      this.plot.transform.box.clip(info.ctx);
+
+      this.polyline.render(info);
+
+      this.plot.getCanvasBox().clip(info.ctx);
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
+  exports.FunctionPlot2D = FunctionPlot2D;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Label2D = Label2D;
   exports.Plot2D = Plot2D;
   exports.PolylineElement = PolylineElement;
-  exports.TestObject = TestObject;
   exports.TreeElement = TreeElement;
   exports.Vec2 = Vec2;
   exports.boundingBoxTransform = boundingBoxTransform;

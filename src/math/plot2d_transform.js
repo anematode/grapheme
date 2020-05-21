@@ -7,6 +7,8 @@ class Plot2DTransform {
     this.box = params.box ? new BoundingBox(params.box) : new BoundingBox(new Vec2(0,0), this.width, this.height)
     this.coords = params.coords ? new BoundingBox(params.coords) : new BoundingBox(new Vec2(-5, -5), 10, 10)
 
+    this.plot = params.plot
+
     this.preserveAspectRatio = true
     this.aspectRatio = 1 // Preserve the ratio coords.width / box.width
 
@@ -39,6 +41,8 @@ class Plot2DTransform {
 
       this._centerOn(new Vec2(cx, cy))
     }
+
+    this.plot.triggerEvent("plotcoordschanged")
   }
 
   _centerOn(v) {
@@ -54,6 +58,7 @@ class Plot2DTransform {
     }
 
     this.correctAspectRatio()
+    this.plot.triggerEvent("plotcoordschanged")
   }
 
   translate(v, ...args) {
@@ -62,6 +67,8 @@ class Plot2DTransform {
     } else {
       this.translate(new Vec2(v, ...args))
     }
+
+    this.plot.triggerEvent("plotcoordschanged")
   }
 
   zoomOn(factor, v = new Vec2(0,0), ...args) {
@@ -73,6 +80,8 @@ class Plot2DTransform {
 
       this._internal_coincideDragPoints(v, pixel_s)
     }
+
+    this.plot.triggerEvent("plotcoordschanged")
   }
 
   _internal_coincideDragPoints(p1, p2) {

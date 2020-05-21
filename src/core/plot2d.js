@@ -9,7 +9,7 @@ class Plot2D extends InteractiveCanvas {
 
     this.plot = this
 
-    this.transform = new Plot2DTransform()
+    this.transform = new Plot2DTransform({plot: this})
     this.padding = {top: 40, right: 40, left: 40, bottom: 40}
 
     this.enableDrag = true

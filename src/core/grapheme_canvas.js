@@ -39,7 +39,7 @@ class GraphemeCanvas extends GraphemeGroup {
     // Set the default size to 640 by 480 in CSS pixels
     this.setSize(640, 480)
 
-    // Scale text canvas as needed due to DPR
+    // Scale canvas as needed due to DPR
     this.resetCanvasCtxTransform()
 
     this.addEventListener('dprchanged', () => {
