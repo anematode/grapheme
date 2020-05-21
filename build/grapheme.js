@@ -1151,8 +1151,6 @@ var Grapheme = (function (exports) {
     }
 
     render() {
-      this.update();
-
       super.render();
     }
 
@@ -2062,35 +2060,6 @@ var Grapheme = (function (exports) {
     }
   };
 
-  class GridlinesLabelStyle {
-    constructor(params={}) {
-      const {
-        visible = true,
-        locations = ["left"],
-        axis = false,
-        dir = 'x',
-        label_style = new Label2DStyle()
-      } = params;
-
-      this.visible = visible;
-      this.locations = locations;
-      this.axis = axis;
-      this.dir = dir;
-      this.label_style = (label_style instanceof Label2DStyle) ? label_style : new Label2DStyle(label_style);
-
-      this.computed_label_styles = {};
-    }
-
-    computeLabelStyles(plotTransform) {
-      for (let location of this.locations) {
-        let style = new Label2DStyle(this.label_style);
-
-
-      }
-    }
-  }
-
-
   // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
@@ -2098,21 +2067,17 @@ var Grapheme = (function (exports) {
 
       this.strategizer = GridlineStrategizers.Standard;
       this.label_function = (val) => {
-        return `$${val}$`
+        return `${val}`
       };
 
-      this.label_styles = {
-        "x" : {
-          "axis": new GridlinesLabelStyle({axis: true, dir: 'x'}),
-          "major": new GridlinesLabelStyle({dir: 'x'}),
-          "minor": new GridlinesLabelStyle({dir: 'x', visible: false})
-        },
-        "y" : {
-          "axis": new GridlinesLabelStyle({dir: 'y', axis: true}),
-          "major": new GridlinesLabelStyle({dir: 'y'}),
-          "minor": new GridlinesLabelStyle({dir: 'y', visible: false})
-        }
-      };
+      this.label_style = new Label2DStyle();
+
+      this.label_padding = 3;
+
+      this.label_positions = ["top", "left", "bottom", "right"];
+      this.label_types = ["axis", "major"];
+
+      this._labels = [];
 
       this.pens = {
         "axis": new Pen({thickness: 3}),
@@ -2122,7 +2087,6 @@ var Grapheme = (function (exports) {
       };
 
       this._polylines = {};
-      this._labels = {};
     }
 
 
@@ -2131,9 +2095,14 @@ var Grapheme = (function (exports) {
       let plotCoords = transform.coords;
       let plotBox = transform.box;
 
+      this._labels = [];
+
       const markers = this.strategizer(plotCoords.x1, plotCoords.x2, plotBox.width, plotCoords.y1, plotCoords.y2, plotBox.height);
 
       let polylines = this._polylines = {};
+      let computed_label_styles = this.computed_label_styles = {};
+
+      let label_padding = this.label_padding;
 
       for (let marker of markers) {
         if (marker.dir === 'x') {
@@ -2147,6 +2116,34 @@ var Grapheme = (function (exports) {
           let sy = plotBox.y1, ey = plotBox.y2;
 
           polyline.vertices.push(x_coord, sy, x_coord, ey, NaN, NaN);
+
+          if (this.label_types.includes(marker.type)) {
+            if (this.label_positions.includes("top")) {
+              let style = computed_label_styles["top"];
+              if (!style) {
+                style = computed_label_styles["top"] = new Label2DStyle(this.label_style);
+
+                style.dir = "N";
+              }
+
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(x_coord, sy - label_padding)});
+
+              this._labels.push(label);
+            }
+
+            if (this.label_positions.includes("bottom")) {
+              let style = computed_label_styles["bottom"];
+              if (!style) {
+                style = computed_label_styles["bottom"] = new Label2DStyle(this.label_style);
+
+                style.dir = "S";
+              }
+
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(x_coord, ey + label_padding)});
+
+              this._labels.push(label);
+            }
+          }
         } else if (marker.dir === 'y') {
           let polyline = polylines[marker.type];
 
@@ -2158,6 +2155,34 @@ var Grapheme = (function (exports) {
           let sx = plotBox.x1, ex = plotBox.x2;
 
           polyline.vertices.push(sx, y_coord, ex, y_coord, NaN, NaN);
+
+          if (this.label_types.includes(marker.type)) {
+            if (this.label_positions.includes("left")) {
+              let style = computed_label_styles["left"];
+              if (!style) {
+                style = computed_label_styles["left"] = new Label2DStyle(this.label_style);
+
+                style.dir = "W";
+              }
+
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)});
+
+              this._labels.push(label);
+            }
+
+            if (this.label_positions.includes("right")) {
+              let style = computed_label_styles["right"];
+              if (!style) {
+                style = computed_label_styles["right"] = new Label2DStyle(this.label_style);
+
+                style.dir = "E";
+              }
+
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)});
+
+              this._labels.push(label);
+            }
+          }
         }
       }
 
@@ -2174,6 +2199,10 @@ var Grapheme = (function (exports) {
 
           this._polylines[key].render(info);
         }
+      }
+
+      for (let label of this._labels) {
+        label.render(info);
       }
     }
   }
@@ -2664,6 +2693,8 @@ var Grapheme = (function (exports) {
       let {x_m, y_m, x_b, y_b} = simpleTransform;
 
       ctx.fillStyle="green";
+
+      ctx.save();
       this.plot.transform.box.clip(ctx);
 
       for (let i = 0; i < this.width; ++i) {
@@ -2677,7 +2708,7 @@ var Grapheme = (function (exports) {
         }
       }
 
-      this.plot.getCanvasBox().clip(ctx);
+      ctx.restore();
     }
   }
 
@@ -2784,7 +2815,7 @@ var Grapheme = (function (exports) {
 
       this.plotPoints = plotPoints;
       this.plottingMode = "rough";
-      this.quality = 1;
+      this.quality = 0.5;
       this.function = (x) => Math.atan(x);
 
       this.pen = new Pen({color: Colors.TEAL});
@@ -2833,11 +2864,13 @@ var Grapheme = (function (exports) {
     render(info) {
       super.render(info);
 
+      info.ctx.save();
+
       this.plot.transform.box.clip(info.ctx);
 
       this.polyline.render(info);
 
-      this.plot.getCanvasBox().clip(info.ctx);
+      info.ctx.restore();
     }
   }
 

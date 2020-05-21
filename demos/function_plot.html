@@ -28,13 +28,14 @@
   let gridlines = new Grapheme.Gridlines()
   plot.add(gridlines)
 
-  let functions = [Math.acos, Math.acosh, Math.sin, Math.cos, Math.tan, Math.sqrt]
+  let functions = [Math.acos, Math.acosh, Math.tan, Math.tanh, Math.atanh, Math.sqrt]
 
   for (let function_ of functions) {
     let function_plot = new Grapheme.FunctionPlot2D()
 
     function_plot.function = function_
     plot.add(function_plot)
+
     function_plot.update()
   }
 

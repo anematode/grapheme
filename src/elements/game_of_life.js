@@ -75,6 +75,8 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
     let {x_m, y_m, x_b, y_b} = simpleTransform
 
     ctx.fillStyle="green"
+
+    ctx.save()
     this.plot.transform.box.clip(ctx)
 
     for (let i = 0; i < this.width; ++i) {
@@ -88,7 +90,7 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
       }
     }
 
-    this.plot.getCanvasBox().clip(ctx)
+    ctx.restore()
   }
 }
 

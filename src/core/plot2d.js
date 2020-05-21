@@ -50,8 +50,6 @@ class Plot2D extends InteractiveCanvas {
   }
 
   render() {
-    this.update()
-
     super.render()
   }
 

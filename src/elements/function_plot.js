@@ -19,7 +19,7 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = "rough"
-    this.quality = 1
+    this.quality = 0.5
     this.function = (x) => Math.atan(x)
 
     this.pen = new Pen({color: Colors.TEAL})
@@ -74,11 +74,13 @@ class FunctionPlot2D extends GraphemeElement {
   render(info) {
     super.render(info)
 
+    info.ctx.save()
+
     this.plot.transform.box.clip(info.ctx)
 
     this.polyline.render(info)
 
-    this.plot.getCanvasBox().clip(info.ctx)
+    info.ctx.restore()
   }
 }
 
