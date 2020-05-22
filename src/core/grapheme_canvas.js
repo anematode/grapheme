@@ -2,6 +2,7 @@ import { Group as GraphemeGroup } from './grapheme_group'
 import { Element as GraphemeElement } from './grapheme_element'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
+import { Context as GraphemeContext } from './grapheme_context'
 
 /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
 class GraphemeCanvas extends GraphemeGroup {
@@ -9,10 +10,17 @@ class GraphemeCanvas extends GraphemeGroup {
    * Creates a GraphemeCanvas.
    *
    * @constructor
-   * @param params {Object} The parameters object.
+   * @param context {GraphemeContext}
    */
-  constructor (params={}) {
-    super(params)
+  constructor (context) {
+    super()
+
+    if (!(context instanceof GraphemeContext))
+      throw new Error("Given context not instance of Grapheme.Context")
+
+    this.context = context
+
+    this.context.add(this)
 
     // Element to be put into the webpage
     /** @public */ this.domElement = document.createElement('div')
@@ -39,6 +47,10 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Set the default size to 640 by 480 in CSS pixels
     this.setSize(640, 480)
+
+    this.addEventListener("dprchanged", () => {
+      this.setSize(this.width, this.height)
+    })
   }
 
   /**
@@ -125,6 +137,9 @@ class GraphemeCanvas extends GraphemeGroup {
     // Destroy the DOM element
     this.domElement.remove()
 
+    // Remove this canvas from context
+    this.context.remove(this)
+
     // Destroy the elements too, if desired
     super.destroy()
 
@@ -139,7 +154,7 @@ class GraphemeCanvas extends GraphemeGroup {
    * Clear the canvas
    */
   clear () {
-    this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+    this.ctx.clearRect(0, 0, this.canvasWidth / utils.dpr, this.canvasHeight / utils.dpr)
   }
 
   /**

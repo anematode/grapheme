@@ -110,7 +110,7 @@ var Grapheme = (function (exports) {
       dpr = window.devicePixelRatio;
 
       // Tell the babies that the device pixel ratio has changed
-      CONTEXTS.forEach(context => context.onDPRChanged());
+      CONTEXTS.forEach(context => context.triggerEvent("dprchanged"));
     }
   }
 
@@ -249,12 +249,21 @@ var Grapheme = (function (exports) {
     return number + ""; // always return a string
   }
 
+  function removeContext(context) {
+    let index = this.CONTEXTS.indexOf(context);
+
+    if (index !== -1) {
+      this.CONTEXTS.splice(index, 1);
+    }
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     zeroFill: zeroFill,
     generateUUID: generateUUID,
     createShaderFromSource: createShaderFromSource,
     createGLProgram: createGLProgram,
     CONTEXTS: CONTEXTS,
+    removeContext: removeContext,
     mod: mod,
     get dpr () { return dpr; },
     select: select,
@@ -275,46 +284,53 @@ var Grapheme = (function (exports) {
     roundToCanvasPixel: roundToCanvasPixel
   });
 
+  /** @class GraphemeElement A component of Grapheme that supports a update() function, which prepares it for the rendering
+   * stage, and a render() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
+   * elements together. */
   class GraphemeElement {
     constructor ({
       precedence = 0,
-      visible = true,
       alwaysUpdate = true
     } = {}) {
-      // precedence is a number from -Infinity to Infinity.
-      this.precedence = precedence;
+      // Used to sort which element is drawn first. A lower precedence means it will be drawn first and appear on the bottom
+      /** @public */ this.precedence = precedence;
 
       // The parent of this element
-      this.parent = null;
+      /** @public */ this.parent = null;
 
       // The plot this element belongs to
-      this.plot = null;
+      /** @public */ this.plot = null;
 
-      // Whether to always update geometries when render is called
-      this.alwaysUpdate = alwaysUpdate;
+      // Whether to always update when render is called
+      /** @public */ this.alwaysUpdate = alwaysUpdate;
 
       // Custom event listeners
-      this.eventListeners = {};
+      /** @private */ this.eventListeners = {};
 
       // Children of this element
-      this.children = [];
+      /** @public */ this.children = [];
     }
 
-    update () {
-
-    }
-
-    triggerEvent (type, evt) {
+    /**
+     * Trigger an event. If it returns true, some event listener returned true, which will stop the propagation of the event.
+     * @param type The name of the event, e.g. "plotcoordschanged"
+     * @param event The event itself, either a default event or a custom event.
+     * @returns {boolean} Whether some event returned true.
+     */
+    triggerEvent (type, event) {
       this.sortChildren();
 
+      // Trigger event in all children
       for (let i = 0; i < this.children.length; ++i) {
-        if (this.children[i].triggerEvent(type, evt)) {
+        if (this.children[i].triggerEvent(type, event)) {
+          // Stop if event stopped propagation
           return true
         }
       }
 
       if (this.eventListeners[type]) {
-        let res = this.eventListeners[type].every(listener => listener(evt));
+        // Stop if event stopped propagation
+        let res = this.eventListeners[type].some(listener => listener(event));
         if (res)
           return true
       }
@@ -322,25 +338,39 @@ var Grapheme = (function (exports) {
       return false
     }
 
+    /**
+     * Sort the children of this GraphemeElement
+     */
     sortChildren () {
       // Sort the children by their precedence value
       this.children.sort((x, y) => x.precedence - y.precedence);
     }
 
+    /**
+     * Render this element to a plot.
+     * @param info The rendering info
+     * @param info.ctx CanvasRenderingContext2D to draw to
+     * @param info.plot The plot we are drawing onto
+     * @param info.labelManager The LabelManager of the plot
+     */
     render (info) {
+      // Sort children
       this.sortChildren();
 
-      if (this.alwaysUpdate) {
+      // Update if needed
+      if (this.alwaysUpdate)
         this.update();
-      }
 
+      // Render all children
       this.children.forEach((child) => child.render(info));
     }
 
+    // Whether element is a direct child of this
     isChild (element) {
       return this.hasChild(element, false)
     }
 
+    // Whether element is a child (potentially recursive) of this
     hasChild (element, recursive = true) {
       if (recursive) {
         if (this.hasChild(element, false)) return true
@@ -351,26 +381,39 @@ var Grapheme = (function (exports) {
       return (index !== -1)
     }
 
+    /** Append element(s) to this
+     *
+     * @param element Element to remove
+     * @param elements Parameter pack, elements to remove
+     */
     add (element, ...elements) {
+      // Make sure this operation is valid
       checkType(element, GraphemeElement);
 
-      if (element.parent !== null) {
-        throw new Error('Element is already a child')
-      }
+      if (element.parent !== null)
+        throw new Error('Element is already a child of some element.')
 
-      assert(!this.hasChild(element, true), 'Element is already a child of this group...');
+      if (this.hasChild(element, true))
+        throw new Error('Element is already a child of this group.')
 
+      // Set element parent and plot
       element.parent = this;
       element.plot = this.plot;
+
+      // Add element to children
       this.children.push(element);
 
+      // Potentially recurse
       if (elements.length > 0) {
         this.add(...elements);
       }
-
-      this.childrenSorted = false;
     }
 
+    /** Remove elements from this
+     *
+     * @param element Element to remove
+     * @param elements Parameter pack, elements to remove
+     */
     remove (element, ...elements) {
       checkType(element, GraphemeElement);
       if (this.hasChild(element, false)) {
@@ -388,13 +431,25 @@ var Grapheme = (function (exports) {
       }
     }
 
+    /**
+     * Destroy this element
+     */
     destroy () {
+      // Destroy all children
       this.children.forEach((child) => child.destroy());
 
+      // Remove this element from its parent
       if (this.parent)
         this.parent.remove(this);
+
+      this.plot = null;
     }
 
+    /**
+     * Add event listener to this element
+     * @param type Event to listen for
+     * @param callback Function to call
+     */
     addEventListener (type, callback) {
       const listenerArray = this.eventListeners[type];
       if (!listenerArray) {
@@ -403,8 +458,31 @@ var Grapheme = (function (exports) {
         listenerArray.push(callback);
       }
     }
+
+    /**
+     * Remove event listener from this element
+     * @param type Event to listen for
+     * @param callback Function to call
+     */
+    removeEventListener(type, callback) {
+      const listenerArray = this.eventListeners[type];
+      if (listenerArray) {
+        let index = listenerArray.indexOf(callback);
+        if (index !== -1) {
+          listenerArray.splice(index, 1);
+        }
+      }
+    }
+
+    /**
+     * Function called to update for rendering. Empty in case child classes don't define it.
+     */
+    update () {
+
+    }
   }
 
+  /** @class Used semantically to group elements */
   class GraphemeGroup extends GraphemeElement {
     constructor (params = {}) {
       super(params);
@@ -454,16 +532,92 @@ var Grapheme = (function (exports) {
     }
   }
 
+  /** @class GraphemeContext Context for plots to live in. Allows WebGL rendering, variables, etc. */
+  class GraphemeContext {
+    /**
+     * Construct a new GraphemeContext
+     */
+    constructor() {
+      this.canvases = [];
+
+      // Add this to the list of all extant contexts
+      CONTEXTS.push(this);
+    }
+
+    /**
+     * Add canvas to this context
+     * @param canvas Canvas to add
+     */
+    add(canvas) {
+      if (canvas.context !== context)
+        throw new Error("Canvas already part of a context")
+      if (this.isChild(canvas))
+        throw new Error("Canvas is already added to this context")
+
+      this.canvases.push(canvas);
+    }
+
+    /**
+     * Remove canvas from this context
+     * @param canvas Canvas to remove
+     */
+    remove(canvas) {
+      let index = this.canvases.indexOf(canvas);
+
+      if (index !== -1) {
+        this.canvases.splice(index, 1);
+      }
+    }
+
+    /**
+     * Whether canvas is a child of this context
+     * @param canvas Canvas to test
+     * @returns {boolean} Whether canvas is a child
+     */
+    isChild(canvas) {
+      return this.canvases.indexOf(canvas) !== -1
+    }
+
+    /**
+     * Trigger an event on all child canvases
+     * @param type
+     * @param event
+     * @returns {boolean}
+     */
+    triggerEvent(type, event) {
+      // Trigger event in all canvases
+      for (let i = 0; i < this.canvases.length; ++i) {
+        if (this.canvases[i].triggerEvent(type, event)) {
+          // Stop if event stopped propagation
+          return true
+        }
+      }
+
+      return false
+    }
+
+    destroy() {
+      removeContext(this);
+    }
+  }
+
   /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
   class GraphemeCanvas extends GraphemeGroup {
     /**
      * Creates a GraphemeCanvas.
      *
      * @constructor
-     * @param params {Object} The parameters object.
+     * @param context {GraphemeContext}
      */
-    constructor (params={}) {
-      super(params);
+    constructor (context) {
+      super();
+
+      if (!(context instanceof GraphemeContext))
+        throw new Error("Given context not instance of Grapheme.Context")
+
+      this.context = context;
+
+      this.context.add(this);
 
       // Element to be put into the webpage
       /** @public */ this.domElement = document.createElement('div');
@@ -490,6 +644,10 @@ var Grapheme = (function (exports) {
 
       // Set the default size to 640 by 480 in CSS pixels
       this.setSize(640, 480);
+
+      this.addEventListener("dprchanged", () => {
+        this.setSize(this.width, this.height);
+      });
     }
 
     /**
@@ -576,6 +734,9 @@ var Grapheme = (function (exports) {
       // Destroy the DOM element
       this.domElement.remove();
 
+      // Remove this canvas from context
+      this.context.remove(this);
+
       // Destroy the elements too, if desired
       super.destroy();
 
@@ -590,7 +751,7 @@ var Grapheme = (function (exports) {
      * Clear the canvas
      */
     clear () {
-      this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+      this.ctx.clearRect(0, 0, this.canvasWidth / dpr, this.canvasHeight / dpr);
     }
 
     /**
@@ -711,29 +872,42 @@ var Grapheme = (function (exports) {
   }
   const Origin = new Vec2(0,0);
 
+  // List of events to listen for
   const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"];
 
+  /** @class Canvas that supports interactivity events.
+   * The callbacks are given above, and the events have the following structure:
+   * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
+   */
   class InteractiveCanvas extends GraphemeCanvas {
     constructor(params={}) {
       super(params);
 
-      this.interactivityListeners = {};
-      this.interactivityEnabled = true;
+      const {
+        interactivityEnabled = true
+      } = params;
+
+      /** @private */ this.interactivityListeners = {};
+
+      this.interactivityEnabled = interactivityEnabled;
     }
 
     get interactivityEnabled() {
-      return this._interactivityEnabled
+      return Object.keys(this.interactivityListeners).length !== 0
     }
 
-    set interactivityEnabled(v) {
-      this._interactivityEnabled = v;
-
-      if (v) {
+    set interactivityEnabled(enable) {
+      if (enable) {
+        // Add interactivity listeners
         EVENTS.forEach(evtName => {
           let callback = (evt) => {
+            // Calculate where the click is
             let rect = this.domElement.getBoundingClientRect();
 
-            this.triggerEvent(evtName, {pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top), rawEvent: evt});
+            this.triggerEvent(evtName, {
+              pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top),
+              rawEvent: evt
+            });
           };
 
           this.interactivityListeners[evtName] = callback;
@@ -741,9 +915,12 @@ var Grapheme = (function (exports) {
           this.domElement.addEventListener(evtName, callback);
         });
       } else {
+        // Remove all interactivity listeners
         EVENTS.forEach(evtName => {
           this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
         });
+
+        this.interactivityListeners = {};
       }
     }
   }
@@ -2880,10 +3057,12 @@ var Grapheme = (function (exports) {
 
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
+  exports.Context = GraphemeContext;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
+  exports.Group = GraphemeGroup;
   exports.Label2D = Label2D;
   exports.Plot2D = Plot2D;
   exports.PolylineElement = PolylineElement;

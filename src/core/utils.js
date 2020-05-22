@@ -107,7 +107,7 @@ function updateDPR () {
     dpr = window.devicePixelRatio
 
     // Tell the babies that the device pixel ratio has changed
-    CONTEXTS.forEach(context => context.onDPRChanged())
+    CONTEXTS.forEach(context => context.triggerEvent("dprchanged"))
   }
 }
 
@@ -246,7 +246,15 @@ function zeroFill(number, width) {
   return number + ""; // always return a string
 }
 
+function removeContext(context) {
+  let index = this.CONTEXTS.indexOf(context)
+
+  if (index !== -1) {
+    this.CONTEXTS.splice(index, 1)
+  }
+}
+
 export {
-  zeroFill, generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+  zeroFill, generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, removeContext, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
   isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }

@@ -1,6 +1,6 @@
 import { Element as GraphemeElement } from './grapheme_element'
-import * as utils from './utils'
 
+/** @class Used semantically to group elements */
 class GraphemeGroup extends GraphemeElement {
   constructor (params = {}) {
     super(params)

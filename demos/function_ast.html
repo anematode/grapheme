@@ -18,7 +18,9 @@
 
 <script>
 
-  let plot = new Grapheme.Plot2D()
+  let context = new Grapheme.Context()
+  let plot = new Grapheme.Plot2D(context)
+
   plot.setSize(window.innerWidth, window.innerHeight);
 
   document.body.appendChild(plot.domElement);
