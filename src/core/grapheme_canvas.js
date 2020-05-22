@@ -138,7 +138,7 @@ class GraphemeCanvas extends GraphemeGroup {
     this.domElement.remove()
 
     // Remove this canvas from context
-    this.context.remove(this)
+    this.universe.remove(this)
 
     // Destroy the elements too, if desired
     super.destroy()

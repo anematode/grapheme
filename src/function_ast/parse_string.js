@@ -192,14 +192,15 @@ function check_valid(string, tokens) {
 }
 
 function find_paren_indices(children) {
-  let start_paren_index;
+  let start_paren_index = -1;
 
   for (let i = 0; i < children.length; ++i) {
     let child = children[i]
 
     if (child.paren === '(' || child.paren === '[')
       start_paren_index = i
-    if ((child.paren === ')' || child.paren === ']') && start_paren_index)
+
+    if ((child.paren === ')' || child.paren === ']') && start_paren_index !== -1)
       return [start_paren_index, i]
   }
 }
@@ -231,6 +232,7 @@ function parse_tokens(tokens) {
         return
 
       let indices = find_paren_indices(child.children)
+
 
       if (indices) {
         parens_remaining = true

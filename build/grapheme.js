@@ -735,7 +735,7 @@ var Grapheme = (function (exports) {
       this.domElement.remove();
 
       // Remove this canvas from context
-      this.context.remove(this);
+      this.universe.remove(this);
 
       // Destroy the elements too, if desired
       super.destroy();
@@ -2730,14 +2730,15 @@ var Grapheme = (function (exports) {
   }
 
   function find_paren_indices(children) {
-    let start_paren_index;
+    let start_paren_index = -1;
 
     for (let i = 0; i < children.length; ++i) {
       let child = children[i];
 
       if (child.paren === '(' || child.paren === '[')
         start_paren_index = i;
-      if ((child.paren === ')' || child.paren === ']') && start_paren_index)
+
+      if ((child.paren === ')' || child.paren === ']') && start_paren_index !== -1)
         return [start_paren_index, i]
     }
   }
@@ -2769,6 +2770,7 @@ var Grapheme = (function (exports) {
           return
 
         let indices = find_paren_indices(child.children);
+
 
         if (indices) {
           parens_remaining = true;
