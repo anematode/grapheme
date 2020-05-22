@@ -29,8 +29,6 @@ function convert_char(c) {
 
 /* Convert an integer into its exponent form (of Unicode characters) */
 function exponentify(integer) {
-  assert(isInteger(integer), "needs to be an integer");
-
   let stringi = integer + '';
   let out = '';
 
@@ -51,6 +49,12 @@ function beautifyFloat(f, prec=12) {
     return strf;
   }
 }
+
+function isApproxEqual(v, w, eps=1e-5) {
+  return Math.abs(v - w) < eps;
+}
+
+const CDOT = String.fromCharCode(183);
 
 // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
 class Gridlines extends GraphemeElement {
@@ -78,8 +82,8 @@ class Gridlines extends GraphemeElement {
     }
 
     this.label_positions = ["top", "left", "bottom", "right"]
-    this.label_types = ["axis", "major", "minor"]
-    this.label_style = new Label2DStyle()
+    this.label_types = ["axis", "major"]
+    this.label_style = new Label2DStyle({fontSize: 20})
     this.label_padding = 3
 
     this._labels = []

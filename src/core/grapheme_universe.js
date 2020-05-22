@@ -1,4 +1,5 @@
 import * as utils from "./utils"
+import { GLResourceManager } from './gl_manager'
 
 /** @class GraphemeUniverse universe for plots to live in. Allows WebGL rendering, variables, etc. */
 class GraphemeUniverse {
@@ -10,6 +11,52 @@ class GraphemeUniverse {
 
     // Add this to the list of all extant universes
     utils.Universes.push(this)
+
+    this.glCanvas = new OffscreenCanvas(1,1) || document.createElement("canvas")
+    this.glCtx = this.glCanvas.getContext("webgl")
+    this.glManager = new GLResourceManager(this.glCtx)
+
+    if (!this.glCtx)
+      throw new Error("Grapheme needs WebGL to run! Sorry.")
+  }
+
+  clear() {
+    let gl = this.glCtx
+
+    gl.clearColor(0,0,0,0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+  }
+
+  copyToCanvas(graphemeCanvas) {
+    graphemeCanvas.ctx.drawImage(this.glCanvas, 0, 0)
+  }
+
+  _setSize(width, height) {
+    const glCanvas = this.glCanvas
+
+    if (width !== glCanvas.width) {
+      glCanvas.width = width
+    }
+
+    if (height !== glCanvas.height) {
+      glCanvas.height = height
+    }
+  }
+
+  expandToFit() {
+    let maxWidth = 1
+    let maxHeight = 1
+
+    for (let i = 0; i < this.canvases.length; ++i) {
+      let canvas = this.canvases[i]
+
+      if (canvas.width > maxWidth)
+        maxWidth = canvas.width
+      if (canvas.height > maxHeight)
+        maxHeight = canvas.height
+    }
+
+    this._setSize(maxWidth, maxHeight)
   }
 
   /**

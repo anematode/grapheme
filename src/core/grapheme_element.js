@@ -70,6 +70,9 @@ class GraphemeElement {
    * @param info.labelManager The LabelManager of the plot
    */
   render (info) {
+    if (info.beforeNormalRender)
+      info.beforeNormalRender()
+
     // Sort children
     this.sortChildren()
 

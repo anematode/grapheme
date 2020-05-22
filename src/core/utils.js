@@ -203,8 +203,8 @@ function deleteBuffersNamed (bufferNames) {
     return
   }
 
-  Universes.forEach((context) => {
-    context.glManager.deleteBuffer(bufferNames)
+  Universes.forEach((universe) => {
+    universe.glManager.deleteBuffer(bufferNames)
   })
 }
 

@@ -161,14 +161,31 @@ class GraphemeCanvas extends GraphemeGroup {
    * Render this GraphemeCanvas
    */
   render () {
+    this.universe.expandToFit()
+
     const { labelManager, ctx } = this
     const plot = this
+
+    let needsWebGLCopy = false
+
+    const beforeNormalRender = () => {
+      if (needsWebGLCopy) {
+        this.universe.copyToCanvas(this)
+
+        needsWebGLCopy = false
+        this.universe.clear()
+      }
+    }
+
+    const beforeWebGLRender = () => {
+      needsWebGLCopy = true
+    }
 
     // Set ID of this render
     labelManager.currentRenderID = utils.getRenderID()
 
     // Info to be given to rendered elements
-    const info = { labelManager, ctx, plot }
+    const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe }
 
     // Clear the canvas
     this.clear()
@@ -178,6 +195,8 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Render all children
     super.render(info)
+
+    beforeNormalRender()
 
     // Get rid of old labels
     labelManager.cleanOldRenders()

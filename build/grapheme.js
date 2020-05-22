@@ -21,13 +21,13 @@ var Grapheme = (function (exports) {
   }
 
   // Assert that a statement is true, and throw an error if it's not
-  function assert$1 (statement, error = 'Unknown error') {
+  function assert (statement, error = 'Unknown error') {
     if (!statement) throw new Error(error)
   }
 
   // Check that an object is of a given type
   function checkType (obj, type) {
-    assert$1(obj instanceof type, `Object must be instance of ${type}`);
+    assert(obj instanceof type, `Object must be instance of ${type}`);
   }
 
   // Check if two objects are... deeply equal
@@ -43,7 +43,7 @@ var Grapheme = (function (exports) {
 
   // The following functions are self-explanatory.
 
-  function isInteger$1 (z) {
+  function isInteger (z) {
     return Number.isInteger(z) // didn't know about this lol
   }
 
@@ -94,7 +94,7 @@ var Grapheme = (function (exports) {
   }
 
   // Check if two numbers are within epsilon of each other
-  function isApproxEqual$1 (v, w, eps = 1e-5) {
+  function isApproxEqual (v, w, eps = 1e-5) {
     return Math.abs(v - w) < eps
   }
 
@@ -206,8 +206,8 @@ var Grapheme = (function (exports) {
       return
     }
 
-    Universes.forEach((context) => {
-      context.glManager.deleteBuffer(bufferNames);
+    Universes.forEach((universe) => {
+      universe.glManager.deleteBuffer(bufferNames);
     });
   }
 
@@ -267,17 +267,17 @@ var Grapheme = (function (exports) {
     mod: mod,
     get dpr () { return dpr; },
     select: select,
-    assert: assert$1,
+    assert: assert,
     checkType: checkType,
     deepEquals: deepEquals,
-    isInteger: isInteger$1,
+    isInteger: isInteger,
     isNonnegativeInteger: isNonnegativeInteger,
     isNonpositiveInteger: isNonpositiveInteger,
     isNegativeInteger: isNegativeInteger,
     isPositiveInteger: isPositiveInteger,
     isTypedArray: isTypedArray,
     mergeDeep: mergeDeep,
-    isApproxEqual: isApproxEqual$1,
+    isApproxEqual: isApproxEqual,
     deleteBuffersNamed: deleteBuffersNamed,
     getRenderID: getRenderID,
     flattenVectors: flattenVectors,
@@ -354,6 +354,9 @@ var Grapheme = (function (exports) {
      * @param info.labelManager The LabelManager of the plot
      */
     render (info) {
+      if (info.beforeNormalRender)
+        info.beforeNormalRender();
+
       // Sort children
       this.sortChildren();
 
@@ -532,6 +535,113 @@ var Grapheme = (function (exports) {
     }
   }
 
+  /**
+   The GLResourceManager stores GL resources on a per-context basis. This allows the
+   separation of elements and their drawing buffers in a relatively complete way.
+   It is given a gl context to operate on, and creates programs in manager.programs
+   and buffers in manager.buffers. programs and buffers are simply key-value pairs
+   which objects can create (and destroy) as they please.
+   It also (TODO) does some convenient gl manipulations, like setting uniforms and attrib
+   arrays... because I'm sick of writing that so much
+   */
+  class GLResourceManager {
+    // Compiled programs and created buffers
+
+    constructor (gl) {
+      this.gl = gl;
+      this.programs = {};
+      this.buffers = {};
+    }
+
+    // Compile a program and store it in this.programs
+    compileProgram (programName, vertexShaderSource, fragmentShaderSource,
+                    vertexAttributeNames = [], uniformNames = []) {
+      if (this.hasProgram(programName)) {
+        // if this program name is already taken, delete the old one
+        this.deleteProgram(programName);
+      }
+
+      const { gl } = this;
+
+      // The actual gl program itself
+      const glProgram = createGLProgram(gl,
+        createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
+        createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
+
+      // pairs of uniform names and their respective locations
+      const uniforms = {};
+      for (let i = 0; i < uniformNames.length; ++i) {
+        const uniformName = uniformNames[i];
+
+        uniforms[uniformName] = gl.getUniformLocation(glProgram, uniformName);
+      }
+
+      // pairs of vertex attribute names and their respective locations
+      const vertexAttribs = {};
+      for (let i = 0; i < vertexAttributeNames.length; ++i) {
+        const vertexAttribName = vertexAttributeNames[i];
+
+        vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
+      }
+
+      const programInfo = { program: glProgram, uniforms, attribs: vertexAttribs };
+      this.programs[programName] = programInfo;
+    }
+
+    // Return whether this has a program with that name
+    hasProgram (programName) {
+      return !!this.programs[programName]
+    }
+
+    // Retrieve a program to use
+    getProgram (programName) {
+      return this.programs[programName]
+    }
+
+    // Delete a program
+    deleteProgram (programName) {
+      if (!this.hasProgram(programName)) return
+
+      {
+        const programInfo = this.programs[programName];
+        this.gl.deleteProgram(programInfo.program);
+      }
+
+      // Remove the key from this.programs
+      delete this.programs[programName];
+    }
+
+    // Create a buffer with the given name
+    createBuffer (bufferName) {
+      if (this.hasBuffer(bufferName)) return
+
+      const { gl } = this;
+
+      // Create a new buffer
+      const buffer = gl.createBuffer();
+
+      this.buffers[bufferName] = buffer;
+    }
+
+    hasBuffer (bufferName) {
+      return !!this.buffers[bufferName]
+    }
+
+    getBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName);
+      return this.buffers[bufferName]
+    }
+
+    deleteBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) return
+      const buffer = this.getBuffer(bufferName);
+
+      // Delete the buffer from GL memory
+      this.gl.deleteBuffer(buffer);
+      delete this.buffers[bufferName];
+    }
+  }
+
   /** @class GraphemeUniverse universe for plots to live in. Allows WebGL rendering, variables, etc. */
   class GraphemeUniverse {
     /**
@@ -542,6 +652,52 @@ var Grapheme = (function (exports) {
 
       // Add this to the list of all extant universes
       Universes.push(this);
+
+      this.glCanvas = new OffscreenCanvas(1,1) || document.createElement("canvas");
+      this.glCtx = this.glCanvas.getContext("webgl");
+      this.glManager = new GLResourceManager(this.glCtx);
+
+      if (!this.glCtx)
+        throw new Error("Grapheme needs WebGL to run! Sorry.")
+    }
+
+    clear() {
+      let gl = this.glCtx;
+
+      gl.clearColor(0,0,0,0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    copyToCanvas(graphemeCanvas) {
+      graphemeCanvas.ctx.drawImage(this.glCanvas, 0, 0);
+    }
+
+    _setSize(width, height) {
+      const glCanvas = this.glCanvas;
+
+      if (width !== glCanvas.width) {
+        glCanvas.width = width;
+      }
+
+      if (height !== glCanvas.height) {
+        glCanvas.height = height;
+      }
+    }
+
+    expandToFit() {
+      let maxWidth = 1;
+      let maxHeight = 1;
+
+      for (let i = 0; i < this.canvases.length; ++i) {
+        let canvas = this.canvases[i];
+
+        if (canvas.width > maxWidth)
+          maxWidth = canvas.width;
+        if (canvas.height > maxHeight)
+          maxHeight = canvas.height;
+      }
+
+      this._setSize(maxWidth, maxHeight);
     }
 
     /**
@@ -710,7 +866,7 @@ var Grapheme = (function (exports) {
     set canvasWidth (width) {
       // Round it to an integer and make sure it's in a reasonable range
       width = Math.round(width);
-      assert$1(isPositiveInteger(width) && width < 16384, 'Canvas width must be in range [1,16383].');
+      assert(isPositiveInteger(width) && width < 16384, 'Canvas width must be in range [1,16383].');
 
       this.canvas.width = width;
     }
@@ -722,7 +878,7 @@ var Grapheme = (function (exports) {
      */
     set canvasHeight (height) {
       height = Math.round(height);
-      assert$1(isPositiveInteger(height) && height < 16384, 'Canvas height must be in range [1,16383].');
+      assert(isPositiveInteger(height) && height < 16384, 'Canvas height must be in range [1,16383].');
 
       this.canvas.height = height;
     }
@@ -758,14 +914,31 @@ var Grapheme = (function (exports) {
      * Render this GraphemeCanvas
      */
     render () {
+      this.universe.expandToFit();
+
       const { labelManager, ctx } = this;
       const plot = this;
+
+      let needsWebGLCopy = false;
+
+      const beforeNormalRender = () => {
+        if (needsWebGLCopy) {
+          this.universe.copyToCanvas(this);
+
+          needsWebGLCopy = false;
+          this.universe.clear();
+        }
+      };
+
+      const beforeWebGLRender = () => {
+        needsWebGLCopy = true;
+      };
 
       // Set ID of this render
       labelManager.currentRenderID = getRenderID();
 
       // Info to be given to rendered elements
-      const info = { labelManager, ctx, plot };
+      const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe };
 
       // Clear the canvas
       this.clear();
@@ -775,6 +948,8 @@ var Grapheme = (function (exports) {
 
       // Render all children
       super.render(info);
+
+      beforeNormalRender();
 
       // Get rid of old labels
       labelManager.cleanOldRenders();
@@ -1364,7 +1539,7 @@ var Grapheme = (function (exports) {
       this.b = b;
       this.a = a;
 
-      assert$1([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
+      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
     }
 
     rounded () {
@@ -2343,8 +2518,6 @@ var Grapheme = (function (exports) {
 
   /* Convert an integer into its exponent form (of Unicode characters) */
   function exponentify(integer) {
-    assert(isInteger(integer), "needs to be an integer");
-
     let stringi = integer + '';
     let out = '';
 
@@ -2366,6 +2539,12 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function isApproxEqual$1(v, w, eps=1e-5) {
+    return Math.abs(v - w) < eps;
+  }
+
+  const CDOT = String.fromCharCode(183);
+
   // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
@@ -2383,7 +2562,7 @@ var Grapheme = (function (exports) {
           let exponent = Math.floor(Math.log10(Math.abs(x)));
           let mantissa = x / (10 ** exponent);
 
-          let prefix = (isApproxEqual(mantissa,1) ? '' :
+          let prefix = (isApproxEqual$1(mantissa,1) ? '' :
             (beautifyFloat(mantissa, 8) + CDOT));
           let exponent_suffix = "10" + exponentify(exponent);
 
@@ -2392,8 +2571,8 @@ var Grapheme = (function (exports) {
       };
 
       this.label_positions = ["top", "left", "bottom", "right"];
-      this.label_types = ["axis", "major", "minor"];
-      this.label_style = new Label2DStyle();
+      this.label_types = ["axis", "major"];
+      this.label_style = new Label2DStyle({fontSize: 20});
       this.label_padding = 3;
 
       this._labels = [];
