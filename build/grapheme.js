@@ -2012,37 +2012,7 @@ var Grapheme = (function (exports) {
       y3 = +y3;
       threshold = +threshold;
 
-      var angle = 0.0, nan_1 = 0, nan_2 = 0;
-
-      nan_1 = x1 != x1;
-      nan_1 = (nan_1 + (y1 != y1)) | 0;
-
-      if (nan_1) {
-        if (x2 == x2) {
-          if (y2 == y2) {
-            if (x3 == x3) {
-              if (y3 == y3) {
-                return 1
-              }
-            }
-          }
-        }
-      }
-
-      nan_2 = x3 != x3;
-      nan_2 = (nan_2 + (y3 != y3)) | 0;
-
-      if (nan_2) {
-        if (x2 == x2) {
-          if (y2 == y2) {
-            if (x1 == x1) {
-              if (y1 == y1) {
-                return 2
-              }
-            }
-          }
-        }
-      }
+      var angle = 0.0;
 
       angle = +angle_between(x2, y2, x1, y1, x3, y3);
       angle = +min(abs(angle-PI), abs(angle+PI));
