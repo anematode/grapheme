@@ -29,7 +29,12 @@
   let gridlines = new Grapheme.Gridlines()
   plot.add(gridlines)
 
-  let functions = [Math.acos, Math.acosh, Math.tan, Math.tanh, Math.atanh, Math.sqrt]
+  let verts = [0.942841178259826, -17.495112207625375, 1.001613766028323, 619.6685160358302, 1.06038635379682, 16.560032807489407, 1.119158941565317, 8.392152421493694]
+
+  let angles = Grapheme.angles_between(verts)
+
+
+  let functions = [ x => Math.tan(x) ]
 
   for (let function_ of functions) {
     let function_plot = new Grapheme.FunctionPlot2D()

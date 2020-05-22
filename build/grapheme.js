@@ -1856,8 +1856,10 @@ var Grapheme = (function (exports) {
 
     var sqrt = stdlib.Math.sqrt;
     var abs = stdlib.Math.abs;
+    var atan2 = stdlib.Math.atan2;
     var values = new stdlib.Float64Array(buffer);
     var Infinity = stdlib.Infinity;
+    var PI = stdlib.Math.PI;
 
     function hypot(x, y) {
       x = +x;
@@ -1980,8 +1982,96 @@ var Grapheme = (function (exports) {
       return +min_distance
     }
 
+    function min(x, y) {
+      x = +x;
+      y = +y;
 
-    return {point_line_segment_min_distance: point_line_segment_min_distance, point_line_segment_min_closest: point_line_segment_min_closest}
+      if (x < y)
+        return x
+      return y
+    }
+
+    function angle_between(x1, y1, x2, y2, x3, y3) {
+      x1 = +x1;
+      y1 = +y1;
+      x2 = +x2;
+      y2 = +y2;
+      x3 = +x3;
+      y3 = +y3;
+
+      return atan2(y3 - y1, x3 - x1) - atan2(y2 - y1, x2 - x1)
+    }
+
+    // Returns 0 if no refinement needed, 1 if left refinement, 2 if right refinement, 3 if both refinment
+    function needs_refinement(x1, y1, x2, y2, x3, y3, threshold) {
+      x1 = +x1;
+      y1 = +y1;
+      x2 = +x2;
+      y2 = +y2;
+      x3 = +x3;
+      y3 = +y3;
+      threshold = +threshold;
+
+      var angle = 0.0, nan_1 = 0, nan_2 = 0;
+
+      nan_1 = x1 != x1;
+      nan_1 = (nan_1 + (y1 != y1)) | 0;
+
+      if (nan_1) {
+        if (x2 == x2) {
+          if (y2 == y2) {
+            if (x3 == x3) {
+              if (y3 == y3) {
+                return 1
+              }
+            }
+          }
+        }
+      }
+
+      nan_2 = x3 != x3;
+      nan_2 = (nan_2 + (y3 != y3)) | 0;
+
+      if (nan_2) {
+        if (x2 == x2) {
+          if (y2 == y2) {
+            if (x1 == x1) {
+              if (y1 == y1) {
+                return 2
+              }
+            }
+          }
+        }
+      }
+
+      angle = +angle_between(x2, y2, x1, y1, x3, y3);
+      angle = +min(abs(angle-PI), abs(angle+PI));
+
+      if (angle > threshold) {
+        return 3
+      }
+
+      return 0
+    }
+
+    function angles_between(start, end, threshold) {
+      start = start | 0;
+      end = end | 0;
+      threshold = +threshold;
+
+      var p = 0, q = 0, res = 0, indx = 0;
+
+      for (p = (start + 2) << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
+        res = needs_refinement(+values[(p-16)>>3], +values[(p-8)>>3], +values[p>>3], +values[(p+8)>>3], +values[(p+16)>>3], +values[(p+24)>>3], +threshold) | 0;
+
+        indx = (((p-4)>>1)) | 0;
+
+        values[indx>>3] = +(res|0);
+      }
+    }
+
+
+    return {angles_between: angles_between, point_line_segment_min_distance: point_line_segment_min_distance, point_line_segment_min_closest: point_line_segment_min_closest, needs_refinement: needs_refinement}
   }
 
   function _point_line_segment_compute(px, py, polyline_vertices, func) {
@@ -2042,6 +2132,26 @@ var Grapheme = (function (exports) {
     let y = ASMViews.f64[1];
 
     return {x, y, distance}
+  }
+
+  function angles_between(polyline_vertices, threshold=0.03) {
+    if (polyline_vertices.length >= BufferSizes.f64) {
+      throw new Error("Polyline too numerous")
+    }
+
+    if (polyline_vertices instanceof Float32Array || polyline_vertices instanceof Float64Array) {
+      ASMViews.f64.set(polyline_vertices);
+    }
+
+    let i;
+
+    for (i = 0; i < polyline_vertices.length; ++i) {
+      ASMViews.f64[i] = polyline_vertices[i];
+    }
+
+    GeometryASMFunctions.angles_between(0, i, threshold);
+
+    return ASMViews.f64.subarray(0, i/2 - 2)
   }
 
   let heap = new ArrayBuffer(0x10000);
@@ -2982,6 +3092,46 @@ var Grapheme = (function (exports) {
     }
   }
 
+  let MAX_DEPTH = 10;
+
+  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.05, depth=0, includeEndpoints=true) {
+    // console.log(start, end)
+    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+      return [NaN, NaN]
+
+    let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
+
+    let angles = new Float64Array(angles_between(vertices, angle_threshold));
+
+    let final_vertices = [];
+
+    for (let i = 0; i < vertices.length; i += 2) {
+      let angle_i = i / 2;
+
+      if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) {
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true);
+
+        vs.forEach(a => final_vertices.push(a));
+      } else {
+        final_vertices.push(vertices[i]);
+        final_vertices.push(vertices[i+1]);
+      }
+    }
+
+    return final_vertices
+  }
+
+  function sample_1d(start, end, func, points=500, includeEndpoints=true) {
+    let vertices = [];
+
+    for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
+      let x = start + i * (end - start) / points;
+      vertices.push(x, func(x));
+    }
+
+    return vertices
+  }
+
   // Allowed plotting modes:
   // rough = linear sample, no refinement
   // fine = linear sample with refinement
@@ -2995,12 +3145,11 @@ var Grapheme = (function (exports) {
       } = params;
 
       this.plotPoints = plotPoints;
-      this.plottingMode = "rough";
+      this.plottingMode = "fine";
       this.quality = 0.5;
       this.function = (x) => Math.atan(x);
 
       this.pen = new Pen({color: Colors.TEAL});
-      this.vertices = [];
 
       this.alwaysUpdate = false;
 
@@ -3008,29 +3157,25 @@ var Grapheme = (function (exports) {
     }
 
     update() {
-      let vertices = this.vertices = [];
-
       let transform = this.plot.transform;
+      let { coords, box } = transform;
       let simplifiedTransform = transform.getPlotToPixelTransform();
 
       let plotPoints = this.plotPoints;
 
       if (plotPoints === "auto") {
-        plotPoints = this.quality * transform.box.width;
+        plotPoints = this.quality * box.width;
       }
 
-      let min_y = transform.coords.y1 - transform.coords.height / 4;
-      let max_y = transform.coords.y2 + transform.coords.height / 4;
+      let min_y = coords.y1 - coords.height / 4;
+      let max_y = coords.y2 + coords.height / 4;
 
-      for (let i = 0; i <= plotPoints; ++i) {
-        let x = i / plotPoints * transform.coords.width + transform.coords.x1;
-        let val = this.function(x);
+      let vertices = [];
 
-        if (!isNaN(val) && (val > min_y && val < max_y)) {
-          vertices.push(x, val);
-        } else {
-          vertices.push(NaN, NaN);
-        }
+      if (this.plottingMode === "rough") {
+        vertices = sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality);
+      } else {
+        vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality);
       }
 
       this.plot.transform.plotToPixelArr(vertices);
@@ -3038,8 +3183,7 @@ var Grapheme = (function (exports) {
       this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false});
       this.polyline.update();
 
-      if (this.plottingMode === "rough")
-        return
+      return
     }
 
     render(info) {
@@ -3068,8 +3212,13 @@ var Grapheme = (function (exports) {
   exports.TreeElement = TreeElement;
   exports.Universe = GraphemeUniverse;
   exports.Vec2 = Vec2;
+  exports.adaptively_sample_1d = adaptively_sample_1d;
+  exports.angles_between = angles_between;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.parse_string = parse_string;
+  exports.point_line_segment_min_closest = point_line_segment_min_closest;
+  exports.point_line_segment_min_distance = point_line_segment_min_distance;
+  exports.sample_1d = sample_1d;
   exports.utils = utils;
 
   return exports;

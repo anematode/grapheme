@@ -2,6 +2,7 @@ import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
 import { PolylineElement } from './polyline'
 import { Colors } from '../other/color'
+import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
 
 let MAX_POINTS = 10000
 
@@ -18,12 +19,11 @@ class FunctionPlot2D extends GraphemeElement {
     } = params
 
     this.plotPoints = plotPoints
-    this.plottingMode = "rough"
+    this.plottingMode = "fine"
     this.quality = 0.5
     this.function = (x) => Math.atan(x)
 
     this.pen = new Pen({color: Colors.TEAL})
-    this.vertices = []
 
     this.alwaysUpdate = false
 
@@ -31,29 +31,25 @@ class FunctionPlot2D extends GraphemeElement {
   }
 
   update() {
-    let vertices = this.vertices = []
-
     let transform = this.plot.transform
+    let { coords, box } = transform
     let simplifiedTransform = transform.getPlotToPixelTransform()
 
     let plotPoints = this.plotPoints
 
     if (plotPoints === "auto") {
-      plotPoints = this.quality * transform.box.width
+      plotPoints = this.quality * box.width
     }
 
-    let min_y = transform.coords.y1 - transform.coords.height / 4
-    let max_y = transform.coords.y2 + transform.coords.height / 4
+    let min_y = coords.y1 - coords.height / 4
+    let max_y = coords.y2 + coords.height / 4
 
-    for (let i = 0; i <= plotPoints; ++i) {
-      let x = i / plotPoints * transform.coords.width + transform.coords.x1
-      let val = this.function(x)
+    let vertices = []
 
-      if (!isNaN(val) && (val > min_y && val < max_y)) {
-        vertices.push(x, val)
-      } else {
-        vertices.push(NaN, NaN)
-      }
+    if (this.plottingMode === "rough") {
+      vertices = sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality)
+    } else {
+      vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality)
     }
 
     this.plot.transform.plotToPixelArr(vertices)
@@ -61,14 +57,7 @@ class FunctionPlot2D extends GraphemeElement {
     this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false})
     this.polyline.update()
 
-    if (this.plottingMode === "rough")
-      return
-
-    for (let i = 2; i < vertices.length - 2; i += 2) {
-      let p1x = vertices[i-2]
-      let p1y = vertices[i-1]
-      let p2x = vertices[i]
-    }
+    return
   }
 
   render(info) {
