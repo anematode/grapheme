@@ -1,32 +1,32 @@
 import * as utils from "./utils"
 
-/** @class GraphemeContext Context for plots to live in. Allows WebGL rendering, variables, etc. */
-class GraphemeContext {
+/** @class GraphemeUniverse universe for plots to live in. Allows WebGL rendering, variables, etc. */
+class GraphemeUniverse {
   /**
-   * Construct a new GraphemeContext
+   * Construct a new GraphemeUniverse
    */
   constructor() {
     this.canvases = []
 
-    // Add this to the list of all extant contexts
-    utils.CONTEXTS.push(this)
+    // Add this to the list of all extant universes
+    utils.Universes.push(this)
   }
 
   /**
-   * Add canvas to this context
+   * Add canvas to this universe
    * @param canvas Canvas to add
    */
   add(canvas) {
-    if (canvas.context !== context)
-      throw new Error("Canvas already part of a context")
+    if (canvas.universe !== this)
+      throw new Error("Canvas already part of a universe")
     if (this.isChild(canvas))
-      throw new Error("Canvas is already added to this context")
+      throw new Error("Canvas is already added to this universe")
 
     this.canvases.push(canvas)
   }
 
   /**
-   * Remove canvas from this context
+   * Remove canvas from this universe
    * @param canvas Canvas to remove
    */
   remove(canvas) {
@@ -38,7 +38,7 @@ class GraphemeContext {
   }
 
   /**
-   * Whether canvas is a child of this context
+   * Whether canvas is a child of this universe
    * @param canvas Canvas to test
    * @returns {boolean} Whether canvas is a child
    */
@@ -65,8 +65,8 @@ class GraphemeContext {
   }
 
   destroy() {
-    utils.removeContext(this)
+    utils.removeUniverse(this)
   }
 }
 
-export { GraphemeContext as Context}
+export { GraphemeUniverse as Universe}

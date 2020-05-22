@@ -2,7 +2,7 @@ import { Group as GraphemeGroup } from './grapheme_group'
 import { Element as GraphemeElement } from './grapheme_element'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
-import { Context as GraphemeContext } from './grapheme_context'
+import { Universe } from './grapheme_universe'
 
 /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
 class GraphemeCanvas extends GraphemeGroup {
@@ -10,17 +10,17 @@ class GraphemeCanvas extends GraphemeGroup {
    * Creates a GraphemeCanvas.
    *
    * @constructor
-   * @param context {GraphemeContext}
+   * @param universe {GraphemeContext}
    */
-  constructor (context) {
+  constructor (universe) {
     super()
 
-    if (!(context instanceof GraphemeContext))
+    if (!(universe instanceof Universe))
       throw new Error("Given context not instance of Grapheme.Context")
 
-    this.context = context
+    this.universe = universe
 
-    this.context.add(this)
+    this.universe.add(this)
 
     // Element to be put into the webpage
     /** @public */ this.domElement = document.createElement('div')

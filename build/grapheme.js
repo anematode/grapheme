@@ -3,8 +3,8 @@ var Grapheme = (function (exports) {
 
   // This file defines some common utilities that Grapheme uses!
 
-  // A list of all extant Grapheme Contexts
-  const CONTEXTS = [];
+  // A list of all extant Grapheme Universes
+  const Universes = [];
 
   // this function takes in a variadic list of arguments and returns the first
   // one that's not undefined
@@ -110,7 +110,7 @@ var Grapheme = (function (exports) {
       dpr = window.devicePixelRatio;
 
       // Tell the babies that the device pixel ratio has changed
-      CONTEXTS.forEach(context => context.triggerEvent("dprchanged"));
+      Universes.forEach(context => context.triggerEvent("dprchanged"));
     }
   }
 
@@ -197,7 +197,7 @@ var Grapheme = (function (exports) {
     })
   }
 
-  // Delete buffers with the given name from all Grapheme contexts
+  // Delete buffers with the given name from all Grapheme Universes
   function deleteBuffersNamed (bufferNames) {
     if (Array.isArray(bufferNames)) {
       for (let i = 0; i < bufferNames.length; ++i) {
@@ -206,7 +206,7 @@ var Grapheme = (function (exports) {
       return
     }
 
-    CONTEXTS.forEach((context) => {
+    Universes.forEach((context) => {
       context.glManager.deleteBuffer(bufferNames);
     });
   }
@@ -249,11 +249,11 @@ var Grapheme = (function (exports) {
     return number + ""; // always return a string
   }
 
-  function removeContext(context) {
-    let index = this.CONTEXTS.indexOf(context);
+  function removeUniverse(context) {
+    let index = this.Universes.indexOf(context);
 
     if (index !== -1) {
-      this.CONTEXTS.splice(index, 1);
+      this.Universes.splice(index, 1);
     }
   }
 
@@ -262,8 +262,8 @@ var Grapheme = (function (exports) {
     generateUUID: generateUUID,
     createShaderFromSource: createShaderFromSource,
     createGLProgram: createGLProgram,
-    CONTEXTS: CONTEXTS,
-    removeContext: removeContext,
+    Universes: Universes,
+    removeUniverse: removeUniverse,
     mod: mod,
     get dpr () { return dpr; },
     select: select,
@@ -532,33 +532,33 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /** @class GraphemeContext Context for plots to live in. Allows WebGL rendering, variables, etc. */
-  class GraphemeContext {
+  /** @class GraphemeUniverse universe for plots to live in. Allows WebGL rendering, variables, etc. */
+  class GraphemeUniverse {
     /**
-     * Construct a new GraphemeContext
+     * Construct a new GraphemeUniverse
      */
     constructor() {
       this.canvases = [];
 
-      // Add this to the list of all extant contexts
-      CONTEXTS.push(this);
+      // Add this to the list of all extant universes
+      Universes.push(this);
     }
 
     /**
-     * Add canvas to this context
+     * Add canvas to this universe
      * @param canvas Canvas to add
      */
     add(canvas) {
-      if (canvas.context !== context)
-        throw new Error("Canvas already part of a context")
+      if (canvas.universe !== this)
+        throw new Error("Canvas already part of a universe")
       if (this.isChild(canvas))
-        throw new Error("Canvas is already added to this context")
+        throw new Error("Canvas is already added to this universe")
 
       this.canvases.push(canvas);
     }
 
     /**
-     * Remove canvas from this context
+     * Remove canvas from this universe
      * @param canvas Canvas to remove
      */
     remove(canvas) {
@@ -570,7 +570,7 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Whether canvas is a child of this context
+     * Whether canvas is a child of this universe
      * @param canvas Canvas to test
      * @returns {boolean} Whether canvas is a child
      */
@@ -597,7 +597,7 @@ var Grapheme = (function (exports) {
     }
 
     destroy() {
-      removeContext(this);
+      removeUniverse(this);
     }
   }
 
@@ -607,17 +607,17 @@ var Grapheme = (function (exports) {
      * Creates a GraphemeCanvas.
      *
      * @constructor
-     * @param context {GraphemeContext}
+     * @param universe {GraphemeContext}
      */
-    constructor (context) {
+    constructor (universe) {
       super();
 
-      if (!(context instanceof GraphemeContext))
+      if (!(universe instanceof GraphemeUniverse))
         throw new Error("Given context not instance of Grapheme.Context")
 
-      this.context = context;
+      this.universe = universe;
 
-      this.context.add(this);
+      this.universe.add(this);
 
       // Element to be put into the webpage
       /** @public */ this.domElement = document.createElement('div');
@@ -3057,7 +3057,6 @@ var Grapheme = (function (exports) {
 
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
-  exports.Context = GraphemeContext;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.GridlineStrategizers = GridlineStrategizers;
@@ -3067,6 +3066,7 @@ var Grapheme = (function (exports) {
   exports.Plot2D = Plot2D;
   exports.PolylineElement = PolylineElement;
   exports.TreeElement = TreeElement;
+  exports.Universe = GraphemeUniverse;
   exports.Vec2 = Vec2;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.parse_string = parse_string;

@@ -1,7 +1,7 @@
 // This file defines some common utilities that Grapheme uses!
 
-// A list of all extant Grapheme Contexts
-const CONTEXTS = []
+// A list of all extant Grapheme Universes
+const Universes = []
 
 // this function takes in a variadic list of arguments and returns the first
 // one that's not undefined
@@ -107,7 +107,7 @@ function updateDPR () {
     dpr = window.devicePixelRatio
 
     // Tell the babies that the device pixel ratio has changed
-    CONTEXTS.forEach(context => context.triggerEvent("dprchanged"))
+    Universes.forEach(context => context.triggerEvent("dprchanged"))
   }
 }
 
@@ -194,7 +194,7 @@ function generateUUID () {
   })
 }
 
-// Delete buffers with the given name from all Grapheme contexts
+// Delete buffers with the given name from all Grapheme Universes
 function deleteBuffersNamed (bufferNames) {
   if (Array.isArray(bufferNames)) {
     for (let i = 0; i < bufferNames.length; ++i) {
@@ -203,7 +203,7 @@ function deleteBuffersNamed (bufferNames) {
     return
   }
 
-  CONTEXTS.forEach((context) => {
+  Universes.forEach((context) => {
     context.glManager.deleteBuffer(bufferNames)
   })
 }
@@ -246,15 +246,15 @@ function zeroFill(number, width) {
   return number + ""; // always return a string
 }
 
-function removeContext(context) {
-  let index = this.CONTEXTS.indexOf(context)
+function removeUniverse(context) {
+  let index = this.Universes.indexOf(context)
 
   if (index !== -1) {
-    this.CONTEXTS.splice(index, 1)
+    this.Universes.splice(index, 1)
   }
 }
 
 export {
-  zeroFill, generateUUID, createShaderFromSource, createGLProgram, CONTEXTS, removeContext, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+  zeroFill, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
   isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }
