@@ -21,13 +21,13 @@ var Grapheme = (function (exports) {
   }
 
   // Assert that a statement is true, and throw an error if it's not
-  function assert (statement, error = 'Unknown error') {
+  function assert$1 (statement, error = 'Unknown error') {
     if (!statement) throw new Error(error)
   }
 
   // Check that an object is of a given type
   function checkType (obj, type) {
-    assert(obj instanceof type, `Object must be instance of ${type}`);
+    assert$1(obj instanceof type, `Object must be instance of ${type}`);
   }
 
   // Check if two objects are... deeply equal
@@ -43,7 +43,7 @@ var Grapheme = (function (exports) {
 
   // The following functions are self-explanatory.
 
-  function isInteger (z) {
+  function isInteger$1 (z) {
     return Number.isInteger(z) // didn't know about this lol
   }
 
@@ -94,7 +94,7 @@ var Grapheme = (function (exports) {
   }
 
   // Check if two numbers are within epsilon of each other
-  function isApproxEqual (v, w, eps = 1e-5) {
+  function isApproxEqual$1 (v, w, eps = 1e-5) {
     return Math.abs(v - w) < eps
   }
 
@@ -267,17 +267,17 @@ var Grapheme = (function (exports) {
     mod: mod,
     get dpr () { return dpr; },
     select: select,
-    assert: assert,
+    assert: assert$1,
     checkType: checkType,
     deepEquals: deepEquals,
-    isInteger: isInteger,
+    isInteger: isInteger$1,
     isNonnegativeInteger: isNonnegativeInteger,
     isNonpositiveInteger: isNonpositiveInteger,
     isNegativeInteger: isNegativeInteger,
     isPositiveInteger: isPositiveInteger,
     isTypedArray: isTypedArray,
     mergeDeep: mergeDeep,
-    isApproxEqual: isApproxEqual,
+    isApproxEqual: isApproxEqual$1,
     deleteBuffersNamed: deleteBuffersNamed,
     getRenderID: getRenderID,
     flattenVectors: flattenVectors,
@@ -710,7 +710,7 @@ var Grapheme = (function (exports) {
     set canvasWidth (width) {
       // Round it to an integer and make sure it's in a reasonable range
       width = Math.round(width);
-      assert(isPositiveInteger(width) && width < 16384, 'Canvas width must be in range [1,16383].');
+      assert$1(isPositiveInteger(width) && width < 16384, 'Canvas width must be in range [1,16383].');
 
       this.canvas.width = width;
     }
@@ -722,7 +722,7 @@ var Grapheme = (function (exports) {
      */
     set canvasHeight (height) {
       height = Math.round(height);
-      assert(isPositiveInteger(height) && height < 16384, 'Canvas height must be in range [1,16383].');
+      assert$1(isPositiveInteger(height) && height < 16384, 'Canvas height must be in range [1,16383].');
 
       this.canvas.height = height;
     }
@@ -1364,7 +1364,7 @@ var Grapheme = (function (exports) {
       this.b = b;
       this.a = a;
 
-      assert([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
+      assert$1([this.r, this.g, this.b, this.a].every(isValidColorComponent), 'Invalid color component');
     }
 
     rounded () {
@@ -2321,22 +2321,80 @@ var Grapheme = (function (exports) {
     }
   };
 
+  /* Unicode characters for exponent signs, LOL */
+  const exponent_reference = {
+    '-': String.fromCharCode(8315),
+    '0': String.fromCharCode(8304),
+    '1': String.fromCharCode(185),
+    '2': String.fromCharCode(178),
+    '3': String.fromCharCode(179),
+    '4': String.fromCharCode(8308),
+    '5': String.fromCharCode(8309),
+    '6': String.fromCharCode(8310),
+    '7': String.fromCharCode(8311),
+    '8': String.fromCharCode(8312),
+    '9': String.fromCharCode(8313)
+  };
+
+  /* Convert a digit into its exponent form */
+  function convert_char(c) {
+    return exponent_reference[c];
+  }
+
+  /* Convert an integer into its exponent form (of Unicode characters) */
+  function exponentify(integer) {
+    assert(isInteger(integer), "needs to be an integer");
+
+    let stringi = integer + '';
+    let out = '';
+
+    for (let i = 0; i < stringi.length; ++i) {
+      out += convert_char(stringi[i]);
+    }
+
+    return out;
+  }
+
+  // Credit: https://stackoverflow.com/a/20439411
+  /* Turns a float into a pretty float by removing dumb floating point things */
+  function beautifyFloat(f, prec=12) {
+    let strf = f.toFixed(prec);
+    if (strf.includes('.')) {
+      return strf.replace(/\.?0+$/g,'');
+    } else {
+      return strf;
+    }
+  }
+
   // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
       super(params);
 
       this.strategizer = GridlineStrategizers.Standard;
-      this.label_function = (val) => {
-        return `${val}`
+      this.label_function = x => {
+        if (x === 0) return "0"; // special case
+        else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+        // non-extreme floats displayed normally
+          return beautifyFloat(x);
+        else {
+          // scientific notation for the very fat and very small!
+
+          let exponent = Math.floor(Math.log10(Math.abs(x)));
+          let mantissa = x / (10 ** exponent);
+
+          let prefix = (isApproxEqual(mantissa,1) ? '' :
+            (beautifyFloat(mantissa, 8) + CDOT));
+          let exponent_suffix = "10" + exponentify(exponent);
+
+          return prefix + exponent_suffix;
+        }
       };
 
-      this.label_style = new Label2DStyle();
-
-      this.label_padding = 3;
-
       this.label_positions = ["top", "left", "bottom", "right"];
-      this.label_types = ["axis", "major"];
+      this.label_types = ["axis", "major", "minor"];
+      this.label_style = new Label2DStyle();
+      this.label_padding = 3;
 
       this._labels = [];
 
@@ -2798,6 +2856,35 @@ var Grapheme = (function (exports) {
       }
     });
 
+    let functions_remaining = true;
+
+    while (functions_remaining) {
+      functions_remaining = false;
+
+      root.applyAll(child => {
+        let children = child.children;
+
+        if (children) {
+          for (let i = 0; i < children.length; ++i) {
+            let child_test = children[i];
+
+            if (child_test.type === "function") {
+              let function_node = new OperatorNode({ operator: child_test.name });
+
+              children[i] = function_node;
+
+              function_node.children = children[i + 1].children;
+
+              functions_remaining = true;
+
+              children.splice(i + 1, 1);
+              return
+            }
+          }
+        }
+      });
+    }
+
     function combineOperators(operators) {
       let operators_remaining = true;
 
@@ -2825,39 +2912,10 @@ var Grapheme = (function (exports) {
       }
     }
 
+
     combineOperators(['^']);
     combineOperators(['*','/']);
     combineOperators(['-','+']);
-
-    let functions_remaining = true;
-
-    while (functions_remaining) {
-      functions_remaining = false;
-
-      root.applyAll(child => {
-        let children = child.children;
-
-        if (children) {
-          for (let i = 0; i < children.length; ++i) {
-            let child_test = children[i];
-
-            if (child_test.type === "function") {
-              let function_node = new OperatorNode({ operator: child_test.name });
-
-              children[i] = function_node;
-
-              function_node.children = children[i + 1].children;
-              function_node.children = function_node.children.filter(node => node instanceof ASTNode);
-
-              functions_remaining = true;
-
-              children.splice(i + 1, 1);
-              return
-            }
-          }
-        }
-      });
-    }
 
     root.applyAll(child => {
       if (child.children)

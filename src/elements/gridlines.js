@@ -7,22 +7,80 @@ import {Label2DStyle} from '../styles/label_style'
 import * as utils from "../core/utils"
 import { Vec2 } from "../math/vec"
 
+/* Unicode characters for exponent signs, LOL */
+const exponent_reference = {
+  '-': String.fromCharCode(8315),
+  '0': String.fromCharCode(8304),
+  '1': String.fromCharCode(185),
+  '2': String.fromCharCode(178),
+  '3': String.fromCharCode(179),
+  '4': String.fromCharCode(8308),
+  '5': String.fromCharCode(8309),
+  '6': String.fromCharCode(8310),
+  '7': String.fromCharCode(8311),
+  '8': String.fromCharCode(8312),
+  '9': String.fromCharCode(8313)
+};
+
+/* Convert a digit into its exponent form */
+function convert_char(c) {
+  return exponent_reference[c];
+}
+
+/* Convert an integer into its exponent form (of Unicode characters) */
+function exponentify(integer) {
+  assert(isInteger(integer), "needs to be an integer");
+
+  let stringi = integer + '';
+  let out = '';
+
+  for (let i = 0; i < stringi.length; ++i) {
+    out += convert_char(stringi[i]);
+  }
+
+  return out;
+}
+
+// Credit: https://stackoverflow.com/a/20439411
+/* Turns a float into a pretty float by removing dumb floating point things */
+function beautifyFloat(f, prec=12) {
+  let strf = f.toFixed(prec);
+  if (strf.includes('.')) {
+    return strf.replace(/\.?0+$/g,'');
+  } else {
+    return strf;
+  }
+}
+
 // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
 class Gridlines extends GraphemeElement {
   constructor(params={}) {
     super(params)
 
     this.strategizer = GridlineStrategizers.Standard
-    this.label_function = (val) => {
-      return `${val}`
+    this.label_function = x => {
+      if (x === 0) return "0"; // special case
+      else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+      // non-extreme floats displayed normally
+        return beautifyFloat(x);
+      else {
+        // scientific notation for the very fat and very small!
+
+        let exponent = Math.floor(Math.log10(Math.abs(x)));
+        let mantissa = x / (10 ** exponent);
+
+        let prefix = (isApproxEqual(mantissa,1) ? '' :
+          (beautifyFloat(mantissa, 8) + CDOT));
+        let exponent_suffix = "10" + exponentify(exponent);
+
+        return prefix + exponent_suffix;
+      }
     }
 
-    this.label_style = new Label2DStyle()
-
-    this.label_padding = 3
-
     this.label_positions = ["top", "left", "bottom", "right"]
-    this.label_types = ["axis", "major"]
+    this.label_types = ["axis", "major", "minor"]
+    this.label_style = new Label2DStyle()
+    this.label_padding = 3
 
     this._labels = []
 

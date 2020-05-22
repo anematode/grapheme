@@ -260,6 +260,35 @@ function parse_tokens(tokens) {
     }
   })
 
+  let functions_remaining = true
+
+  while (functions_remaining) {
+    functions_remaining = false
+
+    root.applyAll(child => {
+      let children = child.children
+
+      if (children) {
+        for (let i = 0; i < children.length; ++i) {
+          let child_test = children[i]
+
+          if (child_test.type === "function") {
+            let function_node = new OperatorNode({ operator: child_test.name })
+
+            children[i] = function_node
+
+            function_node.children = children[i + 1].children
+
+            functions_remaining = true
+
+            children.splice(i + 1, 1)
+            return
+          }
+        }
+      }
+    })
+  }
+
   function combineOperators(operators) {
     let operators_remaining = true
 
@@ -287,39 +316,10 @@ function parse_tokens(tokens) {
     }
   }
 
+
   combineOperators(['^'])
   combineOperators(['*','/'])
   combineOperators(['-','+'])
-
-  let functions_remaining = true
-
-  while (functions_remaining) {
-    functions_remaining = false
-
-    root.applyAll(child => {
-      let children = child.children
-
-      if (children) {
-        for (let i = 0; i < children.length; ++i) {
-          let child_test = children[i]
-
-          if (child_test.type === "function") {
-            let function_node = new OperatorNode({ operator: child_test.name })
-
-            children[i] = function_node
-
-            function_node.children = children[i + 1].children
-            function_node.children = function_node.children.filter(node => node instanceof ASTNode)
-
-            functions_remaining = true
-
-            children.splice(i + 1, 1)
-            return
-          }
-        }
-      }
-    })
-  }
 
   root.applyAll(child => {
     if (child.children)
