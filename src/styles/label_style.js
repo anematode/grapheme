@@ -55,12 +55,13 @@ class Label2DStyle extends BasicLabelStyle {
   }
 
   drawText(ctx, text, x, y) {
+    this.prepareContextTextStyle(ctx)
+
     if (this.shadowSize) {
       this.prepareContextShadow(ctx)
       ctx.strokeText(text, x, y)
     }
 
-    this.prepareContextTextStyle(ctx)
     this.prepareContextFill(ctx)
     ctx.fillText(text, x, y)
 
@@ -82,10 +83,10 @@ class Label2DStyle extends BasicLabelStyle {
         textAlign = 'center'
         break
       case 'NW': case 'W': case 'SW':
-        textAlign = 'left'
+        textAlign = 'right'
         break
       case 'NE': case 'E': case 'SE':
-        textAlign = 'right'
+        textAlign = 'left'
         break
     }
 

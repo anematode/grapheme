@@ -34,7 +34,6 @@ const DIV = function (interval_a, interval_b) {
 }
 
 const SIN = function (interval) {
-  // TODO: optimize!
   if (interval[1] - interval[0] >= 2 * Math.PI)
     return [-1,1];
 
@@ -60,27 +59,22 @@ const SIN = function (interval) {
 }
 
 const COS = function (interval) {
-  // TODO: optimize!
   return SIN([interval[0] + Math.PI / 2, interval[1] + Math.PI / 2]); // and I oop
 }
 
 const TAN = function (interval) {
-  // TODO: optimize!
   return DIV(SIN(interval), COS(interval));
 }
 
 const SEC = function (interval) {
-  // TODO: optimize!
   return DIV([1,1], COS(interval));
 }
 
 const CSC = function (interval) {
-  // TODO: optimize!
   return DIV([1,1], SIN(interval));
 }
 
 const COT = function (interval) {
-  // TODO: optimize!
   return DIV(COS(interval), SIN(interval));
 }
 
@@ -101,7 +95,6 @@ const EXP_N = function (interval_b, n) {
   } else if (utils.isInteger(n)) {
     return DIV([1,1], EXP_N(interval_b, -n));
   } else {
-    // annoyst, TODO: theorize!!!!
     if (interval_b[1] < 0)
       return [NaN, NaN];
     if (interval_b[0] < 0) interval_b[0] = 0;
@@ -160,13 +153,14 @@ const POW = function (interval_a, interval_b) {
     // For now: discard negative a
 
     if (interval_a[1] < 0)
-      return [NaN, NaN]; // ANNNOYSTTT
+      return [NaN, NaN];
 
     if (interval_a[0] < 0)
       interval_a[0] = 0;
 
-    // TODO: THEORIZE
-    throw new Error("not supported yet");
+    if (interval_a[0] < 1) {
+
+    }
   }
 }
 

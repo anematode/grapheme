@@ -2,7 +2,7 @@
 
 <html>
 <head>
-    <title>Grapheme Function Plot</title>
+    <title>Grapheme Performance Test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         * {
@@ -28,12 +28,14 @@
   let gridlines = new Grapheme.Gridlines()
   plot.add(gridlines)
 
-  let functions = [ x => Math.tan(x) ]
+  let functions = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]//,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5,10.5,11.5,12.5,13.5,14.5,15.5,16.5,17.5,18.5,19.5,20.5]
 
   for (let function_ of functions) {
     let function_plot = new Grapheme.FunctionPlot2D()
 
-    function_plot.function = function_
+    let k = function_
+
+    function_plot.function = x => Math.tan(x - k / 2)
     plot.add(function_plot)
 
     function_plot.update()

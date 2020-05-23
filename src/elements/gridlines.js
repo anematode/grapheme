@@ -6,6 +6,7 @@ import {Label2D} from './label'
 import {Label2DStyle} from '../styles/label_style'
 import * as utils from "../core/utils"
 import { Vec2 } from "../math/vec"
+import { Colors } from '../other/color'
 
 /* Unicode characters for exponent signs, LOL */
 const exponent_reference = {
@@ -81,10 +82,10 @@ class Gridlines extends GraphemeElement {
       }
     }
 
-    this.label_positions = ["bottom", "left"]
+    this.label_positions = ["dynamic"]
     this.label_types = ["axis", "major"]
-    this.label_style = new Label2DStyle({fontSize: 20})
-    this.label_padding = 3
+    this.label_style = new Label2DStyle({fontSize: 20, shadowSize: 3, shadowColor: Colors.WHITE})
+    this.label_padding = 5
 
     this._labels = []
 
@@ -113,13 +114,31 @@ class Gridlines extends GraphemeElement {
 
     let label_padding = this.label_padding
 
+    const addLabel = (marker_pos, style, position) => {
+      let label = new Label2D({style, text: this.label_function(marker_pos), position})
+
+      this._labels.push(label)
+    }
+
+    const getLabelStyle = (name, construct) => {
+      if (computed_label_styles[name]) {
+        return computed_label_styles[name]
+      } else {
+        let label_style = computed_label_styles[name] = new Label2DStyle(this.label_style)
+
+        construct(label_style)
+        return label_style
+      }
+    }
+
+    const dynamic = this.label_positions.includes("dynamic")
+
     for (let marker of markers) {
       if (marker.dir === 'x') {
         let polyline = polylines[marker.type]
 
-        if (!polyline) {
+        if (!polyline)
           polyline = polylines[marker.type] = new PolylineElement({ pen: this.pens[marker.type] })
-        }
 
         let x_coord = utils.roundToCanvasPixel(transform.plotToPixelX(marker.pos))
         let sy = plotBox.y1, ey = plotBox.y2
@@ -127,30 +146,55 @@ class Gridlines extends GraphemeElement {
         polyline.vertices.push(x_coord, sy, x_coord, ey, NaN, NaN)
 
         if (this.label_types.includes(marker.type)) {
-          if (this.label_positions.includes("top")) {
-            let style = computed_label_styles["top"]
-            if (!style) {
-              style = computed_label_styles["top"] = new Label2DStyle(this.label_style)
+          let axisPosition = transform.plotToPixelY(0)
+          let axisInRange = (transform.box.y1 <= axisPosition && axisPosition <= transform.box.y2)
+          let axis = this.label_positions.includes("axis") || (dynamic && axisInRange)
 
-              style.dir = "N"
-            }
+          let top = this.label_positions.includes("top")
+          let bottom = this.label_positions.includes("bottom")
+          let top_in = this.label_positions.includes("top-in") || (dynamic && axisPosition < transform.box.y1)
+          let bottom_in = this.label_positions.includes("bottom-in") || (dynamic && axisPosition > transform.box.y2)
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(x_coord, sy - label_padding)})
+          if (top) {
+            let style = getLabelStyle("top", (style) => style.dir = "N")
 
-            this._labels.push(label)
+            addLabel(marker.pos, style, new Vec2(x_coord, sy - label_padding))
           }
 
-          if (this.label_positions.includes("bottom")) {
-            let style = computed_label_styles["bottom"]
-            if (!style) {
-              style = computed_label_styles["bottom"] = new Label2DStyle(this.label_style)
+          if (bottom) {
+            let style = getLabelStyle("bottom", (style) => style.dir = "S")
 
-              style.dir = "S"
-            }
+            addLabel(marker.pos, style, new Vec2(x_coord, ey + label_padding))
+          }
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(x_coord, ey + label_padding)})
+          if (bottom_in) {
+            let style_name = "bottom-" + marker.type
 
-            this._labels.push(label)
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "NW" : "N"
+            })
+
+            addLabel(marker.pos, style, new Vec2(x_coord - ((marker.type === "axis") ? label_padding : 0), ey - label_padding))
+          }
+
+          if (top_in) {
+            let style_name = "top-" + marker.type
+
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "SW" : "S"
+            })
+
+            addLabel(marker.pos, style, new Vec2(x_coord - ((marker.type === "axis") ? label_padding : 0), sy + label_padding))
+          }
+
+          if (axis && axisInRange) {
+            let style_name = "x-axis-" + marker.type
+
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "SW" : "S"
+            })
+
+            addLabel(marker.pos, style, new Vec2(x_coord - ((marker.type === "axis") ? label_padding : 0), axisPosition + label_padding))
           }
         }
       } else if (marker.dir === 'y') {
@@ -166,30 +210,55 @@ class Gridlines extends GraphemeElement {
         polyline.vertices.push(sx, y_coord, ex, y_coord, NaN, NaN)
 
         if (this.label_types.includes(marker.type)) {
-          if (this.label_positions.includes("left")) {
-            let style = computed_label_styles["left"]
-            if (!style) {
-              style = computed_label_styles["left"] = new Label2DStyle(this.label_style)
+          let axisPosition = transform.plotToPixelX(0)
+          let axisInRange = (transform.box.x1 <= axisPosition && axisPosition <= transform.box.x2)
+          let axis = this.label_positions.includes("axis") || (dynamic && axisInRange)
 
-              style.dir = "E"
-            }
+          let left = this.label_positions.includes("left")
+          let right = this.label_positions.includes("right")
+          let left_in = this.label_positions.includes("left-in") || (dynamic && axisPosition < transform.box.x1)
+          let right_in = this.label_positions.includes("right-in") || (dynamic && axisPosition > transform.box.x2)
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)})
+          if (left) {
+            let style = getLabelStyle("left", (style) => style.dir = "W")
 
-            this._labels.push(label)
+            addLabel(marker.pos, style, new Vec2(sx - label_padding, y_coord))
           }
 
-          if (this.label_positions.includes("right")) {
-            let style = computed_label_styles["right"]
-            if (!style) {
-              style = computed_label_styles["right"] = new Label2DStyle(this.label_style)
+          if (right) {
+            let style = getLabelStyle("right", (style) => style.dir = "W")
 
-              style.dir = "W"
-            }
+            addLabel(marker.pos, style, new Vec2(ex + label_padding, y_coord))
+          }
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)})
+          if (left_in) {
+            let style_name = "left-" + marker.type
 
-            this._labels.push(label)
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "SE" : "E"
+            })
+
+            addLabel(marker.pos, style, new Vec2(sx + label_padding, y_coord + ((marker.type === "axis") ? label_padding : 0)))
+          }
+
+          if (right_in) {
+            let style_name = "right-" + marker.type
+
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "SW" : "W"
+            })
+
+            addLabel(marker.pos, style, new Vec2(ex - label_padding, y_coord + ((marker.type === "axis") ? label_padding : 0)))
+          }
+
+          if (axis && axisInRange) {
+            let style_name = "y-axis-" + marker.type
+
+            let style = getLabelStyle(style_name, (style) => {
+              style.dir = (marker.type === "axis") ? "SW" : "W"
+            })
+
+            addLabel(marker.pos, style, new Vec2(axisPosition - label_padding, y_coord + ((marker.type === "axis") ? label_padding : 0)))
           }
         }
       }

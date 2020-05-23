@@ -2,7 +2,7 @@ import { angles_between } from '../math/geometry_calculations'
 
 let MAX_DEPTH = 10
 
-function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.05, depth=0, includeEndpoints=true) {
+function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {
   if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
     return [NaN, NaN]
 

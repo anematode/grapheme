@@ -195,7 +195,8 @@ get CHOCOLATE() { return rgb(210,105,30); },
 get SADDLEBROWN() { return rgb(139,69,19); },
 get SIENNA() { return rgb(160,82,45); },
 get BROWN() { return rgb(165,42,42); },
-get MAROON() { return rgb(128,0,0); }
+get MAROON() { return rgb(128,0,0); },
+get RANDOM() { var keys = Object.keys(Colors); return Colors[keys[ keys.length * Math.random() << 0]]; }
 }
 
 export { Color, rgb, rgba, Colors }
