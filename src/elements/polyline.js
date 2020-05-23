@@ -118,4 +118,4 @@ class PolylineElement extends PolylineBase {
   }
 }
 
-export { PolylineElement }
+export { PolylineElement, PolylineBase }

@@ -3,6 +3,7 @@ import { Pen } from '../styles/pen'
 import { PolylineElement } from './polyline'
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
+import { WebGLPolylineWrapper } from './webgl_polyline_wrapper'
 
 let MAX_POINTS = 10000
 
@@ -20,10 +21,11 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = "fine"
-    this.quality = 0.2
+    this.quality = 0.05
     this.function = (x) => Math.atan(x)
 
-    this.pen = new Pen({color: Colors.RANDOM})
+    this.pen = new Pen({color: Colors.RANDOM, useNative: true})
+    this.polyline = null
 
     this.alwaysUpdate = false
 
@@ -54,20 +56,30 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.plot.transform.plotToPixelArr(vertices)
 
-    this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false})
+    if (!this.polyline)
+      this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
+
+    this.polyline.vertices = vertices
     this.polyline.update()
   }
 
   render(info) {
-    super.render(info)
 
-    info.ctx.save()
+    let gl = info.universe.gl
+    gl.enable(gl.SCISSOR_TEST)
 
-    this.plot.transform.box.clip(info.ctx)
+    const box = info.plot.transform.box
+
+    gl.scissor(box.top_left.x, box.top_left.y, box.width, box.height)
 
     this.polyline.render(info)
 
-    info.ctx.restore()
+    gl.disable(gl.SCISSOR_TEST)
+  }
+
+  destroy() {
+    if (this.polyline)
+      this.polyline.destroy()
   }
 }
 

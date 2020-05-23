@@ -39,6 +39,10 @@ class Color {
     }
   }
 
+  toNumber() {
+    return this.r * 0x1000000 + this.g * 0x10000 + this.b * 0x100 + this.a
+  }
+
   clone() {
     return new Color(this)
   }

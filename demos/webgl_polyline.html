@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGL Polyline</title>
+</head>
+<body>
+<script src="../build/grapheme.js"></script>
+<script>
+let plot = new Grapheme.Plot2D()
+
+plot.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(plot.domElement);
+
+let polyline = new Grapheme.WebGLPolyline()
+polyline.vertices = [0, 0, 500, 500]
+polyline.thickness = 50
+polyline.update()
+
+plot.add(polyline)
+
+let ia = 0;
+function render() {
+  ia += 0.1;
+
+  plot.render();
+  requestAnimationFrame(render);
+}
+
+render();
+
+window.onresize = () => {
+  plot.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+
+</body>
+</html>

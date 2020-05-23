@@ -178,6 +178,8 @@ class GraphemeCanvas extends GraphemeGroup {
     }
 
     const beforeWebGLRender = () => {
+      this.universe.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight)
+
       needsWebGLCopy = true
     }
 

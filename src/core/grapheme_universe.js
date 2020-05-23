@@ -12,16 +12,16 @@ class GraphemeUniverse {
     // Add this to the list of all extant universes
     utils.Universes.push(this)
 
-    this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1,1) : document.createElement("canvas")
-    this.glCtx = this.glCanvas.getContext("webgl")
-    this.glManager = new GLResourceManager(this.glCtx)
+    this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(691, 1015) : document.createElement("canvas")
+    this.gl = this.glCanvas.getContext("webgl")
+    this.glManager = new GLResourceManager(this.gl)
 
-    if (!this.glCtx)
+    if (!this.gl)
       throw new Error("Grapheme needs WebGL to run! Sorry.")
   }
 
   clear() {
-    let gl = this.glCtx
+    let gl = this.gl
 
     gl.clearColor(0,0,0,0)
     gl.clear(gl.COLOR_BUFFER_BIT)
@@ -34,13 +34,8 @@ class GraphemeUniverse {
   _setSize(width, height) {
     const glCanvas = this.glCanvas
 
-    if (width !== glCanvas.width) {
-      glCanvas.width = width
-    }
-
-    if (height !== glCanvas.height) {
-      glCanvas.height = height
-    }
+    glCanvas.width = width
+    glCanvas.height = height
   }
 
   expandToFit() {
