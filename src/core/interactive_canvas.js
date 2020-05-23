@@ -1,5 +1,6 @@
 import {Canvas as GraphemeCanvas} from "./grapheme_canvas.js"
 import {Vec2} from '../math/vec'
+import { DefaultUniverse } from './grapheme_universe'
 
 // List of events to listen for
 const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"]
@@ -9,16 +10,12 @@ const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "tou
  * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
  */
 class InteractiveCanvas extends GraphemeCanvas {
-  constructor(params={}) {
-    super(params)
-
-    const {
-      interactivityEnabled = true
-    } = params
+  constructor(universe=DefaultUniverse) {
+    super(universe)
 
     /** @private */ this.interactivityListeners = {}
 
-    this.interactivityEnabled = interactivityEnabled
+    this.interactivityEnabled = true
   }
 
   get interactivityEnabled() {

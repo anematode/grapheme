@@ -1120,6 +1120,8 @@ var Grapheme = (function (exports) {
     }
   }
 
+  const DefaultUniverse = new GraphemeUniverse();
+
   /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
   class GraphemeCanvas extends GraphemeGroup {
     /**
@@ -1128,11 +1130,11 @@ var Grapheme = (function (exports) {
      * @constructor
      * @param universe {GraphemeContext}
      */
-    constructor (universe) {
+    constructor (universe=DefaultUniverse) {
       super();
 
       if (!(universe instanceof GraphemeUniverse))
-        throw new Error("Given context not instance of Grapheme.Context")
+        throw new Error("Given universe not instance of Grapheme.Universe")
 
       this.universe = universe;
 
@@ -1327,16 +1329,12 @@ var Grapheme = (function (exports) {
    * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
    */
   class InteractiveCanvas extends GraphemeCanvas {
-    constructor(params={}) {
-      super(params);
-
-      const {
-        interactivityEnabled = true
-      } = params;
+    constructor(universe=DefaultUniverse) {
+      super(universe);
 
       /** @private */ this.interactivityListeners = {};
 
-      this.interactivityEnabled = interactivityEnabled;
+      this.interactivityEnabled = true;
     }
 
     get interactivityEnabled() {
@@ -1499,8 +1497,8 @@ var Grapheme = (function (exports) {
   }
 
   class Plot2D extends InteractiveCanvas {
-    constructor (context) {
-      super(context);
+    constructor (universe=DefaultUniverse) {
+      super(universe);
 
       this.plot = this;
 
@@ -3596,6 +3594,7 @@ var Grapheme = (function (exports) {
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
+  exports.DefaultUniverse = DefaultUniverse;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;

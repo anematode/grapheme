@@ -116,4 +116,6 @@ class GraphemeUniverse {
   }
 }
 
-export { GraphemeUniverse as Universe}
+const DefaultUniverse = new GraphemeUniverse()
+
+export { GraphemeUniverse as Universe, DefaultUniverse }

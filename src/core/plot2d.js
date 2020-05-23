@@ -2,10 +2,11 @@ import {InteractiveCanvas} from './interactive_canvas'
 import { Plot2DTransform } from "../math/plot2d_transform.js"
 import { BoundingBox } from "../math/bounding_box"
 import { Vec2 } from "../math/vec.js"
+import { DefaultUniverse } from "./grapheme_universe"
 
 class Plot2D extends InteractiveCanvas {
-  constructor (context) {
-    super(context)
+  constructor (universe=DefaultUniverse) {
+    super(universe)
 
     this.plot = this
 
