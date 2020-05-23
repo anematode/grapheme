@@ -21,10 +21,10 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = "fine"
-    this.quality = 0.05
+    this.quality = 0.5
     this.function = (x) => Math.atan(x)
 
-    this.pen = new Pen({color: Colors.RANDOM, useNative: true})
+    this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2})
     this.polyline = null
 
     this.alwaysUpdate = false

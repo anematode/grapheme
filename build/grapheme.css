@@ -6,6 +6,7 @@
   margin: 0;
   touch-action: none;
   -ms-touch-action: none;
+  overflow: hidden;
 }
 
 .grapheme-label {
