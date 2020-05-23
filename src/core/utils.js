@@ -197,7 +197,7 @@ function generateUUID () {
   })
 }
 
-let empty_canvas = new OffscreenCanvas(1, 1)
+let empty_canvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement("canvas")
 let empty_canvas_ctx = empty_canvas.getContext("2d")
 
 function measureText(text, font) {

@@ -522,7 +522,7 @@ var Grapheme = (function (exports) {
     })
   }
 
-  let empty_canvas = new OffscreenCanvas(1, 1);
+  let empty_canvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement("canvas");
   let empty_canvas_ctx = empty_canvas.getContext("2d");
 
   function measureText(text, font) {
@@ -1016,7 +1016,7 @@ var Grapheme = (function (exports) {
       // Add this to the list of all extant universes
       Universes.push(this);
 
-      this.glCanvas = new OffscreenCanvas(1,1) || document.createElement("canvas");
+      this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1,1) : document.createElement("canvas");
       this.glCtx = this.glCanvas.getContext("webgl");
       this.glManager = new GLResourceManager(this.glCtx);
 
@@ -3347,7 +3347,6 @@ var Grapheme = (function (exports) {
   let MAX_DEPTH = 10;
 
   function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.05, depth=0, includeEndpoints=true) {
-    // console.log(start, end)
     if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return [NaN, NaN]
 

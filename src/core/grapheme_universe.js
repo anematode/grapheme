@@ -12,7 +12,7 @@ class GraphemeUniverse {
     // Add this to the list of all extant universes
     utils.Universes.push(this)
 
-    this.glCanvas = new OffscreenCanvas(1,1) || document.createElement("canvas")
+    this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1,1) : document.createElement("canvas")
     this.glCtx = this.glCanvas.getContext("webgl")
     this.glManager = new GLResourceManager(this.glCtx)
 
