@@ -24,7 +24,7 @@ class FunctionPlot2D extends GraphemeElement {
     this.quality = 0.5
     this.function = (x) => Math.atan(x)
 
-    this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2})
+    this.pen = new Pen({color: Colors.RANDOM, useNative: true, thickness: 3})
     this.polyline = null
 
     this.alwaysUpdate = false
@@ -56,8 +56,15 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.plot.transform.plotToPixelArr(vertices)
 
-    if (!this.polyline)
-      this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
+      if (this.pen.useNative && (!this.polyline || this.polyline instanceof PolylineElement)) {
+        this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
+      }
+
+      if (!this.pen.useNative) {
+        if (this.polyline)
+          this.polyline.destroy()
+        this.polyline = new PolylineElement({pen: this.pen, alwaysUpdate: false})
+      }
 
     this.polyline.vertices = vertices
     this.polyline.update()
