@@ -1897,7 +1897,7 @@ var Grapheme = (function (exports) {
       this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
     }
 
-    render (renderInfo) {
+    render (info) {
       const { text, position } = this;
       const mode = this.style.mode;
 
@@ -1939,6 +1939,8 @@ var Grapheme = (function (exports) {
     }
 
     render(info) {
+      super.render(info);
+
       this.style.drawText(info.ctx, this.text, this.position.x, this.position.y);
     }
   }
@@ -3229,6 +3231,8 @@ var Grapheme = (function (exports) {
     }
 
     render(info) {
+      super.render(info);
+
       const ctx = info.ctx;
 
       let simpleTransform = this.plot.transform.getPlotToPixelTransform();
@@ -3433,8 +3437,6 @@ var Grapheme = (function (exports) {
 
       this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false});
       this.polyline.update();
-
-      return
     }
 
     render(info) {

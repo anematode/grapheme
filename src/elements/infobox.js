@@ -29,6 +29,6 @@ class Infobox extends GraphemeElement {
   }
 
   render(info) {
-
+    super.render(info)
   }
 }

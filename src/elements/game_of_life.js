@@ -68,6 +68,8 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
   }
 
   render(info) {
+    super.render(info)
+
     const ctx = info.ctx
 
     let simpleTransform = this.plot.transform.getPlotToPixelTransform()

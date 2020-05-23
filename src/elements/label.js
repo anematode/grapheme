@@ -26,7 +26,7 @@ class BasicLabel extends LabelBase {
     this.style = params.style ? params.style : new BasicLabelStyle(params.style || {})
   }
 
-  render (renderInfo) {
+  render (info) {
     const { text, position } = this
     const mode = this.style.mode
 
@@ -68,6 +68,8 @@ class Label2D extends LabelBase {
   }
 
   render(info) {
+    super.render(info)
+
     this.style.drawText(info.ctx, this.text, this.position.x, this.position.y)
   }
 }

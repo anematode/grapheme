@@ -56,8 +56,6 @@ class FunctionPlot2D extends GraphemeElement {
 
     this.polyline = new PolylineElement({pen: this.pen, vertices, alwaysUpdate: false})
     this.polyline.update()
-
-    return
   }
 
   render(info) {

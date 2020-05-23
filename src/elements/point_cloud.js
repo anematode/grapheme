@@ -31,6 +31,8 @@ class PointCloud extends GraphemeElement {
   }
 
   render(info) {
+    super.render(info)
+
     const ctx = info.ctx
 
     ctx.fillStyle = this.color.hex()
