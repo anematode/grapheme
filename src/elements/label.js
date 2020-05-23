@@ -1,6 +1,7 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Vec2 } from '../math/vec'
 import { Label2DStyle, BasicLabelStyle } from '../styles/label_style'
+import * as utils from "../core/utils"
 
 class LabelBase extends GraphemeElement {
   constructor (params = {}) {
@@ -60,6 +61,10 @@ class Label2D extends LabelBase {
     super(params)
 
     this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {})
+  }
+
+  boundingBox() {
+    return utils.measureText(this.text, this.style.font)
   }
 
   render(info) {

@@ -15,3 +15,4 @@ export * from "./elements/function_plot.js"
 export * from "./core/grapheme_universe"
 export * from './elements/function_plot_algorithm'
 export * from "./math/geometry_calculations"
+export * from "./elements/pie_chart"

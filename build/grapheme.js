@@ -1,6 +1,331 @@
 var Grapheme = (function (exports) {
   'use strict';
 
+  class Vec2 {
+    constructor (x, y) {
+      if (x.x) {
+        this.x = x.x;
+        this.y = x.y;
+      } else if (Array.isArray(x)) {
+        this.x = x[0];
+        this.y = x[1];
+      } else {
+        this.x = x;
+        this.y = y;
+      }
+    }
+
+    clone() {
+      return new Vec2(this.x, this.y)
+    }
+
+    subtract(v) {
+      this.x -= v.x;
+      this.y -= v.y;
+      return this
+    }
+
+    add(v) {
+      this.x += v.x;
+      this.y += v.y;
+      return this
+    }
+
+    multiply(s) {
+      this.x *= s;
+      this.y *= s;
+      return this
+    }
+
+    hasNaN() {
+      return isNaN(this.x) || isNaN(this.y)
+    }
+
+    scale(s) {
+      return this.multiply(s)
+    }
+
+    divide(s) {
+      this.x /= s;
+      this.y /= s;
+      return this
+    }
+
+    asArray() {
+      return [this.x, this.y]
+    }
+
+    length() {
+      return Math.hypot(this.x, this.y)
+    }
+
+    unit() {
+      return this.clone().divide(this.length())
+    }
+
+    cross(v) {
+      return this.x * v.x + this.y * v.y
+    }
+
+    rotate(angle, about=Origin) {
+      let c = Math.cos(angle), s = Math.sin(angle);
+
+      if (about === Origin) {
+        let x = this.x, y = this.y;
+
+        this.x = x * c - y * s;
+        this.y = y * c + x * s;
+      } else {
+        let x = this.x, y = this.y;
+
+        this.subtract(about).rotate(angle).add(about);
+      }
+
+      return this
+    }
+
+    rotateDeg(angle_deg, about=Origin) {
+      this.rotate(angle_deg / 180 * 3.14159265359, about);
+
+      return this
+    }
+  }
+  const Origin = new Vec2(0,0);
+
+  class BoundingBox {
+    //_width;
+    //_height;
+
+    draw(canvasCtx) {
+      canvasCtx.beginPath();
+      canvasCtx.rect(this.top_left.x, this.top_left.y, this.width, this.height);
+      canvasCtx.stroke();
+    }
+
+    constructor(top_left=Vec2(0,0), width=640, height=480) {
+      this.top_left = top_left;
+
+      this.width = width;
+      this.height = height;
+    }
+
+    get width() {
+      return this._width
+    }
+
+    get height() {
+      return this._height
+    }
+
+    set width(w) {
+      if (w <= 0)
+        throw new Error("Invalid bounding box width")
+      this._width = w;
+    }
+
+    set height(h) {
+      if (h <= 0)
+        throw new Error("Invalid bounding box height")
+      this._height = h;
+    }
+
+    setTL(top_left) {
+      this.top_left = top_left;
+      return this
+    }
+
+    set cx(cx) {
+      this.top_left.x = cx - this.width / 2;
+    }
+
+    set cy(cy) {
+      this.top_left.y = cy - this.height / 2;
+    }
+
+    get cx() {
+      return this.top_left.x + this.width / 2
+    }
+
+    get cy() {
+      return this.top_left.y + this.height / 2
+    }
+
+    setSize(width, height) {
+      this.width = width;
+      this.height = height;
+      return this
+    }
+
+    clone() {
+      return new BoundingBox(this.top_left.clone(), this.width, this.height)
+    }
+
+    padLeft(x) {
+      this.width -= x;
+      this.top_left.x += x;
+      return this
+    }
+
+    padRight(x) {
+      this.width -= x;
+      return this
+    }
+
+    padTop(y) {
+      this.height -= y;
+      this.top_left.y += y;
+      return this
+    }
+
+    padBottom(y) {
+      this.height -= y;
+      return this
+    }
+
+    pad(paddings={}) {
+      if (paddings.left) {
+        this.padLeft(paddings.left);
+      }
+      if (paddings.right) {
+        this.padRight(paddings.right);
+      }
+      if (paddings.top) {
+        this.padTop(paddings.top);
+      }
+      if (paddings.bottom) {
+        this.padBottom(paddings.bottom);
+      }
+
+      return this
+    }
+
+    get x1() {
+      return this.top_left.x
+    }
+
+    get x2() {
+      return this.top_left.x + this.width
+    }
+
+    set x1(x) {
+      this.top_left.x = x;
+    }
+
+    set x2(x) {
+      this.width = x - this.top_left.x;
+    }
+
+    get y1() {
+      return this.top_left.y
+    }
+
+    get y2() {
+      return this.top_left.y + this.height
+    }
+
+    set y1(y) {
+      this.top_left.y = y;
+    }
+
+    set y2(y) {
+      this.height = y - this.top_left.y;
+    }
+
+    getBoxVertices() {
+      return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
+    }
+
+    clip(ctx) {
+      let path = new Path2D();
+
+      path.rect(this.x1, this.y1, this.width, this.height);
+
+      ctx.clip(path);
+    }
+  }
+
+  const boundingBoxTransform = {
+    X: (x, box1, box2, flipX) => {
+      if (Array.isArray(x) || isTypedArray(x)) {
+        for (let i = 0; i < x.length; ++i) {
+          let fractionAlong = (x[i] - box1.x1) / box1.width;
+
+          if (flipX)
+            fractionAlong = 1 - fractionAlong;
+
+          x[i] = fractionAlong * box2.width + box2.x1;
+        }
+        return x
+      } else {
+        return boundingBoxTransform.X([x], box1, box2, flipX)[0]
+      }
+    },
+    Y: (y, box1, box2, flipY) => {
+      if (Array.isArray(y) || isTypedArray(y)) {
+        for (let i = 0; i < y.length; ++i) {
+          let fractionAlong = (y[i] - box1.y1) / box1.height;
+
+          if (flipY)
+            fractionAlong = 1 - fractionAlong;
+
+          y[i] = fractionAlong * box2.height + box2.y1;
+        }
+        return y
+      } else {
+        return boundingBoxTransform.Y([y], box1, box2, flipY)[0]
+      }
+    },
+    XY: (xy, box1, box2, flipX, flipY) => {
+      if (Array.isArray(xy) || isTypedArray(x)) {
+        for (let i = 0; i < xy.length; i += 2) {
+          let fractionAlong = (xy[i] - box1.x1) / box1.width;
+
+          if (flipX)
+            fractionAlong = 1 - fractionAlong;
+
+          xy[i] = fractionAlong * box2.width + box2.x1;
+
+          fractionAlong = (xy[i+1] - box1.y1) / box1.height;
+
+          if (flipY)
+            fractionAlong = 1 - fractionAlong;
+
+          xy[i+1] = fractionAlong * box2.height + box2.y1;
+        }
+        return xy
+      } else {
+        throw new Error("No")
+      }
+    },
+    getReducedTransform(box1, box2, flipX, flipY) {
+      let x_m = 1 / box1.width;
+      let x_b = - box1.x1 / box1.width;
+
+      if (flipX) {
+        x_m *= -1;
+        x_b = 1 - x_b;
+      }
+
+      x_m *= box2.width;
+      x_b *= box2.width;
+      x_b += box2.x1;
+
+      let y_m = 1 / box1.height;
+      let y_b = - box1.y1 / box1.height;
+
+      if (flipY) {
+        y_m *= -1;
+        y_b = 1 - y_b;
+      }
+
+      y_m *= box2.height;
+      y_b *= box2.height;
+      y_b += box2.y1;
+
+      return {x_m, x_b, y_m, y_b}
+    }
+  };
+
   // This file defines some common utilities that Grapheme uses!
 
   // A list of all extant Grapheme Universes
@@ -197,6 +522,17 @@ var Grapheme = (function (exports) {
     })
   }
 
+  let empty_canvas = new OffscreenCanvas(1, 1);
+  let empty_canvas_ctx = empty_canvas.getContext("2d");
+
+  function measureText(text, font) {
+    if (empty_canvas_ctx.font !== font)
+      empty_canvas_ctx.font = font;
+    let metrics = empty_canvas_ctx.measureText(text);
+
+    return new BoundingBox(new Vec2(0,0), metrics.width, metrics.fontBoundingBoxAscent)
+  }
+
   // Delete buffers with the given name from all Grapheme Universes
   function deleteBuffersNamed (bufferNames) {
     if (Array.isArray(bufferNames)) {
@@ -257,8 +593,35 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function beautifyFloat(f, prec=12) {
+    let strf = f.toFixed(prec);
+    if (strf.includes('.')) {
+      return strf.replace(/\.?0+$/g,'');
+    } else {
+      return strf;
+    }
+  }
+
+  function expressQuantityPP(quantity) {
+    if (quantity > 0.01) {
+      return beautifyFloat(quantity * 100, 6) + "%"
+    } else if (quantity > 1e-6) {
+      return beautifyFloat(quantity * 1e6, 6) + " ppm"
+    } else if (quantity > 1e-9) {
+      return beautifyFloat(quantity * 1e9, 6) + " ppb"
+    } else if (quantity > 1e-12) {
+      return beautifyFloat(quantity * 1e12, 6) + " ppt"
+    } else if (quantity > 1e-15) {
+      return beautifyFloat(quantity * 1e12, 6) + " ppq"
+    } else {
+      return "0"
+    }
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
+    expressQuantityPP: expressQuantityPP,
     zeroFill: zeroFill,
+    measureText: measureText,
     generateUUID: generateUUID,
     createShaderFromSource: createShaderFromSource,
     createGLProgram: createGLProgram,
@@ -956,97 +1319,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class Vec2 {
-    constructor (x, y) {
-      if (x.x) {
-        this.x = x.x;
-        this.y = x.y;
-      } else if (Array.isArray(x)) {
-        this.x = x[0];
-        this.y = x[1];
-      } else {
-        this.x = x;
-        this.y = y;
-      }
-    }
-
-    clone() {
-      return new Vec2(this.x, this.y)
-    }
-
-    subtract(v) {
-      this.x -= v.x;
-      this.y -= v.y;
-      return this
-    }
-
-    add(v) {
-      this.x += v.x;
-      this.y += v.y;
-      return this
-    }
-
-    multiply(s) {
-      this.x *= s;
-      this.y *= s;
-      return this
-    }
-
-    hasNaN() {
-      return isNaN(this.x) || isNaN(this.y)
-    }
-
-    scale(s) {
-      return this.multiply(s)
-    }
-
-    divide(s) {
-      this.x /= s;
-      this.y /= s;
-      return this
-    }
-
-    asArray() {
-      return [this.x, this.y]
-    }
-
-    length() {
-      return Math.hypot(this.x, this.y)
-    }
-
-    unit() {
-      return this.clone().divide(this.length())
-    }
-
-    cross(v) {
-      return this.x * v.x + this.y * v.y
-    }
-
-    rotate(angle, about=Origin) {
-      let c = Math.cos(angle), s = Math.sin(angle);
-
-      if (about === Origin) {
-        let x = this.x, y = this.y;
-
-        this.x = x * c - y * s;
-        this.y = y * c + x * s;
-      } else {
-        let x = this.x, y = this.y;
-
-        this.subtract(about).rotate(angle).add(about);
-      }
-
-      return this
-    }
-
-    rotateDeg(angle_deg, about=Origin) {
-      this.rotate(angle_deg / 180 * 3.14159265359, about);
-
-      return this
-    }
-  }
-  const Origin = new Vec2(0,0);
-
   // List of events to listen for
   const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"];
 
@@ -1099,240 +1371,6 @@ var Grapheme = (function (exports) {
       }
     }
   }
-
-  class BoundingBox {
-    //_width;
-    //_height;
-
-    draw(canvasCtx) {
-      canvasCtx.beginPath();
-      canvasCtx.rect(this.top_left.x, this.top_left.y, this.width, this.height);
-      canvasCtx.stroke();
-    }
-
-    constructor(top_left=Vec2(0,0), width=640, height=480) {
-      this.top_left = top_left;
-
-      this.width = width;
-      this.height = height;
-    }
-
-    get width() {
-      return this._width
-    }
-
-    get height() {
-      return this._height
-    }
-
-    set width(w) {
-      if (w <= 0)
-        throw new Error("Invalid bounding box width")
-      this._width = w;
-    }
-
-    set height(h) {
-      if (h <= 0)
-        throw new Error("Invalid bounding box height")
-      this._height = h;
-    }
-
-    setTL(top_left) {
-      this.top_left = top_left;
-      return this
-    }
-
-    set cx(cx) {
-      this.top_left.x = cx - this.width / 2;
-    }
-
-    set cy(cy) {
-      this.top_left.y = cy - this.height / 2;
-    }
-
-    get cx() {
-      return this.top_left.x + this.width / 2
-    }
-
-    get cy() {
-      return this.top_left.y + this.height / 2
-    }
-
-    setSize(width, height) {
-      this.width = width;
-      this.height = height;
-      return this
-    }
-
-    clone() {
-      return new BoundingBox(this.top_left.clone(), this.width, this.height)
-    }
-
-    padLeft(x) {
-      this.width -= x;
-      this.top_left.x += x;
-      return this
-    }
-
-    padRight(x) {
-      this.width -= x;
-      return this
-    }
-
-    padTop(y) {
-      this.height -= y;
-      this.top_left.y += y;
-      return this
-    }
-
-    padBottom(y) {
-      this.height -= y;
-      return this
-    }
-
-    pad(paddings={}) {
-      if (paddings.left) {
-        this.padLeft(paddings.left);
-      }
-      if (paddings.right) {
-        this.padRight(paddings.right);
-      }
-      if (paddings.top) {
-        this.padTop(paddings.top);
-      }
-      if (paddings.bottom) {
-        this.padBottom(paddings.bottom);
-      }
-
-      return this
-    }
-
-    get x1() {
-      return this.top_left.x
-    }
-
-    get x2() {
-      return this.top_left.x + this.width
-    }
-
-    set x1(x) {
-      this.top_left.x = x;
-    }
-
-    set x2(x) {
-      this.width = x - this.top_left.x;
-    }
-
-    get y1() {
-      return this.top_left.y
-    }
-
-    get y2() {
-      return this.top_left.y + this.height
-    }
-
-    set y1(y) {
-      this.top_left.y = y;
-    }
-
-    set y2(y) {
-      this.height = y - this.top_left.y;
-    }
-
-    getBoxVertices() {
-      return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
-    }
-
-    clip(ctx) {
-      let path = new Path2D();
-
-      path.rect(this.x1, this.y1, this.width, this.height);
-
-      ctx.clip(path);
-    }
-  }
-
-  const boundingBoxTransform = {
-    X: (x, box1, box2, flipX) => {
-      if (Array.isArray(x) || isTypedArray(x)) {
-        for (let i = 0; i < x.length; ++i) {
-          let fractionAlong = (x[i] - box1.x1) / box1.width;
-
-          if (flipX)
-            fractionAlong = 1 - fractionAlong;
-
-          x[i] = fractionAlong * box2.width + box2.x1;
-        }
-        return x
-      } else {
-        return boundingBoxTransform.X([x], box1, box2, flipX)[0]
-      }
-    },
-    Y: (y, box1, box2, flipY) => {
-      if (Array.isArray(y) || isTypedArray(y)) {
-        for (let i = 0; i < y.length; ++i) {
-          let fractionAlong = (y[i] - box1.y1) / box1.height;
-
-          if (flipY)
-            fractionAlong = 1 - fractionAlong;
-
-          y[i] = fractionAlong * box2.height + box2.y1;
-        }
-        return y
-      } else {
-        return boundingBoxTransform.Y([y], box1, box2, flipY)[0]
-      }
-    },
-    XY: (xy, box1, box2, flipX, flipY) => {
-      if (Array.isArray(xy) || isTypedArray(x)) {
-        for (let i = 0; i < xy.length; i += 2) {
-          let fractionAlong = (xy[i] - box1.x1) / box1.width;
-
-          if (flipX)
-            fractionAlong = 1 - fractionAlong;
-
-          xy[i] = fractionAlong * box2.width + box2.x1;
-
-          fractionAlong = (xy[i+1] - box1.y1) / box1.height;
-
-          if (flipY)
-            fractionAlong = 1 - fractionAlong;
-
-          xy[i+1] = fractionAlong * box2.height + box2.y1;
-        }
-        return xy
-      } else {
-        throw new Error("No")
-      }
-    },
-    getReducedTransform(box1, box2, flipX, flipY) {
-      let x_m = 1 / box1.width;
-      let x_b = - box1.x1 / box1.width;
-
-      if (flipX) {
-        x_m *= -1;
-        x_b = 1 - x_b;
-      }
-
-      x_m *= box2.width;
-      x_b *= box2.width;
-      x_b += box2.x1;
-
-      let y_m = 1 / box1.height;
-      let y_b = - box1.y1 / box1.height;
-
-      if (flipY) {
-        y_m *= -1;
-        y_b = 1 - y_b;
-      }
-
-      y_m *= box2.height;
-      y_b *= box2.height;
-      y_b += box2.y1;
-
-      return {x_m, x_b, y_m, y_b}
-    }
-  };
 
   class Plot2DTransform {
     constructor(params={}) {
@@ -1776,6 +1814,7 @@ var Grapheme = (function (exports) {
       }
 
       this.prepareContextTextStyle(ctx);
+      this.prepareContextFill(ctx);
       ctx.fillText(text, x, y);
 
     }
@@ -1893,6 +1932,10 @@ var Grapheme = (function (exports) {
       super(params);
 
       this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
+    }
+
+    boundingBox() {
+      return measureText(this.text, this.style.font)
     }
 
     render(info) {
@@ -2530,7 +2573,7 @@ var Grapheme = (function (exports) {
 
   // Credit: https://stackoverflow.com/a/20439411
   /* Turns a float into a pretty float by removing dumb floating point things */
-  function beautifyFloat(f, prec=12) {
+  function beautifyFloat$1(f, prec=12) {
     let strf = f.toFixed(prec);
     if (strf.includes('.')) {
       return strf.replace(/\.?0+$/g,'');
@@ -2555,7 +2598,7 @@ var Grapheme = (function (exports) {
         if (x === 0) return "0"; // special case
         else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
         // non-extreme floats displayed normally
-          return beautifyFloat(x);
+          return beautifyFloat$1(x);
         else {
           // scientific notation for the very fat and very small!
 
@@ -2563,14 +2606,14 @@ var Grapheme = (function (exports) {
           let mantissa = x / (10 ** exponent);
 
           let prefix = (isApproxEqual$1(mantissa,1) ? '' :
-            (beautifyFloat(mantissa, 8) + CDOT));
+            (beautifyFloat$1(mantissa, 8) + CDOT));
           let exponent_suffix = "10" + exponentify(exponent);
 
           return prefix + exponent_suffix;
         }
       };
 
-      this.label_positions = ["top", "left", "bottom", "right"];
+      this.label_positions = ["bottom", "left"];
       this.label_types = ["axis", "major"];
       this.label_style = new Label2DStyle({fontSize: 20});
       this.label_padding = 3;
@@ -2660,10 +2703,10 @@ var Grapheme = (function (exports) {
               if (!style) {
                 style = computed_label_styles["left"] = new Label2DStyle(this.label_style);
 
-                style.dir = "W";
+                style.dir = "E";
               }
 
-              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)});
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)});
 
               this._labels.push(label);
             }
@@ -2673,10 +2716,10 @@ var Grapheme = (function (exports) {
               if (!style) {
                 style = computed_label_styles["right"] = new Label2DStyle(this.label_style);
 
-                style.dir = "E";
+                style.dir = "W";
               }
 
-              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)});
+              let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)});
 
               this._labels.push(label);
             }
@@ -3408,6 +3451,147 @@ var Grapheme = (function (exports) {
     }
   }
 
+  const PieColors = ["SALMON", "STEELBLUE", "LAVENDER", "MEDIUMORCHID", "INDIGO", "THISTLE", "AZURE", "TAN", "CORNSILK", "MISTYROSE", "DIMGRAY"];
+
+  class PieChart extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.box = null;
+      this.sectors = [
+        {name: "Nitrogen", value: 780840 / 1e6},
+        {name: "Oxygen", value: 209460 / 1e6},
+        {name: "Argon", value: 9340 / 1e6},
+        {name: "Carbon dioxide", value: 413.32 / 1e6},
+        {name: "Neon", value: 18.18 / 1e6},
+        {name: "Helium", value: 5.24 / 1e6},
+        {name: "Methane", value: 1.87 / 1e6},
+        {name: "Krypton", value: 1.14 / 1e6}
+      ];
+
+      this.critical_angles = {
+        "stop_labeling" : 3,
+        "label_outside" : 15
+      };
+
+      this.label_function = (name, value) => {
+        return name + ": " + expressQuantityPP(value)
+      };
+
+      this.label_style = new Label2DStyle({color: Colors.BLACK, fontSize: 20});
+      this.label_ratio = 0.7;
+      this.label_padding = 15;
+
+      this.starting_angle = 90; // degrees counterclockwise from x axis
+
+      this._paths = [];
+      this._labels = [];
+    }
+
+    update() {
+      let box = this.box;
+
+      if (!box) {
+        box = this.plot.transform.box;
+      }
+
+      let radius = Math.min(box.width, box.height) / 2;
+      let totalValue = 0;
+
+      for (let i = 0; i < this.sectors.length; ++i) {
+        let sector = this.sectors[i];
+        if (!sector.value) {
+          totalValue += 1;
+        } else {
+          totalValue += sector.value;
+        }
+      }
+
+      let theta = -this.starting_angle / 180 * Math.PI;
+      let cx = box.cx;
+      let cy = box.cy;
+
+      this._paths = [];
+      this._labels = [];
+
+      for (let i = 0; i < this.sectors.length; ++i) {
+        let sector = this.sectors[i];
+        let value = sector.value;
+        if (!value) {
+          value = 1;
+        }
+
+        let angle = value / totalValue * 2 * Math.PI;
+        let angleDeg = angle / Math.PI * 180;
+
+        if (angleDeg > this.critical_angles.stop_labeling) {
+          let label_angle = theta + angle / 2;
+          let r = radius * this.label_ratio;
+
+          if (angleDeg < this.critical_angles.label_outside) {
+            r = radius + this.label_padding;
+          }
+
+          let x = cx + r * Math.cos(label_angle);
+          let y = cy + r * Math.sin(label_angle);
+
+          let pos = new Vec2(x, y);
+
+          let label = new Label2D({style: this.label_style, position: pos});
+          label.text = this.label_function(sector.name, sector.value);
+
+          this._labels.push(label);
+        }
+
+        let path = new Path2D();
+        path.moveTo(cx, cy);
+        path.lineTo(cx + radius * Math.cos(theta), cy + radius * Math.sin(theta));
+        path.arc(cx, cy, radius, theta, theta+angle);
+        path.closePath();
+
+        this._paths.push(path);
+
+        theta += angle;
+      }
+    }
+
+    render(info) {
+      super.render(info);
+
+      const ctx = info.ctx;
+
+      let colorIndx = 0;
+
+      function getSubstituteColor() {
+        let color = Colors[PieColors[colorIndx]];
+
+        colorIndx++;
+
+        if (colorIndx >= PieColors.length)
+          colorIndx = 0;
+
+        return color
+      }
+
+      for (let i = 0; i < this.sectors.length; ++i) {
+        let path = this._paths[i];
+
+        if (path) {
+          let color = this.sectors[i].color;
+          if (!color)
+            color = getSubstituteColor();
+
+          ctx.fillStyle = color.hex();
+          ctx.fill(path);
+        }
+      }
+
+      for (let i = 0; i < this._labels.length; ++i) {
+        this._labels[i].render(info);
+      }
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -3416,6 +3600,7 @@ var Grapheme = (function (exports) {
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
   exports.Label2D = Label2D;
+  exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
   exports.PolylineElement = PolylineElement;
   exports.TreeElement = TreeElement;

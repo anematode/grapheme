@@ -81,7 +81,7 @@ class Gridlines extends GraphemeElement {
       }
     }
 
-    this.label_positions = ["top", "left", "bottom", "right"]
+    this.label_positions = ["bottom", "left"]
     this.label_types = ["axis", "major"]
     this.label_style = new Label2DStyle({fontSize: 20})
     this.label_padding = 3
@@ -171,10 +171,10 @@ class Gridlines extends GraphemeElement {
             if (!style) {
               style = computed_label_styles["left"] = new Label2DStyle(this.label_style)
 
-              style.dir = "W"
+              style.dir = "E"
             }
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)})
+            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)})
 
             this._labels.push(label)
           }
@@ -184,10 +184,10 @@ class Gridlines extends GraphemeElement {
             if (!style) {
               style = computed_label_styles["right"] = new Label2DStyle(this.label_style)
 
-              style.dir = "E"
+              style.dir = "W"
             }
 
-            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(sx - label_padding, y_coord)})
+            let label = new Label2D({style, text: this.label_function(marker.pos), position: new Vec2(ex + label_padding, y_coord)})
 
             this._labels.push(label)
           }

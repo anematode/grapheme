@@ -11,6 +11,14 @@ class WebGLElement extends GraphemeElement {
   render(info) {
     if (info.beforeWebGLRender)
       info.beforeWebGLRender()
+
+    this.sortChildren()
+
+    // Update if needed
+    if (this.alwaysUpdate)
+      this.update()
+
+    this.children.forEach(child => child.render(info))
   }
 }
 

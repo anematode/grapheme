@@ -1,3 +1,6 @@
+import { BoundingBox } from '../math/bounding_box'
+import { Vec2 } from "../math/vec"
+
 // This file defines some common utilities that Grapheme uses!
 
 // A list of all extant Grapheme Universes
@@ -194,6 +197,17 @@ function generateUUID () {
   })
 }
 
+let empty_canvas = new OffscreenCanvas(1, 1)
+let empty_canvas_ctx = empty_canvas.getContext("2d")
+
+function measureText(text, font) {
+  if (empty_canvas_ctx.font !== font)
+    empty_canvas_ctx.font = font
+  let metrics = empty_canvas_ctx.measureText(text)
+
+  return new BoundingBox(new Vec2(0,0), metrics.width, metrics.fontBoundingBoxAscent)
+}
+
 // Delete buffers with the given name from all Grapheme Universes
 function deleteBuffersNamed (bufferNames) {
   if (Array.isArray(bufferNames)) {
@@ -254,7 +268,32 @@ function removeUniverse(context) {
   }
 }
 
+function beautifyFloat(f, prec=12) {
+  let strf = f.toFixed(prec);
+  if (strf.includes('.')) {
+    return strf.replace(/\.?0+$/g,'');
+  } else {
+    return strf;
+  }
+}
+
+function expressQuantityPP(quantity) {
+  if (quantity > 0.01) {
+    return beautifyFloat(quantity * 100, 6) + "%"
+  } else if (quantity > 1e-6) {
+    return beautifyFloat(quantity * 1e6, 6) + " ppm"
+  } else if (quantity > 1e-9) {
+    return beautifyFloat(quantity * 1e9, 6) + " ppb"
+  } else if (quantity > 1e-12) {
+    return beautifyFloat(quantity * 1e12, 6) + " ppt"
+  } else if (quantity > 1e-15) {
+    return beautifyFloat(quantity * 1e12, 6) + " ppq"
+  } else {
+    return "0"
+  }
+}
+
 export {
-  zeroFill, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+  expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
   isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }

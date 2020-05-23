@@ -61,6 +61,7 @@ class Label2DStyle extends BasicLabelStyle {
     }
 
     this.prepareContextTextStyle(ctx)
+    this.prepareContextFill(ctx)
     ctx.fillText(text, x, y)
 
   }
