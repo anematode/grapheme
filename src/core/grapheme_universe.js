@@ -28,7 +28,11 @@ class GraphemeUniverse {
   }
 
   copyToCanvas(graphemeCanvas) {
+    graphemeCanvas.ctx.resetTransform()
+
     graphemeCanvas.ctx.drawImage(this.glCanvas, 0, 0)
+
+    graphemeCanvas.resetCanvasCtxTransform()
   }
 
   _setSize(width, height) {
@@ -45,10 +49,10 @@ class GraphemeUniverse {
     for (let i = 0; i < this.canvases.length; ++i) {
       let canvas = this.canvases[i]
 
-      if (canvas.width > maxWidth)
-        maxWidth = canvas.width
-      if (canvas.height > maxHeight)
-        maxHeight = canvas.height
+      if (canvas.canvasWidth > maxWidth)
+        maxWidth = canvas.canvasWidth
+      if (canvas.canvasHeight > maxHeight)
+        maxHeight = canvas.canvasHeight
     }
 
     this._setSize(maxWidth, maxHeight)

@@ -154,7 +154,7 @@ class GraphemeCanvas extends GraphemeGroup {
    * Clear the canvas
    */
   clear () {
-    this.ctx.clearRect(0, 0, this.canvasWidth / utils.dpr, this.canvasHeight / utils.dpr)
+    this.ctx.clearRect(0, 0, this.width, this.height)
   }
 
   /**
