@@ -1,5 +1,6 @@
 import * as utils from '../core/utils'
 import { WebGLElement } from '../core/webgl_grapheme_element'
+import * as GEOCALC from "../math/geometry_calculations"
 
 // this vertex shader is used for the polylines
 const vertexShaderSource = `// set the float precision of the shader to medium precision
@@ -386,6 +387,18 @@ class WebGLPolyline extends WebGLElement {
 
       this._calculateNativeLines()
     }
+  }
+
+  isClick(point) {
+    return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
+  }
+
+  distanceFrom(point) {
+    return GEOCALC.point_line_segment_min_distance(point.x, point.y, this.vertices)
+  }
+
+  closestTo(point) {
+    return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
   }
 
   render (info) {

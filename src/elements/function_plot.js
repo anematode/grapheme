@@ -1,6 +1,7 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
 import { PolylineElement } from './polyline'
+import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
 import { WebGLPolylineWrapper } from './webgl_polyline_wrapper'
@@ -12,7 +13,7 @@ let MAX_POINTS = 10000
 // rough = linear sample, no refinement
 // fine = linear sample with refinement
 
-class FunctionPlot2D extends GraphemeElement {
+class FunctionPlot2D extends InteractiveElement {
   constructor(params={}) {
     super(params)
 
@@ -31,6 +32,17 @@ class FunctionPlot2D extends GraphemeElement {
     this.alwaysUpdate = false
 
     this.addEventListener("plotcoordschanged", () => this.update())
+
+    this.interactivityEnabled = true
+    this.addEventListener("interactive-mouseon", () => { this.pen.thickness = 6; this.update() })
+    this.addEventListener("interactive-mouseoff", () => { this.pen.thickness = 2; this.update() })
+    this.addEventListener("interactive-drag", () => {this.pen.thickness += 1; this.update(); return true})
+  }
+
+  isClick(position) {
+    if (this.polyline) {
+      return this.polyline.isClick(position)
+    }
   }
 
   update() {
