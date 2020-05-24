@@ -151,14 +151,12 @@ class WebGLPolyline extends WebGLElement {
       y2 = vertices[2 * i + 1]; // Current vertex
       y3 = (i !== original_vertex_count - 1) ? vertices[2 * i + 3] : NaN; // Next vertex
 
-      if (Math.abs(x2) > 16384 || Math.abs(y2) > 16384)
-        continue
-
       if ((x1 === x2 && y1 === y2) || (x2 === x3 && y2 === y3))
         continue
 
       if (isNaN(x2) || isNaN(y2)) {
-        addVertex(NaN, NaN)
+        console.log(x1, y1, x2, y2, x3, y3)
+        duplicateVertex()
       }
 
       if (isNaN(x1) || isNaN(y1)) { // starting endcap

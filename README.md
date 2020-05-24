@@ -16,12 +16,5 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Plot2D cleanup
-- PlotElement cleanup
-- PlotAxes
+- Fix strange Polylines issue
 - Path2D
-- Dataset
-- FunctionGraph
-- PolarGraph
-- ParametricGraph
-- FunctionInequality
