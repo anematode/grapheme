@@ -1,9 +1,17 @@
 import { Element as GraphemeElement } from "./grapheme_element"
 import {InteractiveCanvas} from './interactive_canvas'
 
-const InteractivityListenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"]
+const listenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"]
 
+/** @class InteractiveElement An element which takes up space a plot and supports an "isClick" function.
+ * Used exclusively for 2D plots (3D plots will have a raycasting system).
+ */
 class InteractiveElement extends GraphemeElement {
+  /**
+   * Construct an InteractiveElement
+   * @param params
+   * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
+   */
   constructor(params={}) {
     super(params)
 
@@ -13,10 +21,18 @@ class InteractiveElement extends GraphemeElement {
     this.interactivityEnabled = interactivityEnabled
   }
 
+  /**
+   * Get whether interactivity is enabled
+   * @returns {boolean} Whether interactivity is enabled
+   */
   get interactivityEnabled() {
     return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
   }
 
+  /**
+   * Set whether interactivity is enabled
+   * @param value
+   */
   set interactivityEnabled(value) {
     if (this.interactivityEnabled === value)
       return
@@ -27,37 +43,42 @@ class InteractiveElement extends GraphemeElement {
     let interactivityListeners = this.interactivityListeners
 
     if (value) {
-      if (this.plot && !(this.plot instanceof InteractiveCanvas)) {
-        console.warn("Interactive element in non-interactive canvas")
-      }
+      if (this.plot && !(this.plot instanceof InteractiveCanvas))
+        console.warn("Interactive element in a non-interactive canvas")
 
       let mouseDown = null
-      let prevMouseMoveIsClick = false
-      for (let key of InteractivityListenerKeys) {
+
+      // Whether the previous mousemove was on the element
+      let prevIsClick = false
+
+      for (let key of listenerKeys) {
         let key_ = key
 
         let callback = (evt) => {
           let position = evt.pos
           let isClick = this.isClick(position)
 
-          if (isClick && !prevMouseMoveIsClick) {
+          // Trigger mouse on and mouse off events
+          if (isClick && !prevIsClick) {
             this.triggerEvent("interactive-mouseon")
-          } else if (!isClick && prevMouseMoveIsClick) {
+          } else if (!isClick && prevIsClick) {
             this.triggerEvent("interactive-mouseoff")
           }
 
-          if (key_ === "mousemove" && isClick) {
-            prevMouseMoveIsClick = true
-          } else if (key_ === "mousemove" && !isClick) {
-            prevMouseMoveIsClick = false
-          }
+          // Set whether the previous mouse move is on the element
+          if (key_ === "mousemove" && isClick)
+            prevIsClick = true
+          else if (key_ === "mousemove" && !isClick)
+            prevIsClick = false
 
           if (isClick) {
             this.triggerEvent("interactive-" + key_)
           }
 
+          // Trigger drag events
           if (key_ === "mousemove") {
             if (mouseDown) {
+              // return to allow the prevention of propagation
               return this.triggerEvent("interactive-drag", {start: mouseDown, ...evt})
             }
           } else if (key_ === "mousedown" && isClick) {

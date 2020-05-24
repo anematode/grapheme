@@ -34,9 +34,6 @@ class FunctionPlot2D extends InteractiveElement {
     this.addEventListener("plotcoordschanged", () => this.update())
 
     this.interactivityEnabled = true
-    this.addEventListener("interactive-mouseon", () => { this.pen.thickness = 6; this.update() })
-    this.addEventListener("interactive-mouseoff", () => { this.pen.thickness = 2; this.update() })
-    this.addEventListener("interactive-drag", () => {this.pen.thickness += 1; this.update(); return true})
   }
 
   isClick(position) {

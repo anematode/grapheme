@@ -1,8 +1,14 @@
-// Inspired by tween.js.
+// Inspired by tween.js!
+
+let extantInterpolations = []
+
+// We store
 
 function interpolate(object) {
   return {
-    to: ()
+    to: (obj) => {
+
+    }
   }
 }
 

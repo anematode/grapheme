@@ -855,7 +855,8 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /** Manage the labels of a domElement, meant to be the container div of a grapheme window */
+  /** @claas LabelManager
+   * Manage the labels of a domElement, meant to be the container div of a grapheme window */
   class LabelManager {
     constructor (container) {
       // Pass it the dom element div for grapheme_window
@@ -879,18 +880,23 @@ var Grapheme = (function (exports) {
       });
     }
 
+    // Get element corresponding to a given label
     getElement (label) {
       const labelInfo = this.labels.get(label);
       let domElement;
 
       if (!labelInfo) {
+        // Create a div for the label to use
         domElement = document.createElement('div');
         domElement.classList.add('grapheme-label');
         this.container.appendChild(domElement);
 
+        // Set renderID so that we know if it needs updating later
         this.labels.set(label, { renderID: this.currentRenderID, domElement });
       } else {
         domElement = labelInfo.domElement;
+
+        // Update render ID
         labelInfo.renderID = this.currentRenderID;
       }
 
@@ -1550,6 +1556,12 @@ var Grapheme = (function (exports) {
     }
   }
 
+  /**
+   * @class Plot2D
+   * A generic plot in two dimensions, including a transform from plot coordinates to pixel coordinates.
+   * Padding of the plot is determined by padding.top, padding.left, etc.. Interactivity like scrolling and dragging are
+   * enabled via enableDrag and enableScroll
+   */
   class Plot2D extends InteractiveCanvas {
     constructor (universe=DefaultUniverse) {
       super(universe);
@@ -2648,30 +2660,32 @@ var Grapheme = (function (exports) {
 
   const CDOT = String.fromCharCode(183);
 
+  const StandardLabelFunction = x => {
+    if (x === 0) return "0"; // special case
+    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+      // non-extreme floats displayed normally
+      return beautifyFloat$1(x);
+    else {
+      // scientific notation for the very fat and very small!
+
+      let exponent = Math.floor(Math.log10(Math.abs(x)));
+      let mantissa = x / (10 ** exponent);
+
+      let prefix = (isApproxEqual$1(mantissa, 1) ? '' :
+        (beautifyFloat$1(mantissa, 8) + CDOT));
+      let exponent_suffix = "10" + exponentify(exponent);
+
+      return prefix + exponent_suffix;
+    }
+  };
+
   // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
       super(params);
 
       this.strategizer = GridlineStrategizers.Standard;
-      this.label_function = x => {
-        if (x === 0) return "0"; // special case
-        else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
-        // non-extreme floats displayed normally
-          return beautifyFloat$1(x);
-        else {
-          // scientific notation for the very fat and very small!
-
-          let exponent = Math.floor(Math.log10(Math.abs(x)));
-          let mantissa = x / (10 ** exponent);
-
-          let prefix = (isApproxEqual$1(mantissa,1) ? '' :
-            (beautifyFloat$1(mantissa, 8) + CDOT));
-          let exponent_suffix = "10" + exponentify(exponent);
-
-          return prefix + exponent_suffix;
-        }
-      };
+      this.label_function = StandardLabelFunction;
 
       this.label_positions = ["dynamic"];
       this.label_types = ["axis", "major"];
@@ -3474,9 +3488,17 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const InteractivityListenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"];
+  const listenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"];
 
+  /** @class InteractiveElement An element which takes up space a plot and supports an "isClick" function.
+   * Used exclusively for 2D plots (3D plots will have a raycasting system).
+   */
   class InteractiveElement extends GraphemeElement {
+    /**
+     * Construct an InteractiveElement
+     * @param params
+     * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
+     */
     constructor(params={}) {
       super(params);
 
@@ -3486,10 +3508,18 @@ var Grapheme = (function (exports) {
       this.interactivityEnabled = interactivityEnabled;
     }
 
+    /**
+     * Get whether interactivity is enabled
+     * @returns {boolean} Whether interactivity is enabled
+     */
     get interactivityEnabled() {
       return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
     }
 
+    /**
+     * Set whether interactivity is enabled
+     * @param value
+     */
     set interactivityEnabled(value) {
       if (this.interactivityEnabled === value)
         return
@@ -3500,37 +3530,42 @@ var Grapheme = (function (exports) {
       let interactivityListeners = this.interactivityListeners;
 
       if (value) {
-        if (this.plot && !(this.plot instanceof InteractiveCanvas)) {
-          console.warn("Interactive element in non-interactive canvas");
-        }
+        if (this.plot && !(this.plot instanceof InteractiveCanvas))
+          console.warn("Interactive element in a non-interactive canvas");
 
         let mouseDown = null;
-        let prevMouseMoveIsClick = false;
-        for (let key of InteractivityListenerKeys) {
+
+        // Whether the previous mousemove was on the element
+        let prevIsClick = false;
+
+        for (let key of listenerKeys) {
           let key_ = key;
 
           let callback = (evt) => {
             let position = evt.pos;
             let isClick = this.isClick(position);
 
-            if (isClick && !prevMouseMoveIsClick) {
+            // Trigger mouse on and mouse off events
+            if (isClick && !prevIsClick) {
               this.triggerEvent("interactive-mouseon");
-            } else if (!isClick && prevMouseMoveIsClick) {
+            } else if (!isClick && prevIsClick) {
               this.triggerEvent("interactive-mouseoff");
             }
 
-            if (key_ === "mousemove" && isClick) {
-              prevMouseMoveIsClick = true;
-            } else if (key_ === "mousemove" && !isClick) {
-              prevMouseMoveIsClick = false;
-            }
+            // Set whether the previous mouse move is on the element
+            if (key_ === "mousemove" && isClick)
+              prevIsClick = true;
+            else if (key_ === "mousemove" && !isClick)
+              prevIsClick = false;
 
             if (isClick) {
               this.triggerEvent("interactive-" + key_);
             }
 
+            // Trigger drag events
             if (key_ === "mousemove") {
               if (mouseDown) {
+                // return to allow the prevention of propagation
                 return this.triggerEvent("interactive-drag", {start: mouseDown, ...evt})
               }
             } else if (key_ === "mousedown" && isClick) {
@@ -4129,9 +4164,6 @@ void main() {
       this.addEventListener("plotcoordschanged", () => this.update());
 
       this.interactivityEnabled = true;
-      this.addEventListener("interactive-mouseon", () => { this.pen.thickness = 6; this.update(); });
-      this.addEventListener("interactive-mouseoff", () => { this.pen.thickness = 2; this.update(); });
-      this.addEventListener("interactive-drag", () => {this.pen.thickness += 1; this.update(); return true});
     }
 
     isClick(position) {

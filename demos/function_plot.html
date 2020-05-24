@@ -36,6 +36,10 @@
     function_plot.function = function_
     plot.add(function_plot)
 
+    function_plot.addEventListener("interactive-mouseon", () => { function_plot.pen.thickness = 6; function_plot.update() })
+    function_plot.addEventListener("interactive-mouseoff", () => { function_plot.pen.thickness = 2; function_plot.update() })
+    function_plot.addEventListener("interactive-drag", () => {function_plot.pen.thickness += 1; function_plot.update(); return true})
+
     function_plot.update()
   }
 

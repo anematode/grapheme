@@ -1,5 +1,6 @@
 
-/** Manage the labels of a domElement, meant to be the container div of a grapheme window */
+/** @claas LabelManager
+ * Manage the labels of a domElement, meant to be the container div of a grapheme window */
 class LabelManager {
   constructor (container) {
     // Pass it the dom element div for grapheme_window
@@ -23,18 +24,23 @@ class LabelManager {
     })
   }
 
+  // Get element corresponding to a given label
   getElement (label) {
     const labelInfo = this.labels.get(label)
     let domElement
 
     if (!labelInfo) {
+      // Create a div for the label to use
       domElement = document.createElement('div')
       domElement.classList.add('grapheme-label')
       this.container.appendChild(domElement)
 
+      // Set renderID so that we know if it needs updating later
       this.labels.set(label, { renderID: this.currentRenderID, domElement })
     } else {
       domElement = labelInfo.domElement
+
+      // Update render ID
       labelInfo.renderID = this.currentRenderID
     }
 

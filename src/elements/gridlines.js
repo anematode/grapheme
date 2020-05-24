@@ -57,30 +57,32 @@ function isApproxEqual(v, w, eps=1e-5) {
 
 const CDOT = String.fromCharCode(183);
 
+const StandardLabelFunction = x => {
+  if (x === 0) return "0"; // special case
+  else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
+    // non-extreme floats displayed normally
+    return beautifyFloat(x);
+  else {
+    // scientific notation for the very fat and very small!
+
+    let exponent = Math.floor(Math.log10(Math.abs(x)));
+    let mantissa = x / (10 ** exponent);
+
+    let prefix = (isApproxEqual(mantissa, 1) ? '' :
+      (beautifyFloat(mantissa, 8) + CDOT));
+    let exponent_suffix = "10" + exponentify(exponent);
+
+    return prefix + exponent_suffix;
+  }
+}
+
 // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
 class Gridlines extends GraphemeElement {
   constructor(params={}) {
     super(params)
 
     this.strategizer = GridlineStrategizers.Standard
-    this.label_function = x => {
-      if (x === 0) return "0"; // special case
-      else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5)
-      // non-extreme floats displayed normally
-        return beautifyFloat(x);
-      else {
-        // scientific notation for the very fat and very small!
-
-        let exponent = Math.floor(Math.log10(Math.abs(x)));
-        let mantissa = x / (10 ** exponent);
-
-        let prefix = (isApproxEqual(mantissa,1) ? '' :
-          (beautifyFloat(mantissa, 8) + CDOT));
-        let exponent_suffix = "10" + exponentify(exponent);
-
-        return prefix + exponent_suffix;
-      }
-    }
+    this.label_function = StandardLabelFunction
 
     this.label_positions = ["dynamic"]
     this.label_types = ["axis", "major"]

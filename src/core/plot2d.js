@@ -4,6 +4,12 @@ import { BoundingBox } from "../math/bounding_box"
 import { Vec2 } from "../math/vec.js"
 import { DefaultUniverse } from "./grapheme_universe"
 
+/**
+ * @class Plot2D
+ * A generic plot in two dimensions, including a transform from plot coordinates to pixel coordinates.
+ * Padding of the plot is determined by padding.top, padding.left, etc.. Interactivity like scrolling and dragging are
+ * enabled via enableDrag and enableScroll
+ */
 class Plot2D extends InteractiveCanvas {
   constructor (universe=DefaultUniverse) {
     super(universe)
