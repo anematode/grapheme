@@ -17,3 +17,9 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 To Do:
 
 - Path2D
+- TTFReader
+- PolygonRenderer
+- TextRenderer
+- FunctionInequality
+- Chessboard
+- Music?
