@@ -16,5 +16,4 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Fix strange Polylines issue
 - Path2D

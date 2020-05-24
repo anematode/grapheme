@@ -2349,7 +2349,7 @@ var Grapheme = (function (exports) {
     return ASMViews.f64.subarray(0, i/2 - 2)
   }
 
-  let heap = new ArrayBuffer(0x10000);
+  let heap = new ArrayBuffer(0x10000000);
   let stdlib = {Math: Math, Float64Array: Float64Array, Infinity: Infinity};
 
   let ASMViews = {f64: new Float64Array(heap)};
@@ -3423,7 +3423,7 @@ var Grapheme = (function (exports) {
 
   let MAX_DEPTH = 10;
 
-  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.5, depth=0, includeEndpoints=true) {
+  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {
     if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return [NaN, NaN]
 
@@ -3538,7 +3538,7 @@ void main() {
 
       this.endcap_type = 1; // refer to ENDCAP enum
       this.endcap_res = 0.4; // angle in radians between consecutive roundings
-      this.join_type = 2; // refer to ENDCAP enum
+      this.join_type = 3; // refer to ENDCAP enum
       this.join_res = 0.5; // angle in radians between consecutive roundings
 
       this.use_native = false;
@@ -3631,11 +3631,11 @@ void main() {
         y2 = vertices[2 * i + 1]; // Current vertex
         y3 = (i !== original_vertex_count - 1) ? vertices[2 * i + 3] : NaN; // Next vertex
 
-        if ((x1 === x2 && y1 === y2) || (x2 === x3 && y2 === y3))
+        if ((Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) < 0.1) ||
+          (Math.abs(x3 - x2) < 0.1 && Math.abs(y3 - y2) < 0.1))
           continue
 
         if (isNaN(x2) || isNaN(y2)) {
-          console.log(x1, y1, x2, y2, x3, y3);
           duplicateVertex();
         }
 
@@ -3644,7 +3644,7 @@ void main() {
           let nu_y = y3 - y2;
           let dis = Math.hypot(nu_x, nu_y);
 
-          if (dis === 0) {
+          if (dis < 0.001) {
             nu_x = 1;
             nu_y = 0;
           } else {
@@ -3682,7 +3682,7 @@ void main() {
           let pu_y = y2 - y1;
           let dis = Math.hypot(pu_x, pu_y);
 
-          if (dis === 0) {
+          if (dis < 0.001) {
             pu_x = 1;
             pu_y = 0;
           } else {
@@ -3764,7 +3764,7 @@ void main() {
           nu_y = y3 - y2;
           dis = Math.hypot(nu_x, nu_y);
 
-          if (dis === 0) {
+          if (dis < 0.001) {
             nu_x = 1;
             nu_y = 0;
           } else {
@@ -3954,7 +3954,7 @@ void main() {
 
       this.plotPoints = plotPoints;
       this.plottingMode = "fine";
-      this.quality = 0.5;
+      this.quality = 10;
       this.function = (x) => Math.atan(x);
 
       this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 3});

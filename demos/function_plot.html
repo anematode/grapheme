@@ -28,7 +28,7 @@
   let gridlines = new Grapheme.Gridlines()
   plot.add(gridlines)
 
-  let functions = [x => 1/x]
+  let functions = [x => Math.sin(1/x)]
 
   for (let function_ of functions) {
     let function_plot = new Grapheme.FunctionPlot2D()

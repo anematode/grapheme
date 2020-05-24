@@ -272,7 +272,7 @@ function angles_between(polyline_vertices, threshold=0.03) {
   return ASMViews.f64.subarray(0, i/2 - 2)
 }
 
-let heap = new ArrayBuffer(0x10000)
+let heap = new ArrayBuffer(0x10000000)
 let stdlib = {Math: Math, Float64Array: Float64Array, Infinity: Infinity}
 
 let ASMViews = {f64: new Float64Array(heap)}
