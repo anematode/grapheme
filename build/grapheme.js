@@ -1167,7 +1167,7 @@ var Grapheme = (function (exports) {
      * Creates a GraphemeCanvas.
      *
      * @constructor
-     * @param universe {GraphemeContext}
+     * @param universe {GraphemeUniverse} Universe this canvas will be a part of
      */
     constructor (universe=DefaultUniverse) {
       super();
@@ -1365,23 +1365,36 @@ var Grapheme = (function (exports) {
   // List of events to listen for
   const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"];
 
-  /** @class Canvas that supports interactivity events.
+  /**
+   * @class Canvas that supports interactivity events.
    * The callbacks are given above, and the events have the following structure:
    * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
    */
   class InteractiveCanvas extends GraphemeCanvas {
+    /**
+     * Construct an interactive canvas
+     * @param universe GraphemeUniverse this canvas is a part of
+     */
     constructor(universe=DefaultUniverse) {
       super(universe);
 
-      /** @private */ this.interactivityListeners = {};
+      this.interactivityListeners = {};
 
       this.interactivityEnabled = true;
     }
 
+    /**
+     * Get whether interactivity is enabled
+     * @returns {boolean} Whether interactivity is enabled
+     */
     get interactivityEnabled() {
       return Object.keys(this.interactivityListeners).length !== 0
     }
 
+    /**
+     * Set whether interactivity is enabled
+     * @param enable Whether interactivity is enabled
+     */
     set interactivityEnabled(enable) {
       if (enable) {
         // Add interactivity listeners

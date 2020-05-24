@@ -10,7 +10,7 @@ class GraphemeCanvas extends GraphemeGroup {
    * Creates a GraphemeCanvas.
    *
    * @constructor
-   * @param universe {GraphemeContext}
+   * @param universe {GraphemeUniverse} Universe this canvas will be a part of
    */
   constructor (universe=DefaultUniverse) {
     super()
