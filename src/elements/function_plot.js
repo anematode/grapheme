@@ -23,7 +23,7 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = "fine"
-    this.quality = 5
+    this.quality = 1
     this.function = (x) => Math.atan(x)
 
     this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2})

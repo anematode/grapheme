@@ -14,11 +14,16 @@ class Plot2D extends InteractiveCanvas {
   constructor (universe=DefaultUniverse) {
     super(universe)
 
+    // This is the plot of itself. Meta!
     this.plot = this
 
-    this.transform = new Plot2DTransform({plot: this})
+    // The amount of padding on all sides of the plot, which determines the plotting box along with the canvas's size
     this.padding = {top: 40, right: 40, left: 40, bottom: 40}
 
+    // The transformation from plot coordinates to pixels
+    this.transform = new Plot2DTransform({plot: this})
+
+    // Whether to allow movement by dragging and scrolling TODO
     this.enableDrag = true
     this.enableScroll = true
 

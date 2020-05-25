@@ -1566,11 +1566,16 @@ var Grapheme = (function (exports) {
     constructor (universe=DefaultUniverse) {
       super(universe);
 
+      // This is the plot of itself. Meta!
       this.plot = this;
 
-      this.transform = new Plot2DTransform({plot: this});
+      // The amount of padding on all sides of the plot, which determines the plotting box along with the canvas's size
       this.padding = {top: 40, right: 40, left: 40, bottom: 40};
 
+      // The transformation from plot coordinates to pixels
+      this.transform = new Plot2DTransform({plot: this});
+
+      // Whether to allow movement by dragging and scrolling TODO
       this.enableDrag = true;
       this.enableScroll = true;
 
@@ -3806,10 +3811,6 @@ void main() {
         y2 = vertices[2 * i + 1]; // Current vertex
         y3 = (i !== original_vertex_count - 1) ? vertices[2 * i + 3] : NaN; // Next vertex
 
-        if ((Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) < 0.1) ||
-          (Math.abs(x3 - x2) < 0.1 && Math.abs(y3 - y2) < 0.1))
-          continue
-
         if (isNaN(x2) || isNaN(y2)) {
           duplicateVertex();
         }
@@ -4153,7 +4154,7 @@ void main() {
 
       this.plotPoints = plotPoints;
       this.plottingMode = "fine";
-      this.quality = 5;
+      this.quality = 1;
       this.function = (x) => Math.atan(x);
 
       this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2});
@@ -4365,6 +4366,158 @@ void main() {
     }
   }
 
+  // Inspired by tween.js!
+
+  // list of all active interpolations. They are stored in the following form:
+  // {object, property, startTime, endTime, interpolationFunction}
+  let extantInterpolations = [];
+
+  const SIGMOID_C = 0.964027580075816;
+
+  // An interpolation function is a function from [0,1] to [0,1] such that f(0) = 0 and f(1) = 1
+  const Interpolations = {
+    LINEAR: x => Math.min(Math.max(x, 0), 1),
+    QUADRATIC: x => x < 0 ? 0 : (x > 1 ? 1 : x * x),
+    CUBIC: x => x < 0 ? 0 : (x > 1 ? 1 : x * x * x),
+    QUARTIC: x => x < 0 ? 0 : (x > 1 ? 1 : x * x * x * x),
+    INVERTED_QUADRATIC: x => x < 0 ? 0 : (x > 1 ? 1 : (1 - (x - 1) ** 2)),
+    INVERTED_CUBIC: x => x < 0 ? 0 : (x > 1 ? 1 : (1 - (x - 1) ** 3)),
+    INVERTED_QUARTIC: x => x < 0 ? 0 : (x > 1 ? 1 : (1 - (x - 1) ** 4)),
+    INVERTED_CIRCULAR: x => x < 0 ? 0 : (x > 1 ? 1 : (1-Math.sqrt(1-x*x))),
+    CIRCULAR: x => x < 0 ? 0 : (x > 1 ? 1 : (Math.sqrt(1 - (x - 1)  ** 2))),
+    SIGMOID: x => x < 0 ? 0 : (x > 1 ? 1 : (Math.tanh(4 * x - 2) / (2 * SIGMOID_C) + 0.5))
+  };
+
+  function removeFinishedInterpolations() {
+    let time = Date.now();
+
+    for (let i = 0; i < extantInterpolations.length; ++i) {
+      if (extantInterpolations[i].end < time + 1000) {
+        extantInterpolations.splice(i, 1);
+        --i;
+      }
+    }
+  }
+
+  // We store
+  function update() {
+    extantInterpolations.forEach(interpolation => interpolation.tick());
+
+    removeFinishedInterpolations();
+  }
+
+  class GraphemeInterpolation {
+    constructor(object) {
+      this.object = object;
+
+      this.duration = -1;
+      this.interpolationFunction = Interpolations.LINEAR;
+
+      this.values = {};
+
+      this.startTime = -1;
+      this.endTime = -1;
+
+      this.onUpdate = [];
+      this.onComplete = [];
+    }
+
+    to(values, duration) {
+      for (let key in values) {
+        let value = values[key];
+
+        this.values[key] = {start: values[key], end: value};
+      }
+
+      this.duration = duration;
+
+      return this
+    }
+
+    cancel() {
+      let index = extantInterpolations.indexOf(this);
+
+      if (index !== -1) {
+        extantInterpolations.splice(index, 1);
+      }
+
+      return this
+    }
+
+    setInterpolation(func) {
+      this.interpolationFunction = func;
+      return this
+    }
+
+    start() {
+      if (this.duration < 0) {
+        throw new Error("You need to set a valid duration")
+      }
+
+      if (extantInterpolations.some(egg => egg.object === this.object))
+        extantInterpolations = extantInterpolations.filter(egg => egg.object !== this.object);
+
+      this.startTime = Date.now();
+      this.endTime = this.startTime + this.duration;
+
+      for (let key in this.values) {
+        this.values[key].start = this.object[key];
+      }
+
+      extantInterpolations.push(this);
+
+      return this
+    }
+
+    tick() {
+      let time = Date.now();
+      let fractionCompleted = (time - this.startTime) / this.duration;
+
+      if (fractionCompleted >= 1) {
+        fractionCompleted = 1;
+      }
+
+      for (let key in this.values) {
+        let value = this.values[key];
+
+        this.object[key] = this.interpolationFunction(fractionCompleted) * (value.end - value.start) + value.start;
+      }
+
+      this.onUpdate.forEach(callback => callback(this.object));
+
+      if (fractionCompleted >= 1) {
+        this.onComplete.forEach(callback => callback(this.object));
+
+        this.cancel();
+      }
+    }
+
+    update(func) {
+      this.onUpdate.push(func);
+      return this
+    }
+
+    complete(func) {
+      this.onComplete.push(func);
+      return this
+    }
+  }
+
+  function interpolate(...args) {
+    return new GraphemeInterpolation(...args)
+  }
+
+  let _interpolationsEnabled = true;
+
+  function updateInterpolations() {
+
+    update();
+
+    requestAnimationFrame(updateInterpolations);
+  }
+
+  updateInterpolations();
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -4373,6 +4526,7 @@ void main() {
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
+  exports.Interpolations = Interpolations;
   exports.Label2D = Label2D;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
@@ -4382,9 +4536,11 @@ void main() {
   exports.Universe = GraphemeUniverse;
   exports.Vec2 = Vec2;
   exports.WebGLPolyline = WebGLPolyline;
+  exports._interpolationsEnabled = _interpolationsEnabled;
   exports.adaptively_sample_1d = adaptively_sample_1d;
   exports.angles_between = angles_between;
   exports.boundingBoxTransform = boundingBoxTransform;
+  exports.interpolate = interpolate;
   exports.parse_string = parse_string;
   exports.point_line_segment_min_closest = point_line_segment_min_closest;
   exports.point_line_segment_min_distance = point_line_segment_min_distance;

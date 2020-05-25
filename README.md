@@ -16,6 +16,7 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
+- Allow Path2D navigation to be togglable
 - Path2D
 - TTFReader
 - PolygonRenderer

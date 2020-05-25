@@ -3,7 +3,7 @@
 <html>
 <head>
     <title>Grapheme Performance Test</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <style>
         * {
             margin: 0;
@@ -14,48 +14,59 @@
 <body>
 
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
 <script src="../build/grapheme.js"></script>
 
 <script>
 
   let plot = new Grapheme.Plot2D()
 
-  plot.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(plot.domElement);
+  plot.setSize(window.innerWidth, window.innerHeight)
+  document.body.appendChild(plot.domElement)
 
   let gridlines = new Grapheme.Gridlines()
   plot.add(gridlines)
 
-  let functions = [x => Math.cosh(x)]
+  let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
-  for (let function_ of functions) {
-    let function_plot = new Grapheme.FunctionPlot2D()
+  let function_plot = new Grapheme.FunctionPlot2D()
 
-    function_plot.function = function_
-    plot.add(function_plot)
+  function_plot.function = Math.cosh
+  plot.add(function_plot)
 
-    function_plot.addEventListener("interactive-mouseon", () => { function_plot.pen.thickness = 6; function_plot.update() })
-    function_plot.addEventListener("interactive-mouseoff", () => { function_plot.pen.thickness = 2; function_plot.update() })
-    function_plot.addEventListener("interactive-drag", () => {function_plot.pen.thickness += 1; function_plot.update(); return true})
-
+  function_plot.addEventListener('interactive-mouseon', () => {
+    Grapheme.interpolate(function_plot.pen)
+      .to({ thickness: 8 }, 100)
+      .setInterpolation(Grapheme.Interpolations.SIGMOID)
+      .update(() => function_plot.update())
+      .start()
+  })
+  function_plot.addEventListener('interactive-mouseoff', () => {
+    Grapheme.interpolate(function_plot.pen)
+      .to({ thickness: 3 }, 100)
+      .setInterpolation(Grapheme.Interpolations.SIGMOID)
+      .update(() => function_plot.update())
+      .start()
+  })
+  function_plot.addEventListener('interactive-click', () => {
+    function_plot.function = functions[Math.floor(Math.random() * functions.length)]
     function_plot.update()
+  })
+
+  function_plot.update()
+
+  let ia = 0
+
+  function render () {
+    ia += 0.1
+
+    plot.render()
+    requestAnimationFrame(render)
   }
 
-
-  let ia = 0;
-  function render() {
-    ia += 0.1;
-
-    plot.render();
-    requestAnimationFrame(render);
-  }
-
-  render();
+  render()
 
   window.onresize = () => {
-    plot.setSize(window.innerWidth, window.innerHeight);
+    plot.setSize(window.innerWidth, window.innerHeight)
   }
 </script>
 
