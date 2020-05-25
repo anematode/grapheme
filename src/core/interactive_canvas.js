@@ -3,7 +3,8 @@ import {Vec2} from '../math/vec'
 import { DefaultUniverse } from './grapheme_universe'
 
 // List of events to listen for
-const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "touchstart", "touchend", "touchcancel", "touchmove", "wheel"]
+const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "wheel"]
+const TOUCH_EVENTS = ["touchstart", "touchmove", "touchend", "touchcancel"]
 
 /**
  * @class Canvas that supports interactivity events.
@@ -53,14 +54,57 @@ class InteractiveCanvas extends GraphemeCanvas {
 
         this.domElement.addEventListener(evtName, callback)
       })
+
+      TOUCH_EVENTS.forEach(evtName => {
+        let callback = (event) => this.handleTouch(event)
+
+        this.interactivityListeners[evtName] = callback
+
+        this.domElement.addEventListener(evtName, callback)
+      })
     } else {
       // Remove all interactivity listeners
-      EVENTS.forEach(evtName => {
+      EVENTS.concat(TOUCH_EVENTS).forEach(evtName => {
         this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName])
       })
 
       this.interactivityListeners = {}
     }
+  }
+
+  handleTouch(event) {
+    // Credit to https://stackoverflow.com/questions/1517924/javascript-mapping-touch-events-to-mouse-events
+      let touches = event.changedTouches,
+        first = touches[0],
+        type = "";
+      switch (event.type) {
+        case "touchstart": type = "mousedown"; break;
+        case "touchmove":  type = "mousemove"; break;
+        case "touchend":   type = "mouseup";   break;
+        default: return;
+      }
+
+      let simulatedEvent = document.createEvent("MouseEvent");
+      simulatedEvent.initMouseEvent(type, true, true, window, 1,
+        first.screenX, first.screenY,
+        first.clientX, first.clientY, false,
+        false, false, false, 0, null);
+
+      first.target.dispatchEvent(simulatedEvent);
+      event.preventDefault();
+
+      if (type === "mouseup") {
+        // also emit a click event
+
+        let simulatedEvent2 = document.createEvent("MouseEvent");
+        simulatedEvent2.initMouseEvent("click", true, true, window, 1,
+          first.screenX, first.screenY,
+          first.clientX, first.clientY, false,
+          false, false, false, 0, null);
+
+        first.target.dispatchEvent(simulatedEvent2);
+        event.preventDefault();
+      }
   }
 }
 
