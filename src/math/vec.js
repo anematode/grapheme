@@ -17,6 +17,11 @@ class Vec2 {
     return new Vec2(this.x, this.y)
   }
 
+  set(v) {
+    this.x = v.x
+    this.y = v.y
+  }
+
   subtract(v) {
     this.x -= v.x
     this.y -= v.y

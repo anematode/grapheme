@@ -5,31 +5,11 @@ import { Vec2 } from '../math/vec'
 import { Label2D } from './label'
 import { StandardLabelFunction } from "./gridlines"
 import { Colors } from '../other/color'
+import { LabeledPoint } from './labeled_point'
 
-class FunctionPlot2DInspectionPoint extends GraphemeElement {
-  constructor (params = {}) {
-    super()
-
-    this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position)
-
-    this.point = new PointElement()
-    this.label = new Label2D({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
-  }
-
-  update () {
-    let position = this.plot.transform.plotToPixel(this.position)
-    this.point.position = position
-    this.label.position = position.clone().add(new Vec2(1, -1).scale(1.4 * this.point.radius))
-
-    if (this.position)
-      this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')'
-  }
-
-  render (info) {
-    super.render(info)
-
-    this.point.render(info)
-    this.label.render(info)
+class FunctionPlot2DInspectionPoint extends LabeledPoint {
+  constructor(params={}) {
+    super(params)
   }
 }
 

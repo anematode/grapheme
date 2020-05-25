@@ -51,6 +51,8 @@ class GraphemeCanvas extends GraphemeGroup {
     this.addEventListener("dprchanged", () => {
       this.setSize(this.width, this.height)
     })
+
+    this.extraInfo = {}
   }
 
   /**
@@ -187,7 +189,7 @@ class GraphemeCanvas extends GraphemeGroup {
     labelManager.currentRenderID = utils.getRenderID()
 
     // Info to be given to rendered elements
-    const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe }
+    const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe, extraInfo: this.extraInfo }
 
     // Clear the canvas
     this.clear()

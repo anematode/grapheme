@@ -205,7 +205,7 @@ function measureText(text, font) {
     empty_canvas_ctx.font = font
   let metrics = empty_canvas_ctx.measureText(text)
 
-  return new BoundingBox(new Vec2(0,0), metrics.width, metrics.fontBoundingBoxAscent)
+  return new BoundingBox(new Vec2(0,0), metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
 }
 
 // Delete buffers with the given name from all Grapheme Universes

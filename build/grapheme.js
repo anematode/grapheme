@@ -19,6 +19,11 @@ var Grapheme = (function (exports) {
       return new Vec2(this.x, this.y)
     }
 
+    set(v) {
+      this.x = v.x;
+      this.y = v.y;
+    }
+
     subtract(v) {
       this.x -= v.x;
       this.y -= v.y;
@@ -102,7 +107,7 @@ var Grapheme = (function (exports) {
       canvasCtx.stroke();
     }
 
-    constructor(top_left=Vec2(0,0), width=640, height=480) {
+    constructor(top_left=new Vec2(0,0), width=640, height=480) {
       this.top_left = top_left;
 
       this.width = width;
@@ -118,13 +123,13 @@ var Grapheme = (function (exports) {
     }
 
     set width(w) {
-      if (w <= 0)
+      if (w < 0)
         throw new Error("Invalid bounding box width")
       this._width = w;
     }
 
     set height(h) {
-      if (h <= 0)
+      if (h < 0)
         throw new Error("Invalid bounding box height")
       this._height = h;
     }
@@ -132,6 +137,10 @@ var Grapheme = (function (exports) {
     setTL(top_left) {
       this.top_left = top_left;
       return this
+    }
+
+    area() {
+      return this.width * this.height
     }
 
     set cx(cx) {
@@ -235,12 +244,16 @@ var Grapheme = (function (exports) {
       return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
     }
 
-    clip(ctx) {
+    getPath() {
       let path = new Path2D();
 
       path.rect(this.x1, this.y1, this.width, this.height);
 
-      ctx.clip(path);
+      return path
+    }
+
+    clip(ctx) {
+      ctx.clip(this.getPath());
     }
   }
 
@@ -325,6 +338,28 @@ var Grapheme = (function (exports) {
       return {x_m, x_b, y_m, y_b}
     }
   };
+
+  const EMPTY = new BoundingBox(new Vec2(0,0), 0, 0);
+
+  function intersectBoundingBoxes(box1, box2) {
+    let x1 = Math.max(box1.x1, box2.x1);
+    let y1 = Math.max(box1.y1, box2.y1);
+    let x2 = Math.min(box1.x2, box2.x2);
+    let y2 = Math.min(box1.y2, box2.y2);
+
+    if (x2 < x1) {
+      return EMPTY.clone()
+    }
+
+    if (y2 < y1) {
+      return EMPTY.clone()
+    }
+
+    let width = x2 - x1;
+    let height = y2 - y1;
+
+    return new BoundingBox(new Vec2(x1, y1), width, height)
+  }
 
   // This file defines some common utilities that Grapheme uses!
 
@@ -530,7 +565,7 @@ var Grapheme = (function (exports) {
       empty_canvas_ctx.font = font;
     let metrics = empty_canvas_ctx.measureText(text);
 
-    return new BoundingBox(new Vec2(0,0), metrics.width, metrics.fontBoundingBoxAscent)
+    return new BoundingBox(new Vec2(0,0), metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
   }
 
   // Delete buffers with the given name from all Grapheme Universes
@@ -1219,6 +1254,8 @@ var Grapheme = (function (exports) {
       this.addEventListener("dprchanged", () => {
         this.setSize(this.width, this.height);
       });
+
+      this.extraInfo = {};
     }
 
     /**
@@ -1355,7 +1392,7 @@ var Grapheme = (function (exports) {
       labelManager.currentRenderID = getRenderID();
 
       // Info to be given to rendered elements
-      const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe };
+      const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe, extraInfo: this.extraInfo };
 
       // Clear the canvas
       this.clear();
@@ -1618,6 +1655,49 @@ var Grapheme = (function (exports) {
     }
   }
 
+  class SmartLabelManager {
+    constructor(plot) {
+      this.plot = plot;
+
+      this.labelBoundingBoxes = [];
+
+      this.antipadding = 1000;
+    }
+
+    getIntersectingArea(bbox) {
+      let area = 0;
+
+      for (let box of this.labelBoundingBoxes) {
+        area += intersectBoundingBoxes(bbox, box).area();
+      }
+
+      return area
+    }
+
+    addBox(box) {
+      this.labelBoundingBoxes.push(box);
+    }
+
+    reset() {
+      this.labelBoundingBoxes = [];
+
+      let box = this.plot.getCanvasBox();
+
+      this.labelBoundingBoxes.push(new BoundingBox(box.top_left.clone().subtract(new Vec2(this.antipadding, this.antipadding)), this.antipadding * 2 + box.width, this.antipadding));
+      this.labelBoundingBoxes.push(new BoundingBox(new Vec2(box.x1 - this.antipadding, box.y2), this.antipadding * 2 + box.width, this.antipadding));
+      this.labelBoundingBoxes.push(new BoundingBox(box.top_left.clone().subtract(new Vec2(this.antipadding, 0)), this.antipadding, box.height));
+      this.labelBoundingBoxes.push(new BoundingBox(new Vec2(box.x2, box.y1), this.antipadding, box.height));
+    }
+
+    drawBoundingBoxes(ctx) {
+      ctx.fillStyle = "red";
+
+      for (let box of this.labelBoundingBoxes) {
+        ctx.fill(box.getPath());
+      }
+    }
+  }
+
   /**
    * @class Plot2D
    * A generic plot in two dimensions, including a transform from plot coordinates to pixel coordinates.
@@ -1640,6 +1720,8 @@ var Grapheme = (function (exports) {
       // Whether to allow movement by dragging and scrolling TODO
       this.enableDrag = true;
       this.enableScroll = true;
+
+      this.extraInfo.smartLabelManager = new SmartLabelManager(this);
 
       this.addEventListener("mousedown", evt => this.mouseDown(evt));
       this.addEventListener("mouseup", evt => this.mouseUp(evt));
@@ -1676,6 +1758,9 @@ var Grapheme = (function (exports) {
     }
 
     render() {
+      this.extraInfo.smartLabelManager.reset();
+      this.extraInfo.smartLabelManager.drawBoundingBoxes(this.ctx);
+
       super.render();
     }
 
@@ -2071,8 +2156,8 @@ var Grapheme = (function (exports) {
       this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {});
     }
 
-    boundingBox() {
-      return measureText(this.text, this.style.font)
+    boundingBoxNaive() {
+      return measureText(this.text, `${this.style.fontSize}px ${this.style.fontFamily}`)
     }
 
     render(info) {
@@ -4606,7 +4691,7 @@ void main() {
       super(params);
 
       this.position = new Vec2(5, 4);
-      this.radius = 4;
+      this.radius = 3;
 
       this.style = new PointElementStyle();
       this.draggable = false;
@@ -4630,19 +4715,162 @@ void main() {
       if (this.style.doStroke)
         info.ctx.stroke(this._path);
     }
+
+    getBBox() {
+      let cx = this.position.x;
+      let cy = this.position.y;
+
+      let box = new BoundingBox();
+
+      box.height = box.width = this.radius * 2 * 1.4;
+
+      box.cx = cx;
+      box.cy = cy;
+
+      return box
+    }
   }
 
-  class FunctionPlot2DInspectionPoint extends GraphemeElement {
+  const directionPrecedence = ["N", "S", "W", "E", "SW", "SE", "NW", "NE"];
+
+  /**
+   * Label which automatically figures out where to be placed to have the label shown well.
+   */
+  class SmartLabel extends Label2D {
+    constructor(params={}) {
+      super(params);
+
+      this.objectBox = new BoundingBox(new Vec2(0,0), 0, 0);
+      this.forceDir = null;
+    }
+
+    computeAnchorPoint(dir) {
+      const box = this.objectBox;
+
+      let y = 0;
+      let x = 0;
+
+      switch (dir) {
+        case "W": case "E":
+          y = 1;
+          break
+        case "NW": case "NE": case "N":
+          y = 0;
+          break
+        case "SW": case "SE": case "S":
+          y = 2;
+          break
+      }
+      switch (dir) {
+        case "NW": case "W": case "SW":
+          x = 0;
+          break
+        case "N": case "S":
+          x = 1;
+          break
+        case "NE": case "E": case "SE":
+          x = 2;
+          break
+      }
+
+      let pos_x = box.x1 + box.width * x / 2;
+      let pos_y = box.y1 + box.height * y / 2;
+
+      return {pos: new Vec2(pos_x, pos_y), reference_x: x, reference_y: y, pos_x, pos_y}
+    }
+
+    computeTranslatedBoundingBox(bbox, dir) {
+      if (!this.objectBox)
+        return
+
+      let bboxc = bbox.clone();
+
+      let anchorInfo = this.computeAnchorPoint(dir);
+
+      let x = 0, y = 0;
+
+      switch (anchorInfo.reference_x) {
+        case 0:
+          x = anchorInfo.pos_x - bbox.width;
+          break
+        case 1:
+          x = anchorInfo.pos_x - bbox.width / 2;
+          break
+        case 2:
+          x = anchorInfo.pos_x;
+          break
+      }
+
+      switch (anchorInfo.reference_y) {
+        case 0:
+          y = anchorInfo.pos_y - bbox.height;
+          break
+        case 1:
+          y = anchorInfo.pos_y - bbox.height / 2;
+          break
+        case 2:
+          y = anchorInfo.pos_y;
+          break
+      }
+
+      bboxc.top_left = new Vec2(x, y);
+
+      return bboxc
+    }
+
+    render(info) {
+      let bbox = this.boundingBoxNaive();
+
+      let dir = this.forceDir;
+      const sS = this.style.shadowSize;
+
+      if (this.forceDir) ; else {
+        let min_area = Infinity;
+
+        if (info.extraInfo.smartLabelManager && !this.forceDir) {
+          for (let direction of directionPrecedence) {
+            let bbox_computed = this.computeTranslatedBoundingBox(bbox, direction);
+
+            let area = info.extraInfo.smartLabelManager.getIntersectingArea(bbox_computed);
+
+            if (area <= min_area) {
+              dir = direction;
+              min_area = area;
+            }
+          }
+        }
+      }
+
+      let computed = this.computeTranslatedBoundingBox(bbox, dir).pad({
+        top: -sS,
+        bottom: -sS,
+        left: -sS,
+        right: -sS
+      });
+
+      let anchor_info = this.computeAnchorPoint(dir);
+
+      this.style.dir = dir;
+      this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y);
+
+      super.render(info);
+
+      info.extraInfo.smartLabelManager.addBox(computed);
+    }
+  }
+
+  class LabeledPoint extends GraphemeElement {
     constructor (params = {}) {
       super();
 
       this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position);
 
       this.point = new PointElement();
-      this.label = new Label2D({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
+      this.label = new SmartLabel({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
     }
 
     update () {
+      this.label.objectBox = this.point.getBBox();
       let position = this.plot.transform.plotToPixel(this.position);
       this.point.position = position;
       this.label.position = position.clone().add(new Vec2(1, -1).scale(1.4 * this.point.radius));
@@ -4656,6 +4884,12 @@ void main() {
 
       this.point.render(info);
       this.label.render(info);
+    }
+  }
+
+  class FunctionPlot2DInspectionPoint extends LabeledPoint {
+    constructor(params={}) {
+      super(params);
     }
   }
 
@@ -4770,6 +5004,7 @@ void main() {
   exports.angles_between = angles_between;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.interpolate = interpolate;
+  exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.parse_string = parse_string;
   exports.point_line_segment_min_closest = point_line_segment_min_closest;
   exports.point_line_segment_min_distance = point_line_segment_min_distance;

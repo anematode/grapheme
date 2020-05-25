@@ -11,7 +11,7 @@ export class BoundingBox {
     canvasCtx.stroke()
   }
 
-  constructor(top_left=Vec2(0,0), width=640, height=480) {
+  constructor(top_left=new Vec2(0,0), width=640, height=480) {
     this.top_left = top_left
 
     this.width = width
@@ -27,13 +27,13 @@ export class BoundingBox {
   }
 
   set width(w) {
-    if (w <= 0)
+    if (w < 0)
       throw new Error("Invalid bounding box width")
     this._width = w
   }
 
   set height(h) {
-    if (h <= 0)
+    if (h < 0)
       throw new Error("Invalid bounding box height")
     this._height = h
   }
@@ -41,6 +41,10 @@ export class BoundingBox {
   setTL(top_left) {
     this.top_left = top_left
     return this
+  }
+
+  area() {
+    return this.width * this.height
   }
 
   set cx(cx) {
@@ -144,12 +148,16 @@ export class BoundingBox {
     return [this.x1, this.y1, this.x2, this.y1, this.x2, this.y2, this.x1, this.y2, this.x1, this.y1]
   }
 
-  clip(ctx) {
+  getPath() {
     let path = new Path2D()
 
     path.rect(this.x1, this.y1, this.width, this.height)
 
-    ctx.clip(path)
+    return path
+  }
+
+  clip(ctx) {
+    ctx.clip(this.getPath())
   }
 }
 
@@ -236,3 +244,27 @@ const boundingBoxTransform = {
 }
 
 export {boundingBoxTransform}
+
+const EMPTY = new BoundingBox(new Vec2(0,0), 0, 0)
+
+function intersectBoundingBoxes(box1, box2) {
+  let x1 = Math.max(box1.x1, box2.x1)
+  let y1 = Math.max(box1.y1, box2.y1)
+  let x2 = Math.min(box1.x2, box2.x2)
+  let y2 = Math.min(box1.y2, box2.y2)
+
+  if (x2 < x1) {
+    return EMPTY.clone()
+  }
+
+  if (y2 < y1) {
+    return EMPTY.clone()
+  }
+
+  let width = x2 - x1
+  let height = y2 - y1
+
+  return new BoundingBox(new Vec2(x1, y1), width, height)
+}
+
+export {intersectBoundingBoxes}

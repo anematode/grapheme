@@ -3,6 +3,7 @@ import { Plot2DTransform } from "../math/plot2d_transform.js"
 import { BoundingBox } from "../math/bounding_box"
 import { Vec2 } from "../math/vec.js"
 import { DefaultUniverse } from "./grapheme_universe"
+import { SmartLabelManager } from '../other/smart_label_manager'
 
 /**
  * @class Plot2D
@@ -26,6 +27,8 @@ class Plot2D extends InteractiveCanvas {
     // Whether to allow movement by dragging and scrolling TODO
     this.enableDrag = true
     this.enableScroll = true
+
+    this.extraInfo.smartLabelManager = new SmartLabelManager(this)
 
     this.addEventListener("mousedown", evt => this.mouseDown(evt))
     this.addEventListener("mouseup", evt => this.mouseUp(evt))
@@ -62,6 +65,9 @@ class Plot2D extends InteractiveCanvas {
   }
 
   render() {
+    this.extraInfo.smartLabelManager.reset()
+    this.extraInfo.smartLabelManager.drawBoundingBoxes(this.ctx)
+
     super.render()
   }
 

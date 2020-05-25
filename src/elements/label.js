@@ -63,8 +63,8 @@ class Label2D extends LabelBase {
     this.style = (params.style instanceof Label2DStyle) ? params.style : new Label2DStyle(params.style || {})
   }
 
-  boundingBox() {
-    return utils.measureText(this.text, this.style.font)
+  boundingBoxNaive() {
+    return utils.measureText(this.text, `${this.style.fontSize}px ${this.style.fontFamily}`)
   }
 
   render(info) {
