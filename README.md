@@ -16,11 +16,38 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
+- Fix strange webgl polyline bug
+- Draggable points
+- Function AST Compile
+- Function AST derivative
+- Equation
+- FunctionInequality
+- Chessboard
+- Presets
+- EquationInequality
+- Bar graph
+- Histogram
+- Unit conversion
+- WolframAlpha-style parsing
+- Geogebra-style:
+* LineSegment
+* Line
+* Circle
+* Quadratic Bezier
+* Cubic Bezier
+* Intersections
+- Intersections between functions
+- Intercepts
+- Minima/maxima
+- Saddle points
+- Arbitrary precision arithmetic
+- Complex numbers
 - Allow Path2D navigation to be togglable
 - Path2D
 - TTFReader
 - PolygonRenderer
 - TextRenderer
-- FunctionInequality
-- Chessboard
+- Plot3D
+- VolumetricPolyline
+- 3DAxes
 - Music?
