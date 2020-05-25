@@ -1376,6 +1376,7 @@ var Grapheme = (function (exports) {
   // List of events to listen for
   const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "wheel"];
   const TOUCH_EVENTS = ["touchstart", "touchmove", "touchend", "touchcancel"];
+  const POINTER_EVENTS = ["pointerdown", "pointerup", "pointermove"];
 
   /**
    * @class Canvas that supports interactivity events.
@@ -1426,6 +1427,14 @@ var Grapheme = (function (exports) {
           this.domElement.addEventListener(evtName, callback);
         });
 
+        POINTER_EVENTS.forEach(evtName => {
+          let callback = (event) => this.handlePointer(event);
+
+          this.interactivityListeners[evtName] = callback;
+
+          this.domElement.addEventListener(evtName, callback);
+        });
+
         TOUCH_EVENTS.forEach(evtName => {
           let callback = (event) => this.handleTouch(event);
 
@@ -1435,7 +1444,7 @@ var Grapheme = (function (exports) {
         });
       } else {
         // Remove all interactivity listeners
-        EVENTS.concat(TOUCH_EVENTS).forEach(evtName => {
+        EVENTS.concat(TOUCH_EVENTS).concat(POINTER_EVENTS).forEach(evtName => {
           this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
         });
 
@@ -1476,6 +1485,10 @@ var Grapheme = (function (exports) {
           first.target.dispatchEvent(simulatedEvent2);
           event.preventDefault();
         }
+    }
+
+    handlePointer(event) {
+      if (event.type === "pointerup") ; else if (event.type === "pointermove") ;
     }
   }
 
