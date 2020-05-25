@@ -60,9 +60,9 @@ class InteractiveElement extends GraphemeElement {
 
           // Trigger mouse on and mouse off events
           if (isClick && !prevIsClick) {
-            this.triggerEvent("interactive-mouseon")
+            this.triggerEvent("interactive-mouseon", evt)
           } else if (!isClick && prevIsClick) {
-            this.triggerEvent("interactive-mouseoff")
+            this.triggerEvent("interactive-mouseoff", evt)
           }
 
           // Set whether the previous mouse move is on the element
@@ -72,7 +72,7 @@ class InteractiveElement extends GraphemeElement {
             prevIsClick = false
 
           if (isClick) {
-            this.triggerEvent("interactive-" + key_)
+            this.triggerEvent("interactive-" + key_, evt)
           }
 
           // Trigger drag events

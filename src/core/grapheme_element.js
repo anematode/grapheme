@@ -73,12 +73,16 @@ class GraphemeElement {
     if (info.beforeNormalRender)
       info.beforeNormalRender()
 
-    // Sort children
-    this.sortChildren()
-
     // Update if needed
     if (this.alwaysUpdate)
       this.update()
+
+    this.renderChildren(info)
+  }
+
+  renderChildren(info) {
+    // Sort children
+    this.sortChildren()
 
     // Render all children
     this.children.forEach((child) => child.render(info))

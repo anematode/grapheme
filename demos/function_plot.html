@@ -28,7 +28,7 @@
 
   let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
-  let function_plot = new Grapheme.FunctionPlot2D()
+  let function_plot = new Grapheme.InteractiveFunctionPlot2D()
 
   function_plot.function = Math.cosh
   plot.add(function_plot)
@@ -47,10 +47,7 @@
       .update(() => function_plot.update())
       .start()
   })
-  function_plot.addEventListener('interactive-click', () => {
-    function_plot.function = functions[Math.floor(Math.random() * functions.length)]
-    function_plot.update()
-  })
+
 
   function_plot.update()
 

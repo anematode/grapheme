@@ -1,6 +1,7 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
 import { Colors } from '../other/color'
+import { Vec2 } from '../math/vec'
 
 class PointElementStyle {
   constructor(params={}) {
@@ -28,9 +29,9 @@ class PointElement extends GraphemeElement {
     super(params)
 
     this.position = new Vec2(5, 4)
-    this.radius = 4
+    this.radius = 10
 
-    this.style = new PointStyle()
+    this.style = new PointElementStyle()
     this.draggable = false
   }
 
@@ -53,3 +54,5 @@ class PointElement extends GraphemeElement {
       info.ctx.stroke(this._path)
   }
 }
+
+export { PointElement }

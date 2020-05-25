@@ -86,6 +86,8 @@ class FunctionPlot2D extends InteractiveElement {
     this.polyline.render(info)
 
     gl.disable(gl.SCISSOR_TEST)
+
+    this.renderChildren(info)
   }
 
   destroy() {

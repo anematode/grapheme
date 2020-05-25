@@ -720,12 +720,16 @@ var Grapheme = (function (exports) {
       if (info.beforeNormalRender)
         info.beforeNormalRender();
 
-      // Sort children
-      this.sortChildren();
-
       // Update if needed
       if (this.alwaysUpdate)
         this.update();
+
+      this.renderChildren(info);
+    }
+
+    renderChildren(info) {
+      // Sort children
+      this.sortChildren();
 
       // Render all children
       this.children.forEach((child) => child.render(info));
@@ -3552,9 +3556,9 @@ var Grapheme = (function (exports) {
 
             // Trigger mouse on and mouse off events
             if (isClick && !prevIsClick) {
-              this.triggerEvent("interactive-mouseon");
+              this.triggerEvent("interactive-mouseon", evt);
             } else if (!isClick && prevIsClick) {
-              this.triggerEvent("interactive-mouseoff");
+              this.triggerEvent("interactive-mouseoff", evt);
             }
 
             // Set whether the previous mouse move is on the element
@@ -3564,7 +3568,7 @@ var Grapheme = (function (exports) {
               prevIsClick = false;
 
             if (isClick) {
-              this.triggerEvent("interactive-" + key_);
+              this.triggerEvent("interactive-" + key_, evt);
             }
 
             // Trigger drag events
@@ -4217,6 +4221,8 @@ void main() {
       this.polyline.render(info);
 
       gl.disable(gl.SCISSOR_TEST);
+
+      this.renderChildren(info);
     }
 
     destroy() {
@@ -4518,6 +4524,148 @@ void main() {
 
   updateInterpolations();
 
+  class PointElementStyle {
+    constructor(params={}) {
+      const {
+        pen = new Pen(),
+        fill = Colors.RED,
+        doStroke = true,
+        doFill = true
+      } = params;
+
+      this.pen = pen;
+      this.fill = fill;
+      this.doStroke = doStroke;
+      this.doFill = doFill;
+    }
+
+    prepareContext(ctx) {
+      ctx.fillStyle = this.fill.hex();
+      this.pen.prepareContext(ctx);
+    }
+  }
+
+  class PointElement extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.position = new Vec2(5, 4);
+      this.radius = 10;
+
+      this.style = new PointElementStyle();
+      this.draggable = false;
+    }
+
+    isClick(pos) {
+
+    }
+
+    update() {
+      this._path = new Path2D();
+      this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
+    }
+
+    render(info) {
+      super.render(info);
+      this.style.prepareContext(info.ctx);
+
+      if (this.style.doFill)
+        info.ctx.fill(this._path);
+      if (this.style.doStroke)
+        info.ctx.stroke(this._path);
+    }
+  }
+
+  class FunctionPlot2DInspectionPoint extends GraphemeElement {
+    constructor (params = {}) {
+      super();
+
+      this.position = params.position || new Vec2(0, 0);
+
+      this.point = new PointElement();
+    }
+
+    update () {
+      this.point.position = this.plot.transform.plotToPixel(this.position);
+    }
+
+    render (info) {
+      super.render(info);
+
+      this.point.render(info);
+    }
+  }
+
+  /**
+   * Function plot intended for use in a graphing calculator setting
+   */
+  class InteractiveFunctionPlot2D extends FunctionPlot2D {
+    constructor (params = {}) {
+      super(params);
+
+      this.inspectionListeners = {};
+
+      this.inspectionEnabled = true;
+      this.inspectionPoint = null;
+    }
+
+    set inspectionEnabled (value) {
+      if (value) {
+        this.interactivityEnabled = true;
+      }
+
+      if (this.inspectionEnabled === value) {
+        return
+      }
+
+      if (value) {
+        this.inspectionListeners['interactive-mousedown'] = this.inspectionListeners['interactive-drag'] = (evt) => {
+          let position = evt.pos;
+
+          if (!this.polyline) {
+            return
+          }
+
+          let closestPoint = this.polyline.closestTo(position);
+          let x = this.plot.transform.pixelToPlotX(closestPoint.x);
+          let y = this.function(x);
+
+          if (!this.inspectionPoint) {
+            this.inspectionPoint = new FunctionPlot2DInspectionPoint({
+              position: { x, y }
+            });
+
+            this.add(this.inspectionPoint);
+          } else {
+            this.inspectionPoint.position = new Vec2(x, y);
+          }
+
+          return true
+        };
+
+        this.inspectionListeners['interactive-mouseup'] = (evt) => {
+          if (this.inspectionPoint)
+            this.remove(this.inspectionPoint);
+          this.inspectionPoint = null;
+        };
+
+        for (let key in this.inspectionListeners) {
+          this.addEventListener(key, this.inspectionListeners[key]);
+        }
+      } else {
+        for (let key in this.inspectionListeners) {
+          this.removeEventListener(key, this.inspectionListeners[key]);
+        }
+
+        if (this.inspectionPoint) {
+          this.remove(this.inspectionPoint);
+        }
+
+        this.inspectionListeners = {};
+      }
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -4526,6 +4674,7 @@ void main() {
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
+  exports.InteractiveFunctionPlot2D = InteractiveFunctionPlot2D;
   exports.Interpolations = Interpolations;
   exports.Label2D = Label2D;
   exports.PieChart = PieChart;
