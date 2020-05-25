@@ -4614,6 +4614,13 @@ void main() {
       this.inspectionEnabled = true;
       this.inspectionPoint = null;
       this.smoothInspectionPointMovement = true;
+      this.inspectionPointLingers = true;
+    }
+
+    removeInspectionPoint() {
+      if (this.inspectionPoint)
+        this.remove(this.inspectionPoint);
+      this.inspectionPoint = null;
     }
 
     set inspectionEnabled (value) {
@@ -4625,8 +4632,11 @@ void main() {
         return
       }
 
+      let inspLeo = 0;
+
       if (value) {
         this.inspectionListeners['interactive-mousedown'] = this.inspectionListeners['interactive-drag'] = (evt) => {
+          inspLeo = 0;
           let position = evt.pos;
 
           if (!this.polyline) {
@@ -4651,10 +4661,14 @@ void main() {
         };
 
         this.inspectionListeners['mouseup'] = (evt) => {
+          if (!this.inspectionPointLingers)
+            this.removeInspectionPoint();
+        };
 
-          if (this.inspectionPoint)
-            this.remove(this.inspectionPoint);
-          this.inspectionPoint = null;
+        this.inspectionListeners["click"] = (evt) => {
+          if (this.inspectionPointLingers && inspLeo > 0)
+            this.removeInspectionPoint();
+          inspLeo++;
         };
 
         for (let key in this.inspectionListeners) {
