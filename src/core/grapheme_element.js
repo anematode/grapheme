@@ -139,6 +139,7 @@ class GraphemeElement {
    */
   remove (element, ...elements) {
     utils.checkType(element, GraphemeElement)
+
     if (this.hasChild(element, false)) {
       // if element is an immediate child
 

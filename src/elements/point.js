@@ -29,7 +29,7 @@ class PointElement extends GraphemeElement {
     super(params)
 
     this.position = new Vec2(5, 4)
-    this.radius = 10
+    this.radius = 4
 
     this.style = new PointElementStyle()
     this.draggable = false

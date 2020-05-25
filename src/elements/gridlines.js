@@ -86,7 +86,7 @@ class Gridlines extends GraphemeElement {
 
     this.label_positions = ["dynamic"]
     this.label_types = ["axis", "major"]
-    this.label_style = new Label2DStyle({fontSize: 20, shadowSize: 3, shadowColor: Colors.WHITE})
+    this.label_style = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE})
     this.label_padding = 5
 
     this._labels = []
@@ -289,4 +289,4 @@ class Gridlines extends GraphemeElement {
 
 // Gridlines,
 
-export {Gridlines}
+export {Gridlines, StandardLabelFunction}

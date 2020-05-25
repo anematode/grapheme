@@ -786,6 +786,7 @@ var Grapheme = (function (exports) {
      */
     remove (element, ...elements) {
       checkType(element, GraphemeElement);
+
       if (this.hasChild(element, false)) {
         // if element is an immediate child
 
@@ -2698,7 +2699,7 @@ var Grapheme = (function (exports) {
 
       this.label_positions = ["dynamic"];
       this.label_types = ["axis", "major"];
-      this.label_style = new Label2DStyle({fontSize: 20, shadowSize: 3, shadowColor: Colors.WHITE});
+      this.label_style = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE});
       this.label_padding = 5;
 
       this._labels = [];
@@ -4161,7 +4162,7 @@ void main() {
       this.quality = 1;
       this.function = (x) => Math.atan(x);
 
-      this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2});
+      this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2});
       this.polyline = null;
 
       this.alwaysUpdate = false;
@@ -4172,9 +4173,7 @@ void main() {
     }
 
     isClick(position) {
-      if (this.polyline) {
-        return this.polyline.isClick(position)
-      }
+      return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
     }
 
     update() {
@@ -4550,7 +4549,7 @@ void main() {
       super(params);
 
       this.position = new Vec2(5, 4);
-      this.radius = 10;
+      this.radius = 4;
 
       this.style = new PointElementStyle();
       this.draggable = false;
@@ -4580,19 +4579,26 @@ void main() {
     constructor (params = {}) {
       super();
 
-      this.position = params.position || new Vec2(0, 0);
+      this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position);
 
       this.point = new PointElement();
+      this.label = new Label2D({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
     }
 
     update () {
-      this.point.position = this.plot.transform.plotToPixel(this.position);
+      let position = this.plot.transform.plotToPixel(this.position);
+      this.point.position = position;
+      this.label.position = position.clone().add(new Vec2(1, -1).scale(1.4 * this.point.radius));
+
+      if (this.position)
+        this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')';
     }
 
     render (info) {
       super.render(info);
 
       this.point.render(info);
+      this.label.render(info);
     }
   }
 
@@ -4607,6 +4613,7 @@ void main() {
 
       this.inspectionEnabled = true;
       this.inspectionPoint = null;
+      this.smoothInspectionPointMovement = true;
     }
 
     set inspectionEnabled (value) {
@@ -4643,7 +4650,8 @@ void main() {
           return true
         };
 
-        this.inspectionListeners['interactive-mouseup'] = (evt) => {
+        this.inspectionListeners['mouseup'] = (evt) => {
+
           if (this.inspectionPoint)
             this.remove(this.inspectionPoint);
           this.inspectionPoint = null;
@@ -4681,6 +4689,7 @@ void main() {
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;
   exports.PolylineElement = PolylineElement;
+  exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
   exports.Universe = GraphemeUniverse;
   exports.Vec2 = Vec2;

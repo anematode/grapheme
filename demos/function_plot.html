@@ -33,22 +33,6 @@
   function_plot.function = Math.cosh
   plot.add(function_plot)
 
-  function_plot.addEventListener('interactive-mouseon', () => {
-    Grapheme.interpolate(function_plot.pen)
-      .to({ thickness: 8 }, 100)
-      .setInterpolation(Grapheme.Interpolations.SIGMOID)
-      .update(() => function_plot.update())
-      .start()
-  })
-  function_plot.addEventListener('interactive-mouseoff', () => {
-    Grapheme.interpolate(function_plot.pen)
-      .to({ thickness: 3 }, 100)
-      .setInterpolation(Grapheme.Interpolations.SIGMOID)
-      .update(() => function_plot.update())
-      .start()
-  })
-
-
   function_plot.update()
 
   let ia = 0

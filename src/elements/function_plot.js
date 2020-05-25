@@ -26,7 +26,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.quality = 1
     this.function = (x) => Math.atan(x)
 
-    this.pen = new Pen({color: Colors.RANDOM, useNative: false, thickness: 2})
+    this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
     this.polyline = null
 
     this.alwaysUpdate = false
@@ -37,9 +37,7 @@ class FunctionPlot2D extends InteractiveElement {
   }
 
   isClick(position) {
-    if (this.polyline) {
-      return this.polyline.isClick(position)
-    }
+    return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
   }
 
   update() {

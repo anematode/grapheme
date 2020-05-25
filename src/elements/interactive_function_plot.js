@@ -2,24 +2,34 @@ import { FunctionPlot2D } from './function_plot'
 import { PointElement } from './point'
 import { Element as GraphemeElement } from "../core/grapheme_element"
 import { Vec2 } from '../math/vec'
+import { Label2D } from './label'
+import { StandardLabelFunction } from "./gridlines"
+import { Colors } from '../other/color'
 
 class FunctionPlot2DInspectionPoint extends GraphemeElement {
   constructor (params = {}) {
     super()
 
-    this.position = params.position || new Vec2(0, 0)
+    this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position)
 
     this.point = new PointElement()
+    this.label = new Label2D({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
   }
 
   update () {
-    this.point.position = this.plot.transform.plotToPixel(this.position)
+    let position = this.plot.transform.plotToPixel(this.position)
+    this.point.position = position
+    this.label.position = position.clone().add(new Vec2(1, -1).scale(1.4 * this.point.radius))
+
+    if (this.position)
+      this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')'
   }
 
   render (info) {
     super.render(info)
 
     this.point.render(info)
+    this.label.render(info)
   }
 }
 
@@ -34,6 +44,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
 
     this.inspectionEnabled = true
     this.inspectionPoint = null
+    this.smoothInspectionPointMovement = true
   }
 
   set inspectionEnabled (value) {
@@ -70,7 +81,8 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
         return true
       }
 
-      this.inspectionListeners['interactive-mouseup'] = (evt) => {
+      this.inspectionListeners['mouseup'] = (evt) => {
+
         if (this.inspectionPoint)
           this.remove(this.inspectionPoint)
         this.inspectionPoint = null
