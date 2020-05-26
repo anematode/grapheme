@@ -815,14 +815,14 @@ class OperatorNode extends ASTNode {
             new OperatorNode({
               operator: '*',
               children: [
-                new ConstantNode({ value: -1 })
+                new ConstantNode({ value: -1 }),
                 this.children[0].derivative(variable)
               ]
             }),
             new OperatorNode({
               operator: '*',
               children: [
-                this.children[0].clone()
+                this.children[0].clone(),
                 new OperatorNode({
                   operator: 'sqrt',
                   children: [
