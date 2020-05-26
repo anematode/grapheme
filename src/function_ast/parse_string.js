@@ -174,7 +174,7 @@ function check_valid(string, tokens) {
     let token1 = tokens[i]
     let token2 = tokens[i+1]
 
-    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma"))
+    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") && (token2.op !== '-' || i === tokens.length - 2))
       get_angry_at(string, token2.index, "No consecutive operators/commas")
     if (token1.paren === "(" && token2.paren === ")")
       get_angry_at(string, token2.index, "No empty parentheses")
@@ -293,6 +293,36 @@ function parse_tokens(tokens) {
     })
   }
 
+  let unary_remaining = true
+
+  while (unary_remaining) {
+    unary_remaining = false
+
+    root.applyAll(child => {
+      let children = child.children
+
+      for (let i = 0; i < children.length - 2; ++i) {
+        let child1 = children[i]
+        let child2 = children[i + 1]
+
+        if (child1.op && (child2.op === '-' || child2.op === '+')) {
+          const egg = new OperatorNode({
+            operator: "*",
+            children: [
+              new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
+              children[i + 2]
+            ]
+          })
+
+          child.children = children.slice(0, i + 1).concat([egg]).concat(children.slice(i + 3))
+          unary_remaining = true
+
+          return
+        }
+      }
+    })
+  }
+
   function combineOperators(operators) {
     let operators_remaining = true
 
@@ -319,7 +349,6 @@ function parse_tokens(tokens) {
       })
     }
   }
-
 
   combineOperators(['^'])
   combineOperators(['*','/'])
