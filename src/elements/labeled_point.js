@@ -14,13 +14,14 @@ class LabeledPoint extends GraphemeElement {
 
     this.point = new PointElement()
     this.label = new SmartLabel({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
+
   }
 
   update () {
-    this.label.objectBox = this.point.getBBox()
     let position = this.plot.transform.plotToPixel(this.position)
+
     this.point.position = position
-    this.label.position = position.clone().add(new Vec2(1, -1).scale(1.4 * this.point.radius))
+    this.label.objectBox = this.point.getBBox()
 
     if (this.position)
       this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')'
