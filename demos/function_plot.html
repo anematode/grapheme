@@ -29,8 +29,11 @@
   let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
   let function_plot = new Grapheme.InteractiveFunctionPlot2D()
+  let point = new Grapheme.InspectablePoint({position: new Grapheme.Vec2(300, 300)})
 
-  function_plot.function = Math.tan
+  plot.add(point)
+
+  function_plot.function = Math.tanh
   plot.add(function_plot)
 
   function_plot.update()

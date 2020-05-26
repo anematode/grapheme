@@ -24,7 +24,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
 
     this.inspectionEnabled = true
     this.inspectionPoint = null
-    this.smoothInspectionPointMovement = true
+
     this.inspectionPointLingers = true
   }
 

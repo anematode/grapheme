@@ -68,6 +68,14 @@ var Grapheme = (function (exports) {
       return this.clone().divide(this.length())
     }
 
+    distanceTo(v) {
+      return Math.hypot(this.x - v.x, this.y - v.y)
+    }
+
+    distanceSquaredTo(v) {
+      return (this.x - v.x) ** 2 + (this.y - v.y) ** 2
+    }
+
     cross(v) {
       return this.x * v.x + this.y * v.y
     }
@@ -4669,19 +4677,22 @@ void main() {
       const {
         pen = new Pen(),
         fill = Colors.RED,
-        doStroke = true,
-        doFill = true
+        doStroke = false,
+        doFill = true,
+        radius = 3
       } = params;
 
       this.pen = pen;
       this.fill = fill;
       this.doStroke = doStroke;
       this.doFill = doFill;
+      this.radius = radius;
     }
 
     prepareContext(ctx) {
-      ctx.fillStyle = this.fill.hex();
       this.pen.prepareContext(ctx);
+
+      ctx.fillStyle = this.fill.hex();
     }
   }
 
@@ -4689,16 +4700,28 @@ void main() {
     constructor(params={}) {
       super(params);
 
-      this.position = new Vec2(5, 4);
-      this.radius = 3;
+      const {
+        position = new Vec2(0,0),
+        style = {}
+      } = params;
 
-      this.style = new PointElementStyle();
-      this.draggable = false;
+      this.position = new Vec2(position);
+
+      this.style = new PointElementStyle(style);
+    }
+
+    get radius() {
+      return this.style.radius
+    }
+
+    set radius(value) {
+      this.style.radius = value;
     }
 
     isClick(pos) {
-
+      return this.position.distanceSquaredTo(pos) <= (2 + this.radius + (this.style.doStroke ? this.style.pen.thickness : 0)) ** 2
     }
+
 
     update() {
       this._path = new Path2D();
@@ -4904,7 +4927,7 @@ void main() {
 
       this.inspectionEnabled = true;
       this.inspectionPoint = null;
-      this.smoothInspectionPointMovement = true;
+
       this.inspectionPointLingers = true;
     }
 
@@ -4979,6 +5002,73 @@ void main() {
     }
   }
 
+  class InspectablePoint extends InteractiveElement {
+    constructor(params={}) {
+      super(params);
+
+      this.point = new PointElement();
+      this.label = new SmartLabel();
+
+      this.position = params.position ? new Vec2(params.position) : new Vec2(0, 0);
+
+      this.unselectedStyle = new PointElementStyle({fill: Colors.LIGHTGRAY, radius: 5});
+      this.selectedStyle = new PointElementStyle({fill: Colors.BLACK, radius: 5});
+
+      this.selected = false;
+
+      this.labelText = "point";
+      this.interactivityEnabled = true;
+
+      this.addEventListener("interactive-click", () => {
+        this.selected = !this.selected;
+      });
+    }
+
+    get selected() {
+      return this._selected
+    }
+
+    set selected(value) {
+      this._selected = value;
+      this.point.style = value ? this.selectedStyle : this.unselectedStyle;
+    }
+
+    get labelText() {
+      return this.label.text
+    }
+
+    set labelText(value) {
+      this.label.text = value;
+    }
+
+    get position() {
+      return this.point.position
+    }
+
+    set position(value) {
+      this.point.position = value;
+
+      this.label.objectBox = this.point.getBBox();
+    }
+
+    isClick(pos) {
+      return this.point.isClick(pos)
+    }
+
+    update() {
+
+    }
+
+    render(info) {
+      super.render(info);
+
+      this.point.render(info);
+
+      if (this.selected)
+        this.label.render(info);
+    }
+  }
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -4987,6 +5077,7 @@ void main() {
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
+  exports.InspectablePoint = InspectablePoint;
   exports.InteractiveFunctionPlot2D = InteractiveFunctionPlot2D;
   exports.Interpolations = Interpolations;
   exports.Label2D = Label2D;

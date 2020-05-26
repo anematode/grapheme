@@ -9,19 +9,22 @@ class PointElementStyle {
     const {
       pen = new Pen(),
       fill = Colors.RED,
-      doStroke = true,
-      doFill = true
+      doStroke = false,
+      doFill = true,
+      radius = 3
     } = params
 
     this.pen = pen
     this.fill = fill
     this.doStroke = doStroke
     this.doFill = doFill
+    this.radius = radius
   }
 
   prepareContext(ctx) {
-    ctx.fillStyle = this.fill.hex()
     this.pen.prepareContext(ctx)
+
+    ctx.fillStyle = this.fill.hex()
   }
 }
 
@@ -29,16 +32,28 @@ class PointElement extends GraphemeElement {
   constructor(params={}) {
     super(params)
 
-    this.position = new Vec2(5, 4)
-    this.radius = 3
+    const {
+      position = new Vec2(0,0),
+      style = {}
+    } = params
 
-    this.style = new PointElementStyle()
-    this.draggable = false
+    this.position = new Vec2(position)
+
+    this.style = new PointElementStyle(style)
+  }
+
+  get radius() {
+    return this.style.radius
+  }
+
+  set radius(value) {
+    this.style.radius = value
   }
 
   isClick(pos) {
-
+    return this.position.distanceSquaredTo(pos) <= (2 + this.radius + (this.style.doStroke ? this.style.pen.thickness : 0)) ** 2
   }
+
 
   update() {
     this._path = new Path2D()
@@ -70,4 +85,4 @@ class PointElement extends GraphemeElement {
   }
 }
 
-export { PointElement }
+export { PointElement, PointElementStyle }

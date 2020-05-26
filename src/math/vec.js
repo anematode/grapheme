@@ -66,6 +66,14 @@ class Vec2 {
     return this.clone().divide(this.length())
   }
 
+  distanceTo(v) {
+    return Math.hypot(this.x - v.x, this.y - v.y)
+  }
+
+  distanceSquaredTo(v) {
+    return (this.x - v.x) ** 2 + (this.y - v.y) ** 2
+  }
+
   cross(v) {
     return this.x * v.x + this.y * v.y
   }
