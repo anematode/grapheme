@@ -13,8 +13,8 @@ class InspectablePoint extends InteractiveElement {
 
     this.position = params.position ? new Vec2(params.position) : new Vec2(0, 0)
 
-    this.unselectedStyle = new PointElementStyle({fill: Colors.LIGHTGRAY, radius: 5})
-    this.selectedStyle = new PointElementStyle({fill: Colors.BLACK, radius: 5})
+    this.unselectedStyle = new PointElementStyle({fill: Colors.LIGHTGRAY, radius: 4})
+    this.selectedStyle = new PointElementStyle({fill: Colors.BLACK, radius: 4})
 
     this.selected = false
 

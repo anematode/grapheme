@@ -5,7 +5,7 @@ import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
 let operator_regex = /^[*-\/+^]/
 let function_regex = /^([^\s\\*-\/+!^()]+)\(/
 let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
-let variable_regex = /^[^\s\\*-\/+^()!]+/
+let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
 let paren_regex = /^[()\[\]]/
 let comma_regex = /^,/
 
@@ -156,7 +156,11 @@ function* tokenizer(string) {
           name: match[0],
           index: i
         }
+
+        break
       }
+
+      get_angry_at(string, i, "Unrecognized token")
     } while (false)
 
     let len = match[0].length

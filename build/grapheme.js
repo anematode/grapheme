@@ -3072,7 +3072,29 @@ var Grapheme = (function (exports) {
     }
 
     compile() {
+      let variableNames = this.getVariableNames();
 
+      return new Function(...variableNames, "return " + this._getCompileText())
+    }
+
+    getVariableNames() {
+      let variableNames = [];
+
+      this.applyAll(child => {
+        if (child instanceof VariableNode) {
+          let name = child.name;
+
+          if (variableNames.indexOf(name) === -1) {
+            variableNames.push(name);
+          }
+        }
+      });
+
+      return variableNames
+    }
+
+    _getCompileText() {
+      return this.children.map(child => "(" + child._getCompileText() + ")").join('+')
     }
   }
 
@@ -3087,10 +3109,34 @@ var Grapheme = (function (exports) {
       this.name = name;
     }
 
+    _getCompileText() {
+      return this.name
+    }
+
     getText() {
       return this.name
     }
   }
+
+  const OperatorPatterns = {
+    "sin": ["Math.sin", "+"],
+    "+": ["", "+"],
+    "-": ["", "-"],
+    "*": ["", "*"],
+    "/": ["", "/"],
+    "^": ["", "**"],
+    "tan": ["Math.tan"],
+    "cos": ["Math.cos"],
+    "csc": ["1/Math.sin"],
+    "sec": ["1/Math.cos"],
+    "cot": ["1/Math.tan"],
+    "asin": ["Math.asin"],
+    "acos": ["Math.acos"],
+    "atan": ["Math.atan"],
+    "abs": ["Math.abs"],
+    "sqrt": ["Math.sqrt"],
+    "cbrt": ["Math.cbrt"]
+  };
 
   class OperatorNode extends ASTNode {
     constructor(params={}) {
@@ -3101,6 +3147,16 @@ var Grapheme = (function (exports) {
       } = params;
 
       this.operator = operator;
+    }
+
+    _getCompileText() {
+
+      let pattern = OperatorPatterns[this.operator];
+
+      if (!pattern)
+        throw new Error("Unrecognized operation")
+
+      return pattern[0] + "(" + this.children.map(child => "(" + child._getCompileText() + ")").join(pattern[1] ? pattern[1] : "+") + ")"
     }
 
     getText() {
@@ -3119,6 +3175,10 @@ var Grapheme = (function (exports) {
       this.value = value;
     }
 
+    _getCompileText() {
+      return this.value + ""
+    }
+
     getText() {
       return "" + this.value
     }
@@ -3129,7 +3189,7 @@ var Grapheme = (function (exports) {
   let operator_regex = /^[*-\/+^]/;
   let function_regex = /^([^\s\\*-\/+!^()]+)\(/;
   let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
-  let variable_regex = /^[^\s\\*-\/+^()!]+/;
+  let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
   let paren_regex = /^[()\[\]]/;
   let comma_regex = /^,/;
 
@@ -3275,7 +3335,11 @@ var Grapheme = (function (exports) {
             name: match[0],
             index: i
           };
+
+          break
         }
+
+        get_angry_at(string, i, "Unrecognized token");
       } while (false)
 
       let len = match[0].length;
@@ -3757,6 +3821,7 @@ var Grapheme = (function (exports) {
 
   let MAX_DEPTH = 10;
 
+  // TODO: Stop this function from making too many points
   function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {
     if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return [NaN, NaN]
@@ -5011,8 +5076,8 @@ void main() {
 
       this.position = params.position ? new Vec2(params.position) : new Vec2(0, 0);
 
-      this.unselectedStyle = new PointElementStyle({fill: Colors.LIGHTGRAY, radius: 5});
-      this.selectedStyle = new PointElementStyle({fill: Colors.BLACK, radius: 5});
+      this.unselectedStyle = new PointElementStyle({fill: Colors.LIGHTGRAY, radius: 4});
+      this.selectedStyle = new PointElementStyle({fill: Colors.BLACK, radius: 4});
 
       this.selected = false;
 
