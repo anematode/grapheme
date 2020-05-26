@@ -66,7 +66,6 @@ class Plot2D extends InteractiveCanvas {
 
   render() {
     this.extraInfo.smartLabelManager.reset()
-    this.extraInfo.smartLabelManager.drawBoundingBoxes(this.ctx)
 
     super.render()
   }

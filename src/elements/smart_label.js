@@ -126,8 +126,6 @@ class SmartLabel extends Label2D {
     this.style.dir = dir
     this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y)
 
-    console.log(this.objectBox, anchor_info)
-
     super.render(info)
 
     info.extraInfo.smartLabelManager.addBox(computed)
