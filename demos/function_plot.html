@@ -29,14 +29,26 @@
   let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
   let function_plot = new Grapheme.InteractiveFunctionPlot2D()
-  let point = new Grapheme.InspectablePoint({position: new Grapheme.Vec2(300, 300)})
+  let derivative_plot = new Grapheme.InteractiveFunctionPlot2D()
 
-  plot.add(point)
+  derivative_plot.pen.color = Grapheme.Colors.BLACK
 
-  function_plot.function = Math.tanh
   plot.add(function_plot)
+  plot.add(derivative_plot)
 
   function_plot.update()
+
+  function setFunction(value) {
+    let func = Grapheme.parse_string(value)
+
+    function_plot.setFunction(func.compile())
+    derivative_plot.setFunction(func.derivative('x').compile())
+
+    function_plot.update()
+    derivative_plot.update()
+  }
+
+  setFunction("x^4")
 
   let ia = 0
 
@@ -54,7 +66,7 @@
   }
 </script>
 
-<input style="position:absolute; top: 10px; left: 10px" type="text" value="sin(4*3)^cow" oninput="function_plot.function = Grapheme.parse_string(this.value).compile(); function_plot.update()"/>
+<input style="position:absolute; top: 10px; left: 10px" type="text" value="x^4" oninput="setFunction(this.value)"/>
 
 </body>
 

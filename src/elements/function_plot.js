@@ -36,7 +36,13 @@ class FunctionPlot2D extends InteractiveElement {
     this.interactivityEnabled = true
   }
 
+  setFunction(func) {
+    this.function = func
+  }
+
   isClick(position) {
+    if (!this.polyline)
+      return false
     return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
   }
 
@@ -72,6 +78,9 @@ class FunctionPlot2D extends InteractiveElement {
   }
 
   render(info) {
+    if (!this.polyline)
+      return
+
     const box = info.plot.transform.box
     const gl = info.universe.gl
 

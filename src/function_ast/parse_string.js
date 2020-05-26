@@ -97,17 +97,6 @@ function* tokenizer(string) {
         break
       }
 
-      match = string.match(constant_regex)
-
-      if (match) {
-        yield {
-          type: "constant",
-          value: match[0],
-          index: i
-        }
-        break
-      }
-
       match = string.match(operator_regex)
 
       if (match) {
@@ -119,6 +108,16 @@ function* tokenizer(string) {
         break
       }
 
+      match = string.match(constant_regex)
+
+      if (match) {
+        yield {
+          type: "constant",
+          value: match[0],
+          index: i
+        }
+        break
+      }
 
       match = string.match(comma_regex)
 

@@ -28,6 +28,12 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     this.inspectionPointLingers = true
   }
 
+  setFunction(func) {
+    super.setFunction(func)
+
+    this.removeInspectionPoint()
+  }
+
   removeInspectionPoint() {
     if (this.inspectionPoint)
       this.remove(this.inspectionPoint)

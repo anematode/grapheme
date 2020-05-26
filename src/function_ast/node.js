@@ -128,7 +128,22 @@ const OperatorPatterns = {
   'sqrt': ['Math.sqrt'],
   'cbrt': ['Math.cbrt'],
   'ln': ['Math.log'],
-  'log': ['Math.log10']
+  'log': ['Math.log10'],
+  'sinh': ['Math.sinh'],
+  'cosh': ['Math.cosh'],
+  'tanh': ['Math.tanh'],
+  'csch': ['1/Math.sinh'],
+  'sech': ['1/Math.cosh'],
+  'coth': ['1/Math.tanh'],
+  'asinh': ['Math.asinh'],
+  'acosh': ['Math.acosh'],
+  'atanh': ['Math.atanh'],
+  'asec': ['Math.acos(1/', '+', ')'],
+  'acsc': ['Math.asin(1/', '+', ')'],
+  'acot': ['Math.atan(1/', '+', ')'],
+  'acsch': ['Math.asinh(1/', '+', ')'],
+  'asech': ['Math.acosh(1/', '+', ')'],
+  'acoth': ['Math.atanh(1/', '+', ')']
 }
 
 class OperatorNode extends ASTNode {
@@ -150,7 +165,7 @@ class OperatorNode extends ASTNode {
       throw new Error('Unrecognized operation')
     }
 
-    return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')'
+    return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')' + pattern[2] ? pattern[2] : ''
   }
 
   derivative (variable) {
@@ -196,8 +211,10 @@ class OperatorNode extends ASTNode {
           let power = this.children[1].value
 
           if (power === 0) {
-            // TODO: domain restriction
-            return new ConstantNode({ value: 0 })
+            return new OperatorNode({
+              operator: '/',
+              children: [new ConstantNode({ value: 0 }), new VariableNode({ name: variable })]
+            })
           }
 
           // power rule
@@ -210,6 +227,25 @@ class OperatorNode extends ASTNode {
           node.children = [new ConstantNode({ value: power }), node2]
 
           return node
+        } else if (this.children[0] instanceof ConstantNode) {
+          return new OperatorNode({
+            operator: '*',
+            children: [
+              new OperatorNode({
+                operator: 'ln',
+                children: [
+                  this.children[0].clone()
+                ]
+              }),
+              new OperatorNode({
+                operator: '*',
+                children: [
+                  this.clone(),
+                  this.children[1].derivative(variable)
+                ]
+              })
+            ]
+          })
         } else {
           return new OperatorNode({
             operator: '*',
@@ -248,16 +284,15 @@ class OperatorNode extends ASTNode {
             ]
           })
         }
-
       case 'sin':
         return new OperatorNode({
           operator: '*',
           children: [
             new OperatorNode({
               operator: 'cos',
-              children: this.children.map(child => child.clone())
+              children: this.children[0].clone()
             }),
-            new ASTNode(this.children).derivative()
+            this.children[0].derivative(variable)
           ]
         })
       case 'cos':
@@ -270,9 +305,9 @@ class OperatorNode extends ASTNode {
               children: [
                 new OperatorNode({
                   operator: 'sin',
-                  children: this.children.map(child => child.clone())
+                  children: this.children[0].clone()
                 }),
-                new ASTNode(this.children).derivative()
+                this.children[0].derivative(variable)
               ]
             })
           ]
@@ -286,12 +321,12 @@ class OperatorNode extends ASTNode {
               children: [
                 new OperatorNode({
                   operator: 'sec',
-                  children: this.children.map(child => child.clone())
+                  children: this.children[0].clone()
                 }),
                 new ConstantNode({ value: 2 })
               ]
             }),
-            new ASTNode(this.children).derivative()
+            this.children[0].derivative(variable)
           ]
         })
       case 'csc':
@@ -308,18 +343,18 @@ class OperatorNode extends ASTNode {
                     new OperatorNode({
                       operator: 'csc',
                       children: [
-                        this.children.map(child => child.clone())
+                        this.children[0].clone()
                       ]
                     }),
                     new OperatorNode({
                       operator: 'cot',
                       children: [
-                        this.children.map(child => child.clone())
+                        this.children[0].clone()
                       ]
                     })
                   ]
                 }),
-                new ASTNode(this.children).derivative(variable)
+                this.children[0].derivative(variable)
               ]
             })
           ]
@@ -334,18 +369,18 @@ class OperatorNode extends ASTNode {
                 new OperatorNode({
                   operator: 'sec',
                   children: [
-                    this.children.map(child => child.clone())
+                    this.children[0].clone()
                   ]
                 }),
                 new OperatorNode({
                   operator: 'tan',
                   children: [
-                    this.children.map(child => child.clone())
+                    this.children[0].clone()
                   ]
                 })
               ]
             }),
-            new ASTNode(this.children).derivative(variable)
+            this.children[0].derivative(variable)
           ]
         })
       case 'cot':
@@ -358,15 +393,496 @@ class OperatorNode extends ASTNode {
                 operator: '^',
                 children: [
                   new OperatorNode({
-                    operator: 'sec',
-                    children: this.children.map(child => child.clone())
+                    operator: 'csc',
+                    children: this.children[0].clone()
                   }),
                   new ConstantNode({ value: 2 })
                 ]
               }),
-              new ASTNode(this.children).derivative()
+              this.children[0].derivative(variable)
             ]
           })]
+        })
+      case 'sqrt':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new ConstantNode({ value: 0.5 }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    this.children[0].clone(),
+                    new ConstantNode({ value: -0.5 })
+                  ]
+                }),
+                this.children[0].derivative(variable)
+              ]
+            })
+          ]
+        })
+      case 'cbrt':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new ConstantNode({ value: 1 / 3 }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    this.children[0].clone(),
+                    new ConstantNode({ value: -2 / 3 })
+                  ]
+                }),
+                this.children[0].derivative(variable)
+              ]
+            })
+          ]
+        })
+      case 'asin':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            this.children[0].derivative(variable),
+            new OperatorNode({
+              operator: 'sqrt',
+              children: [
+                new OperatorNode({
+                  operator: '-',
+                  children: [
+                    new ConstantNode({ value: 1 }),
+                    new OperatorNode({
+                      operator: '^',
+                      children: [
+                        this.children[0].clone(),
+                        new ConstantNode({ value: 2 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'acos':
+        return new OperatorNode({
+          operator: '*',
+          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            operator: '/',
+            children: [
+              this.children[0].derivative(variable),
+              new OperatorNode({
+                operator: 'sqrt',
+                children: [
+                  new OperatorNode({
+                    operator: '-',
+                    children: [
+                      new ConstantNode({ value: 1 }),
+                      new OperatorNode({
+                        operator: '^',
+                        children: [
+                          this.children[0].clone(),
+                          new ConstantNode({ value: 2 })
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })]
+        })
+      case 'atan':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            this.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '+',
+              children: [
+                new ConstantNode({ value: 1 }),
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    this.children[0].clone(),
+                    new ConstantNode({ value: 2 })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'acot':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [new ConstantNode({ value: -1 }), this.children[0].derivative(variable)]
+            }),
+            new OperatorNode({
+              operator: '+',
+              children: [
+                new ConstantNode({ value: 1 }),
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    this.children[0].clone(),
+                    new ConstantNode({ value: 2 })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'asec':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            this.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: 'abs',
+                  children: [
+                    this.children[0].clone()
+                  ]
+                }),
+                new OperatorNode({
+                  operator: 'sqrt',
+                  children: [
+                    new OperatorNode({
+                      operator: '-',
+                      children: [
+                        new OperatorNode({
+                          operator: '^',
+                          children: [
+                            this.children[0].clone(),
+                            new ConstantNode({ value: 2 })
+                          ]
+                        }),
+                        new ConstantNode({ value: 1 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'acsc':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [new ConstantNode({ value: -1 }), this.children[0].derivative(variable)]
+            }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: 'abs',
+                  children: [
+                    this.children[0].clone()
+                  ]
+                }),
+                new OperatorNode({
+                  operator: 'sqrt',
+                  children: [
+                    new OperatorNode({
+                      operator: '-',
+                      children: [
+                        new OperatorNode({
+                          operator: '^',
+                          children: [
+                            this.children[0].clone(),
+                            new ConstantNode({ value: 2 })
+                          ]
+                        }),
+                        new ConstantNode({ value: 1 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'sinh':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            this.children[0].derivative(),
+            new OperatorNode({
+              operator: 'cosh',
+              children: [
+                this.children[0].clone()
+              ]
+            })
+          ]
+        })
+      case 'cosh':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            this.children[0].derivative(),
+            new OperatorNode({
+              operator: 'sinh',
+              children: [
+                this.children[0].clone()
+              ]
+            })
+          ]
+        })
+      case 'tanh':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new OperatorNode({
+              operator: '^',
+              children: [
+                new OperatorNode({
+                  operator: 'sech',
+                  children: this.children[0].clone()
+                }),
+                new ConstantNode({ value: 2 })
+              ]
+            }),
+            this.children[0].derivative(variable)
+          ]
+        })
+      case 'csch':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new ConstantNode({ value: -1 }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: '*',
+                  children: [
+                    new OperatorNode({
+                      operator: 'csch',
+                      children: [
+                        this.children[0].clone()
+                      ]
+                    }),
+                    new OperatorNode({
+                      operator: 'coth',
+                      children: [
+                        this.children[0].clone()
+                      ]
+                    })
+                  ]
+                }),
+                this.children[0].derivative(variable)
+              ]
+            })
+          ]
+        })
+      case 'sech':
+        return new OperatorNode({
+          operator: '*',
+          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            operator: '*',
+            children: [
+              new OperatorNode({
+                operator: '*',
+                children: [
+                  new OperatorNode({
+                    operator: 'sech',
+                    children: [
+                      this.children[0].clone()
+                    ]
+                  }),
+                  new OperatorNode({
+                    operator: 'tanh',
+                    children: [
+                      this.children[0].clone()
+                    ]
+                  })
+                ]
+              }),
+              this.children[0].derivative(variable)
+            ]
+          })]
+        })
+      case 'coth':
+        return new OperatorNode({
+          operator: '*',
+          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            operator: '*',
+            children: [
+              new OperatorNode({
+                operator: '^',
+                children: [
+                  new OperatorNode({
+                    operator: 'csch',
+                    children: this.children[0].clone()
+                  }),
+                  new ConstantNode({ value: 2 })
+                ]
+              }),
+              this.children[0].derivative(variable)
+            ]
+          })]
+        })
+      case 'asinh':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            this.children[0].derivative(variable),
+            new OperatorNode({
+              operator: 'sqrt',
+              children: [
+                new OperatorNode({
+                  operator: '+',
+                  children: [
+                    new ConstantNode({ value: 1 }),
+                    new OperatorNode({
+                      operator: '^',
+                      children: [
+                        this.children[0].clone(),
+                        new ConstantNode({ value: 2 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'acosh':
+        return new OperatorNode({
+          operator: '*',
+          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            operator: '/',
+            children: [
+              this.children[0].derivative(variable),
+              new OperatorNode({
+                operator: 'sqrt',
+                children: [
+                  new OperatorNode({
+                    operator: '-',
+                    children: [
+                      new OperatorNode({
+                        operator: '^',
+                        children: [
+                          this.children[0].clone(),
+                          new ConstantNode({ value: 2 })
+                        ]
+                      }),
+                      new ConstantNode({ value: 1 })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })]
+        })
+      case 'atanh':
+      case 'acoth':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            this.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '-',
+              children: [
+                new ConstantNode({ value: 1 }),
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    this.children[0].clone(),
+                    new ConstantNode({ value: 2 })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'asech':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new ConstantNode({ value: -1 })
+                this.children[0].derivative(variable)
+              ]
+            }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                this.children[0].clone()
+                new OperatorNode({
+                  operator: 'sqrt',
+                  children: [
+                    new OperatorNode({
+                      operator: '-',
+                      children: [
+                        new OperatorNode({
+                          operator: '^',
+                          children: [
+                            this.children[0].clone(),
+                            new ConstantNode({ value: 2 })
+                          ]
+                        }),
+                        new ConstantNode({ value: 1 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        })
+      case 'acsch':
+        return new OperatorNode({
+          operator: '/',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [new ConstantNode({ value: -1 }), this.children[0].derivative(variable)]
+            }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: 'abs',
+                  children: [
+                    this.children[0].clone()
+                  ]
+                }),
+                new OperatorNode({
+                  operator: 'sqrt',
+                  children: [
+                    new OperatorNode({
+                      operator: '+',
+                      children: [
+                        new OperatorNode({
+                          operator: '^',
+                          children: [
+                            this.children[0].clone(),
+                            new ConstantNode({ value: 2 })
+                          ]
+                        }),
+                        new ConstantNode({ value: 1 })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
         })
     }
   }
