@@ -13,6 +13,7 @@ class SmartLabel extends Label2D {
 
     this.objectBox = null
     this.forceDir = null
+    this.renderTop = true
   }
 
   computeAnchorPoint(dir) {
@@ -89,7 +90,14 @@ class SmartLabel extends Label2D {
     return bboxc
   }
 
-  render(info) {
+  render(info, force=false) {
+    if (this.renderTop && !force) {
+      info.extraInfo.smartLabelManager.renderTopLabel(this)
+      return
+    }
+
+    super.render(info)
+
     let bbox = this.boundingBoxNaive()
 
     let dir = this.forceDir
@@ -125,8 +133,6 @@ class SmartLabel extends Label2D {
 
     this.style.dir = dir
     this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y)
-
-    super.render(info)
 
     info.extraInfo.smartLabelManager.addBox(computed)
   }

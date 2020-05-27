@@ -7,6 +7,8 @@ import {Label2DStyle} from '../styles/label_style'
 import * as utils from "../core/utils"
 import { Vec2 } from "../math/vec"
 import { Colors } from '../other/color'
+import { SmartLabel } from './smart_label'
+import { BoundingBox } from '../math/bounding_box'
 
 /* Unicode characters for exponent signs, LOL */
 const exponent_reference = {

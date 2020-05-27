@@ -80,6 +80,14 @@ class Plot2D extends InteractiveCanvas {
     super.render()
   }
 
+  beforeRender(info) {
+
+  }
+
+  afterRender(info) {
+    this.extraInfo.smartLabelManager.renderLabels(info)
+  }
+
   update () {
     this.calculateTransform()
   }

@@ -197,8 +197,14 @@ class GraphemeCanvas extends GraphemeGroup {
     // Reset the rendering context transform
     this.resetCanvasCtxTransform()
 
+    if (this.beforeRender)
+      this.beforeRender(info)
+
     // Render all children
     super.render(info)
+
+    if (this.afterRender)
+      this.afterRender(info)
 
     beforeNormalRender()
 

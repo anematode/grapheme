@@ -6,6 +6,7 @@ class SmartLabelManager {
     this.plot = plot
 
     this.labelBoundingBoxes = []
+    this.labels = []
 
     this.antipadding = 1000
   }
@@ -26,6 +27,7 @@ class SmartLabelManager {
 
   reset() {
     this.labelBoundingBoxes = []
+    this.labels = []
 
     let box = this.plot.getCanvasBox()
 
@@ -41,6 +43,14 @@ class SmartLabelManager {
     for (let box of this.labelBoundingBoxes) {
       ctx.fill(box.getPath())
     }
+  }
+
+  renderTopLabel(label) {
+    this.labels.push(label)
+  }
+
+  renderLabels(info) {
+    this.labels.forEach(label => label.render(info, true))
   }
 }
 
