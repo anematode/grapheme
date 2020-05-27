@@ -1,6 +1,6 @@
 import { angles_between } from '../math/geometry_calculations'
 
-let MAX_DEPTH = 10
+let MAX_DEPTH = 4
 
 // TODO: Stop this function from making too many points
 function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {

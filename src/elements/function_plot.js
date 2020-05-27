@@ -1,6 +1,6 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
-import { PolylineElement } from './polyline'
+import { PolylineBase, PolylineElement } from './polyline'
 import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
@@ -24,6 +24,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.plotPoints = plotPoints
     this.plottingMode = "fine"
     this.quality = 1
+
     this.function = (x) => Math.atan(x)
 
     this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
@@ -63,7 +64,9 @@ class FunctionPlot2D extends InteractiveElement {
     let vertices = []
 
     if (this.plottingMode === "rough") {
-      vertices = sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality)
+      let points = box.width * this.quality
+
+      vertices = sample_1d(coords.x1, coords.x2, this.function, points)
     } else {
       vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality)
     }
@@ -71,7 +74,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.plot.transform.plotToPixelArr(vertices)
 
     if (!this.polyline)
-      this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
+      this.polyline = new PolylineElement({pen: this.pen, alwaysUpdate: false})
 
     this.polyline.vertices = vertices
     this.polyline.update()

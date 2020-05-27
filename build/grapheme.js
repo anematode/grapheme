@@ -1599,11 +1599,11 @@ var Grapheme = (function (exports) {
     translate(v, ...args) {
       if (v instanceof Vec2) {
         this.coords.top_left.add(v);
+
+        this.plot.triggerEvent("plotcoordschanged");
       } else {
         this.translate(new Vec2(v, ...args));
       }
-
-      this.plot.triggerEvent("plotcoordschanged");
     }
 
     zoomOn(factor, v = new Vec2(0,0), ...args) {
@@ -1615,8 +1615,6 @@ var Grapheme = (function (exports) {
 
         this._internal_coincideDragPoints(v, pixel_s);
       }
-
-      this.plot.triggerEvent("plotcoordschanged");
     }
 
     _internal_coincideDragPoints(p1, p2) {
@@ -3058,6 +3056,8 @@ var Grapheme = (function (exports) {
   // const fs = require( ...
   // No, this is not node.js the language.
 
+  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
+
   class ASTNode {
     constructor (params = {}) {
 
@@ -3097,7 +3097,6 @@ var Grapheme = (function (exports) {
 
       node.applyAll(child => {
         if (child.children) {
-          console.log(child.children);
           child.children.forEach(subchild => subchild.parent = child);
         }
       });
@@ -3112,7 +3111,7 @@ var Grapheme = (function (exports) {
         if (child instanceof VariableNode) {
           let name = child.name;
 
-          if (variableNames.indexOf(name) === -1) {
+          if (variableNames.indexOf(name) === -1 && comparisonOperators.indexOf(name) === -1) {
             variableNames.push(name);
           }
         }
@@ -3146,6 +3145,8 @@ var Grapheme = (function (exports) {
     }
 
     _getCompileText () {
+      if (comparisonOperators.includes(this.name))
+        return '"' + this.name + '"'
       return this.name
     }
 
@@ -3173,6 +3174,13 @@ var Grapheme = (function (exports) {
     '*': ['', '*'],
     '/': ['', '/'],
     '^': ['', '**'],
+    '<': ['', '<'],
+    '<=': ['', '<='],
+    '>': ['', '>'],
+    '>=': ['', '>='],
+    '==': ['', '==='],
+    '!=': ['', '!=='],
+    'cchain': ['Grapheme.Functions.CCHAIN', ','],
     'tan': ['Math.tan'],
     'cos': ['Math.cos'],
     'csc': ['1/Math.sin'],
@@ -3185,7 +3193,9 @@ var Grapheme = (function (exports) {
     'sqrt': ['Math.sqrt'],
     'cbrt': ['Math.cbrt'],
     'ln': ['Math.log'],
-    'log': ['Math.log10'],
+    'log': ['Math.log'],
+    'log10': ['Math.log10'],
+    'log2': ['Math.log2'],
     'sinh': ['Math.sinh'],
     'cosh': ['Math.cosh'],
     'tanh': ['Math.tanh'],
@@ -3200,7 +3210,10 @@ var Grapheme = (function (exports) {
     'acot': ['Math.atan(1/', '+', ')'],
     'acsch': ['Math.asinh(1/', '+', ')'],
     'asech': ['Math.acosh(1/', '+', ')'],
-    'acoth': ['Math.atanh(1/', '+', ')']
+    'acoth': ['Math.atanh(1/', '+', ')'],
+    'logb': ['Grapheme.Functions.LogB', ','],
+    'ifelse': ['Grapheme.Functions.IfElse', ','],
+    'piecewise': ['Grapheme.Functions.Piecewise', ',']
   };
 
   class OperatorNode extends ASTNode {
@@ -3222,7 +3235,7 @@ var Grapheme = (function (exports) {
         throw new Error('Unrecognized operation')
       }
 
-      return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')' + pattern[2] ? pattern[2] : ''
+      return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
     }
 
     derivative (variable) {
@@ -3941,6 +3954,9 @@ var Grapheme = (function (exports) {
               })
             ]
           })
+        default:
+          // No symbolic derivative, oof
+          throw new Error('unimplemented')
       }
     }
 
@@ -3987,8 +4003,8 @@ var Grapheme = (function (exports) {
 
   // a * b - c * d ^ g
 
-  let operator_regex = /^[*-\/+^]/;
-  let function_regex = /^([^\s\\*-\/+!^()]+)\(/;
+  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=/;
+  let function_regex = /^([^\s\\*\-\/+!^()]+)\(/;
   let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
   let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
   let paren_regex = /^[()\[\]]/;
@@ -4333,6 +4349,53 @@ var Grapheme = (function (exports) {
     combineOperators(['*','/']);
     combineOperators(['-','+']);
 
+    const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>'];
+
+    // CChain
+    let cchain_remaining = true;
+    while (cchain_remaining) {
+      cchain_remaining = false;
+
+      root.applyAll(child => {
+        const children = child.children;
+        let cchain_found = false;
+
+        for (let i = 0; i < children.length; ++i) {
+          if (comparisonOperators.includes(children[i].op)) {
+            let j;
+            for (j = i + 2; j < children.length; j += 2) {
+              if (comparisonOperators.includes(children[j].op)) {
+                cchain_found = true;
+              } else {
+                break
+              }
+            }
+
+            if (cchain_found) {
+              child.children = children.slice(0, i-1).concat(new OperatorNode({
+                operator: "cchain",
+                children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
+              })).concat(children.slice(j));
+
+              cchain_remaining = true;
+
+              return
+
+            }
+          }
+        }
+      });
+    }
+
+    combineOperators(comparisonOperators);
+
+
+    root.applyAll(child => {
+      if (child.children) {
+        child.children = child.children.filter(child => child.type !== "comma");
+      }
+    });
+
     root.applyAll(child => {
       if (child.children)
         child.children.forEach(subchild => subchild.parent = child);
@@ -4648,7 +4711,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  let MAX_DEPTH = 10;
+  let MAX_DEPTH = 4;
 
   // TODO: Stop this function from making too many points
   function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {
@@ -5150,44 +5213,6 @@ void main() {
     }
   }
 
-  class WebGLPolylineWrapper extends PolylineBase {
-    constructor(params={}) {
-      super(params);
-
-      this._internal_polyline = new WebGLPolyline();
-    }
-
-    update() {
-      this._internal_polyline.vertices = this.vertices;
-
-      const pen = this.pen;
-
-      this._internal_polyline.color = pen.color.toNumber();
-      this._internal_polyline.thickness = pen.thickness / 2;
-      this._internal_polyline.use_native = pen.useNative;
-
-      // TODO: add other pen things
-
-      this._internal_polyline.update();
-    }
-
-    isClick(point) {
-      return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
-    }
-
-    distanceFrom(point) {
-      return point_line_segment_min_distance(point.x, point.y, this.vertices)
-    }
-
-    closestTo(point) {
-      return point_line_segment_min_closest(point.x, point.y, this.vertices)
-    }
-
-    render(info) {
-      this._internal_polyline.render(info);
-    }
-  }
-
   // Allowed plotting modes:
   // rough = linear sample, no refinement
   // fine = linear sample with refinement
@@ -5203,6 +5228,7 @@ void main() {
       this.plotPoints = plotPoints;
       this.plottingMode = "fine";
       this.quality = 1;
+
       this.function = (x) => Math.atan(x);
 
       this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2});
@@ -5242,7 +5268,9 @@ void main() {
       let vertices = [];
 
       if (this.plottingMode === "rough") {
-        vertices = sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality);
+        let points = box.width * this.quality;
+
+        vertices = sample_1d(coords.x1, coords.x2, this.function, points);
       } else {
         vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality);
       }
@@ -5250,7 +5278,7 @@ void main() {
       this.plot.transform.plotToPixelArr(vertices);
 
       if (!this.polyline)
-        this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false});
+        this.polyline = new PolylineElement({pen: this.pen, alwaysUpdate: false});
 
       this.polyline.vertices = vertices;
       this.polyline.update();
@@ -5978,6 +6006,72 @@ void main() {
     }
   }
 
+  const Functions = {
+    LogB: (b, v) => {
+      return Math.ln(v) / Math.ln(b)
+    },
+    Factorial: (a) => {
+
+    },
+    Gamma: (a) => {
+
+    },
+    LogGamma: (a) => {
+
+    },
+    IfElse: (val1, condition, val2) => {
+      if (condition)
+        return val1
+      else
+        return val2
+    },
+    Piecewise: (condition, value, ...args) => {
+      if (condition !== undefined && value === undefined) {
+        return args[0]
+      } else if (condition === undefined && value === undefined) {
+        return 0
+      } else {
+        if (condition) {
+          return value
+        }
+
+        return Functions.Piecewise(...args)
+      }
+    },
+    CCHAIN: (val1, comparison, val2, ...args) => {
+      if (!comparison)
+        return true
+      switch (comparison) {
+        case "<":
+          if (val1 < val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+        case ">":
+          if (val1 > val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+        case "<=":
+          if (val1 <= val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+        case ">=":
+          if (val1 >= val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+        case "!=":
+          if (val1 !== val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+        case "==":
+          if (val1 === val2)
+            return Functions.CCHAIN(val2, ...args)
+          break
+      }
+
+      return false
+    }
+  };
+
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.Color = Color;
@@ -5985,6 +6079,7 @@ void main() {
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.DefaultUniverse = DefaultUniverse;
   exports.FunctionPlot2D = FunctionPlot2D;
+  exports.Functions = Functions;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
@@ -6013,6 +6108,7 @@ void main() {
   exports.rgb = rgb;
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;
+  exports.tokenizer = tokenizer;
   exports.utils = utils;
 
   return exports;

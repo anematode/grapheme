@@ -1,6 +1,8 @@
 // const fs = require( ...
 // No, this is not node.js the language.
 
+const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
+
 class ASTNode {
   constructor (params = {}) {
 
@@ -40,7 +42,6 @@ class ASTNode {
 
     node.applyAll(child => {
       if (child.children) {
-        console.log(child.children)
         child.children.forEach(subchild => subchild.parent = child)
       }
     })
@@ -55,7 +56,7 @@ class ASTNode {
       if (child instanceof VariableNode) {
         let name = child.name
 
-        if (variableNames.indexOf(name) === -1) {
+        if (variableNames.indexOf(name) === -1 && comparisonOperators.indexOf(name) === -1) {
           variableNames.push(name)
         }
       }
@@ -89,6 +90,8 @@ class VariableNode extends ASTNode {
   }
 
   _getCompileText () {
+    if (comparisonOperators.includes(this.name))
+      return '"' + this.name + '"'
     return this.name
   }
 
@@ -116,6 +119,13 @@ const OperatorPatterns = {
   '*': ['', '*'],
   '/': ['', '/'],
   '^': ['', '**'],
+  '<': ['', '<'],
+  '<=': ['', '<='],
+  '>': ['', '>'],
+  '>=': ['', '>='],
+  '==': ['', '==='],
+  '!=': ['', '!=='],
+  'cchain': ['Grapheme.Functions.CCHAIN', ','],
   'tan': ['Math.tan'],
   'cos': ['Math.cos'],
   'csc': ['1/Math.sin'],
@@ -128,7 +138,9 @@ const OperatorPatterns = {
   'sqrt': ['Math.sqrt'],
   'cbrt': ['Math.cbrt'],
   'ln': ['Math.log'],
-  'log': ['Math.log10'],
+  'log': ['Math.log'],
+  'log10': ['Math.log10'],
+  'log2': ['Math.log2'],
   'sinh': ['Math.sinh'],
   'cosh': ['Math.cosh'],
   'tanh': ['Math.tanh'],
@@ -143,7 +155,10 @@ const OperatorPatterns = {
   'acot': ['Math.atan(1/', '+', ')'],
   'acsch': ['Math.asinh(1/', '+', ')'],
   'asech': ['Math.acosh(1/', '+', ')'],
-  'acoth': ['Math.atanh(1/', '+', ')']
+  'acoth': ['Math.atanh(1/', '+', ')'],
+  'logb': ['Grapheme.Functions.LogB', ','],
+  'ifelse': ['Grapheme.Functions.IfElse', ','],
+  'piecewise': ['Grapheme.Functions.Piecewise', ',']
 }
 
 class OperatorNode extends ASTNode {
@@ -165,7 +180,7 @@ class OperatorNode extends ASTNode {
       throw new Error('Unrecognized operation')
     }
 
-    return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')' + pattern[2] ? pattern[2] : ''
+    return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText() + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
   }
 
   derivative (variable) {
@@ -884,6 +899,9 @@ class OperatorNode extends ASTNode {
             })
           ]
         })
+      default:
+        // No symbolic derivative, oof
+        throw new Error('unimplemented')
     }
   }
 
@@ -927,5 +945,6 @@ class ConstantNode extends ASTNode {
     return new ConstantNode({ value: this.value })
   }
 }
+
 
 export { VariableNode, OperatorNode, ConstantNode, ASTNode }

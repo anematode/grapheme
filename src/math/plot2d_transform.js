@@ -64,11 +64,11 @@ class Plot2DTransform {
   translate(v, ...args) {
     if (v instanceof Vec2) {
       this.coords.top_left.add(v)
+
+      this.plot.triggerEvent("plotcoordschanged")
     } else {
       this.translate(new Vec2(v, ...args))
     }
-
-    this.plot.triggerEvent("plotcoordschanged")
   }
 
   zoomOn(factor, v = new Vec2(0,0), ...args) {
@@ -80,8 +80,6 @@ class Plot2DTransform {
 
       this._internal_coincideDragPoints(v, pixel_s)
     }
-
-    this.plot.triggerEvent("plotcoordschanged")
   }
 
   _internal_coincideDragPoints(p1, p2) {

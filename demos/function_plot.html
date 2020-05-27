@@ -42,10 +42,14 @@
     let func = Grapheme.parse_string(value)
 
     function_plot.setFunction(func.compile())
-    derivative_plot.setFunction(func.derivative('x').compile())
+    //derivative_plot.setFunction(func.derivative('x').compile())
 
     function_plot.update()
-    derivative_plot.update()
+    //derivative_plot.update()
+  }
+
+  function setRestrictions(value) {
+    let func = Grapheme.parse_string
   }
 
   setFunction("x^4")
@@ -67,6 +71,7 @@
 </script>
 
 <input style="position:absolute; top: 10px; left: 10px" type="text" value="x^4" oninput="setFunction(this.value)"/>
+<input style="position:absolute; top: 30px; left: 10px" type="text" value="x^4" oninput="setFunction(this.value)"/>
 
 </body>
 

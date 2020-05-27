@@ -2,8 +2,8 @@ import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
 
 // a * b - c * d ^ g
 
-let operator_regex = /^[*-\/+^]/
-let function_regex = /^([^\s\\*-\/+!^()]+)\(/
+let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=/
+let function_regex = /^([^\s\\*\-\/+!^()]+)\(/
 let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
 let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
 let paren_regex = /^[()\[\]]/
@@ -353,6 +353,53 @@ function parse_tokens(tokens) {
   combineOperators(['*','/'])
   combineOperators(['-','+'])
 
+  const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>']
+
+  // CChain
+  let cchain_remaining = true
+  while (cchain_remaining) {
+    cchain_remaining = false
+
+    root.applyAll(child => {
+      const children = child.children
+      let cchain_found = false
+
+      for (let i = 0; i < children.length; ++i) {
+        if (comparisonOperators.includes(children[i].op)) {
+          let j
+          for (j = i + 2; j < children.length; j += 2) {
+            if (comparisonOperators.includes(children[j].op)) {
+              cchain_found = true
+            } else {
+              break
+            }
+          }
+
+          if (cchain_found) {
+            child.children = children.slice(0, i-1).concat(new OperatorNode({
+              operator: "cchain",
+              children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
+            })).concat(children.slice(j))
+
+            cchain_remaining = true
+
+            return
+
+          }
+        }
+      }
+    })
+  }
+
+  combineOperators(comparisonOperators)
+
+
+  root.applyAll(child => {
+    if (child.children) {
+      child.children = child.children.filter(child => child.type !== "comma")
+    }
+  })
+
   root.applyAll(child => {
     if (child.children)
       child.children.forEach(subchild => subchild.parent = child)
@@ -375,4 +422,4 @@ function parse_string(string) {
   return parse_tokens(tokens)
 }
 
-export {parse_string}
+export {parse_string, tokenizer}
