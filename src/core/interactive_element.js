@@ -58,11 +58,15 @@ class InteractiveElement extends GraphemeElement {
           let position = evt.pos
           let isClick = this.isClick(position)
 
+          let res = false
+
           // Trigger mouse on and mouse off events
           if (isClick && !prevIsClick) {
-            this.triggerEvent("interactive-mouseon", evt)
+            if (this.triggerEvent("interactive-mouseon", evt))
+              res = true
           } else if (!isClick && prevIsClick) {
-            this.triggerEvent("interactive-mouseoff", evt)
+            if (this.triggerEvent("interactive-mouseoff", evt))
+              res = true
           }
 
           // Set whether the previous mouse move is on the element
@@ -72,20 +76,24 @@ class InteractiveElement extends GraphemeElement {
             prevIsClick = false
 
           if (isClick) {
-            this.triggerEvent("interactive-" + key_, evt)
+            if (this.triggerEvent("interactive-" + key_, evt))
+              res = true
           }
 
           // Trigger drag events
           if (key_ === "mousemove") {
             if (mouseDown) {
               // return to allow the prevention of propagation
-              return this.triggerEvent("interactive-drag", {start: mouseDown, ...evt})
+              if (this.triggerEvent("interactive-drag", {start: mouseDown, ...evt}))
+                res = true
             }
           } else if (key_ === "mousedown" && isClick) {
             mouseDown = evt.pos
           } else if (key_ === "mouseup") {
             mouseDown = null
           }
+
+          return res
         }
 
         this.addEventListener(key, callback)

@@ -383,6 +383,8 @@ class WebGLPolyline extends WebGLElement {
 
       this._calculateNativeLines()
     }
+
+    this.needsBufferCopy = true
   }
 
   isClick(point) {
@@ -412,11 +414,13 @@ class WebGLPolyline extends WebGLElement {
 
     let buffer = glManager.getBuffer(this.id)
     let vertexCount = this._gl_triangle_strip_vertices_total
+
     if ((this.use_native && vertexCount < 2) || (!this.use_native && vertexCount < 3)) return
 // tell webgl to start using the gridline program
     gl.useProgram(program.program)
 // bind our webgl buffer to gl.ARRAY_BUFFER access point
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+
     let color = this.color
 // set the vec4 at colorLocation to (r, g, b, a)
     gl.uniform4f(program.uniforms.line_color,
@@ -428,7 +432,11 @@ class WebGLPolyline extends WebGLElement {
       2 / info.plot.width,
       -2 / info.plot.height)
 // copy our vertex data to the GPU
-    gl.bufferData(gl.ARRAY_BUFFER, this._gl_triangle_strip_vertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */)
+    if (this.needsBufferCopy) {
+      gl.bufferData(gl.ARRAY_BUFFER, this._gl_triangle_strip_vertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */)
+
+      this.needsBufferCopy = false
+    }
 // enable the vertices location attribute to be used in the program
     gl.enableVertexAttribArray(program.attribs.v_position)
 // tell it that the width of vertices is 2 (since it's x,y), that it's floats,

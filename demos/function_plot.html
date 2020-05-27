@@ -28,31 +28,18 @@
 
   let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
-  let function_plot = new Grapheme.InteractiveFunctionPlot2D()
-  let derivative_plot = new Grapheme.InteractiveFunctionPlot2D()
+  for (let i = 0; i < 50; ++i) {
+    for (let function_ of functions) {
+      let k = i
+      let function_plot = new Grapheme.InteractiveFunctionPlot2D()
 
-  derivative_plot.pen.color = Grapheme.Colors.BLACK
+      function_plot.setFunction(x => (function_(x - i)))
 
-  plot.add(function_plot)
-  plot.add(derivative_plot)
-
-  function_plot.update()
-
-  function setFunction(value) {
-    let func = Grapheme.parse_string(value)
-
-    function_plot.setFunction(func.compile())
-    derivative_plot.setFunction(func.derivative('x').compile())
-
-    function_plot.update()
-    derivative_plot.update()
+      plot.add(function_plot)
+    }
   }
 
-  function setRestrictions(value) {
-    let func = Grapheme.parse_string
-  }
-
-  setFunction("x^4")
+  plot.children.forEach(child => child.update())
 
   let ia = 0
 

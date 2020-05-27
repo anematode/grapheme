@@ -39,6 +39,16 @@ class Plot2D extends InteractiveCanvas {
       this.transform.correctAspectRatio()
     })
 
+    let timeout = 0
+
+    this.addEventListener("plotcoordschanged", evt => {
+      clearTimeout(timeout)
+
+      timeout = setTimeout(() => {
+        this.triggerEvent("plotcoordslingered")
+      }, 500)
+    })
+
     this.update()
   }
 

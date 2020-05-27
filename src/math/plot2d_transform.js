@@ -42,7 +42,8 @@ class Plot2DTransform {
       this._centerOn(new Vec2(cx, cy))
     }
 
-    this.plot.triggerEvent("plotcoordschanged")
+    if (this.plot)
+      this.plot.triggerEvent("plotcoordschanged")
   }
 
   _centerOn(v) {
@@ -58,14 +59,16 @@ class Plot2DTransform {
     }
 
     this.correctAspectRatio()
-    this.plot.triggerEvent("plotcoordschanged")
+    if (this.plot)
+      this.plot.triggerEvent("plotcoordschanged")
   }
 
   translate(v, ...args) {
     if (v instanceof Vec2) {
       this.coords.top_left.add(v)
 
-      this.plot.triggerEvent("plotcoordschanged")
+      if (this.plot)
+        this.plot.triggerEvent("plotcoordschanged")
     } else {
       this.translate(new Vec2(v, ...args))
     }
@@ -123,6 +126,22 @@ class Plot2DTransform {
       arr[i] = x_m * arr[i] + x_b
       arr[i+1] = y_m * arr[i+1] + y_b
     }
+  }
+
+  pixelToPlotArr(arr) {
+    let {x_m, x_b, y_m, y_b} = this.getPixelToPlotTransform()
+
+    for (let i = 0; i < arr.length; i += 2) {
+      arr[i] = x_m * arr[i] + x_b
+      arr[i+1] = y_m * arr[i+1] + y_b
+    }
+  }
+
+  clone() {
+    let transform = new Plot2DTransform()
+    transform.box = this.box.clone()
+    transform.coords = this.coords.clone()
+    return transform
   }
 }
 

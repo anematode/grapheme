@@ -18,12 +18,13 @@ class FunctionPlot2D extends InteractiveElement {
     super(params)
 
     const {
-      plotPoints = "auto"
+      plotPoints = "auto",
+      plottingMode = "fine"
     } = params
 
     this.plotPoints = plotPoints
-    this.plottingMode = "fine"
-    this.quality = 1
+    this.plottingMode = plottingMode
+    this.quality = 0.5
 
     this.function = (x) => Math.atan(x)
 
@@ -32,7 +33,10 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.update())
+    this.addEventListener("plotcoordschanged", () => this.updateLight())
+    this.addEventListener("plotcoordslingered", () => {
+      setTimeout(() => this.update(), 2000 * Math.random())
+    })
 
     this.interactivityEnabled = true
   }
@@ -47,8 +51,24 @@ class FunctionPlot2D extends InteractiveElement {
     return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
   }
 
+  updateLight() {
+    let transform = this.plot.transform
+
+    let arr = this.polyline._internal_polyline._gl_triangle_strip_vertices
+
+    this.previousTransform.pixelToPlotArr(arr)
+    transform.plotToPixelArr(arr)
+
+    this.polyline._internal_polyline.needsBufferCopy = true
+
+    this.previousTransform = transform.clone()
+  }
+
   update() {
     let transform = this.plot.transform
+
+    this.previousTransform = transform.clone()
+
     let { coords, box } = transform
     let simplifiedTransform = transform.getPlotToPixelTransform()
 

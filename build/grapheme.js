@@ -1577,7 +1577,8 @@ var Grapheme = (function (exports) {
         this._centerOn(new Vec2(cx, cy));
       }
 
-      this.plot.triggerEvent("plotcoordschanged");
+      if (this.plot)
+        this.plot.triggerEvent("plotcoordschanged");
     }
 
     _centerOn(v) {
@@ -1593,14 +1594,16 @@ var Grapheme = (function (exports) {
       }
 
       this.correctAspectRatio();
-      this.plot.triggerEvent("plotcoordschanged");
+      if (this.plot)
+        this.plot.triggerEvent("plotcoordschanged");
     }
 
     translate(v, ...args) {
       if (v instanceof Vec2) {
         this.coords.top_left.add(v);
 
-        this.plot.triggerEvent("plotcoordschanged");
+        if (this.plot)
+          this.plot.triggerEvent("plotcoordschanged");
       } else {
         this.translate(new Vec2(v, ...args));
       }
@@ -1658,6 +1661,22 @@ var Grapheme = (function (exports) {
         arr[i] = x_m * arr[i] + x_b;
         arr[i+1] = y_m * arr[i+1] + y_b;
       }
+    }
+
+    pixelToPlotArr(arr) {
+      let {x_m, x_b, y_m, y_b} = this.getPixelToPlotTransform();
+
+      for (let i = 0; i < arr.length; i += 2) {
+        arr[i] = x_m * arr[i] + x_b;
+        arr[i+1] = y_m * arr[i+1] + y_b;
+      }
+    }
+
+    clone() {
+      let transform = new Plot2DTransform();
+      transform.box = this.box.clone();
+      transform.coords = this.coords.clone();
+      return transform
     }
   }
 
@@ -1736,6 +1755,16 @@ var Grapheme = (function (exports) {
       this.addEventListener("resize", evt => {
         this.update();
         this.transform.correctAspectRatio();
+      });
+
+      let timeout = 0;
+
+      this.addEventListener("plotcoordschanged", evt => {
+        clearTimeout(timeout);
+
+        timeout = setTimeout(() => {
+          this.triggerEvent("plotcoordslingered");
+        }, 500);
       });
 
       this.update();
@@ -4660,11 +4689,15 @@ var Grapheme = (function (exports) {
             let position = evt.pos;
             let isClick = this.isClick(position);
 
+            let res = false;
+
             // Trigger mouse on and mouse off events
             if (isClick && !prevIsClick) {
-              this.triggerEvent("interactive-mouseon", evt);
+              if (this.triggerEvent("interactive-mouseon", evt))
+                res = true;
             } else if (!isClick && prevIsClick) {
-              this.triggerEvent("interactive-mouseoff", evt);
+              if (this.triggerEvent("interactive-mouseoff", evt))
+                res = true;
             }
 
             // Set whether the previous mouse move is on the element
@@ -4674,20 +4707,24 @@ var Grapheme = (function (exports) {
               prevIsClick = false;
 
             if (isClick) {
-              this.triggerEvent("interactive-" + key_, evt);
+              if (this.triggerEvent("interactive-" + key_, evt))
+                res = true;
             }
 
             // Trigger drag events
             if (key_ === "mousemove") {
               if (mouseDown) {
                 // return to allow the prevention of propagation
-                return this.triggerEvent("interactive-drag", {start: mouseDown, ...evt})
+                if (this.triggerEvent("interactive-drag", {start: mouseDown, ...evt}))
+                  res = true;
               }
             } else if (key_ === "mousedown" && isClick) {
               mouseDown = evt.pos;
             } else if (key_ === "mouseup") {
               mouseDown = null;
             }
+
+            return res
           };
 
           this.addEventListener(key, callback);
@@ -4714,7 +4751,7 @@ var Grapheme = (function (exports) {
   let MAX_DEPTH = 4;
 
   // TODO: Stop this function from making too many points
-  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.2, depth=0, includeEndpoints=true) {
+  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true) {
     if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return [NaN, NaN]
 
@@ -5153,6 +5190,8 @@ void main() {
 
         this._calculateNativeLines();
       }
+
+      this.needsBufferCopy = true;
     }
 
     isClick(point) {
@@ -5182,11 +5221,13 @@ void main() {
 
       let buffer = glManager.getBuffer(this.id);
       let vertexCount = this._gl_triangle_strip_vertices_total;
+
       if ((this.use_native && vertexCount < 2) || (!this.use_native && vertexCount < 3)) return
   // tell webgl to start using the gridline program
       gl.useProgram(program.program);
   // bind our webgl buffer to gl.ARRAY_BUFFER access point
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
       let color = this.color;
   // set the vec4 at colorLocation to (r, g, b, a)
       gl.uniform4f(program.uniforms.line_color,
@@ -5198,7 +5239,11 @@ void main() {
         2 / info.plot.width,
         -2 / info.plot.height);
   // copy our vertex data to the GPU
-      gl.bufferData(gl.ARRAY_BUFFER, this._gl_triangle_strip_vertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+      if (this.needsBufferCopy) {
+        gl.bufferData(gl.ARRAY_BUFFER, this._gl_triangle_strip_vertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+        this.needsBufferCopy = false;
+      }
   // enable the vertices location attribute to be used in the program
       gl.enableVertexAttribArray(program.attribs.v_position);
   // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
@@ -5260,12 +5305,13 @@ void main() {
       super(params);
 
       const {
-        plotPoints = "auto"
+        plotPoints = "auto",
+        plottingMode = "fine"
       } = params;
 
       this.plotPoints = plotPoints;
-      this.plottingMode = "fine";
-      this.quality = 1;
+      this.plottingMode = plottingMode;
+      this.quality = 0.5;
 
       this.function = (x) => Math.atan(x);
 
@@ -5274,7 +5320,10 @@ void main() {
 
       this.alwaysUpdate = false;
 
-      this.addEventListener("plotcoordschanged", () => this.update());
+      this.addEventListener("plotcoordschanged", () => this.updateLight());
+      this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 2000 * Math.random());
+      });
 
       this.interactivityEnabled = true;
     }
@@ -5289,8 +5338,24 @@ void main() {
       return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
     }
 
+    updateLight() {
+      let transform = this.plot.transform;
+
+      let arr = this.polyline._internal_polyline._gl_triangle_strip_vertices;
+
+      this.previousTransform.pixelToPlotArr(arr);
+      transform.plotToPixelArr(arr);
+
+      this.polyline._internal_polyline.needsBufferCopy = true;
+
+      this.previousTransform = transform.clone();
+    }
+
     update() {
       let transform = this.plot.transform;
+
+      this.previousTransform = transform.clone();
+
       let { coords, box } = transform;
       let simplifiedTransform = transform.getPlotToPixelTransform();
 
