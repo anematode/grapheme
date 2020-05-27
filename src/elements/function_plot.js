@@ -74,7 +74,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.plot.transform.plotToPixelArr(vertices)
 
     if (!this.polyline)
-      this.polyline = new PolylineElement({pen: this.pen, alwaysUpdate: false})
+      this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
 
     this.polyline.vertices = vertices
     this.polyline.update()

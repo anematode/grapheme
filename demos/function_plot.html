@@ -42,10 +42,10 @@
     let func = Grapheme.parse_string(value)
 
     function_plot.setFunction(func.compile())
-    //derivative_plot.setFunction(func.derivative('x').compile())
+    derivative_plot.setFunction(func.derivative('x').compile())
 
     function_plot.update()
-    //derivative_plot.update()
+    derivative_plot.update()
   }
 
   function setRestrictions(value) {
