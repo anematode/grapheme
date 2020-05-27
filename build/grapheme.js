@@ -1465,6 +1465,8 @@ var Grapheme = (function (exports) {
               pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top),
               rawEvent: evt
             });
+
+            evt.preventDefault();
           };
 
           this.interactivityListeners[evtName] = callback;
@@ -3310,10 +3312,7 @@ var Grapheme = (function (exports) {
             let power = this.children[1].value;
 
             if (power === 0) {
-              return new OperatorNode({
-                operator: '/',
-                children: [new ConstantNode({ value: 0 }), new VariableNode({ name: variable })]
-              })
+              return new ConstantNode({ value: 0 })
             }
 
             // power rule
@@ -4217,6 +4216,13 @@ var Grapheme = (function (exports) {
       if (token1.paren === '[' && token2.type === "comma")
         get_angry_at(string, token2.index, "No comma after starting bracket");
     }
+
+    if (tokens[0].type === "comma" || tokens[0].type === "operator")
+      get_angry_at(string, 0, "No starting comma/operator");
+
+    const last_token = tokens[tokens.length - 1];
+    if (last_token.type === "comma" || last_token.type === "operator")
+      get_angry_at(string, tokens.length - 1, "No ending comma/operator");
   }
 
   function find_paren_indices(children) {
@@ -4870,7 +4876,6 @@ void main() {
       this.join_res = 0.5; // angle in radians between consecutive roundings
 
       this.use_native = false;
-      this.use_cpp = true;
 
       this._gl_triangle_strip_vertices = null;
       this._gl_triangle_strip_vertices_total = 0;
@@ -5346,6 +5351,23 @@ void main() {
       this.previousTransform.pixelToPlotArr(arr);
       transform.plotToPixelArr(arr);
 
+      let ratio = transform.coords.width / this.previousTransform.coords.width;
+
+      for (let i = 0; i < arr.length; i += 4) {
+        let ax = arr[i];
+        let ay = arr[i+1];
+        let bx = arr[i+2];
+        let by = arr[i+3];
+
+        let vx = (bx - ax) / 2 * (1 - ratio);
+        let vy = (by - ay) / 2 * (1 - ratio);
+
+        arr[i] = ax + vx;
+        arr[i+1] = ay + vy;
+        arr[i+2] = bx - vx;
+        arr[i+3] = by - vy;
+      }
+
       this.polyline._internal_polyline.needsBufferCopy = true;
 
       this.previousTransform = transform.clone();
@@ -5357,16 +5379,12 @@ void main() {
       this.previousTransform = transform.clone();
 
       let { coords, box } = transform;
-      let simplifiedTransform = transform.getPlotToPixelTransform();
 
       let plotPoints = this.plotPoints;
 
       if (plotPoints === "auto") {
         plotPoints = this.quality * box.width;
       }
-
-      let min_y = coords.y1 - coords.height / 4;
-      let max_y = coords.y2 + coords.height / 4;
 
       let vertices = [];
 
@@ -5380,8 +5398,15 @@ void main() {
 
       this.plot.transform.plotToPixelArr(vertices);
 
-      if (!this.polyline)
-        this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false});
+      if (!this.polyline) {
+        this.polyline = new WebGLPolylineWrapper({
+          pen: this.pen,
+          alwaysUpdate: false,
+          trackVertexIndices: true
+        });
+
+        this.polyline._internal_polyline.track_vertex_indices = true;
+      }
 
       this.polyline.vertices = vertices;
       this.polyline.update();

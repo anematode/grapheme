@@ -192,6 +192,13 @@ function check_valid(string, tokens) {
     if (token1.paren === '[' && token2.type === "comma")
       get_angry_at(string, token2.index, "No comma after starting bracket")
   }
+
+  if (tokens[0].type === "comma" || tokens[0].type === "operator")
+    get_angry_at(string, 0, "No starting comma/operator")
+
+  const last_token = tokens[tokens.length - 1]
+  if (last_token.type === "comma" || last_token.type === "operator")
+    get_angry_at(string, tokens.length - 1, "No ending comma/operator")
 }
 
 function find_paren_indices(children) {

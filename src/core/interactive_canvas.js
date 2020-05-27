@@ -49,6 +49,8 @@ class InteractiveCanvas extends GraphemeCanvas {
             pos: new Vec2(evt.clientX - rect.left,evt.clientY - rect.top),
             rawEvent: evt
           })
+
+          evt.preventDefault()
         }
 
         this.interactivityListeners[evtName] = callback

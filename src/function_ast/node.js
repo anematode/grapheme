@@ -226,10 +226,7 @@ class OperatorNode extends ASTNode {
           let power = this.children[1].value
 
           if (power === 0) {
-            return new OperatorNode({
-              operator: '/',
-              children: [new ConstantNode({ value: 0 }), new VariableNode({ name: variable })]
-            })
+            return new ConstantNode({ value: 0 })
           }
 
           // power rule

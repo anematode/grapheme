@@ -59,6 +59,23 @@ class FunctionPlot2D extends InteractiveElement {
     this.previousTransform.pixelToPlotArr(arr)
     transform.plotToPixelArr(arr)
 
+    let ratio = transform.coords.width / this.previousTransform.coords.width
+
+    for (let i = 0; i < arr.length; i += 4) {
+      let ax = arr[i]
+      let ay = arr[i+1]
+      let bx = arr[i+2]
+      let by = arr[i+3]
+
+      let vx = (bx - ax) / 2 * (1 - ratio)
+      let vy = (by - ay) / 2 * (1 - ratio)
+
+      arr[i] = ax + vx
+      arr[i+1] = ay + vy
+      arr[i+2] = bx - vx
+      arr[i+3] = by - vy
+    }
+
     this.polyline._internal_polyline.needsBufferCopy = true
 
     this.previousTransform = transform.clone()
@@ -70,16 +87,12 @@ class FunctionPlot2D extends InteractiveElement {
     this.previousTransform = transform.clone()
 
     let { coords, box } = transform
-    let simplifiedTransform = transform.getPlotToPixelTransform()
 
     let plotPoints = this.plotPoints
 
     if (plotPoints === "auto") {
       plotPoints = this.quality * box.width
     }
-
-    let min_y = coords.y1 - coords.height / 4
-    let max_y = coords.y2 + coords.height / 4
 
     let vertices = []
 
@@ -93,8 +106,15 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plot.transform.plotToPixelArr(vertices)
 
-    if (!this.polyline)
-      this.polyline = new WebGLPolylineWrapper({pen: this.pen, alwaysUpdate: false})
+    if (!this.polyline) {
+      this.polyline = new WebGLPolylineWrapper({
+        pen: this.pen,
+        alwaysUpdate: false,
+        trackVertexIndices: true
+      })
+
+      this.polyline._internal_polyline.track_vertex_indices = true
+    }
 
     this.polyline.vertices = vertices
     this.polyline.update()

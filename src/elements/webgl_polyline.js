@@ -63,7 +63,6 @@ class WebGLPolyline extends WebGLElement {
     this.join_res = 0.5 // angle in radians between consecutive roundings
 
     this.use_native = false
-    this.use_cpp = true
 
     this._gl_triangle_strip_vertices = null
     this._gl_triangle_strip_vertices_total = 0
