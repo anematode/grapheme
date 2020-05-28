@@ -3,7 +3,7 @@ import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
 // a * b - c * d ^ g
 
 let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=/
-let function_regex = /^([^\s\\*\-\/+!^()]+)\(/
+let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
 let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
 let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
 let paren_regex = /^[()\[\]]/

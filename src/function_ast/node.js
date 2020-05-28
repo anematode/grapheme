@@ -264,14 +264,22 @@ class OperatorNode extends ASTNode {
         let latex = pre
 
         for (let i = 0; i < this.children.length; i += 2) {
+          let k = 0
           for (let j = 1; j >= 0; --j) {
-            latex += this.children[i+j].latex()
+            let child = this.children[i+j]
 
-            if (j === 1) {
+            if (!child)
+              continue
+
+            latex += child.latex()
+
+            if (k === 0) {
               latex += " & "
             } else {
               latex += " \\\\ "
             }
+
+            k++
           }
         }
 
@@ -314,6 +322,14 @@ class OperatorNode extends ASTNode {
 
         return `((${res[1]})?(${res[0]}):(${res[2]}))`
       case "piecewise":
+        if (this.children.length === 0) {
+          return "(0)"
+        }
+
+        if (this.children.length === 1) {
+          return this.children[0]._getCompileText(defineVariable)
+        }
+
         if (this.children.length === 3) {
           return new OperatorNode({operator: "ifelse", children: [this.children[1], this.children[0], this.children[2]]})._getCompileText(defineVariable)
         } else if (this.children.length === 2) {

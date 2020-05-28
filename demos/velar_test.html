@@ -48,6 +48,8 @@
       fplot.update()
 
       katex.render(node.latex(false), document.getElementById("katex-stuff"), {throwOnError:false})
+
+      window.egg = node
     }
 
   let ia = 0;
@@ -58,12 +60,12 @@
     requestAnimationFrame(render);
   }
 
-  window.onload = () => setFunction("piecewise(0<x<2,x,2<=x<4,x^2/2)")
+  window.onload = () => setFunction("piecewise(0<x<2,piecewise(abs(x)<1/2,x),2<=x<4,x^2/2)")
   render()
 </script>
 
 <div style="position:absolute; top: 10px; left: 10px">
-    <textarea oninput="setFunction(this.value)">piecewise(0<x<2,x,2<=x<4,x^2/2)</textarea>
+    <textarea oninput="setFunction(this.value)">piecewise(0<x<2,piecewise(abs(x)<1/2,x),2<=x<4,x^2/2)</textarea>
     <br>
     <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
 </div>
