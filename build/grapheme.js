@@ -4940,6 +4940,11 @@ var Grapheme = (function (exports) {
       return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
     }
 
+    _hasMouseMoveInteractivityListeners() {
+      const listeners = this.interactivityListeners;
+      return !!(listeners["interactive-mouseon"] || listeners["interactive-mouseoff"] || listeners["interactivity-mousemove"])
+    }
+
     /**
      * Set whether interactivity is enabled
      * @param value
@@ -4966,6 +4971,9 @@ var Grapheme = (function (exports) {
           let key_ = key;
 
           let callback = (evt) => {
+            if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners())
+              return
+
             let position = evt.pos;
             let isClick = this.isClick(position);
 
