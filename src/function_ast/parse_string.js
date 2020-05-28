@@ -398,6 +398,18 @@ function parse_tokens(tokens) {
     })
   }
 
+  root.applyAll(child => {
+    const children = child.children
+
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i]
+
+      if (child instanceof VariableNode && comparisonOperators.includes(child.name)) {
+        children[i] = new OperatorNode({operator: child.name})
+      }
+    }
+  })
+
   combineOperators(comparisonOperators)
 
 
