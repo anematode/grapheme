@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grapheme VELARIZES -Sean</title>
+    <style>
+        * {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
+<script src="../build/grapheme.js"></script>
+
+<script>
+
+
+  let plot = new Grapheme.Plot2D()
+
+  plot.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(plot.domElement);
+
+  let gridlines = new Grapheme.Gridlines()
+  plot.add(gridlines)
+
+  let fplot = new Grapheme.InteractiveFunctionPlot2D()
+  plot.add(fplot)
+
+    function setFunction(value) {
+      let node = Grapheme.parse_string(value)
+      let compile = node.compile()
+      let index = compile.variableNames.indexOf('x')
+
+      let func
+
+      if (index === -1) {
+        func = (x) => compile.func()
+      } else {
+        // as you can see, highly WIP
+        func = (x) => compile.func(x)
+      }
+
+      fplot.setFunction(func)
+      fplot.update()
+
+      katex.render(node.latex(false), document.getElementById("katex-stuff"), {throwOnError:false})
+    }
+
+  let ia = 0;
+  function render() {
+    ia += 0.1;
+
+    plot.render();
+    requestAnimationFrame(render);
+  }
+
+  window.onload = () => setFunction("piecewise(0<x<2,x,2<=x<4,x^2/2)")
+  render()
+</script>
+
+<div style="position:absolute; top: 10px; left: 10px">
+    <textarea oninput="setFunction(this.value)">piecewise(0<x<2,x,2<=x<4,x^2/2)</textarea>
+    <br>
+    <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
+</div>
+</body>
+</html>

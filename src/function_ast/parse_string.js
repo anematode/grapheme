@@ -398,7 +398,7 @@ function parse_tokens(tokens) {
     })
   }
 
-  root.applyAll(child => {
+  /*root.applyAll(child => {
     const children = child.children
 
     for (let i = 0; i < children.length; ++i) {
@@ -408,7 +408,7 @@ function parse_tokens(tokens) {
         children[i] = new OperatorNode({operator: child.name})
       }
     }
-  })
+  })*/
 
   combineOperators(comparisonOperators)
 

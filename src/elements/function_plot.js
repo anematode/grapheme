@@ -33,10 +33,10 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.updateLight())
-    this.addEventListener("plotcoordslingered", () => {
+    this.addEventListener("plotcoordschanged", () => this.update())
+    /*this.addEventListener("plotcoordslingered", () => {
       setTimeout(() => this.update(), 2000 * Math.random())
-    })
+    })*/
 
     this.interactivityEnabled = true
   }

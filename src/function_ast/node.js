@@ -28,8 +28,20 @@ class ASTNode {
     })
   }
 
+  latex(parens=true) {
+    let latex = this.children.map(child => child.latex()).join('+')
+
+    if (parens)
+      return String.raw`\left(${latex}\right)`
+    return latex
+  }
+
   getText () {
     return '(node)'
+  }
+
+  type() {
+    return "node"
   }
 
   compile () {
@@ -43,7 +55,7 @@ class ASTNode {
 
     let returnVal = this._getCompileText(defineVariable)
 
-    return new Function(...variableNames, preamble + 'return ' + returnVal)
+    return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
   }
 
   derivative (variable) {
@@ -106,12 +118,34 @@ class VariableNode extends ASTNode {
     return this.name
   }
 
+  type() {
+    return "variable"
+  }
+
   derivative (variable) {
     if (variable === this.name) {
       return new ConstantNode({ value: 1 })
     } else {
       return new ConstantNode({ value: 0 })
     }
+  }
+
+  latex() {
+    if (comparisonOperators.includes(this.name)) {
+      switch (this.name) {
+        case ">": case "<":
+          return this.name
+        case ">=":
+          return "\\geq "
+        case "<=":
+          return "\\leq "
+        case "==":
+          return "="
+        case "!=":
+          return "\\neq "
+      }
+    }
+    return this.name
   }
 
   getText () {
@@ -180,9 +214,76 @@ class OperatorNode extends ASTNode {
     this.operator = operator
   }
 
-  _getCompileText (defineVariable) {
+  latex() {
+    switch (this.operator) {
+      case "^":
+        let exponent = this.children[1]
 
-    console.log(this.operator)
+        let exponent_latex
+        if (exponent.type() === "node") {
+          exponent_latex = exponent.latex(false)
+        } else {
+          exponent_latex = exponent.latex()
+        }
+        return `${this.children[0].latex()}^{${exponent_latex}}`
+      case "*":
+        return `${this.children[0].latex()}\\cdot ${this.children[1].latex()}`
+      case "+":
+        return `${this.children[0].latex()}+${this.children[1].latex()}`
+      case "-":
+        return `${this.children[0].latex()}-${this.children[1].latex()}`
+      case "/":
+        return `\\frac{${this.children[0].latex()}}{${this.children[1].latex()}}`
+      case "<":
+        return `${this.children[0].latex()} < ${this.children[1].latex()}`
+      case "<=":
+        return `${this.children[0].latex()} \\leq ${this.children[1].latex()}`
+      case "==":
+        return `${this.children[0].latex()} = ${this.children[1].latex()}`
+      case "!=":
+        return `${this.children[0].latex()} \\neq ${this.children[1].latex()}`
+      case ">":
+        return `${this.children[0].latex()} > ${this.children[1].latex()}`
+      case ">=":
+        return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
+      case "ifelse":
+        return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
+      case "cchain":
+        return this.children.map(child => child.latex()).join('')
+      case "piecewise":
+        let pre = `\\begin{cases} `
+
+        let post
+        if (this.children.length % 2 === 0) {
+
+          post = `0 & \\text{otherwise} \\end{cases}`
+        } else {
+          post = ` \\text{otherwise} \\end{cases}`
+        }
+
+        let latex = pre
+
+        for (let i = 0; i < this.children.length; i += 2) {
+          for (let j = 1; j >= 0; --j) {
+            latex += this.children[i+j].latex()
+
+            if (j === 1) {
+              latex += " & "
+            } else {
+              latex += " \\\\ "
+            }
+          }
+        }
+
+        latex += post
+
+        return latex
+      default:
+        return `\\operatorname{${this.operator}}(${this.children.map(child => child.latex()).join(',\\,')})`
+    }
+  }
+
+  _getCompileText (defineVariable) {
 
     switch (this.operator) {
       case "cchain":
@@ -203,7 +304,8 @@ class OperatorNode extends ASTNode {
           let lhs = ids[(i - 1) / 2]
           let rhs = ids[(i + 1) / 2]
 
-          comparisons.push("(" + lhs + comparison.operator + rhs + ")")
+          // comparisons in cchains are variables
+          comparisons.push("(" + lhs + comparison.name + rhs + ")")
         }
 
         return comparisons.join("&&")
@@ -233,6 +335,10 @@ class OperatorNode extends ASTNode {
     }
 
     return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
+  }
+
+  type() {
+    return "operator"
   }
 
   derivative (variable) {
@@ -273,6 +379,14 @@ class ConstantNode extends ASTNode {
 
   getText () {
     return '' + this.value
+  }
+
+  latex() {
+    return this.getText()
+  }
+
+  type() {
+    return "constant"
   }
 
   clone () {
