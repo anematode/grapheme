@@ -2,7 +2,7 @@ import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
 
 // a * b - c * d ^ g
 
-let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=/
+let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/
 let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
 let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
 let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
@@ -411,6 +411,7 @@ function parse_tokens(tokens) {
   })*/
 
   combineOperators(comparisonOperators)
+  combineOperators(["and", "or"])
 
 
   root.applyAll(child => {

@@ -45,4 +45,8 @@ function sample_1d(start, end, func, points=500, includeEndpoints=true) {
   return vertices
 }
 
+function find_roots(start, end, func, derivative, points) {
+
+}
+
 export {adaptively_sample_1d, sample_1d}

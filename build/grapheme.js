@@ -3358,12 +3358,38 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function operator_derivative(operatorNode, variable='x') {
+  function operator_derivative(opNode, variable='x') {
     let node;
-    switch (operatorNode.operator) {
+    switch (opNode.operator) {
+      case '>': case '>=': case '<': case '<=': case '!=': case '==':
+        return new ConstantNode({value: 0})
+      case "ifelse":
+        return new OperatorNode({
+          operator: "ifelse",
+          children: [
+            opNode.children[0].derivative(variable),
+            opNode.children[1],
+            opNode.children[2].derivative(variable)
+          ]
+        })
+      case "piecewise":
+        node = opNode.clone();
+
+        for (let i = 1; i < node.children.length; ++i) {
+          node.children[i] = node.children[i].derivative(variable);
+        }
+
+        if (node.children.length % 2 === 1) {
+          let i = node.children.length - 1;
+          node.children[i] = node.children[i].derivative(variable);
+        }
+
+        return node
+      case "cchain":
+        return opNode.clone()
       case '+':
         node = new OperatorNode({ operator: '+' });
-        node.children = operatorNode.children.map(child => child.derivative(variable));
+        node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '*':
         node = new OperatorNode({ operator: '+' });
@@ -3372,33 +3398,39 @@ var Grapheme = (function (exports) {
         let first = new OperatorNode({ operator: '*' });
         let second = new OperatorNode({ operator: '*' });
 
-        first.children = [operatorNode.children[0].clone(), operatorNode.children[1].derivative(variable)];
-        second.children = [operatorNode.children[0].derivative(variable), operatorNode.children[1].clone()];
+        first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)];
+        second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
 
         node.children = [first, second];
         return node
       case '/':
         // Division rules
-        node = new OperatorNode({ operator: '/' });
+        if (opNode.children[1] instanceof ConstantNode) {
+          return new OperatorNode({operator: '/', children: [ opNode.children[0].derivative(variable), opNode.children[1] ]})
+        } else {
+          node = new OperatorNode({ operator: '/' });
 
-        let top = new OperatorNode({ operator: '-' });
-        let topFirst = new OperatorNode({ operator: '*' });
-        topFirst.children = [operatorNode.children[0].derivative(variable), operatorNode.children[1].clone()];
-        let topSecond = new OperatorNode({ operator: '*' });
-        topSecond.children = [operatorNode.children[0], operatorNode.children[1].derivative(variable)];
-        let bottom = new OperatorNode({ operator: '^' });
-        bottom.children = [operatorNode.children[1].clone(), new ConstantNode({ value: 2 })];
+          let top = new OperatorNode({ operator: '-' });
+          let topFirst = new OperatorNode({ operator: '*' });
+          topFirst.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
+          let topSecond = new OperatorNode({ operator: '*' });
+          topSecond.children = [opNode.children[0], opNode.children[1].derivative(variable)];
 
-        node.children = [top, bottom];
+          top.children = [topFirst, topSecond];
+          let bottom = new OperatorNode({ operator: '^' });
+          bottom.children = [opNode.children[1].clone(), new ConstantNode({ value: 2 })];
+
+          node.children = [top, bottom];
+        }
 
         return node
       case '-':
         node = new OperatorNode({ operator: '-' });
-        node.children = operatorNode.children.map(child => child.derivative(variable));
+        node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '^':
-        if (operatorNode.children[1] instanceof ConstantNode) {
-          let power = operatorNode.children[1].value;
+        if (opNode.children[1] instanceof ConstantNode) {
+          let power = opNode.children[1].value;
 
           if (power === 0) {
             return new ConstantNode({ value: 0 })
@@ -3409,26 +3441,26 @@ var Grapheme = (function (exports) {
           let node2 = new OperatorNode({ operator: '*' });
           let pow = new OperatorNode({ operator: '^' });
 
-          pow.children = [operatorNode.children[0].clone(), new ConstantNode({ value: power - 1 })];
-          node2.children = [operatorNode.children[0].derivative(variable), pow];
+          pow.children = [opNode.children[0].clone(), new ConstantNode({ value: power - 1 })];
+          node2.children = [opNode.children[0].derivative(variable), pow];
           node.children = [new ConstantNode({ value: power }), node2];
 
           return node
-        } else if (operatorNode.children[0] instanceof ConstantNode) {
+        } else if (opNode.children[0] instanceof ConstantNode) {
           return new OperatorNode({
             operator: '*',
             children: [
               new OperatorNode({
                 operator: 'ln',
                 children: [
-                  operatorNode.children[0].clone()
+                  opNode.children[0].clone()
                 ]
               }),
               new OperatorNode({
                 operator: '*',
                 children: [
-                  operatorNode.clone(),
-                  operatorNode.children[1].derivative(variable)
+                  opNode.clone(),
+                  opNode.children[1].derivative(variable)
                 ]
               })
             ]
@@ -3437,18 +3469,18 @@ var Grapheme = (function (exports) {
           return new OperatorNode({
             operator: '*',
             children: [
-              operatorNode.clone(),
+              opNode.clone(),
               new OperatorNode({
                 operator: '+',
                 children: [
                   new OperatorNode({
                     operator: '*',
                     children: [
-                      operatorNode.children[1].derivative(variable),
+                      opNode.children[1].derivative(variable),
                       new OperatorNode({
                         operator: 'ln',
                         children: [
-                          operatorNode.children[0].clone()
+                          opNode.children[0].clone()
                         ]
                       })
                     ]
@@ -3459,11 +3491,11 @@ var Grapheme = (function (exports) {
                       new OperatorNode({
                         operator: '/',
                         children: [
-                          operatorNode.children[1].clone(),
-                          operatorNode.children[0].clone()
+                          opNode.children[1].clone(),
+                          opNode.children[0].clone()
                         ]
                       }),
-                      operatorNode.children[0].derivative(variable)
+                      opNode.children[0].derivative(variable)
                     ]
                   })
                 ]
@@ -3477,9 +3509,9 @@ var Grapheme = (function (exports) {
           children: [
             new OperatorNode({
               operator: 'cos',
-              children: operatorNode.children[0].clone()
+              children: opNode.children[0].clone()
             }),
-            operatorNode.children[0].derivative(variable)
+            opNode.children[0].derivative(variable)
           ]
         })
       case 'cos':
@@ -3492,9 +3524,9 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sin',
-                  children: operatorNode.children[0].clone()
+                  children: opNode.children[0].clone()
                 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             })
           ]
@@ -3508,12 +3540,12 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sec',
-                  children: operatorNode.children[0].clone()
+                  children: opNode.children[0].clone()
                 }),
                 new ConstantNode({ value: 2 })
               ]
             }),
-            operatorNode.children[0].derivative(variable)
+            opNode.children[0].derivative(variable)
           ]
         })
       case 'csc':
@@ -3530,18 +3562,18 @@ var Grapheme = (function (exports) {
                     new OperatorNode({
                       operator: 'csc',
                       children: [
-                        operatorNode.children[0].clone()
+                        opNode.children[0].clone()
                       ]
                     }),
                     new OperatorNode({
                       operator: 'cot',
                       children: [
-                        operatorNode.children[0].clone()
+                        opNode.children[0].clone()
                       ]
                     })
                   ]
                 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             })
           ]
@@ -3556,18 +3588,18 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: 'sec',
                   children: [
-                    operatorNode.children[0].clone()
+                    opNode.children[0].clone()
                   ]
                 }),
                 new OperatorNode({
                   operator: 'tan',
                   children: [
-                    operatorNode.children[0].clone()
+                    opNode.children[0].clone()
                   ]
                 })
               ]
             }),
-            operatorNode.children[0].derivative(variable)
+            opNode.children[0].derivative(variable)
           ]
         })
       case 'cot':
@@ -3581,12 +3613,12 @@ var Grapheme = (function (exports) {
                 children: [
                   new OperatorNode({
                     operator: 'csc',
-                    children: operatorNode.children[0].clone()
+                    children: opNode.children[0].clone()
                   }),
                   new ConstantNode({ value: 2 })
                 ]
               }),
-              operatorNode.children[0].derivative(variable)
+              opNode.children[0].derivative(variable)
             ]
           })]
         })
@@ -3601,11 +3633,11 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: '^',
                   children: [
-                    operatorNode.children[0].clone(),
+                    opNode.children[0].clone(),
                     new ConstantNode({ value: -0.5 })
                   ]
                 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             })
           ]
@@ -3621,11 +3653,11 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: '^',
                   children: [
-                    operatorNode.children[0].clone(),
+                    opNode.children[0].clone(),
                     new ConstantNode({ value: -2 / 3 })
                   ]
                 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             })
           ]
@@ -3634,7 +3666,7 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '/',
           children: [
-            operatorNode.children[0].derivative(variable),
+            opNode.children[0].derivative(variable),
             new OperatorNode({
               operator: 'sqrt',
               children: [
@@ -3645,7 +3677,7 @@ var Grapheme = (function (exports) {
                     new OperatorNode({
                       operator: '^',
                       children: [
-                        operatorNode.children[0].clone(),
+                        opNode.children[0].clone(),
                         new ConstantNode({ value: 2 })
                       ]
                     })
@@ -3661,7 +3693,7 @@ var Grapheme = (function (exports) {
           children: [new ConstantNode({ value: -1 }), new OperatorNode({
             operator: '/',
             children: [
-              operatorNode.children[0].derivative(variable),
+              opNode.children[0].derivative(variable),
               new OperatorNode({
                 operator: 'sqrt',
                 children: [
@@ -3672,7 +3704,7 @@ var Grapheme = (function (exports) {
                       new OperatorNode({
                         operator: '^',
                         children: [
-                          operatorNode.children[0].clone(),
+                          opNode.children[0].clone(),
                           new ConstantNode({ value: 2 })
                         ]
                       })
@@ -3687,7 +3719,7 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '/',
           children: [
-            operatorNode.children[0].derivative(variable),
+            opNode.children[0].derivative(variable),
             new OperatorNode({
               operator: '+',
               children: [
@@ -3695,7 +3727,7 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: '^',
                   children: [
-                    operatorNode.children[0].clone(),
+                    opNode.children[0].clone(),
                     new ConstantNode({ value: 2 })
                   ]
                 })
@@ -3709,7 +3741,7 @@ var Grapheme = (function (exports) {
           children: [
             new OperatorNode({
               operator: '*',
-              children: [new ConstantNode({ value: -1 }), operatorNode.children[0].derivative(variable)]
+              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
             new OperatorNode({
               operator: '+',
@@ -3718,7 +3750,7 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: '^',
                   children: [
-                    operatorNode.children[0].clone(),
+                    opNode.children[0].clone(),
                     new ConstantNode({ value: 2 })
                   ]
                 })
@@ -3730,14 +3762,14 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '/',
           children: [
-            operatorNode.children[0].derivative(variable),
+            opNode.children[0].derivative(variable),
             new OperatorNode({
               operator: '*',
               children: [
                 new OperatorNode({
                   operator: 'abs',
                   children: [
-                    operatorNode.children[0].clone()
+                    opNode.children[0].clone()
                   ]
                 }),
                 new OperatorNode({
@@ -3749,7 +3781,7 @@ var Grapheme = (function (exports) {
                         new OperatorNode({
                           operator: '^',
                           children: [
-                            operatorNode.children[0].clone(),
+                            opNode.children[0].clone(),
                             new ConstantNode({ value: 2 })
                           ]
                         }),
@@ -3768,7 +3800,7 @@ var Grapheme = (function (exports) {
           children: [
             new OperatorNode({
               operator: '*',
-              children: [new ConstantNode({ value: -1 }), operatorNode.children[0].derivative(variable)]
+              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
             new OperatorNode({
               operator: '*',
@@ -3776,7 +3808,7 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: 'abs',
                   children: [
-                    operatorNode.children[0].clone()
+                    opNode.children[0].clone()
                   ]
                 }),
                 new OperatorNode({
@@ -3788,7 +3820,7 @@ var Grapheme = (function (exports) {
                         new OperatorNode({
                           operator: '^',
                           children: [
-                            operatorNode.children[0].clone(),
+                            opNode.children[0].clone(),
                             new ConstantNode({ value: 2 })
                           ]
                         }),
@@ -3805,11 +3837,11 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '*',
           children: [
-            operatorNode.children[0].derivative(),
+            opNode.children[0].derivative(),
             new OperatorNode({
               operator: 'cosh',
               children: [
-                operatorNode.children[0].clone()
+                opNode.children[0].clone()
               ]
             })
           ]
@@ -3818,11 +3850,11 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '*',
           children: [
-            operatorNode.children[0].derivative(),
+            opNode.children[0].derivative(),
             new OperatorNode({
               operator: 'sinh',
               children: [
-                operatorNode.children[0].clone()
+                opNode.children[0].clone()
               ]
             })
           ]
@@ -3836,12 +3868,12 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sech',
-                  children: operatorNode.children[0].clone()
+                  children: opNode.children[0].clone()
                 }),
                 new ConstantNode({ value: 2 })
               ]
             }),
-            operatorNode.children[0].derivative(variable)
+            opNode.children[0].derivative(variable)
           ]
         })
       case 'csch':
@@ -3858,18 +3890,18 @@ var Grapheme = (function (exports) {
                     new OperatorNode({
                       operator: 'csch',
                       children: [
-                        operatorNode.children[0].clone()
+                        opNode.children[0].clone()
                       ]
                     }),
                     new OperatorNode({
                       operator: 'coth',
                       children: [
-                        operatorNode.children[0].clone()
+                        opNode.children[0].clone()
                       ]
                     })
                   ]
                 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             })
           ]
@@ -3886,18 +3918,18 @@ var Grapheme = (function (exports) {
                   new OperatorNode({
                     operator: 'sech',
                     children: [
-                      operatorNode.children[0].clone()
+                      opNode.children[0].clone()
                     ]
                   }),
                   new OperatorNode({
                     operator: 'tanh',
                     children: [
-                      operatorNode.children[0].clone()
+                      opNode.children[0].clone()
                     ]
                   })
                 ]
               }),
-              operatorNode.children[0].derivative(variable)
+              opNode.children[0].derivative(variable)
             ]
           })]
         })
@@ -3912,12 +3944,12 @@ var Grapheme = (function (exports) {
                 children: [
                   new OperatorNode({
                     operator: 'csch',
-                    children: operatorNode.children[0].clone()
+                    children: opNode.children[0].clone()
                   }),
                   new ConstantNode({ value: 2 })
                 ]
               }),
-              operatorNode.children[0].derivative(variable)
+              opNode.children[0].derivative(variable)
             ]
           })]
         })
@@ -3925,7 +3957,7 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '/',
           children: [
-            operatorNode.children[0].derivative(variable),
+            opNode.children[0].derivative(variable),
             new OperatorNode({
               operator: 'sqrt',
               children: [
@@ -3936,7 +3968,7 @@ var Grapheme = (function (exports) {
                     new OperatorNode({
                       operator: '^',
                       children: [
-                        operatorNode.children[0].clone(),
+                        opNode.children[0].clone(),
                         new ConstantNode({ value: 2 })
                       ]
                     })
@@ -3952,7 +3984,7 @@ var Grapheme = (function (exports) {
           children: [new ConstantNode({ value: -1 }), new OperatorNode({
             operator: '/',
             children: [
-              operatorNode.children[0].derivative(variable),
+              opNode.children[0].derivative(variable),
               new OperatorNode({
                 operator: 'sqrt',
                 children: [
@@ -3962,7 +3994,7 @@ var Grapheme = (function (exports) {
                       new OperatorNode({
                         operator: '^',
                         children: [
-                          operatorNode.children[0].clone(),
+                          opNode.children[0].clone(),
                           new ConstantNode({ value: 2 })
                         ]
                       }),
@@ -3979,7 +4011,7 @@ var Grapheme = (function (exports) {
         return new OperatorNode({
           operator: '/',
           children: [
-            operatorNode.children[0].derivative(variable),
+            opNode.children[0].derivative(variable),
             new OperatorNode({
               operator: '-',
               children: [
@@ -3987,7 +4019,7 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: '^',
                   children: [
-                    operatorNode.children[0].clone(),
+                    opNode.children[0].clone(),
                     new ConstantNode({ value: 2 })
                   ]
                 })
@@ -4003,13 +4035,13 @@ var Grapheme = (function (exports) {
               operator: '*',
               children: [
                 new ConstantNode({ value: -1 }),
-                operatorNode.children[0].derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             }),
             new OperatorNode({
               operator: '*',
               children: [
-                operatorNode.children[0].clone(),
+                opNode.children[0].clone(),
                 new OperatorNode({
                   operator: 'sqrt',
                   children: [
@@ -4019,7 +4051,7 @@ var Grapheme = (function (exports) {
                         new OperatorNode({
                           operator: '^',
                           children: [
-                            operatorNode.children[0].clone(),
+                            opNode.children[0].clone(),
                             new ConstantNode({ value: 2 })
                           ]
                         }),
@@ -4038,7 +4070,7 @@ var Grapheme = (function (exports) {
           children: [
             new OperatorNode({
               operator: '*',
-              children: [new ConstantNode({ value: -1 }), operatorNode.children[0].derivative(variable)]
+              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
             new OperatorNode({
               operator: '*',
@@ -4046,7 +4078,7 @@ var Grapheme = (function (exports) {
                 new OperatorNode({
                   operator: 'abs',
                   children: [
-                    operatorNode.children[0].clone()
+                    opNode.children[0].clone()
                   ]
                 }),
                 new OperatorNode({
@@ -4058,7 +4090,7 @@ var Grapheme = (function (exports) {
                         new OperatorNode({
                           operator: '^',
                           children: [
-                            operatorNode.children[0].clone(),
+                            opNode.children[0].clone(),
                             new ConstantNode({ value: 2 })
                           ]
                         }),
@@ -4361,6 +4393,12 @@ var Grapheme = (function (exports) {
           latex += post;
 
           return latex
+        case "not":
+          return "\\neg(" + this.children.map(child => child.latex()).join('+') + ')'
+        case "and":
+          return this.children.map(child => child.latex()).join("\\land ")
+        case "or":
+          return this.children.map(child => child.latex()).join("\\lor ")
         default:
           return `\\operatorname{${this.operator}}(${this.children.map(child => child.latex()).join(',\\,')})`
       }
@@ -4417,6 +4455,10 @@ var Grapheme = (function (exports) {
 
             return `((${condition})?(${value}):(${remainder}))`
           }
+        case "and":
+          return this.children.map(child => child._getCompileText(defineVariable)).join("&&")
+        case "or":
+          return this.children.map(child => child._getCompileText(defineVariable)).join("||")
       }
 
       let pattern = OperatorPatterns[this.operator];
@@ -4487,7 +4529,7 @@ var Grapheme = (function (exports) {
 
   // a * b - c * d ^ g
 
-  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=/;
+  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/;
   let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
   let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
   let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
@@ -4891,6 +4933,7 @@ var Grapheme = (function (exports) {
     })*/
 
     combineOperators(comparisonOperators);
+    combineOperators(["and", "or"]);
 
 
     root.applyAll(child => {

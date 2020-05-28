@@ -286,6 +286,12 @@ class OperatorNode extends ASTNode {
         latex += post
 
         return latex
+      case "not":
+        return "\\neg(" + this.children.map(child => child.latex()).join('+') + ')'
+      case "and":
+        return this.children.map(child => child.latex()).join("\\land ")
+      case "or":
+        return this.children.map(child => child.latex()).join("\\lor ")
       default:
         return `\\operatorname{${this.operator}}(${this.children.map(child => child.latex()).join(',\\,')})`
     }
@@ -342,6 +348,10 @@ class OperatorNode extends ASTNode {
 
           return `((${condition})?(${value}):(${remainder}))`
         }
+      case "and":
+        return this.children.map(child => child._getCompileText(defineVariable)).join("&&")
+      case "or":
+        return this.children.map(child => child._getCompileText(defineVariable)).join("||")
     }
 
     let pattern = OperatorPatterns[this.operator]

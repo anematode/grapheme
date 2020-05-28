@@ -30,6 +30,11 @@
   let fplot = new Grapheme.InteractiveFunctionPlot2D()
   plot.add(fplot)
 
+  let dplot = new Grapheme.InteractiveFunctionPlot2D()
+  plot.add(dplot)
+
+  dplot.pen.color = Grapheme.Colors.BLACK
+
     function setFunction(value) {
       let node = Grapheme.parse_string(value)
       let compile = node.compile()
@@ -46,6 +51,11 @@
 
       fplot.setFunction(func)
       fplot.update()
+
+      egg = node.derivative('x')
+
+      dplot.setFunction(egg.compile().func)
+      dplot.update()
 
       katex.render(node.latex(false), document.getElementById("katex-stuff"), {throwOnError:false})
 
