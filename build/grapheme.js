@@ -5239,7 +5239,7 @@ void main() {
         y3 = (i !== original_vertex_count - 1) ? vertices[2 * i + 3] : NaN; // Next vertex
 
         if (isNaN(x2) || isNaN(y2)) {
-          duplicateVertex();
+          addVertex(NaN, NaN);
         }
 
         if (isNaN(x1) || isNaN(y1)) { // starting endcap
