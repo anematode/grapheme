@@ -60,7 +60,7 @@ class InteractiveElement extends GraphemeElement {
         let key_ = key
 
         let callback = (evt) => {
-          if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners())
+          if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDown)
             return
 
           let position = evt.pos

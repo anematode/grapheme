@@ -5208,7 +5208,7 @@ var Grapheme = (function (exports) {
           let key_ = key;
 
           let callback = (evt) => {
-            if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners())
+            if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDown)
               return
 
             let position = evt.pos;
@@ -5311,6 +5311,80 @@ var Grapheme = (function (exports) {
     }
 
     return vertices
+  }
+
+  function find_roots(start, end, func, derivative, initialPoints = 500, iterations=10, accuracy=0.001) {
+    let res = (end - start) / initialPoints;
+
+    let points = [];
+
+    initialPoints--;
+
+    // Initial guesses
+    for (let i = 0; i <= initialPoints; ++i) {
+      let fraction = i / initialPoints;
+
+      let x = start + (end - start) * fraction;
+      points.push(x, func(x));
+    }
+
+    function iterateRoots() {
+      for (let i = 0; i < points.length; i += 2) {
+        if (Math.abs(points[i+1]) < accuracy)
+          continue
+
+        let x = points[i];
+        let slope = derivative(x);
+
+        let y = points[i+1];
+
+        let new_x = x - y / slope;
+
+        points[i] = new_x;
+        points[i+1] = func(new_x);
+      }
+    }
+
+    for (let i = 0; i < iterations; ++i)
+      iterateRoots();
+
+    let keptRoots = [];
+
+    for (let i = 0; i < points.length; i += 2) {
+      // remove roots which are in an area of many 0s
+
+      let x = points[i];
+
+      if (Math.abs(func(x - res)) < accuracy || Math.abs(func(x + res)) < accuracy)
+        continue
+
+      keptRoots.push(x, points[i+1]);
+    }
+
+    points = [];
+
+    for (let i = 0; i < keptRoots.length; i += 2) {
+      let x = keptRoots[i];
+
+      let keepRoot = true;
+
+      for (let j = 0; j < points.length; ++j) {
+        // check if there is a root close by
+
+        if (Math.abs(points[j] - x) < res) {
+          // already a root nearby
+
+          keepRoot = false;
+          break
+        }
+      }
+
+      if (keepRoot) {
+        points.push(x, keptRoots[i+1]);
+      }
+    }
+
+    return points
   }
 
   class WebGLElement extends GraphemeElement {
@@ -6422,6 +6496,8 @@ void main() {
               position: { x, y }
             });
 
+            this.inspectionPoint.point.style.fill = this.pen.color;
+
             this.add(this.inspectionPoint);
           } else {
             this.inspectionPoint.position = new Vec2(x, y);
@@ -6619,6 +6695,7 @@ void main() {
   exports.adaptively_sample_1d = adaptively_sample_1d;
   exports.angles_between = angles_between;
   exports.boundingBoxTransform = boundingBoxTransform;
+  exports.find_roots = find_roots;
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.parse_string = parse_string;

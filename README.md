@@ -16,8 +16,7 @@ Current testing ground: https://www.moomath.com/files/grapheme/demos/new_test.ht
 
 To Do:
 
-- Fix strange webgl polyline bug
-- SmartLabel
+- mod function
 - Touch events
 - Look at http://www.dgp.toronto.edu/~mooncake/papers/SIGGRAPH2001_Tupper.pdf and http://www.dgp.toronto.edu/~mooncake/thesis.pdf
 - Draggable points

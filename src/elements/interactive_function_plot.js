@@ -69,6 +69,8 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
             position: { x, y }
           })
 
+          this.inspectionPoint.point.style.fill = this.pen.color
+
           this.add(this.inspectionPoint)
         } else {
           this.inspectionPoint.position = new Vec2(x, y)
