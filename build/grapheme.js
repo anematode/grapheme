@@ -726,6 +726,14 @@ var Grapheme = (function (exports) {
     triggerEvent (type, event) {
       this.sortChildren();
 
+      if (this.triggerChildEventsLast && this.eventListeners[type]) {
+          // Stop if event stopped propagation
+        let res = this.eventListeners[type].some(listener => listener(event));
+        if (res) {
+          return true
+        }
+      }
+
       // Trigger event in all children
       for (let i = 0; i < this.children.length; ++i) {
         if (this.children[i].triggerEvent(type, event)) {
@@ -734,7 +742,7 @@ var Grapheme = (function (exports) {
         }
       }
 
-      if (this.eventListeners[type]) {
+      if (!this.triggerChildEventsLast && this.eventListeners[type]) {
         // Stop if event stopped propagation
         let res = this.eventListeners[type].some(listener => listener(event));
         if (res)
@@ -1215,6 +1223,101 @@ var Grapheme = (function (exports) {
 
   const DefaultUniverse = new GraphemeUniverse();
 
+  class Keyboard {
+    constructor(domElement) {
+      this.element = domElement;
+
+      this.keys = {};
+      this.domListeners = {};
+
+      this.eventListeners = {};
+
+      this.enabled = true;
+    }
+
+    get enabled() {
+      return Object.keys(this.domListeners).length !== 0
+    }
+
+    set enabled(value) {
+      if (value === this.enabled)
+        return
+
+      if (value) {
+        let callback = this.domListeners.keydown = (evt) => {
+          this.onKeyDown(evt);
+        };
+
+        this.element.addEventListener("keydown", callback);
+
+        callback = this.domListeners.keyup = (evt) => {
+          this.onKeyUp(evt);
+        };
+
+        this.element.addEventListener("keyup", callback);
+
+        callback = this.domListeners.keypress = (evt) => {
+          this.onKeyPress(evt);
+        };
+
+        this.element.addEventListener("keypress", callback);
+      } else {
+        let listeners = this.domListeners;
+
+        this.element.removeEventListener("keyup", listeners.keyup);
+        this.element.removeEventListener("keydown", listeners.keydown);
+        this.element.removeEventListener("keypress", listeners.keypress);
+      }
+    }
+
+    addEventListener(name, callback) {
+      let listeners = this.eventListeners[name];
+
+      if (!listeners)
+        listeners = this.eventListeners[name] = [];
+
+      listeners.push(callback);
+    }
+
+    removeEventListener(name, callback) {
+      let listeners = this.eventListeners[name];
+
+      let index = listeners.indexOf(callback);
+
+      if (index !== -1) {
+        listeners.splice(index, 1);
+      }
+    }
+
+    triggerEvent(name, event) {
+      let listeners = this.eventListeners[name];
+
+      return listeners && listeners.some(listener => listener(event))
+    }
+
+    onKeyDown(evt) {
+      let key = evt.key;
+
+      this.keys[key] = true;
+
+      this.triggerEvent("keydown-" + key, evt);
+    }
+
+    onKeyUp(evt) {
+      let key = evt.key;
+
+      this.keys[key] = false;
+
+      this.triggerEvent("keyup-" + key, evt);
+    }
+
+    onKeyPress(evt) {
+      let key = evt.key;
+
+      this.triggerEvent("keypress-" + key, evt);
+    }
+  }
+
   /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
   class GraphemeCanvas extends GraphemeGroup {
     /**
@@ -1443,6 +1546,7 @@ var Grapheme = (function (exports) {
       super(universe);
 
       this.interactivityListeners = {};
+      this.keyboard = new Keyboard(window);
 
       this.interactivityEnabled = true;
     }
@@ -1503,6 +1607,8 @@ var Grapheme = (function (exports) {
 
         this.interactivityListeners = {};
       }
+
+      this.keyboard.enabled = enable;
     }
 
     handleTouch(event) {
@@ -1785,15 +1891,25 @@ var Grapheme = (function (exports) {
         }, 500);
       });
 
+      this.keyboard.addEventListener("keydown- ", () => {
+        this.triggerChildEventsLast = true;
+      });
+
+      this.keyboard.addEventListener("keyup- ", () => {
+        this.triggerChildEventsLast = false;
+      });
+
       this.update();
     }
 
     mouseDown(evt) {
       this.mouseDownAt = this.transform.pixelToPlot(evt.pos);
+      return true
     }
 
     mouseUp(evt) {
       this.mouseDownAt = null;
+      return true
     }
 
     mouseMove(evt) {
@@ -1808,16 +1924,16 @@ var Grapheme = (function (exports) {
       let scrollY = evt.rawEvent.deltaY;
 
       this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos));
+
+      return true
     }
 
     render() {
-      this.extraInfo.smartLabelManager.reset();
-
       super.render();
     }
 
     beforeRender(info) {
-
+      this.extraInfo.smartLabelManager.reset();
     }
 
     afterRender(info) {

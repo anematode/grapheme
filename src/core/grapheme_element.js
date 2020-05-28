@@ -36,6 +36,14 @@ class GraphemeElement {
   triggerEvent (type, event) {
     this.sortChildren()
 
+    if (this.triggerChildEventsLast && this.eventListeners[type]) {
+        // Stop if event stopped propagation
+      let res = this.eventListeners[type].some(listener => listener(event))
+      if (res) {
+        return true
+      }
+    }
+
     // Trigger event in all children
     for (let i = 0; i < this.children.length; ++i) {
       if (this.children[i].triggerEvent(type, event)) {
@@ -44,7 +52,7 @@ class GraphemeElement {
       }
     }
 
-    if (this.eventListeners[type]) {
+    if (!this.triggerChildEventsLast && this.eventListeners[type]) {
       // Stop if event stopped propagation
       let res = this.eventListeners[type].some(listener => listener(event))
       if (res)

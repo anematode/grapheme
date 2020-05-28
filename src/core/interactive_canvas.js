@@ -1,6 +1,7 @@
 import {Canvas as GraphemeCanvas} from "./grapheme_canvas.js"
 import {Vec2} from '../math/vec'
 import { DefaultUniverse } from './grapheme_universe'
+import {Keyboard} from './keyboard'
 
 // List of events to listen for
 const EVENTS = ["click", "mousemove", "mousedown", "mouseup", "wheel"]
@@ -21,6 +22,7 @@ class InteractiveCanvas extends GraphemeCanvas {
     super(universe)
 
     this.interactivityListeners = {}
+    this.keyboard = new Keyboard(window)
 
     this.interactivityEnabled = true
   }
@@ -81,6 +83,8 @@ class InteractiveCanvas extends GraphemeCanvas {
 
       this.interactivityListeners = {}
     }
+
+    this.keyboard.enabled = enable
   }
 
   handleTouch(event) {

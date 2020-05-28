@@ -49,15 +49,25 @@ class Plot2D extends InteractiveCanvas {
       }, 500)
     })
 
+    this.keyboard.addEventListener("keydown- ", () => {
+      this.triggerChildEventsLast = true
+    })
+
+    this.keyboard.addEventListener("keyup- ", () => {
+      this.triggerChildEventsLast = false
+    })
+
     this.update()
   }
 
   mouseDown(evt) {
     this.mouseDownAt = this.transform.pixelToPlot(evt.pos)
+    return true
   }
 
   mouseUp(evt) {
     this.mouseDownAt = null
+    return true
   }
 
   mouseMove(evt) {
@@ -72,16 +82,16 @@ class Plot2D extends InteractiveCanvas {
     let scrollY = evt.rawEvent.deltaY
 
     this.transform.zoomOn(Math.exp(scrollY / 1000), this.transform.pixelToPlot(evt.pos))
+
+    return true
   }
 
   render() {
-    this.extraInfo.smartLabelManager.reset()
-
     super.render()
   }
 
   beforeRender(info) {
-
+    this.extraInfo.smartLabelManager.reset()
   }
 
   afterRender(info) {
