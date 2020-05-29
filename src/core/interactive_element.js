@@ -60,6 +60,7 @@ class InteractiveElement extends GraphemeElement {
         let key_ = key
 
         let callback = (evt) => {
+          // Optimize away mouse moves
           if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDown)
             return
 
@@ -121,7 +122,7 @@ class InteractiveElement extends GraphemeElement {
 
   // Derived classes need to define this function
   isClick(position) {
-    throw new Error("")
+    throw new Error("isClick unimplemented for InteractiveElement")
   }
 }
 

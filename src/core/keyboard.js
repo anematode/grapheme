@@ -1,6 +1,9 @@
-
+/**
+ * @class Keyboard Keeps track of the held keys on a keyboard and allows for listeners to be attached to said keys.
+ */
 class Keyboard {
   constructor(domElement) {
+    // Element to attach listeners to
     this.element = domElement
 
     this.keys = {}
