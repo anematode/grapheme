@@ -129,7 +129,7 @@ class GraphemeElement {
 
     // Set element parent and plot
     element.parent = this
-    element.plot = this.plot
+    element.setPlot(this.plot)
 
     // Add element to children
     this.children.push(element)
@@ -155,7 +155,7 @@ class GraphemeElement {
       this.children.splice(index, 1)
 
       element.parent = null
-      element.plot = null
+      element.setPlot(null)
     }
 
     if (elements.length > 0) {
@@ -211,6 +211,20 @@ class GraphemeElement {
    */
   update () {
 
+  }
+
+  setPlot(plot) {
+    this.plot = plot
+    this.children.forEach(child => child.setPlot(plot))
+  }
+
+  removeAllChildren() {
+    this.children.forEach(child => {
+      child.parent = null
+      child.setPlot(null)
+    })
+
+    this.children = []
   }
 }
 

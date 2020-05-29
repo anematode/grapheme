@@ -819,7 +819,7 @@ var Grapheme = (function (exports) {
 
       // Set element parent and plot
       element.parent = this;
-      element.plot = this.plot;
+      element.setPlot(this.plot);
 
       // Add element to children
       this.children.push(element);
@@ -845,7 +845,7 @@ var Grapheme = (function (exports) {
         this.children.splice(index, 1);
 
         element.parent = null;
-        element.plot = null;
+        element.setPlot(null);
       }
 
       if (elements.length > 0) {
@@ -901,6 +901,20 @@ var Grapheme = (function (exports) {
      */
     update () {
 
+    }
+
+    setPlot(plot) {
+      this.plot = plot;
+      this.children.forEach(child => child.setPlot(plot));
+    }
+
+    removeAllChildren() {
+      this.children.forEach(child => {
+        child.parent = null;
+        child.setPlot(null);
+      });
+
+      this.children = [];
     }
   }
 
@@ -6573,12 +6587,8 @@ void main() {
       this.label.text = value;
     }
 
-    get position() {
-      return this.point.position
-    }
-
-    set position(value) {
-      this.point.position = value;
+    updatePosition() {
+      this.point.position = this.plot.transform.plotToPixel(this.position);
 
       this.label.objectBox = this.point.getBBox();
     }
@@ -6588,7 +6598,7 @@ void main() {
     }
 
     update() {
-
+      this.updatePosition();
     }
 
     render(info) {

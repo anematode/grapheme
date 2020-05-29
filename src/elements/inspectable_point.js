@@ -43,12 +43,8 @@ class InspectablePoint extends InteractiveElement {
     this.label.text = value
   }
 
-  get position() {
-    return this.point.position
-  }
-
-  set position(value) {
-    this.point.position = value
+  updatePosition() {
+    this.point.position = this.plot.transform.plotToPixel(this.position)
 
     this.label.objectBox = this.point.getBBox()
   }
@@ -58,7 +54,7 @@ class InspectablePoint extends InteractiveElement {
   }
 
   update() {
-
+    this.updatePosition()
   }
 
   render(info) {
