@@ -3544,7 +3544,7 @@ var Grapheme = (function (exports) {
           children: [
             new OperatorNode({
               operator: 'cos',
-              children: opNode.children[0].clone()
+              children: [opNode.children[0].clone()]
             }),
             opNode.children[0].derivative(variable)
           ]
@@ -3559,7 +3559,7 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sin',
-                  children: opNode.children[0].clone()
+                  children: [opNode.children[0].clone()]
                 }),
                 opNode.children[0].derivative(variable)
               ]
@@ -3575,7 +3575,7 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sec',
-                  children: opNode.children[0].clone()
+                  children: [opNode.children[0].clone()]
                 }),
                 new ConstantNode({ value: 2 })
               ]
@@ -3648,7 +3648,7 @@ var Grapheme = (function (exports) {
                 children: [
                   new OperatorNode({
                     operator: 'csc',
-                    children: opNode.children[0].clone()
+                    children: [opNode.children[0].clone()]
                   }),
                   new ConstantNode({ value: 2 })
                 ]
@@ -3979,7 +3979,7 @@ var Grapheme = (function (exports) {
                 children: [
                   new OperatorNode({
                     operator: 'csch',
-                    children: opNode.children[0].clone()
+                    children: [ opNode.children[0].clone() ]
                   }),
                   new ConstantNode({ value: 2 })
                 ]
@@ -4136,6 +4136,27 @@ var Grapheme = (function (exports) {
                 })
               ]
             })
+          ]
+        })
+      case "abs":
+        return new OperatorNode({
+          operator: "ifelse",
+          children: [
+            new OperatorNode({
+              operator: "*",
+              children: [
+                new ConstantNode({value: -1}),
+                opNode.children[0].clone()
+              ]
+            }),
+            new OperatorNode({
+              operator: "<",
+              children: [
+                opNode.children[0].clone(),
+                new ConstantNode({value: 0})
+              ]
+            }),
+            opNode.children[0].clone()
           ]
         })
       default:
@@ -5309,11 +5330,12 @@ var Grapheme = (function (exports) {
     }
   }
 
-  let MAX_DEPTH = 4;
+  let MAX_DEPTH = 25;
+  let MAX_POINTS = 1e6;
 
   // TODO: Stop this function from making too many points
-  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true) {
-    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true, ptCount=0) {
+    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end) || ptCount > MAX_POINTS)
       return [NaN, NaN]
 
     let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
@@ -5326,9 +5348,11 @@ var Grapheme = (function (exports) {
       let angle_i = i / 2;
 
       if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) {
-        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true);
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true, ptCount);
 
         vs.forEach(a => final_vertices.push(a));
+
+        ptCount += vs.length;
       } else {
         final_vertices.push(vertices[i]);
         final_vertices.push(vertices[i+1]);
@@ -5945,7 +5969,7 @@ void main() {
 
       this.plotPoints = plotPoints;
       this.plottingMode = plottingMode;
-      this.quality = 0.5;
+      this.quality = 10;
 
       this.function = (x) => Math.atan(x);
 
@@ -5954,10 +5978,10 @@ void main() {
 
       this.alwaysUpdate = false;
 
-      this.addEventListener("plotcoordschanged", () => this.update());
-      /*this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 2000 * Math.random())
-      })*/
+      this.addEventListener("plotcoordschanged", () => this.updateLight());
+      this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 100 * Math.random());
+      });
 
       this.interactivityEnabled = true;
     }

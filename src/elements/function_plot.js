@@ -24,7 +24,7 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = plottingMode
-    this.quality = 0.5
+    this.quality = 10
 
     this.function = (x) => Math.atan(x)
 
@@ -33,10 +33,10 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.update())
-    /*this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.update(), 2000 * Math.random())
-    })*/
+    this.addEventListener("plotcoordschanged", () => this.updateLight())
+    this.addEventListener("plotcoordslingered", () => {
+      setTimeout(() => this.update(), 100 * Math.random())
+    })
 
     this.interactivityEnabled = true
   }

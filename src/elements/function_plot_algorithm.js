@@ -1,10 +1,11 @@
 import { angles_between } from '../math/geometry_calculations'
 
-let MAX_DEPTH = 4
+let MAX_DEPTH = 25
+let MAX_POINTS = 1e6
 
 // TODO: Stop this function from making too many points
-function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true) {
-  if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true, ptCount=0) {
+  if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end) || ptCount > MAX_POINTS)
     return [NaN, NaN]
 
   let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints)
@@ -18,9 +19,11 @@ function adaptively_sample_1d(start, end, func, initialPoints=500, angle_thresho
     let angle_i = i / 2
 
     if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) {
-      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true)
+      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true, ptCount)
 
       vs.forEach(a => final_vertices.push(a))
+
+      ptCount += vs.length
     } else {
       final_vertices.push(vertices[i])
       final_vertices.push(vertices[i+1])

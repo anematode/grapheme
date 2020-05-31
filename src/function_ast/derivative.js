@@ -151,7 +151,7 @@ function operator_derivative(opNode, variable='x') {
         children: [
           new OperatorNode({
             operator: 'cos',
-            children: opNode.children[0].clone()
+            children: [opNode.children[0].clone()]
           }),
           opNode.children[0].derivative(variable)
         ]
@@ -166,7 +166,7 @@ function operator_derivative(opNode, variable='x') {
             children: [
               new OperatorNode({
                 operator: 'sin',
-                children: opNode.children[0].clone()
+                children: [opNode.children[0].clone()]
               }),
               opNode.children[0].derivative(variable)
             ]
@@ -182,7 +182,7 @@ function operator_derivative(opNode, variable='x') {
             children: [
               new OperatorNode({
                 operator: 'sec',
-                children: opNode.children[0].clone()
+                children: [opNode.children[0].clone()]
               }),
               new ConstantNode({ value: 2 })
             ]
@@ -255,7 +255,7 @@ function operator_derivative(opNode, variable='x') {
               children: [
                 new OperatorNode({
                   operator: 'csc',
-                  children: opNode.children[0].clone()
+                  children: [opNode.children[0].clone()]
                 }),
                 new ConstantNode({ value: 2 })
               ]
@@ -586,7 +586,7 @@ function operator_derivative(opNode, variable='x') {
               children: [
                 new OperatorNode({
                   operator: 'csch',
-                  children: opNode.children[0].clone()
+                  children: [ opNode.children[0].clone() ]
                 }),
                 new ConstantNode({ value: 2 })
               ]
@@ -743,6 +743,27 @@ function operator_derivative(opNode, variable='x') {
               })
             ]
           })
+        ]
+      })
+    case "abs":
+      return new OperatorNode({
+        operator: "ifelse",
+        children: [
+          new OperatorNode({
+            operator: "*",
+            children: [
+              new ConstantNode({value: -1}),
+              opNode.children[0].clone()
+            ]
+          }),
+          new OperatorNode({
+            operator: "<",
+            children: [
+              opNode.children[0].clone(),
+              new ConstantNode({value: 0})
+            ]
+          }),
+          opNode.children[0].clone()
         ]
       })
     default:
