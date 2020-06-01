@@ -35,6 +35,12 @@ function GeometryASMFunctionsCreate(stdlib, foreign, buffer) {
 
     var t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0
 
+    if (ax == bx) {
+      if (ay == by) {
+        return +hypot(px - ax, py - ay)
+      }
+    }
+
     xd = bx - ax
     yd = by - ay
 
@@ -84,6 +90,15 @@ function GeometryASMFunctionsCreate(stdlib, foreign, buffer) {
     by = +by
 
     var t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0
+
+    if (ax == bx) {
+      if (ay == by) {
+        values[0] = +ax
+        values[1] = +ay
+
+        return +hypot(px - ax, py - ay)
+      }
+    }
 
     xd = bx - ax
     yd = by - ay
@@ -169,18 +184,34 @@ function GeometryASMFunctionsCreate(stdlib, foreign, buffer) {
       return 3
     }
 
+    if (y2 != y2) {
+      if (y3 == y3) {
+        return 3
+      }
+      if (y1 == y1) {
+        return 3
+      }
+    }
+
     return 0
   }
 
-  function angles_between(start, end, threshold) {
+  function angles_between(start, end, threshold, aspectRatio) {
     start = start | 0
     end = end | 0
     threshold = +threshold
+    aspectRatio = +aspectRatio
 
     var p = 0, q = 0, res = 0, indx = 0
 
     for (p = (start + 2) << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-      res = needs_refinement(+values[(p-16)>>3], +values[(p-8)>>3], +values[p>>3], +values[(p+8)>>3], +values[(p+16)>>3], +values[(p+24)>>3], +threshold) | 0
+      res = needs_refinement(+values[(p-16)>>3],
+        +(values[(p-8)>>3] * aspectRatio),
+        +values[p>>3],
+        +(values[(p+8)>>3] * aspectRatio),
+        +values[(p+16)>>3],
+        +(values[(p+24)>>3] * aspectRatio),
+        +threshold) | 0
 
       indx = (((p-4)>>1)) | 0
 
@@ -252,7 +283,7 @@ function point_line_segment_min_closest(px, py, polyline_vertices) {
   return {x, y, distance}
 }
 
-function angles_between(polyline_vertices, threshold=0.03) {
+function angles_between(polyline_vertices, threshold=0.03, aspectRatio=1) {
   if (polyline_vertices.length >= BufferSizes.f64) {
     throw new Error("Polyline too numerous")
   }
@@ -267,12 +298,12 @@ function angles_between(polyline_vertices, threshold=0.03) {
     ASMViews.f64[i] = polyline_vertices[i]
   }
 
-  GeometryASMFunctions.angles_between(0, i, threshold)
+  GeometryASMFunctions.angles_between(0, i, threshold, aspectRatio)
 
   return ASMViews.f64.subarray(0, i/2 - 2)
 }
 
-let heap = new ArrayBuffer(0x10000000)
+let heap = new ArrayBuffer(0x200000)
 let stdlib = {Math: Math, Float64Array: Float64Array, Infinity: Infinity}
 
 let ASMViews = {f64: new Float64Array(heap)}

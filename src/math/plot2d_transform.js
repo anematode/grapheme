@@ -40,10 +40,16 @@ class Plot2DTransform {
       this.coords.width = this.aspectRatio / this.box.height * this.box.width * this.coords.height
 
       this._centerOn(new Vec2(cx, cy))
-    }
 
-    if (this.plot)
-      this.plot.triggerEvent("plotcoordschanged")
+      if (this.plot)
+        this.plot.triggerEvent("plotcoordschanged")
+    }
+  }
+
+  getAspect() {
+    // ratio between y axis and x axis
+
+    return this.box.height / this.box.width * this.coords.width / this.coords.height
   }
 
   _centerOn(v) {

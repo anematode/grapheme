@@ -4,13 +4,16 @@ let MAX_DEPTH = 25
 let MAX_POINTS = 1e6
 
 // TODO: Stop this function from making too many points
-function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true, ptCount=0) {
-  if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end) || ptCount > MAX_POINTS)
+function adaptively_sample_1d(start, end, func, initialPoints=500,
+  aspectRatio = 1, yRes = 0,
+  angle_threshold=0.1, depth=0,
+  includeEndpoints=true, ptCount=0) {
+  if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
     return [NaN, NaN]
 
   let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints)
 
-  let angles = new Float64Array(angles_between(vertices, angle_threshold))
+  let angles = new Float64Array(angles_between(vertices, angle_threshold, aspectRatio))
 
   let final_vertices = []
   let egg = true
@@ -18,12 +21,15 @@ function adaptively_sample_1d(start, end, func, initialPoints=500, angle_thresho
   for (let i = 0; i < vertices.length; i += 2) {
     let angle_i = i / 2
 
-    if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) {
-      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true, ptCount)
+    if (angles[angle_i] === 3 || angles[angle_i - 1] === 3 && Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
+      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount)
 
       vs.forEach(a => final_vertices.push(a))
 
       ptCount += vs.length
+
+      if (ptCount > MAX_POINTS)
+        return final_vertices
     } else {
       final_vertices.push(vertices[i])
       final_vertices.push(vertices[i+1])

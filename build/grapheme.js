@@ -1724,10 +1724,16 @@ var Grapheme = (function (exports) {
         this.coords.width = this.aspectRatio / this.box.height * this.box.width * this.coords.height;
 
         this._centerOn(new Vec2(cx, cy));
-      }
 
-      if (this.plot)
-        this.plot.triggerEvent("plotcoordschanged");
+        if (this.plot)
+          this.plot.triggerEvent("plotcoordschanged");
+      }
+    }
+
+    getAspect() {
+      // ratio between y axis and x axis
+
+      return this.box.height / this.box.width * this.coords.width / this.coords.height
     }
 
     _centerOn(v) {
@@ -2546,6 +2552,12 @@ var Grapheme = (function (exports) {
 
       var t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0;
 
+      if (ax == bx) {
+        if (ay == by) {
+          return +hypot(px - ax, py - ay)
+        }
+      }
+
       xd = bx - ax;
       yd = by - ay;
 
@@ -2595,6 +2607,15 @@ var Grapheme = (function (exports) {
       by = +by;
 
       var t = 0.0, tx = 0.0, ty = 0.0, xd = 0.0, yd = 0.0;
+
+      if (ax == bx) {
+        if (ay == by) {
+          values[0] = +ax;
+          values[1] = +ay;
+
+          return +hypot(px - ax, py - ay)
+        }
+      }
 
       xd = bx - ax;
       yd = by - ay;
@@ -2680,18 +2701,34 @@ var Grapheme = (function (exports) {
         return 3
       }
 
+      if (y2 != y2) {
+        if (y3 == y3) {
+          return 3
+        }
+        if (y1 == y1) {
+          return 3
+        }
+      }
+
       return 0
     }
 
-    function angles_between(start, end, threshold) {
+    function angles_between(start, end, threshold, aspectRatio) {
       start = start | 0;
       end = end | 0;
       threshold = +threshold;
+      aspectRatio = +aspectRatio;
 
       var p = 0, q = 0, res = 0, indx = 0;
 
       for (p = (start + 2) << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-        res = needs_refinement(+values[(p-16)>>3], +values[(p-8)>>3], +values[p>>3], +values[(p+8)>>3], +values[(p+16)>>3], +values[(p+24)>>3], +threshold) | 0;
+        res = needs_refinement(+values[(p-16)>>3],
+          +(values[(p-8)>>3] * aspectRatio),
+          +values[p>>3],
+          +(values[(p+8)>>3] * aspectRatio),
+          +values[(p+16)>>3],
+          +(values[(p+24)>>3] * aspectRatio),
+          +threshold) | 0;
 
         indx = (((p-4)>>1)) | 0;
 
@@ -2763,7 +2800,7 @@ var Grapheme = (function (exports) {
     return {x, y, distance}
   }
 
-  function angles_between(polyline_vertices, threshold=0.03) {
+  function angles_between(polyline_vertices, threshold=0.03, aspectRatio=1) {
     if (polyline_vertices.length >= BufferSizes.f64) {
       throw new Error("Polyline too numerous")
     }
@@ -2778,12 +2815,12 @@ var Grapheme = (function (exports) {
       ASMViews.f64[i] = polyline_vertices[i];
     }
 
-    GeometryASMFunctions.angles_between(0, i, threshold);
+    GeometryASMFunctions.angles_between(0, i, threshold, aspectRatio);
 
     return ASMViews.f64.subarray(0, i/2 - 2)
   }
 
-  let heap = new ArrayBuffer(0x10000000);
+  let heap = new ArrayBuffer(0x200000);
   let stdlib = {Math: Math, Float64Array: Float64Array, Infinity: Infinity};
 
   let ASMViews = {f64: new Float64Array(heap)};
@@ -5334,25 +5371,31 @@ var Grapheme = (function (exports) {
   let MAX_POINTS = 1e6;
 
   // TODO: Stop this function from making too many points
-  function adaptively_sample_1d(start, end, func, initialPoints=500, angle_threshold=0.1, depth=0, includeEndpoints=true, ptCount=0) {
-    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end) || ptCount > MAX_POINTS)
+  function adaptively_sample_1d(start, end, func, initialPoints=500,
+    aspectRatio = 1, yRes = 0,
+    angle_threshold=0.1, depth=0,
+    includeEndpoints=true, ptCount=0) {
+    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return [NaN, NaN]
 
     let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
 
-    let angles = new Float64Array(angles_between(vertices, angle_threshold));
+    let angles = new Float64Array(angles_between(vertices, angle_threshold, aspectRatio));
 
     let final_vertices = [];
 
     for (let i = 0; i < vertices.length; i += 2) {
       let angle_i = i / 2;
 
-      if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) {
-        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, angle_threshold, depth + 1, true, ptCount);
+      if (angles[angle_i] === 3 || angles[angle_i - 1] === 3 && Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
 
         vs.forEach(a => final_vertices.push(a));
 
         ptCount += vs.length;
+
+        if (ptCount > MAX_POINTS)
+          return final_vertices
       } else {
         final_vertices.push(vertices[i]);
         final_vertices.push(vertices[i+1]);
@@ -5969,7 +6012,7 @@ void main() {
 
       this.plotPoints = plotPoints;
       this.plottingMode = plottingMode;
-      this.quality = 10;
+      this.quality = 1;
 
       this.function = (x) => Math.atan(x);
 
@@ -5978,10 +6021,10 @@ void main() {
 
       this.alwaysUpdate = false;
 
-      this.addEventListener("plotcoordschanged", () => this.updateLight());
-      this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 100 * Math.random());
-      });
+      this.addEventListener("plotcoordschanged", () => this.update());
+      /*this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 100 * Math.random())
+      })*/
 
       this.interactivityEnabled = true;
     }
@@ -6046,7 +6089,8 @@ void main() {
 
         vertices = sample_1d(coords.x1, coords.x2, this.function, points);
       } else {
-        vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality);
+        vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function,
+          box.width * this.quality, transform.getAspect(), coords.height / box.height);
       }
 
       this.plot.transform.plotToPixelArr(vertices);

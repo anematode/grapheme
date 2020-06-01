@@ -24,7 +24,7 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = plottingMode
-    this.quality = 10
+    this.quality = 1
 
     this.function = (x) => Math.atan(x)
 
@@ -33,10 +33,10 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.updateLight())
-    this.addEventListener("plotcoordslingered", () => {
+    this.addEventListener("plotcoordschanged", () => this.update())
+    /*this.addEventListener("plotcoordslingered", () => {
       setTimeout(() => this.update(), 100 * Math.random())
-    })
+    })*/
 
     this.interactivityEnabled = true
   }
@@ -101,7 +101,8 @@ class FunctionPlot2D extends InteractiveElement {
 
       vertices = sample_1d(coords.x1, coords.x2, this.function, points)
     } else {
-      vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function, box.width * this.quality)
+      vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function,
+        box.width * this.quality, transform.getAspect(), coords.height / box.height)
     }
 
     this.plot.transform.plotToPixelArr(vertices)
