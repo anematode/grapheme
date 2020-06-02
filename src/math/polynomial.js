@@ -3,7 +3,7 @@ function multiplyPolynomials(coeffs1, coeffs2, degree) {
   for (let i = 0; i <= degree; ++i) {
     ret.push(0)
   }
-  
+
   for (let i = 0; i < coeffs1.length; ++i) {
     for (let j = 0; j < coeffs2.length; ++j) {
       ret[i + j] += coeffs1[i] * coeffs2[j]
@@ -102,10 +102,13 @@ class SingleVariablePolynomial {
     for (let i = 0; i < coeffs.length; ++i) {
       coeffs[i] *= s
     }
+
+    return this
   }
 
   multiply(poly) {
-    this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs)
+    this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree())
+    return this
   }
 
   integral() {

@@ -4546,6 +4546,8 @@ var Grapheme = (function (exports) {
           return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
         case "cchain":
           return this.children.map(child => child.latex()).join('')
+        case "polygamma":
+          return `\\psi^{(${this.children[0].latex()})}\\left(${this.children[1].latex()}\\right)`
         case "piecewise":
           let pre = `\\begin{cases} `;
 
@@ -6821,6 +6823,124 @@ void main() {
     }
   }
 
+  function multiplyPolynomials(coeffs1, coeffs2, degree) {
+    let ret = [];
+    for (let i = 0; i <= degree; ++i) {
+      ret.push(0);
+    }
+
+    for (let i = 0; i < coeffs1.length; ++i) {
+      for (let j = 0; j < coeffs2.length; ++j) {
+        ret[i + j] += coeffs1[i] * coeffs2[j];
+      }
+    }
+
+    return ret
+  }
+
+  class SingleVariablePolynomial {
+    constructor(coeffs=[0]) {
+      // Order: first is constant, second is linear, etc.
+      this.coeffs = coeffs;
+    }
+
+    _evaluateFloat(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        sum += coeffs[i] * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    evaluate(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        // TODO
+        if (isNaN(coeff))
+          coeff = coeff.approximate_as_float();
+
+        sum += coeff * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    degree() {
+      return this.coeffs.length - 1
+    }
+
+    derivative() {
+      let newCoeffs = [];
+      const coeffs = this.coeffs;
+
+      for (let i = 1; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        newCoeffs.push(i * coeff);
+      }
+
+      return new SingleVariablePolynomial(newCoeffs)
+    }
+
+    clone() {
+      return new SingleVariablePolynomial(this.coeffs.slice())
+    }
+
+    add(poly) {
+      let coeffs = this.coeffs;
+      let otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    subtract(poly) {
+      const coeffs = this.coeffs;
+      const otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    multiplyScalar(s) {
+      const coeffs = this.coeffs;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        coeffs[i] *= s;
+      }
+
+      return this
+    }
+
+    multiply(poly) {
+      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
+      return this
+    }
+
+    integral() {
+      // TODO
+    }
+  }
+
   // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
 
   var g = 7;
@@ -7065,11 +7185,65 @@ void main() {
       return trigamma(z)
     }
 
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return Infinity
+      
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
+        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return polygamma(m, z+1) + sign * gamma(m + 1) / Math.pow(z, m+1)
+    }
+
+    // Series representation
+
+    let sum = 0;
+    for (let i = 0; i < 200; ++i) {
+      sum += 1 / Math.pow(z + i, m + 1);
+    }
+
+    return sign * gamma(m + 1) * sum
+
   }
 
   const GREGORY_COEFFICIENTS = [
     1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
   ];
+
+  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
+
+  let POLY1 = new SingleVariablePolynomial([0, 1]);
+  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
+
+  function getPolygammaNumeratorPolynomial(n) {
+    let poly = PolygammaNumeratorPolynomials[n];
+    if (poly)
+      return poly
+
+    if (n > 10000)
+      return new SingleVariablePolynomial([0])
+
+    if (n > 20) {
+      // to prevent stack overflow issues
+      for (let i = 0; i < n; ++i) {
+        getPolygammaNumeratorPolynomial(i);
+      }
+    }
+
+    return PolygammaNumeratorPolynomials[n] =
+      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
+        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
+      )
+  }
 
   function digamma (z) {
     if (z < 0.5) {
@@ -7109,7 +7283,7 @@ void main() {
       // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
       return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
-    } else if (z < 4) {
+    } else if (z < 8) {
       // psi_1(z+1) = psi_1(z) - 1/z^2
       // psi_1(z) = psi_1(z+1) + 1/z^2
 
@@ -10087,18 +10261,24 @@ void main() {
   exports.adaptively_sample_1d = adaptively_sample_1d;
   exports.angles_between = angles_between;
   exports.boundingBoxTransform = boundingBoxTransform;
+  exports.digamma = digamma;
   exports.find_roots = find_roots;
+  exports.gamma = gamma;
+  exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
   exports.get_continued_fraction = get_continued_fraction;
   exports.get_rational = get_rational;
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
+  exports.ln_gamma = ln_gamma;
   exports.parse_string = parse_string;
   exports.point_line_segment_min_closest = point_line_segment_min_closest;
   exports.point_line_segment_min_distance = point_line_segment_min_distance;
+  exports.polygamma = polygamma;
   exports.rgb = rgb;
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;
   exports.tokenizer = tokenizer;
+  exports.trigamma = trigamma;
   exports.utils = utils;
 
   return exports;

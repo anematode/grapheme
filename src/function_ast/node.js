@@ -332,6 +332,8 @@ class OperatorNode extends ASTNode {
         return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
       case "cchain":
         return this.children.map(child => child.latex()).join('')
+      case "polygamma":
+        return `\\psi^{(${this.children[0].latex()})}\\left(${this.children[1].latex()}\\right)`
       case "piecewise":
         let pre = `\\begin{cases} `
 
