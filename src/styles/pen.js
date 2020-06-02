@@ -13,7 +13,8 @@ class Pen {
       joinRes = 0.3, // angle between consecutive join roundings
       useNative = true, // whether to use native line drawing, only used in WebGL
       arrowhead = "Normal", // arrowhead to draw
-      arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
+      arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
+      visible = true
     } = params
 
     this.color = color
@@ -27,6 +28,7 @@ class Pen {
     this.useNative = useNative
     this.arrowhead = arrowhead
     this.arrowLocations = arrowLocations
+    this.visible = visible
   }
 
   clone() {

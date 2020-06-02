@@ -61,6 +61,7 @@ class WebGLPolyline extends WebGLElement {
     this.endcap_res = 0.4 // angle in radians between consecutive roundings
     this.join_type = 3 // refer to ENDCAP enum
     this.join_res = 0.5 // angle in radians between consecutive roundings
+    this.visible = true
 
     this.use_native = false
 
@@ -399,6 +400,9 @@ class WebGLPolyline extends WebGLElement {
   }
 
   render (info) {
+    if (!this.visible)
+      return
+
     super.render(info)
 
     const glManager = info.universe.glManager

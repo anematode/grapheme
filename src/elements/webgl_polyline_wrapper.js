@@ -17,6 +17,7 @@ class WebGLPolylineWrapper extends PolylineBase {
     this._internal_polyline.color = pen.color.toNumber()
     this._internal_polyline.thickness = pen.thickness / 2
     this._internal_polyline.use_native = pen.useNative
+    this._internal_polyline.visible = pen.visible
 
     // TODO: add other pen things
 

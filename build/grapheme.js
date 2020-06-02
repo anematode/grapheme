@@ -2412,7 +2412,8 @@ var Grapheme = (function (exports) {
         joinRes = 0.3, // angle between consecutive join roundings
         useNative = true, // whether to use native line drawing, only used in WebGL
         arrowhead = "Normal", // arrowhead to draw
-        arrowLocations = [] // possible values of locations to draw: "start", "substart", "end", "subend"
+        arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
+        visible = true
       } = params;
 
       this.color = color;
@@ -2426,6 +2427,7 @@ var Grapheme = (function (exports) {
       this.useNative = useNative;
       this.arrowhead = arrowhead;
       this.arrowLocations = arrowLocations;
+      this.visible = visible;
     }
 
     clone() {
@@ -2940,6 +2942,9 @@ var Grapheme = (function (exports) {
     }
 
     render (info) {
+      if (!this.pen.visible)
+        return
+      
       super.render(info);
 
       const ctx = info.ctx;
@@ -3250,8 +3255,6 @@ var Grapheme = (function (exports) {
         "box": new Pen({thickness: 2})
       };
 
-      this.enabled_pens = ["axis", "major", "minor", "box"];
-
       this._polylines = {};
     }
 
@@ -3290,9 +3293,6 @@ var Grapheme = (function (exports) {
       const dynamic = this.label_positions.includes("dynamic");
 
       for (let marker of markers) {
-        if (!this.enabled_pens.includes(marker.type))
-          continue
-
         if (marker.dir === 'x') {
           let polyline = polylines[marker.type];
 
@@ -3423,7 +3423,7 @@ var Grapheme = (function (exports) {
         }
       }
 
-      if (this.pens["box"] && this.enabled_pens.includes("box")) {
+      if (this.pens["box"]) {
         polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]});
       }
     }
@@ -5584,6 +5584,7 @@ void main() {
       this.endcap_res = 0.4; // angle in radians between consecutive roundings
       this.join_type = 3; // refer to ENDCAP enum
       this.join_res = 0.5; // angle in radians between consecutive roundings
+      this.visible = true;
 
       this.use_native = false;
 
@@ -5922,6 +5923,9 @@ void main() {
     }
 
     render (info) {
+      if (!this.visible)
+        return
+
       super.render(info);
 
       const glManager = info.universe.glManager;
@@ -5988,6 +5992,7 @@ void main() {
       this._internal_polyline.color = pen.color.toNumber();
       this._internal_polyline.thickness = pen.thickness / 2;
       this._internal_polyline.use_native = pen.useNative;
+      this._internal_polyline.visible = pen.visible;
 
       // TODO: add other pen things
 

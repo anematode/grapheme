@@ -100,8 +100,6 @@ class Gridlines extends GraphemeElement {
       "box": new Pen({thickness: 2})
     }
 
-    this.enabled_pens = ["axis", "major", "minor", "box"]
-
     this._polylines = {}
   }
 
@@ -140,9 +138,6 @@ class Gridlines extends GraphemeElement {
     const dynamic = this.label_positions.includes("dynamic")
 
     for (let marker of markers) {
-      if (!this.enabled_pens.includes(marker.type))
-        continue
-
       if (marker.dir === 'x') {
         let polyline = polylines[marker.type]
 
@@ -273,7 +268,7 @@ class Gridlines extends GraphemeElement {
       }
     }
 
-    if (this.pens["box"] && this.enabled_pens.includes("box")) {
+    if (this.pens["box"]) {
       polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]})
     }
   }
