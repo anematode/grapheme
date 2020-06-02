@@ -3444,21 +3444,26 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function operator_derivative(opNode, variable='x') {
+  function operator_derivative (opNode, variable = 'x') {
     let node;
     switch (opNode.operator) {
-      case '>': case '>=': case '<': case '<=': case '!=': case '==':
-        return new ConstantNode({value: 0})
-      case "ifelse":
+      case '>':
+      case '>=':
+      case '<':
+      case '<=':
+      case '!=':
+      case '==':
+        return new ConstantNode({ value: 0 })
+      case 'ifelse':
         return new OperatorNode({
-          operator: "ifelse",
+          operator: 'ifelse',
           children: [
             opNode.children[0].derivative(variable),
             opNode.children[1],
             opNode.children[2].derivative(variable)
           ]
         })
-      case "piecewise":
+      case 'piecewise':
         node = opNode.clone();
 
         for (let i = 1; i < node.children.length; ++i) {
@@ -3471,7 +3476,7 @@ var Grapheme = (function (exports) {
         }
 
         return node
-      case "cchain":
+      case 'cchain':
         return opNode.clone()
       case '+':
         node = new OperatorNode({ operator: '+' });
@@ -3492,7 +3497,10 @@ var Grapheme = (function (exports) {
       case '/':
         // Division rules
         if (opNode.children[1] instanceof ConstantNode) {
-          return new OperatorNode({operator: '/', children: [ opNode.children[0].derivative(variable), opNode.children[1] ]})
+          return new OperatorNode({
+            operator: '/',
+            children: [opNode.children[0].derivative(variable), opNode.children[1]]
+          })
         } else {
           node = new OperatorNode({ operator: '/' });
 
@@ -4030,7 +4038,7 @@ var Grapheme = (function (exports) {
                 children: [
                   new OperatorNode({
                     operator: 'csch',
-                    children: [ opNode.children[0].clone() ]
+                    children: [opNode.children[0].clone()]
                   }),
                   new ConstantNode({ value: 2 })
                 ]
@@ -4189,25 +4197,113 @@ var Grapheme = (function (exports) {
             })
           ]
         })
-      case "abs":
+      case 'abs':
         return new OperatorNode({
-          operator: "ifelse",
+          operator: 'ifelse',
           children: [
             new OperatorNode({
-              operator: "*",
+              operator: '*',
               children: [
-                new ConstantNode({value: -1}),
+                new ConstantNode({ value: -1 }),
                 opNode.children[0].clone()
               ]
             }),
             new OperatorNode({
-              operator: "<",
+              operator: '<',
               children: [
                 opNode.children[0].clone(),
-                new ConstantNode({value: 0})
+                new ConstantNode({ value: 0 })
               ]
             }),
             opNode.children[0].clone()
+          ]
+        })
+      case 'gamma':
+        // Derivative of gamma is polygamma(0, z) * gamma(z) * z'
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new OperatorNode({
+                  operator: 'polygamma',
+                  children: [
+                    new ConstantNode({ value: 0 }),
+                    opNode.children[0]
+                  ]
+                }),
+                opNode.clone()
+              ]
+            }),
+            opNode.children[0].derivative(variable)
+          ]
+        })
+      case 'factorial':
+        return new OperatorNode({
+          operator: 'gamma',
+          children: [
+            new OperatorNode({
+              operator: '+',
+              children: [
+                new ConstantNode({ value: 1 }),
+                opNode.children[0]
+              ]
+            })
+          ]
+        }).derivative(variable)
+      case 'abs':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new ConstantNode({ value: -1 }),
+                opNode.derivative(variable)
+              ]
+            }),
+            new OperatorNode({
+              operator: '<',
+              children: [
+                opNode.clone(),
+                new ConstantNode({ value: 0 })
+              ]
+            }),
+            opNode.derivative(variable)
+          ]
+        })
+      case 'max':
+
+      case 'digamma':
+        // digamma = polygamma(0, x)
+        return new OperatorNode({
+          operator: 'polygamma',
+          children: [
+            new ConstantNode({ value: 0 }),
+            opNode.children[0]
+          ]
+        }).derivative(variable)
+      case 'trigamma':
+        // trigamma = polygamma(1, x)
+        return new OperatorNode({
+          operator: 'polygamma',
+          children: [
+            new ConstantNode({ value: 1 }),
+            opNode.children[0]
+          ]
+        }).derivative(variable)
+      case 'polygamma':
+        return new OperatorNode({
+          operator: '*',
+          children: [new OperatorNode({
+            operator: 'polygamma',
+            children: [
+              new ConstantNode({ value: opNode.children[0].value + 1 }),
+              opNode.children[1]
+            ]
+          }),
+            opNode.children[1].derivative(variable)
           ]
         })
       default:
@@ -7191,7 +7287,7 @@ void main() {
     if (z < 0.5) {
       if (z % 1 === 0)
         return Infinity
-      
+
       // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
       // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
 

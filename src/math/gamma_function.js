@@ -252,7 +252,7 @@ function polygamma (m, z) {
   if (z < 0.5) {
     if (z % 1 === 0)
       return Infinity
-    
+
     // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
     // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
 
