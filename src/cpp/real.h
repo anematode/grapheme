@@ -69,6 +69,8 @@ public:
     void acsch();
     void acoth();
     void gamma();
+    void ln_gamma();
+    void factorial();
     void set_pi();
     int is_nan();
     int is_inf();

@@ -1,14 +1,15 @@
 import { mod, gcd } from "../core/utils"
+import { gamma, polygamma } from '../math/gamma_function'
 
 const Functions = {
   LogB: (b, v) => {
     return Math.ln(v) / Math.ln(b)
   },
   Factorial: (a) => {
-
+    return Functions.Gamma(a + 1)
   },
   Gamma: (a) => {
-
+    return gamma(a)
   },
   LogGamma: (a) => {
 
@@ -45,34 +46,29 @@ const Functions = {
     MUL: (r1, r2) => {
       r1.multiply_real(r2)
 
-      r2.__destroy__()
-
       return r1
     },
     ADD: (r1, r2) => {
       r1.add_real(r2)
-
-      r2.__destroy__()
 
       return r1
     },
     SUB: (r1, r2) => {
       r1.subtract_real(r2)
 
-      r2.__destroy__()
-
       return r1
     },
     DIV: (r1, r2) => {
       r1.divide_real(r2)
 
-      r2.__destroy__()
-
       return r1
     },
     POW: (r1, r2) => {
-      r1
-    }
+      r1.pow_real(r2)
+
+      return r1
+    },
+
   }
 }
 

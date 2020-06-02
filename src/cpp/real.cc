@@ -290,6 +290,15 @@ void Real::gamma() {
     mpfr_gamma(ptr, ptr, MPFR_RNDN);
 }
 
+void Real::factorial() {
+    mpfr_add_d(ptr, 1, MPFR_RNDN);
+    mpfr_gamma(ptr, ptr, MPFR_RNDN);
+}
+
+void Real::ln_gamma() {
+    mpfr_lngamma(ptr, ptr, MPFR_RNDN);
+}
+
 void Real::set_pi() {
     mpfr_const_pi(ptr, MPFR_RNDN);
 }

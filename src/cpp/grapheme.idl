@@ -55,6 +55,8 @@ interface Real {
     void acsch();
     void acoth();
     void gamma();
+    void factorial();
+    void ln_gamma();
     void set_pi();
     long is_nan();
     long is_inf();
