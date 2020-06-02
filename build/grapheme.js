@@ -6766,7 +6766,22 @@ void main() {
 
         return r1
       },
-      
+      SUB: (r1, r2) => {
+        r1.subtract_real(r2);
+
+        r2.__destroy__();
+
+        return r1
+      },
+      DIV: (r1, r2) => {
+        r1.divide_real(r2);
+
+        r2.__destroy__();
+
+        return r1
+      },
+      POW: (r1, r2) => {
+      }
     }
   };
 
@@ -7403,10 +7418,10 @@ void main() {
     Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
   }
 
-  var STACK_BASE = 5264288,
-      STACK_MAX = 21408,
-      DYNAMIC_BASE = 5264288,
-      DYNAMICTOP_PTR = 21248;
+  var STACK_BASE = 5264960,
+      STACK_MAX = 22080,
+      DYNAMIC_BASE = 5264960,
+      DYNAMICTOP_PTR = 21920;
 
   assert$1(STACK_BASE % 16 === 0, 'stack must start aligned');
   assert$1(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -7857,7 +7872,7 @@ void main() {
 
 
 
-  // STATICTOP = STATIC_BASE + 20384;
+  // STATICTOP = STATIC_BASE + 21056;
   /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors(); } });
 
 
@@ -7913,7 +7928,7 @@ void main() {
       }
 
     function _emscripten_get_sbrk_ptr() {
-        return 21248;
+        return 21920;
       }
 
     function _emscripten_memcpy_big(dest, src, num) {
@@ -8158,6 +8173,48 @@ void main() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
     assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
     return real__emscripten_bind_Real_divide_real_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_pow_real_1 = asm["emscripten_bind_Real_pow_real_1"];
+  asm["emscripten_bind_Real_pow_real_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_pow_real_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_pow_rational_2 = asm["emscripten_bind_Real_pow_rational_2"];
+  asm["emscripten_bind_Real_pow_rational_2"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_pow_rational_2.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_pow_int_1 = asm["emscripten_bind_Real_pow_int_1"];
+  asm["emscripten_bind_Real_pow_int_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_pow_int_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_sqrt_0 = asm["emscripten_bind_Real_sqrt_0"];
+  asm["emscripten_bind_Real_sqrt_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_sqrt_0.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_cbrt_0 = asm["emscripten_bind_Real_cbrt_0"];
+  asm["emscripten_bind_Real_cbrt_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_cbrt_0.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_rootn_1 = asm["emscripten_bind_Real_rootn_1"];
+  asm["emscripten_bind_Real_rootn_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_rootn_1.apply(null, arguments);
   };
 
   var real__emscripten_bind_Real_ln_0 = asm["emscripten_bind_Real_ln_0"];
@@ -8634,6 +8691,42 @@ void main() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
     assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
     return Module["asm"]["emscripten_bind_Real_divide_real_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_pow_real_1 = Module["_emscripten_bind_Real_pow_real_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_pow_real_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_pow_rational_2 = Module["_emscripten_bind_Real_pow_rational_2"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_pow_rational_2"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_pow_int_1 = Module["_emscripten_bind_Real_pow_int_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_pow_int_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_sqrt_0 = Module["_emscripten_bind_Real_sqrt_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_sqrt_0"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_cbrt_0 = Module["_emscripten_bind_Real_cbrt_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_cbrt_0"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_rootn_1 = Module["_emscripten_bind_Real_rootn_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_rootn_1"].apply(null, arguments)
   };
 
   var _emscripten_bind_Real_ln_0 = Module["_emscripten_bind_Real_ln_0"] = function() {
@@ -9344,6 +9437,35 @@ void main() {
     var self = this.ptr;
     if (r && typeof r === 'object') r = r.ptr;
     _emscripten_bind_Real_divide_real_1(self, r);
+  };
+  Real.prototype['pow_real'] = Real.prototype.pow_real = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    _emscripten_bind_Real_pow_real_1(self, r);
+  };
+  Real.prototype['pow_rational'] = Real.prototype.pow_rational = /** @suppress {undefinedVars, duplicate} */function(p, q) {
+    var self = this.ptr;
+    if (p && typeof p === 'object') p = p.ptr;
+    if (q && typeof q === 'object') q = q.ptr;
+    _emscripten_bind_Real_pow_rational_2(self, p, q);
+  };
+  Real.prototype['pow_int'] = Real.prototype.pow_int = /** @suppress {undefinedVars, duplicate} */function(p) {
+    var self = this.ptr;
+    if (p && typeof p === 'object') p = p.ptr;
+    _emscripten_bind_Real_pow_int_1(self, p);
+  };
+  Real.prototype['sqrt'] = Real.prototype.sqrt = /** @suppress {undefinedVars, duplicate} */function() {
+    var self = this.ptr;
+    _emscripten_bind_Real_sqrt_0(self);
+  };
+  Real.prototype['cbrt'] = Real.prototype.cbrt = /** @suppress {undefinedVars, duplicate} */function() {
+    var self = this.ptr;
+    _emscripten_bind_Real_cbrt_0(self);
+  };
+  Real.prototype['rootn'] = Real.prototype.rootn = /** @suppress {undefinedVars, duplicate} */function(n) {
+    var self = this.ptr;
+    if (n && typeof n === 'object') n = n.ptr;
+    _emscripten_bind_Real_rootn_1(self, n);
   };
   Real.prototype['ln'] = Real.prototype.ln = /** @suppress {undefinedVars, duplicate} */function() {
     var self = this.ptr;

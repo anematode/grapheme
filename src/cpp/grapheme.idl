@@ -21,6 +21,12 @@ interface Real {
     void square();
     void divide_float(double value);
     void divide_real([Ref] Real r);
+    void pow_real([Ref] Real r);
+    void pow_rational(long p, long q);
+    void pow_int(long p);
+    void sqrt();
+    void cbrt();
+    void rootn(long n);
     void ln();
     void log10();
     void log2();

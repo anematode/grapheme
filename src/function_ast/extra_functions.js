@@ -56,7 +56,23 @@ const Functions = {
 
       return r1
     },
-    
+    SUB: (r1, r2) => {
+      r1.subtract_real(r2)
+
+      r2.__destroy__()
+
+      return r1
+    },
+    DIV: (r1, r2) => {
+      r1.divide_real(r2)
+
+      r2.__destroy__()
+
+      return r1
+    },
+    POW: (r1, r2) => {
+      r1
+    }
   }
 }
 

@@ -123,6 +123,18 @@ void Real::multiply_real(Real& r) {
     mpfr_mul(ptr, ptr, r.ptr, MPFR_RNDN);
 }
 
+void Real::sqrt() {
+    mpfr_sqrt(ptr, ptr, MPFR_RNDN);
+}
+
+void Real::cbrt() {
+    mpfr_cbrt(ptr, ptr, MPFR_RNDN);
+}
+
+void Real::rootn(int n) {
+    mpfr_rootn_ui(ptr, ptr, n, MPFR_RNDN);
+}
+
 void Real::square() {
     mpfr_sqr(ptr, ptr, MPFR_RNDN);
 }
@@ -133,6 +145,19 @@ void Real::divide_float(double r) {
 
 void Real::divide_real(Real& r) {
     mpfr_div(ptr, ptr, r.ptr, MPFR_RNDN);
+}
+
+void Real::pow_int(int a) {
+    mpfr_pow_ui(ptr, ptr, a, MPFR_RNDN);
+}
+
+void Real::pow_real(Real& r) {
+    mpfr_pow(ptr, ptr, r.ptr, MPFR_RNDN);
+}
+
+void Real::pow_rational(int p, int q) {
+    pow_int(p);
+    rootn(q);
 }
 
 void Real::ln() {

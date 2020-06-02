@@ -32,6 +32,12 @@ public:
     void square();
     void divide_float(double);
     void divide_real(Real&);
+    void pow_real(Real&);
+    void pow_rational(int p, int q);
+    void pow_int(int);
+    void sqrt();
+    void cbrt();
+    void rootn(int);
     void ln();
     void log10();
     void log2();
