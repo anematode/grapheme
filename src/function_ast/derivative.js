@@ -829,9 +829,38 @@ function operator_derivative (opNode, variable = 'x') {
           opNode.derivative(variable)
         ]
       })
-    case 'max':
+    case 'min':
+      if (opNode.children.length === 0) {
+        return new ConstantNode({value: 0})
+      } else if (opNode.children.length === 1) {
+        return opNode.children[0].derivative(variable)
+      }
+
+      // Translate to ifelse statement, then take derivative
+      let next_level = opNode.children.slice(1)
+
+      if (next_level.length === 1) {
+        next_level = next_level[0].clone()
+      } else {
+        next_level = new OperatorNode({
+          operator: "min",
+          children: next_level.clone()
+        })
+      }
+
       return new OperatorNode({
-        operator: "max"
+        operator: "ifelse",
+        children: [
+          opNode.children[0].derivative(variable),
+          new OperatorNode({
+            operator: '<',
+            children: [
+              opNode.children[0],
+              next_level
+            ]
+          }),
+          next_level.derivative(variable)
+        ]
       })
     case "floor":
       return new ConstantNode({value: 0})
