@@ -311,4 +311,8 @@ int Real::is_inf() {
     return mpfr_inf_p(ptr);
 }
 
+void Real::digamma() {
+    return mpfr_digamma(ptr, ptr, MPFR_RNDN)
+}
+
 }

@@ -71,6 +71,7 @@ public:
     void gamma();
     void ln_gamma();
     void factorial();
+    void digamma();
     void set_pi();
     int is_nan();
     int is_inf();

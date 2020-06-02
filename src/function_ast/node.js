@@ -211,7 +211,10 @@ const OperatorPatterns = {
   'logb': ['Grapheme.Functions.LogB', ','],
   'gamma': ['Grapheme.Functions.Gamma', ','],
   'factorial': ['Grapheme.Functions.Factorial', ','],
-  'ln_gamma': ['Grapheme.Functions.LnGamma', ',']
+  'ln_gamma': ['Grapheme.Functions.LnGamma', ','],
+  'digamma': ['Grapheme.Functions.Digamma', ','],
+  'trigamma': ['Grapheme.Functions.Trigamma', ','],
+  'polygamma': ['Grapheme.Functions.Polygamma', ',']
 }
 
 const OperatorSynonyms = {
@@ -253,7 +256,10 @@ const OperatorNames = {
   "atanh": "\\operatorname{tanh}^{-1}",
   "asech": "\\operatorname{sech}^{-1}",
   "acsch": "\\operatorname{csch}^{-1}",
-  "acoth": "\\operatorname{coth}^{-1}"
+  "acoth": "\\operatorname{coth}^{-1}",
+  "gamma": "\\Gamma",
+  "digamma": "\\psi",
+  "trigamma": "\\psi_1"
 }
 
 let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"]
@@ -314,8 +320,6 @@ class OperatorNode extends ASTNode {
         return `${this.children[0].latex()} > ${this.children[1].latex()}`
       case ">=":
         return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
-      case "gamma":
-        return `\\Gamma\\left(${this.children[0].latex()}\\right)`
       case "factorial":
         let needs_parens = this.needsParentheses()
         let latex_n = this.children[0].latex()
