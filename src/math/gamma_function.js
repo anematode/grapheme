@@ -185,7 +185,11 @@ function gamma(z) {
       return Infinity
     }
 
-    return integer_factorials[Math.round(z - 1)]
+    let res = integer_factorials[Math.round(z - 1)]
+
+    if (!res)
+      return Infinity
+    return res
   }
 
   if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
@@ -202,12 +206,21 @@ function gamma(z) {
 }
 
 function ln_gamma(z) {
-  // Define specially for integral values
-  if (z % 1 === 0) {
-
-  }
   if (z < 0.5) {
-    return Math.log(gamma(z));
+    // Compute via reflection formula
+    let reflected = ln_gamma(1 - z)
+
+    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
+  } else {
+    z -= 1;
+
+    var x = C[0];
+    for (var i = 1; i < g + 2; i++)
+      x += C[i] / (z + i);
+
+    var t = z + g + 0.5;
+
+    return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
   }
 }
 
@@ -216,4 +229,4 @@ function polygamma(m, z) {
   let fact = gamma
 }
 
-export { gamma, polygamma }
+export { gamma, polygamma, ln_gamma }

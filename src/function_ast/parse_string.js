@@ -1,4 +1,4 @@
-import {OperatorNode, VariableNode, ConstantNode, ASTNode} from "./node"
+import {OperatorNode, VariableNode, ConstantNode, ASTNode, OperatorSynonyms} from "./node"
 
 // a * b - c * d ^ g
 
@@ -283,7 +283,9 @@ function parse_tokens(tokens) {
           let child_test = children[i]
 
           if (child_test.type === "function") {
-            let function_node = new OperatorNode({ operator: child_test.name })
+            let synonym = OperatorSynonyms[child_test.name]
+
+            let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name })
 
             children[i] = function_node
 

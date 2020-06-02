@@ -1,5 +1,5 @@
 import { mod, gcd } from "../core/utils"
-import { gamma, polygamma } from '../math/gamma_function'
+import { gamma, polygamma, ln_gamma } from '../math/gamma_function'
 
 const Functions = {
   LogB: (b, v) => {
@@ -11,8 +11,8 @@ const Functions = {
   Gamma: (a) => {
     return gamma(a)
   },
-  LogGamma: (a) => {
-
+  LnGamma: (a) => {
+    return ln_gamma(a)
   },
   PowRational: (x, p, q) => {
     // Calculates x ^ (p / q), where p and q are integers

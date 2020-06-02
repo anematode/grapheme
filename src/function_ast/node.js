@@ -18,6 +18,14 @@ class ASTNode {
     this.parent = parent
   }
 
+  hasChildren() {
+    return this.children.length !== 0
+  }
+
+  needsParentheses() {
+    return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
+  }
+
   applyAll (func, depth = 0) {
     func(this, depth)
 
@@ -200,7 +208,67 @@ const OperatorPatterns = {
   'acsch': ['Math.asinh(1/', '+', ')'],
   'asech': ['Math.acosh(1/', '+', ')'],
   'acoth': ['Math.atanh(1/', '+', ')'],
-  'logb': ['Grapheme.Functions.LogB', ',']
+  'logb': ['Grapheme.Functions.LogB', ','],
+  'gamma': ['Grapheme.Functions.Gamma', ','],
+  'factorial': ['Grapheme.Functions.Factorial', ','],
+  'ln_gamma': ['Grapheme.Functions.LnGamma', ',']
+}
+
+const OperatorSynonyms = {
+  "arcsinh": "asinh",
+  "arsinh": "asinh",
+  "arccosh": "acosh",
+  "arcosh": "acosh",
+  "arctanh": "atanh",
+  "artanh": "atanh",
+  "arcsech": "asech",
+  "arccsch": "acsch",
+  "arccoth": "acoth",
+  "arsech": "asech",
+  "arcsch": "acsch",
+  "arcoth": "acoth",
+  "arcsin": "asin",
+  "arsin": "asin",
+  "arccos": "acos",
+  "arcos": "acos",
+  "arctan": "atan",
+  "artan": "atan",
+  "arcsec": "asec",
+  "arccsc": "acsc",
+  "arccot": "acot",
+  "arsec": "asec",
+  "arcsc": "acsc",
+  "arcot": "acot"
+}
+
+const OperatorNames = {
+  "asin": "\\operatorname{sin}^{-1}",
+  "acos": "\\operatorname{cos}^{-1}",
+  "atan": "\\operatorname{tan}^{-1}",
+  "asec": "\\operatorname{sec}^{-1}",
+  "acsc": "\\operatorname{csc}^{-1}",
+  "acot": "\\operatorname{cot}^{-1}",
+  "asinh": "\\operatorname{sinh}^{-1}",
+  "acosh": "\\operatorname{cosh}^{-1}",
+  "atanh": "\\operatorname{tanh}^{-1}",
+  "asech": "\\operatorname{sech}^{-1}",
+  "acsch": "\\operatorname{csch}^{-1}",
+  "acoth": "\\operatorname{coth}^{-1}"
+}
+
+let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"]
+
+function getOperatorName(op) {
+  let special = OperatorNames[op]
+  if (special) {
+    return special
+  }
+
+  return "\\operatorname{" + op + "}"
+}
+
+function alwaysParenthesize(op) {
+  return !(canNotParenthesize.includes(op))
 }
 
 class OperatorNode extends ASTNode {
@@ -246,6 +314,16 @@ class OperatorNode extends ASTNode {
         return `${this.children[0].latex()} > ${this.children[1].latex()}`
       case ">=":
         return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
+      case "gamma":
+        return `\\Gamma\\left(${this.children[0].latex()}\\right)`
+      case "factorial":
+        let needs_parens = this.needsParentheses()
+        let latex_n = this.children[0].latex()
+
+        if (needs_parens)
+          return `\\left(${latex_n}\\right)!`
+        else
+          return latex_n + '!'
       case "ifelse":
         return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
       case "cchain":
@@ -292,8 +370,17 @@ class OperatorNode extends ASTNode {
         return this.children.map(child => child.latex()).join("\\land ")
       case "or":
         return this.children.map(child => child.latex()).join("\\lor ")
+      case "abs":
+        return '\\left|' + this.children.map(child => child.latex()).join(",") + '\\right|'
       default:
-        return `\\operatorname{${this.operator}}(${this.children.map(child => child.latex()).join(',\\,')})`
+        let needs_parens2 = this.needsParentheses()
+
+        let operatorName = getOperatorName(this.operator)
+        if (!needs_parens2 && alwaysParenthesize(this.operator)) {
+          needs_parens2 = true
+        }
+
+        return `${operatorName}${needs_parens2 ? '\\left(' : ''}${this.children.map(child => child.latex()).join(',\\,')}${needs_parens2 ? '\\right)' : ''}`
     }
   }
 
@@ -421,4 +508,4 @@ class ConstantNode extends ASTNode {
 }
 
 
-export { VariableNode, OperatorNode, ConstantNode, ASTNode }
+export { VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms }
