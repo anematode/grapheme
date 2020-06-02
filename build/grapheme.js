@@ -3423,7 +3423,7 @@ var Grapheme = (function (exports) {
         }
       }
 
-      if (this.pens["box"] && this.enabled_pens["box"]) {
+      if (this.pens["box"] && this.enabled_pens.includes("box")) {
         polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]});
       }
     }
