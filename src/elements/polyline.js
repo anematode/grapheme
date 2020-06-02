@@ -110,7 +110,7 @@ class PolylineElement extends PolylineBase {
   render (info) {
     if (!this.pen.visible)
       return
-    
+
     super.render(info)
 
     const ctx = info.ctx

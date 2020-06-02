@@ -2944,7 +2944,7 @@ var Grapheme = (function (exports) {
     render (info) {
       if (!this.pen.visible)
         return
-      
+
       super.render(info);
 
       const ctx = info.ctx;
@@ -6535,8 +6535,7 @@ void main() {
       this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position);
 
       this.point = new PointElement();
-      this.label = new SmartLabel({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
-
+      this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
     }
 
     update () {
@@ -6576,6 +6575,7 @@ void main() {
       this.inspectionPoint = null;
 
       this.inspectionPointLingers = true;
+      this.inspectionPointLabelStyle = new Label2DStyle({dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2});
     }
 
     setFunction(func) {
@@ -6588,6 +6588,13 @@ void main() {
       if (this.inspectionPoint)
         this.remove(this.inspectionPoint);
       this.inspectionPoint = null;
+    }
+
+    update() {
+      super.update();
+
+      if (this.inspectionPoint)
+        this.inspectionPoint.point.style.fill = this.pen.color;
     }
 
     set inspectionEnabled (value) {
@@ -6616,7 +6623,8 @@ void main() {
 
           if (!this.inspectionPoint) {
             this.inspectionPoint = new FunctionPlot2DInspectionPoint({
-              position: { x, y }
+              position: { x, y },
+              labelStyle: this.inspectionPointLabelStyle
             });
 
             this.inspectionPoint.point.style.fill = this.pen.color;

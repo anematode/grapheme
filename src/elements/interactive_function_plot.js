@@ -6,6 +6,7 @@ import { Label2D } from './label'
 import { StandardLabelFunction } from "./gridlines"
 import { Colors } from '../other/color'
 import { LabeledPoint } from './labeled_point'
+import { Label2DStyle } from '../styles/label_style'
 
 class FunctionPlot2DInspectionPoint extends LabeledPoint {
   constructor(params={}) {
@@ -26,6 +27,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     this.inspectionPoint = null
 
     this.inspectionPointLingers = true
+    this.inspectionPointLabelStyle = new Label2DStyle({dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2})
   }
 
   setFunction(func) {
@@ -38,6 +40,13 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     if (this.inspectionPoint)
       this.remove(this.inspectionPoint)
     this.inspectionPoint = null
+  }
+
+  update() {
+    super.update()
+
+    if (this.inspectionPoint)
+      this.inspectionPoint.point.style.fill = this.pen.color
   }
 
   set inspectionEnabled (value) {
@@ -66,7 +75,8 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
 
         if (!this.inspectionPoint) {
           this.inspectionPoint = new FunctionPlot2DInspectionPoint({
-            position: { x, y }
+            position: { x, y },
+            labelStyle: this.inspectionPointLabelStyle
           })
 
           this.inspectionPoint.point.style.fill = this.pen.color

@@ -1,6 +1,7 @@
 import { Vec2 } from '../math/vec'
-import { PointElement } from './point'
+import { PointElement, PointElementStyle } from './point'
 import { Label2D } from './label'
+import { Label2DStyle } from '../styles/label_style'
 import { Colors } from '../other/color'
 import { StandardLabelFunction } from './gridlines'
 import { Element as GraphemeElement } from "../core/grapheme_element"
@@ -13,8 +14,7 @@ class LabeledPoint extends GraphemeElement {
     this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position)
 
     this.point = new PointElement()
-    this.label = new SmartLabel({style: {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
-
+    this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
   }
 
   update () {
