@@ -1,3 +1,4 @@
+import { mod, gcd } from "../core/utils"
 
 const Functions = {
   LogB: (b, v) => {
@@ -12,56 +13,50 @@ const Functions = {
   LogGamma: (a) => {
 
   },
-  IfElse: (val1, condition, val2) => {
-    if (condition)
-      return val1
-    else
-      return val2
-  },
-  Piecewise: (condition, value, ...args) => {
-    if (condition !== undefined && value === undefined) {
-      return args[0]
-    } else if (condition === undefined && value === undefined) {
-      return 0
+  PowRational: (x, p, q) => {
+    // Calculates x ^ (p / q), where p and q are integers
+
+    if (p === 0) {
+      return 1
+    }
+
+    let gcd = gcd(p, q)
+
+    if (gcd !== 1) {
+      p /= gcd
+      q /= gcd
+    }
+
+    if (x >= 0) {
+      return Math.pow(x, p / q)
     } else {
-      if (condition) {
-        return value
-      }
+      if (mod(q, 2) === 0)
+        return NaN
 
-      return Functions.Piecewise(...args)
+      let ret = Math.pow(-x, p / q)
+      if (mod(p, 2) === 0) {
+        return ret
+      } else {
+        return -ret
+      }
     }
   },
-  CCHAIN: (val1, comparison, val2, ...args) => {
-    if (!comparison)
-      return true
-    switch (comparison) {
-      case "<":
-        if (val1 < val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-      case ">":
-        if (val1 > val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-      case "<=":
-        if (val1 <= val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-      case ">=":
-        if (val1 >= val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-      case "!=":
-        if (val1 !== val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-      case "==":
-        if (val1 === val2)
-          return Functions.CCHAIN(val2, ...args)
-        break
-    }
+  Reals: {
+    MUL: (r1, r2) => {
+      r1.multiply_real(r2)
 
-    return false
+      r2.__destroy__()
+
+      return r1
+    },
+    ADD: (r1, r2) => {
+      r1.add_real(r2)
+
+      r2.__destroy__()
+
+      return r1
+    },
+    
   }
 }
 

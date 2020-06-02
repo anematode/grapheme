@@ -293,7 +293,15 @@ function expressQuantityPP(quantity) {
   }
 }
 
+const gcd = function(a, b) {
+  if (!b) {
+    return a;
+  }
+
+  return gcd(b, a % b);
+}
+
 export {
-  expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+  gcd, expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
   isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }

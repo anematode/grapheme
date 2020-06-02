@@ -1,3 +1,8 @@
 node_modules/**
 .DS_Store
 .idea/**
+*.out
+*.pkl
+src/cpp/grapheme_wasm*
+src/cpp/glue.cc
+src/cpp/glue.js
