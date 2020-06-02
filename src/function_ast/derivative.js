@@ -830,7 +830,13 @@ function operator_derivative (opNode, variable = 'x') {
         ]
       })
     case 'max':
-
+      return new OperatorNode({
+        operator: "max"
+      })
+    case "floor":
+      return new ConstantNode({value: 0})
+    case "ceil":
+      return new ConstantNode({value: 0})
     case 'digamma':
       // digamma = polygamma(0, x)
       return new OperatorNode({

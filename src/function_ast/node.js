@@ -214,7 +214,11 @@ const OperatorPatterns = {
   'ln_gamma': ['Grapheme.Functions.LnGamma', ','],
   'digamma': ['Grapheme.Functions.Digamma', ','],
   'trigamma': ['Grapheme.Functions.Trigamma', ','],
-  'polygamma': ['Grapheme.Functions.Polygamma', ',']
+  'polygamma': ['Grapheme.Functions.Polygamma', ','],
+  'max': ['Math.max', ','],
+  'min': ['Math.min', ','],
+  'floor': ['Math.floor', ','],
+  'ceil': ['Math.ceil', ','],
 }
 
 const OperatorSynonyms = {

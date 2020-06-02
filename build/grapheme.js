@@ -4274,7 +4274,13 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'max':
-
+        return new OperatorNode({
+          operator: "max"
+        })
+      case "floor":
+        return new ConstantNode({value: 0})
+      case "ceil":
+        return new ConstantNode({value: 0})
       case 'digamma':
         // digamma = polygamma(0, x)
         return new OperatorNode({
@@ -4524,7 +4530,11 @@ var Grapheme = (function (exports) {
     'ln_gamma': ['Grapheme.Functions.LnGamma', ','],
     'digamma': ['Grapheme.Functions.Digamma', ','],
     'trigamma': ['Grapheme.Functions.Trigamma', ','],
-    'polygamma': ['Grapheme.Functions.Polygamma', ',']
+    'polygamma': ['Grapheme.Functions.Polygamma', ','],
+    'max': ['Math.max', ','],
+    'min': ['Math.min', ','],
+    'floor': ['Math.floor', ','],
+    'ceil': ['Math.ceil', ','],
   };
 
   const OperatorSynonyms = {
