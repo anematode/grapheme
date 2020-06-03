@@ -3962,7 +3962,7 @@ var Grapheme = (function (exports) {
               children: [
                 new OperatorNode({
                   operator: 'sech',
-                  children: opNode.children[0].clone()
+                  children: [ opNode.children[0].clone() ]
                 }),
                 new ConstantNode({ value: 2 })
               ]
@@ -4741,7 +4741,9 @@ var Grapheme = (function (exports) {
     "gamma": "\\Gamma",
     "digamma": "\\psi",
     "trigamma": "\\psi_1",
-    "ln_gamma": "\\operatorname{ln} \\Gamma"
+    "ln_gamma": "\\operatorname{ln} \\Gamma",
+    "log10": "\\operatorname{log}_{10}",
+    "log2": "\\operatorname{log}_{2}"
   };
 
   let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"];

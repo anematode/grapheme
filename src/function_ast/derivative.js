@@ -518,7 +518,7 @@ function operator_derivative (opNode, variable = 'x') {
             children: [
               new OperatorNode({
                 operator: 'sech',
-                children: opNode.children[0].clone()
+                children: [ opNode.children[0].clone() ]
               }),
               new ConstantNode({ value: 2 })
             ]

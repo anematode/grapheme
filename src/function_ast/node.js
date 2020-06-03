@@ -280,7 +280,9 @@ const OperatorNames = {
   "gamma": "\\Gamma",
   "digamma": "\\psi",
   "trigamma": "\\psi_1",
-  "ln_gamma": "\\operatorname{ln} \\Gamma"
+  "ln_gamma": "\\operatorname{ln} \\Gamma",
+  "log10": "\\operatorname{log}_{10}",
+  "log2": "\\operatorname{log}_{2}"
 }
 
 let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"]
