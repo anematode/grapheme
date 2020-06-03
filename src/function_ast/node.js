@@ -4,11 +4,31 @@
 import { operator_derivative } from './derivative'
 import * as utils from "../core/utils"
 import { Real } from '../math/arbitrary_prec'
+import { StandardLabelFunction } from '../elements/gridlines'
 
 // List of operators (currently)
 // +, -, *, /, ^,
 
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
+
+let floatRepresentabilityTester
+
+function isExactlyRepresentableAsFloat(f) {
+  if (typeof f === "number")
+    return true
+  if (!floatRepresentabilityTester)
+    floatRepresentabilityTester = new Real(0, 53)
+  floatRepresentabilityTester.value = f
+
+  let matchIntegralComponent = /[0-9]*\./
+
+  if (floatRepresentabilityTester.value.replace(/0+$/,'').replace(matchIntegralComponent, '') ===
+    f.replace(matchIntegralComponent, '')) {
+    return true
+  }
+
+  return false
+}
 
 class ASTNode {
   constructor (params = {}) {
@@ -63,6 +83,10 @@ class ASTNode {
     return "node"
   }
 
+  _getIntervalCompileText(defineVariable) {
+    return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
+  }
+
   compileReal(precision=53) {
     let variableNames = this.getVariableNames()
 
@@ -76,8 +100,11 @@ class ASTNode {
           preamble += `${name}.set_pi()`
         else if (value === "e")
           preamble += `${name}.set_e()`
+        else if (isExactlyRepresentableAsFloat(value))
+          preamble += `${name}.value = ${value.toString()}; `
         else
           preamble += `${name}.value = "${value}"; `
+
       } else {
         preamble += `${name}.value = ${variable};`
       }
@@ -120,6 +147,19 @@ class ASTNode {
         return func
       }
     }
+  }
+
+  compileInterval() {
+    let variableNames = this.getVariableNames()
+    let preamble = ""
+
+    const defineVariable = (variable, expression) => {
+      preamble += `let ${variable}=${expression};`
+    }
+
+    let returnVal = this._getIntervalCompileText(defineVariable)
+
+    return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
   }
 
   compile () {
@@ -223,6 +263,12 @@ class VariableNode extends ASTNode {
     defineRealVariable(var_name, null, this.name)
 
     return var_name
+  }
+
+  _getIntervalCompileText(defineVariable) {
+    if (comparisonOperators.includes(this.name))
+      return '"' + this.name + '"'
+    return this.name
   }
 
   type() {
@@ -510,6 +556,12 @@ class OperatorNode extends ASTNode {
     }
   }
 
+  _getIntervalCompileText(defineVariable) {
+    const children_text = this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
+
+    return `Grapheme.Intervals['${this.operator}'](${children_text})`
+  }
+
   _getRealCompileText(defineRealVariable) {
     let children = this.children
     if (this.operator === "piecewise") {
@@ -626,12 +678,12 @@ class ConstantNode extends ASTNode {
 
     const {
       value = 0,
-      text = "0",
+      text = "",
       invisible = false
     } = params
 
     this.value = value
-    this.text = text
+    this.text = text ? text : StandardLabelFunction(value)
     this.invisible = invisible
   }
 
@@ -641,8 +693,15 @@ class ConstantNode extends ASTNode {
     return var_name
   }
 
-  _getIntervalCompileText(defineInterval) {
+  _getIntervalCompileText(defineVariable) {
+    let varName = '$' + utils.getRenderID()
+    if (isNaN(this.value)) {
+      defineVariable(varName, `new Interval(NaN, NaN, false, false, true, true)`)
+      return varName
+    }
 
+    defineVariable(varName, `new Interval(${this.value}, ${this.value}, true, true, true, true)`)
+    return varName
   }
 
   _getCompileText (defineVariable) {
@@ -672,5 +731,9 @@ class ConstantNode extends ASTNode {
 
 const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
 const LN10 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
+const ONE_THIRD = new OperatorNode({operator: '/', children: [
+  new ConstantNode({value: 1}),
+    new ConstantNode({value: 3})
+  ]})
 
-export { VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms, LN2, LN10 }
+export { ONE_THIRD, VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms, LN2, LN10, isExactlyRepresentableAsFloat }

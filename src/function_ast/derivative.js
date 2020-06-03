@@ -1,4 +1,4 @@
-import { ConstantNode, OperatorNode, LN2, LN10 } from './node'
+import { ConstantNode, OperatorNode, LN2, LN10, ONE_THIRD } from './node'
 
 function operator_derivative (opNode, variable = 'x') {
   let node
@@ -91,9 +91,12 @@ function operator_derivative (opNode, variable = 'x') {
         let node2 = new OperatorNode({ operator: '*' })
         let pow = new OperatorNode({ operator: '^' })
 
-        pow.children = [opNode.children[0].clone(), new ConstantNode({ value: power - 1 })]
+        pow.children = [opNode.children[0].clone(), new OperatorNode({operator: '-', children: [
+          opNode.children[1],
+          new ConstantNode({ value: 1 })]})]
+
         node2.children = [opNode.children[0].derivative(variable), pow]
-        node.children = [new ConstantNode({ value: power }), node2]
+        node.children = [opNode.children[1].clone(), node2]
 
         return node
       } else if (opNode.children[0] instanceof ConstantNode) {
@@ -296,15 +299,16 @@ function operator_derivative (opNode, variable = 'x') {
       return new OperatorNode({
         operator: '*',
         children: [
-          new ConstantNode({ value: 1 / 3 }),
+          ONE_THIRD.clone(),
           new OperatorNode({
             operator: '*',
             children: [
               new OperatorNode({
-                operator: '^',
+                operator: 'pow_rational',
                 children: [
                   opNode.children[0].clone(),
-                  new ConstantNode({ value: -2 / 3 })
+                  new ConstantNode({ value: -2 }),
+                  new ConstantNode({ value: 3 })
                 ]
               }),
               opNode.children[0].derivative(variable)
