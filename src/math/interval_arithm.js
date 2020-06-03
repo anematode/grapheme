@@ -265,11 +265,16 @@ function ABS(i1) {
   }
 }
 
+function int_pow(b, n) {
+  let prod = 1
+  for (let i = 0; i < n; ++i) {
+    prod *= b
+  }
+  return prod
+}
+
 // N is an integer
 function POW_N(i1, n) {
-  if (n % 0 !== 0)
-    return new Interval(0, 0, false, false)
-
   let isSet = i1.isSet()
 
   if (isSet) {
@@ -289,30 +294,39 @@ function POW_N(i1, n) {
       return RECIPROCAL(i1)
     }
 
-    let min = i1.min
-    let max = i1.max
-
-    let minPowed = Math.pow(min, n)
-    let maxPowed = Math.pow(max, n)
-
-    let defMin = i1.defMin
-    let defMax = i1.defMax
-    let contMin = i1.contMin
-    let contMax = i1.contMax
-
     if (n > 1) {
       // Positive integers
       // if even, then there is a turning point at x = 0. If odd, monotonically increasing
       // always continuous and well-defined
-      if (n % 2 === 0) {
-        if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
-          let maximumValue = Math.max(minPowed, maxPowed)
 
-          return new Interval(0, max, defMin, defMax, contMin, contMax)
+      let min = i1.min
+      let max = i1.max
+
+      let minPowed, maxPowed
+
+      if (n === 2) {
+        minPowed = min * min
+        maxPowed = max * max
+      } else if (n === 3) {
+        minPowed = min * min * min
+        maxPowed = max * max * max
+      } else {
+        minPowed = int_pow(min, n)
+        maxPowed = int_pow(max, n)
+      }
+
+      let defMin = i1.defMin
+      let defMax = i1.defMax
+      let contMin = i1.contMin
+      let contMax = i1.contMax
+
+      if (!(n & 1)) {
+        let maxValue = Math.max(minPowed, maxPowed)
+        if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
+          return new Interval(0, maxValue, defMin, defMax, contMin, contMax)
         } else {
           // if 0 is not included, then it's [min(min^n, max^n), max(min^n, max^n)]
           let minValue = Math.min(minPowed, maxPowed)
-          let maxValue = Math.max(minPowed, maxPowed)
 
           return new Interval(minValue, maxValue, defMin, defMax, contMin, contMax)
         }
@@ -410,7 +424,7 @@ function POW_RATIONAL(i1, p, q) {
       return POW_N(i1, 0)
     }
 
-    if (q % 2 === 0) {
+    if (!(q & 1)) {
       // If the denominator is even then we can treat it like a real number
       return POW_R(i1, p / q)
     }
@@ -430,11 +444,11 @@ function POW_RATIONAL(i1, p, q) {
     let minAttained = Math.min(absMinPowed, absMaxPowed)
     let maxAttained = Math.max(absMinPowed, absMaxPowed)
 
-    if (p % 2 === 1 && min < 0) {
+    if (!(p & 1) && min < 0) {
       minAttained *= -1
     }
 
-    if (p % 2 === 0) {
+    if (!(p & 1)) {
       if (p > 0) {
         // p / q with even, positive p and odd q
         // Continuous
@@ -687,6 +701,8 @@ function LESS_THAN(i1, i2) {
 
   ret.defMin = i1.defMin && i2.defMin
   ret.defMax = i1.defMax && i2.defMax
+  ret.contMin = i1.contMin && i2.contMin
+  ret.contMax = i1.contMax || i2.contMax
 
   return ret
 }
@@ -707,6 +723,8 @@ function LESS_EQUAL_THAN(i1, i2) {
 
   ret.defMin = i1.defMin && i2.defMin
   ret.defMax = i1.defMax && i2.defMax
+  ret.contMin = i1.contMin && i2.contMin
+  ret.contMax = i1.contMax || i2.contMax
 
   return ret
 }
@@ -734,6 +752,8 @@ function EQUAL(i1, i2) {
 
   ret.defMin = i1.defMin && i2.defMin
   ret.defMax = i1.defMax && i2.defMax
+  ret.contMin = i1.contMin && i2.contMin
+  ret.contMax = i1.contMax || i2.contMax
 
   return ret
 }

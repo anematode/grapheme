@@ -696,11 +696,11 @@ class ConstantNode extends ASTNode {
   _getIntervalCompileText(defineVariable) {
     let varName = '$' + utils.getRenderID()
     if (isNaN(this.value)) {
-      defineVariable(varName, `new Interval(NaN, NaN, false, false, true, true)`)
+      defineVariable(varName, `new Grapheme.Interval(NaN, NaN, false, false, true, true)`)
       return varName
     }
 
-    defineVariable(varName, `new Interval(${this.value}, ${this.value}, true, true, true, true)`)
+    defineVariable(varName, `new Grapheme.Interval(${this.value}, ${this.value}, true, true, true, true)`)
     return varName
   }
 

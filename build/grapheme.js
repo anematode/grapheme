@@ -8164,11 +8164,11 @@ var Grapheme = (function (exports) {
     _getIntervalCompileText(defineVariable) {
       let varName = '$' + getRenderID();
       if (isNaN(this.value)) {
-        defineVariable(varName, `new Interval(NaN, NaN, false, false, true, true)`);
+        defineVariable(varName, `new Grapheme.Interval(NaN, NaN, false, false, true, true)`);
         return varName
       }
 
-      defineVariable(varName, `new Interval(${this.value}, ${this.value}, true, true, true, true)`);
+      defineVariable(varName, `new Grapheme.Interval(${this.value}, ${this.value}, true, true, true, true)`);
       return varName
     }
 
@@ -11425,11 +11425,16 @@ void main() {
     }
   }
 
+  function int_pow(b, n) {
+    let prod = 1;
+    for (let i = 0; i < n; ++i) {
+      prod *= b;
+    }
+    return prod
+  }
+
   // N is an integer
   function POW_N(i1, n) {
-    if (n % 0 !== 0)
-      return new Interval(0, 0, false, false)
-
     let isSet = i1.isSet();
 
     if (isSet) {
@@ -11449,29 +11454,39 @@ void main() {
         return RECIPROCAL(i1)
       }
 
-      let min = i1.min;
-      let max = i1.max;
-
-      let minPowed = Math.pow(min, n);
-      let maxPowed = Math.pow(max, n);
-
-      let defMin = i1.defMin;
-      let defMax = i1.defMax;
-      let contMin = i1.contMin;
-      let contMax = i1.contMax;
-
       if (n > 1) {
         // Positive integers
         // if even, then there is a turning point at x = 0. If odd, monotonically increasing
         // always continuous and well-defined
-        if (n % 2 === 0) {
-          if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
 
-            return new Interval(0, max, defMin, defMax, contMin, contMax)
+        let min = i1.min;
+        let max = i1.max;
+
+        let minPowed, maxPowed;
+
+        if (n === 2) {
+          minPowed = min * min;
+          maxPowed = max * max;
+        } else if (n === 3) {
+          minPowed = min * min * min;
+          maxPowed = max * max * max;
+        } else {
+          minPowed = int_pow(min, n);
+          maxPowed = int_pow(max, n);
+        }
+
+        let defMin = i1.defMin;
+        let defMax = i1.defMax;
+        let contMin = i1.contMin;
+        let contMax = i1.contMax;
+
+        if (!(n & 1)) {
+          let maxValue = Math.max(minPowed, maxPowed);
+          if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
+            return new Interval(0, maxValue, defMin, defMax, contMin, contMax)
           } else {
             // if 0 is not included, then it's [min(min^n, max^n), max(min^n, max^n)]
             let minValue = Math.min(minPowed, maxPowed);
-            let maxValue = Math.max(minPowed, maxPowed);
 
             return new Interval(minValue, maxValue, defMin, defMax, contMin, contMax)
           }
@@ -11564,7 +11579,7 @@ void main() {
         return POW_N(i1, 0)
       }
 
-      if (q % 2 === 0) {
+      if (!(q & 1)) {
         // If the denominator is even then we can treat it like a real number
         return POW_R(i1, p / q)
       }
@@ -11584,11 +11599,11 @@ void main() {
       let minAttained = Math.min(absMinPowed, absMaxPowed);
       let maxAttained = Math.max(absMinPowed, absMaxPowed);
 
-      if (p % 2 === 1 && min < 0) {
+      if (!(p & 1) && min < 0) {
         minAttained *= -1;
       }
 
-      if (p % 2 === 0) {
+      if (!(p & 1)) {
         if (p > 0) {
           // p / q with even, positive p and odd q
           // Continuous
@@ -11802,6 +11817,8 @@ void main() {
 
     ret.defMin = i1.defMin && i2.defMin;
     ret.defMax = i1.defMax && i2.defMax;
+    ret.contMin = i1.contMin && i2.contMin;
+    ret.contMax = i1.contMax || i2.contMax;
 
     return ret
   }
@@ -11822,6 +11839,8 @@ void main() {
 
     ret.defMin = i1.defMin && i2.defMin;
     ret.defMax = i1.defMax && i2.defMax;
+    ret.contMin = i1.contMin && i2.contMin;
+    ret.contMax = i1.contMax || i2.contMax;
 
     return ret
   }
@@ -11849,6 +11868,8 @@ void main() {
 
     ret.defMin = i1.defMin && i2.defMin;
     ret.defMax = i1.defMax && i2.defMax;
+    ret.contMin = i1.contMin && i2.contMin;
+    ret.contMax = i1.contMax || i2.contMax;
 
     return ret
   }
@@ -11906,6 +11927,210 @@ void main() {
   };
   Object.freeze(Intervals);
 
+  const vertexShaderSource$1 = `// set the float precision of the shader to medium precision
+precision mediump float;
+// a vector containing the 2D position of the vertex
+attribute vec2 v_position;
+uniform vec2 xy_scale;
+vec2 displace = vec2(-1, 1);
+void main() {
+  // set the vertex's resultant position
+  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
+}`;
+  // this frag shader is used for the polylines
+  const fragmentShaderSource$1 = `// set the float precision of the shader to medium precision
+precision mediump float;
+// vec4 containing the color of the line to be drawn
+uniform vec4 line_color;
+void main() {
+  gl_FragColor = line_color;
+}`;
+
+  class EquationDisplayElement extends WebGLElement {
+    constructor(params={}) {
+      super(params);
+
+      this.color = Colors.RED;
+
+      this.needsBufferCopy = true;
+      this.gl_vertices = [];
+    }
+
+    calculateOffIntervalFunc(compiled, transform) {
+      let gl_vertices = this.gl_vertices;
+
+      gl_vertices.length = 0;
+
+      let plotToPixel = transform.getPlotToPixelTransform();
+      let pixelToPlot = transform.getPixelToPlotTransform();
+
+      let yRes = Math.abs(pixelToPlot.y_m / dpr);
+      let xRes = Math.abs(pixelToPlot.x_m / dpr);
+
+      // rectangles are stored as xmin, xmax, ymin, ymax
+
+      let rectangles = [transform.coords.x1, transform.coords.x2, transform.coords.y1, transform.coords.y2];
+
+      let {x_m, y_m, x_b, y_b} = plotToPixel;
+
+      let thickness = 1;
+
+      for (let k = 0; k < 20; ++k) {
+        let new_rectangles = [];
+        for (let i = 0; i < rectangles.length; i += 4) {
+          // for each rectangle
+
+          let xmin = rectangles[i], xmax = rectangles[i + 1], ymin = rectangles[i + 2], ymax = rectangles[i + 3];
+          let xInterval = new Interval(xmin, xmax);
+          let yInterval = new Interval(ymin, ymax);
+
+          let result = compiled.func(xInterval, yInterval);
+
+          if (result.defMax === false)
+            continue
+
+          // If result is yes, or the resolution in both directions is sufficiently small, create a rectangle
+          if (result.min === 1 || (xmax - xmin < xRes && ymax - ymin < yRes)) {
+            let xminPixel = x_m * xmin + x_b;
+            let yminPixel = y_m * ymin + y_b;
+            let xmaxPixel = x_m * xmax + x_b;
+            let ymaxPixel = y_m * ymax + y_b;
+
+            gl_vertices.push(xminPixel - thickness, yminPixel - thickness, xminPixel - thickness, ymaxPixel + thickness, xmaxPixel + thickness, yminPixel - thickness, xmaxPixel + thickness, ymaxPixel + thickness, NaN, NaN);
+            continue
+          }
+          // If result is maybe, split into four smaller rectangles
+          if (result.max === 1) {
+            let midX = (xmin + xmax) / 2, midY = (ymin + ymax) / 2;
+            new_rectangles.push(xmin, midX, ymin, midY, xmin, midX, midY, ymax, midX, xmax, ymin, midY, midX, xmax, midY, ymax);
+            continue
+          }
+          // If result is no, do nothing
+        }
+
+        rectangles = new_rectangles;
+      }
+
+      this.needsBufferCopy = true;
+    }
+
+    render(info) {
+      super.render(info);
+
+      if (this.gl_vertices.length < 6)
+        return
+
+      const glManager = info.universe.glManager;
+      const gl = info.universe.gl;
+
+      let program = glManager.getProgram('equation');
+
+      if (!program) {
+        glManager.compileProgram('equation', vertexShaderSource$1, fragmentShaderSource$1, ['v_position'], ['line_color', 'xy_scale']);
+        program = glManager.getProgram('equation');
+      }
+
+      let buffer = glManager.getBuffer(this.id);
+
+      gl.useProgram(program.program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+      let color = this.color;
+      gl.uniform4f(program.uniforms.line_color, color.r / 255, color.g / 255, color.b / 255, color.a / 255);
+      gl.uniform2f(program.uniforms.xy_scale, 2 / info.plot.width, -2 / info.plot.height);
+
+      if (this.needsBufferCopy) {
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.gl_vertices), gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+        this.needsBufferCopy = false;
+      }
+
+      gl.enableVertexAttribArray(program.attribs.v_position);
+      gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.gl_vertices.length / 2);
+    }
+  }
+
+  class EquationPlot2D extends InteractiveElement {
+    constructor(params={}) {
+      super(params);
+
+      this.equation = parse_string("x^2+y==y^5+x^3");
+      this.visible = true;
+
+      this.updateIntervalFunc();
+      this.update();
+
+      this.displayedElement = new EquationDisplayElement();
+
+      this.addEventListener("plotcoordschanged", () => this.updateLight());
+      this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 200 * Math.random());
+      });
+    }
+
+    setEquation(text) {
+      this.equation = parse_string(text);
+
+      this.updateIntervalFunc();
+    }
+
+    updateIntervalFunc() {
+      this.intervalFunc = this.equation.compileInterval();
+    }
+
+    update() {
+      if (this.plot) {
+        this.displayedElement.calculateOffIntervalFunc(this.intervalFunc, this.plot.transform);
+        this.previousTransform = this.plot.transform.clone();
+      }
+    }
+
+    updateLight(adaptThickness=true) {
+      if (!this.previousTransform)
+        return
+
+      let transform = this.plot.transform;
+
+      let arr = this.displayedElement.gl_vertices;
+
+      let newland = this.previousTransform.getPixelToPlotTransform();
+      let harvey = transform.getPlotToPixelTransform();
+
+      let x_m = harvey.x_m * newland.x_m;
+      let x_b = harvey.x_m * newland.x_b + harvey.x_b;
+      let y_m = harvey.y_m * newland.y_m;
+      let y_b = harvey.y_m * newland.y_b + harvey.y_b;
+
+      let length = arr.length;
+
+      for (let i = 0; i < length; i += 2) {
+        arr[i] = x_m * arr[i] + x_b;
+        arr[i+1] = y_m * arr[i+1] + y_b;
+      }
+
+      this.displayedElement.needsBufferCopy = true;
+
+      this.previousTransform = transform.clone();
+    }
+
+    render(info) {
+      if (this.visible) {
+        const gl = info.universe.gl;
+
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(box.top_left.x * dpr,
+          box.top_left.y * dpr,
+          box.width * dpr,
+          box.height * dpr);
+
+        this.displayedElement.render(info);
+
+        gl.disable(gl.SCISSOR_TEST);
+      }
+    }
+  }
+
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
@@ -11914,6 +12139,7 @@ void main() {
   exports.ConstantNode = ConstantNode;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.DefaultUniverse = DefaultUniverse;
+  exports.EquationPlot2D = EquationPlot2D;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.Functions = Functions;
   exports.GridlineStrategizers = GridlineStrategizers;
