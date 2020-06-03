@@ -193,6 +193,18 @@ function GeometryASMFunctionsCreate(stdlib, foreign, buffer) {
       }
     }
 
+    if (y3 != y3) {
+      if (y2 == y2) {
+        return 3
+      }
+    }
+
+    if (y1 != y1) {
+      if (y2 == y2) {
+        return 3
+      }
+    }
+
     return 0
   }
 

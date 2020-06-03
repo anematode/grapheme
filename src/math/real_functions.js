@@ -167,11 +167,41 @@ const PRECISE_REAL_FUNCTIONS = {
     r1.logb_real(b)
     return r1
   },
-
+  'gamma': (r1) => {
+    r1.gamma()
+    return r1
+  },
+  'ln_gamma': (r1) => {
+    r1.ln_gamma()
+    return r1
+  },
+  'factorial': (r1) => {
+    r1.factorial()
+    return r1
+  },
+  'digamma': (r1) => {
+    r1.digamma()
+    return r1
+  }
 }
 
-
+import {polygamma, trigamma} from './gamma_function'
 
 const APPROXIMATE_REAL_FUNCTIONS = {
+  "polygamma": (m, r1) => {
+    let f = r1.approximate_as_float()
 
+    r1.set_value(polygamma(m, f))
+
+    return r1
+  },
+  "trigamma": (r1) => {
+    let f = r1.approximate_as_float()
+
+    r1.set_value(trigamma(f))
+
+    return r1
+  }
 }
+
+const REAL_FUNCTIONS = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS}

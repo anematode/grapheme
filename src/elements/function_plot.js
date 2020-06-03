@@ -24,7 +24,7 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = plottingMode
-    this.quality = 1
+    this.quality = 0.3
 
     this.function = (x) => Math.atan(x)
 
