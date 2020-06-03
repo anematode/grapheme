@@ -68,11 +68,13 @@ public:
     void asech();
     void acsch();
     void acoth();
+    void abs();
     void gamma();
     void ln_gamma();
     void factorial();
     void digamma();
     void set_pi();
+    void set_e();
     int is_nan();
     int is_inf();
     bool equals(Real&);

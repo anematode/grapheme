@@ -301,7 +301,18 @@ const gcd = function(a, b) {
   return gcd(b, a % b);
 }
 
+const benchmark = function(callback, iterations=100, output=console.log) {
+  let start = performance.now()
+
+  for (let i = 0; i < iterations; ++i)
+    callback(i)
+
+  let duration = performance.now() - start
+
+  output(`Function ${callback.name} took ${duration / iterations} ms per call.`)
+}
+
 export {
-  gcd, expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
+  benchmark, gcd, expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
   isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
 }

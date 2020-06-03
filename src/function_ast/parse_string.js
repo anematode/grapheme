@@ -77,6 +77,8 @@ function* tokenizer(string) {
   let i = 0
   let prev_len = string.length
 
+  let original_string = string
+
   while (string) {
     string = string.trim()
 
@@ -159,7 +161,7 @@ function* tokenizer(string) {
         break
       }
 
-      get_angry_at(string, i, "Unrecognized token")
+      get_angry_at(original_string, i, "Unrecognized token")
     } while (false)
 
     let len = match[0].length
@@ -173,7 +175,8 @@ function check_valid(string, tokens) {
     let token1 = tokens[i]
     let token2 = tokens[i+1]
 
-    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") && (token2.op !== '-' || i === tokens.length - 2))
+    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
+      (!(token2.op === '-' && token2.op === '+') || i === tokens.length - 2))
       get_angry_at(string, token2.index, "No consecutive operators/commas")
     if (token1.paren === "(" && token2.paren === ")")
       get_angry_at(string, token2.index, "No empty parentheses")
@@ -193,7 +196,7 @@ function check_valid(string, tokens) {
       get_angry_at(string, token2.index, "No comma after starting bracket")
   }
 
-  if (tokens[0].type === "comma" || tokens[0].type === "operator")
+  if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
     get_angry_at(string, 0, "No starting comma/operator")
 
   const last_token = tokens[tokens.length - 1]
@@ -221,7 +224,7 @@ function parse_tokens(tokens) {
 
     switch (token.type) {
       case "constant":
-        tokens[i] = new ConstantNode({value: token.value})
+        tokens[i] = new ConstantNode({value: parseFloat(token.value), text: token.value})
         break
       case "variable":
         tokens[i] = new VariableNode({name: token.name})
@@ -264,7 +267,7 @@ function parse_tokens(tokens) {
 
       if (first_child) {
         if (first_child.op === '+' || first_child.op === '-') {
-          children.splice(0, 0, new ConstantNode({value: 0}))
+          children.splice(0, 0, new ConstantNode({value: 0, invisible: true}))
         }
       }
     }

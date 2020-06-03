@@ -59,8 +59,10 @@ interface Real {
     void ln_gamma();
     void digamma();
     void set_pi();
+    void set_e();
     long is_nan();
     long is_inf();
+    void abs();
     boolean equals([Ref] Real r);
     boolean greater_than([Ref] Real r);
     boolean greater_equal_than([Ref] Real r);

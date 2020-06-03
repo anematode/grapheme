@@ -1,4 +1,58 @@
 
+function cchain(val1, compare, val2, ...args) {
+  if (!val2) {
+    return false
+  }
+
+  switch (compare) {
+    case '<':
+      if (!val1.less_than(val2))
+        return false
+      break
+    case '>':
+      if (!val1.greater_than(val2))
+        return false
+      break
+    case '<=':
+      if (!val1.less_equal_than(val2))
+        return false
+      break
+    case '>=':
+      if (!val1.greater_equal_than(val2))
+        return false
+      break
+    case '==':
+      if (!val1.equals(val2))
+        return false
+      break
+    case '!=':
+      if (val1.equals(val2))
+        return false
+      break
+  }
+
+  if (args.length > 0)
+    return cchain(val2, ...args)
+
+  return true
+}
+
+function piecewise(cond, val, ...args) {
+  if (!val) {
+    return cond
+  }
+
+  if (cond) {
+    return val
+  }
+
+  if (args.length === 0) {
+    // This is a fail
+    return val
+  } else {
+    return piecewise(...args)
+  }
+}
 
 const PRECISE_REAL_FUNCTIONS = {
   '*': (r1, r2) => {
@@ -182,7 +236,16 @@ const PRECISE_REAL_FUNCTIONS = {
   'digamma': (r1) => {
     r1.digamma()
     return r1
-  }
+  },
+  'cchain': cchain,
+  'ifelse': function (val1, cond, val2) {
+    if (cond) {
+      return val1
+    } else {
+      return val2
+    }
+  },
+  'piecewise': piecewise
 }
 
 import {polygamma, trigamma} from './gamma_function'
@@ -205,3 +268,5 @@ const APPROXIMATE_REAL_FUNCTIONS = {
 }
 
 const REAL_FUNCTIONS = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS}
+
+export {REAL_FUNCTIONS}

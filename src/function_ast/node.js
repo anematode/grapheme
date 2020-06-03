@@ -3,6 +3,7 @@
 
 import { operator_derivative } from './derivative'
 import * as utils from "../core/utils"
+import { Real } from '../math/arbitrary_prec'
 
 // List of operators (currently)
 // +, -, *, /, ^,
@@ -62,6 +63,65 @@ class ASTNode {
     return "node"
   }
 
+  compileReal(precision=53) {
+    let variableNames = this.getVariableNames()
+
+    let Variables = {}
+    let preamble = ""
+
+    const defineRealVariable = (name, value, variable) => {
+      Variables[name] = new Real(precision)
+      if (value) {
+        if (value === "pi")
+          preamble += `${name}.set_pi()`
+        else if (value === "e")
+          preamble += `${name}.set_e()`
+        else
+          preamble += `${name}.value = "${value}"; `
+      } else {
+        preamble += `${name}.value = ${variable};`
+      }
+    }
+
+    let text = this._getRealCompileText(defineRealVariable)
+
+    let realVarNames = Object.keys(Variables)
+    let realVars = realVarNames.map(name => Variables[name])
+
+    let func = new Function(...realVarNames, ...variableNames, `${preamble}
+      return ${text};`)
+    let isValid = true
+
+    return {
+      isValid() {
+        return isValid
+      },
+      set_precision: (prec) => {
+        if (!isValid)
+          throw new Error("Already freed compiled real function!")
+        realVars.forEach(variable => variable.set_precision(prec))
+      },
+      evaluate: (...args) => {
+        if (!isValid)
+          throw new Error("Already freed compiled real function!")
+        return func(...realVars, ...args)
+      },
+      variable_list: variableNames,
+      free() {
+        if (!isValid)
+          throw new Error("Already freed compiled real function!")
+        isValid = false
+
+        realVars.forEach(variable => variable.__destroy__())
+      },
+      _get_func() {
+        if (!isValid)
+          throw new Error("Already freed compiled real function!")
+        return func
+      }
+    }
+  }
+
   compile () {
     let variableNames = this.getVariableNames()
 
@@ -110,6 +170,10 @@ class ASTNode {
     return this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join('+')
   }
 
+  _getRealCompileText(defineRealVariable) {
+    return this.children.map(child => '(' + child._getRealCompileText(defineRealVariable) + ')').join('+')
+  }
+
   clone () {
     let node = new ASTNode()
 
@@ -117,6 +181,16 @@ class ASTNode {
 
     return node
   }
+}
+
+const greek = [ "alpha", "beta", "gamma", "Gamma", "delta", "Delta", "epsilon", "zeta", "eta", "theta", "Theta", "iota", "kappa", "lambda", "Lambda", "mu", "nu", "xi", "Xi", "pi", "Pi", "rho", "Rho", "sigma", "Sigma", "tau", "phi", "Phi", "chi", "psi", "Psi", "omega", "Omega" ]
+
+function substituteGreekLetters(string) {
+  if (greek.includes(string)) {
+    return '\\' + string
+  }
+
+  return string
 }
 
 class VariableNode extends ASTNode {
@@ -138,6 +212,17 @@ class VariableNode extends ASTNode {
     if (comparisonOperators.includes(this.name))
       return '"' + this.name + '"'
     return this.name
+  }
+
+  _getRealCompileText(defineRealVariable) {
+    if (comparisonOperators.includes(this.name)) {
+      return `'${this.name}'`
+    }
+    let var_name = '$' + utils.getRenderID()
+
+    defineRealVariable(var_name, null, this.name)
+
+    return var_name
   }
 
   type() {
@@ -167,7 +252,8 @@ class VariableNode extends ASTNode {
           return "\\neq "
       }
     }
-    return this.name
+
+    return substituteGreekLetters(this.name)
   }
 
   getText () {
@@ -424,6 +510,29 @@ class OperatorNode extends ASTNode {
     }
   }
 
+  _getRealCompileText(defineRealVariable) {
+    let children = this.children
+    if (this.operator === "piecewise") {
+      if (children.length % 2 === 0) {
+        // add default value of 0
+        children = children.slice()
+        children.push(new ConstantNode({value: 0, text: "0"}))
+      }
+    }
+
+    if (this.operator === "ifelse") {
+      if (children.length === 2) {
+        // add default value of 0
+        children.push(new ConstantNode({value: 0, text: "0"}))
+        return
+      }
+    }
+
+    const children_text = children.map(child => child._getRealCompileText(defineRealVariable)).join(',')
+
+    return `Grapheme.REAL_FUNCTIONS['${this.operator}'](${children_text})`
+  }
+
   _getCompileText (defineVariable) {
 
     switch (this.operator) {
@@ -516,10 +625,24 @@ class ConstantNode extends ASTNode {
     super()
 
     const {
-      value = 0
+      value = 0,
+      text = "0",
+      invisible = false
     } = params
 
     this.value = value
+    this.text = text
+    this.invisible = invisible
+  }
+
+  _getRealCompileText(defineRealVariable) {
+    let var_name = '$' + utils.getRenderID()
+    defineRealVariable(var_name, this.text)
+    return var_name
+  }
+
+  _getIntervalCompileText(defineInterval) {
+
   }
 
   _getCompileText (defineVariable) {
@@ -531,7 +654,7 @@ class ConstantNode extends ASTNode {
   }
 
   getText () {
-    return '' + this.value
+    return this.invisible ? '' : this.text
   }
 
   latex() {
@@ -543,10 +666,9 @@ class ConstantNode extends ASTNode {
   }
 
   clone () {
-    return new ConstantNode({ value: this.value })
+    return new ConstantNode({ value: this.value, invisible: this.invisible, text: this.text })
   }
 }
-
 
 const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
 const LN10 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})

@@ -241,7 +241,7 @@ void Real::acot() {
             cotAdd.set_precision(prec);
             mpfr_const_pi(cotAdd.ptr, MPFR_RNDN);
         }
-        mpfr_add(ptr, ptr, cotAdd.ptr);
+        mpfr_add(ptr, ptr, cotAdd.ptr, MPFR_RNDN);
     }
 }
 
@@ -349,6 +349,15 @@ void Real::logb_real(Real& r) {
     mpfr_log(r.ptr, r.ptr, MPFR_RNDN);
     mpfr_log(ptr, ptr, MPFR_RNDN);
     mpfr_div(ptr, ptr, r.ptr, MPFR_RNDN);
-}a
+}
+
+void Real::abs() {
+    mpfr_abs(ptr, ptr, MPFR_RNDN);
+}
+
+void Real::set_e() {
+    mpfr_set_d(ptr, 1, MPFR_RNDN);
+    mpfr_exp(ptr, ptr, MPFR_RNDN);
+}
 
 }
