@@ -75,6 +75,12 @@ public:
     void set_pi();
     int is_nan();
     int is_inf();
+    bool equals(Real&);
+    bool greater_than(Real&);
+    bool greater_equal_than(Real&);
+    bool less_than(Real&);
+    bool less_equal_than(Real&);
+    void logb_real(Real&);
 };
 
 }

@@ -28,4 +28,4 @@ class OvinusReal extends Real {
   }
 }
 
-export {OvinusReal as Real, Module}
+export {OvinusReal as Real}

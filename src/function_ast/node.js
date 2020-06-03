@@ -4,6 +4,9 @@
 import { operator_derivative } from './derivative'
 import * as utils from "../core/utils"
 
+// List of operators (currently)
+// +, -, *, /, ^,
+
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
 class ASTNode {
@@ -16,6 +19,13 @@ class ASTNode {
 
     this.children = children
     this.parent = parent
+  }
+
+  isConstant() {
+    if (this.children.length === 0)
+      return true
+
+    return this.children.every(child => child.isConstant())
   }
 
   hasChildren() {
@@ -120,6 +130,10 @@ class VariableNode extends ASTNode {
     this.name = name
   }
 
+  isConstant() {
+    return false
+  }
+
   _getCompileText (defineVariable) {
     if (comparisonOperators.includes(this.name))
       return '"' + this.name + '"'
@@ -204,7 +218,7 @@ const OperatorPatterns = {
   'atanh': ['Math.atanh'],
   'asec': ['Math.acos(1/', '+', ')'],
   'acsc': ['Math.asin(1/', '+', ')'],
-  'acot': ['Math.atan(1/', '+', ')'],
+  'acot': ['Grapheme.Functions.Arccot', ','],
   'acsch': ['Math.asinh(1/', '+', ')'],
   'asech': ['Math.acosh(1/', '+', ')'],
   'acoth': ['Math.atanh(1/', '+', ')'],
@@ -215,10 +229,11 @@ const OperatorPatterns = {
   'digamma': ['Grapheme.Functions.Digamma', ','],
   'trigamma': ['Grapheme.Functions.Trigamma', ','],
   'polygamma': ['Grapheme.Functions.Polygamma', ','],
+  'pow_rational': ['Grapheme.Functions.PowRational', ','],
   'max': ['Math.max', ','],
   'min': ['Math.min', ','],
   'floor': ['Math.floor', ','],
-  'ceil': ['Math.ceil', ','],
+  'ceil': ['Math.ceil', ',']
 }
 
 const OperatorSynonyms = {
@@ -245,7 +260,8 @@ const OperatorSynonyms = {
   "arccot": "acot",
   "arsec": "asec",
   "arcsc": "acsc",
-  "arcot": "acot"
+  "arcot": "acot",
+  "log": "ln"
 }
 
 const OperatorNames = {
@@ -263,7 +279,8 @@ const OperatorNames = {
   "acoth": "\\operatorname{coth}^{-1}",
   "gamma": "\\Gamma",
   "digamma": "\\psi",
-  "trigamma": "\\psi_1"
+  "trigamma": "\\psi_1",
+  "ln_gamma": "\\operatorname{ln} \\Gamma"
 }
 
 let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"]
@@ -324,6 +341,9 @@ class OperatorNode extends ASTNode {
         return `${this.children[0].latex()} > ${this.children[1].latex()}`
       case ">=":
         return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
+      case "pow_rational":
+        // Normally unused third child stores what the user actually inputted
+        return `${this.children[0].latex()}^{${this.children[3].latex()}}`
       case "factorial":
         let needs_parens = this.needsParentheses()
         let latex_n = this.children[0].latex()
@@ -332,6 +352,14 @@ class OperatorNode extends ASTNode {
           return `\\left(${latex_n}\\right)!`
         else
           return latex_n + '!'
+      case "logb":
+        let log_needs_parens = this.children[1].needsParentheses()
+        let base_needs_parens = this.children[0].needsParentheses()
+
+        let base = `${base_needs_parens ? '\\left(' : ''}${this.children[0].latex()}${base_needs_parens ? '\\right)' : ''}`
+        let log = `${log_needs_parens ? '\\left(' : ''}${this.children[1].latex()}${log_needs_parens ? '\\right)' : ''}`
+
+        return `\\operatorname{log}_{${base}}{${log}}`
       case "ifelse":
         return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
       case "cchain":
@@ -518,4 +546,7 @@ class ConstantNode extends ASTNode {
 }
 
 
-export { VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms }
+const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
+const LN10 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
+
+export { VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms, LN2, LN10 }

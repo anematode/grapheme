@@ -1,4 +1,4 @@
-import { ConstantNode, OperatorNode } from './node'
+import { ConstantNode, OperatorNode, LN2, LN10 } from './node'
 
 function operator_derivative (opNode, variable = 'x') {
   let node
@@ -630,68 +630,13 @@ function operator_derivative (opNode, variable = 'x') {
       })
     case 'acosh':
       return new OperatorNode({
-        operator: '*',
-        children: [new ConstantNode({ value: -1 }), new OperatorNode({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode({
-              operator: 'sqrt',
-              children: [
-                new OperatorNode({
-                  operator: '-',
-                  children: [
-                    new OperatorNode({
-                      operator: '^',
-                      children: [
-                        opNode.children[0].clone(),
-                        new ConstantNode({ value: 2 })
-                      ]
-                    }),
-                    new ConstantNode({ value: 1 })
-                  ]
-                })
-              ]
-            })
-          ]
-        })]
-      })
-    case 'atanh':
-    case 'acoth':
-      return new OperatorNode({
-        operator: '/',
-        children: [
-          opNode.children[0].derivative(variable),
-          new OperatorNode({
-            operator: '-',
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '*',
+          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            operator: '/',
             children: [
-              new ConstantNode({ value: 1 }),
-              new OperatorNode({
-                operator: '^',
-                children: [
-                  opNode.children[0].clone(),
-                  new ConstantNode({ value: 2 })
-                ]
-              })
-            ]
-          })
-        ]
-      })
-    case 'asech':
-      return new OperatorNode({
-        operator: '/',
-        children: [
-          new OperatorNode({
-            operator: '*',
-            children: [
-              new ConstantNode({ value: -1 }),
-              opNode.children[0].derivative(variable)
-            ]
-          }),
-          new OperatorNode({
-            operator: '*',
-            children: [
-              opNode.children[0].clone(),
+              opNode.children[0].derivative(variable),
               new OperatorNode({
                 operator: 'sqrt',
                 children: [
@@ -711,8 +656,87 @@ function operator_derivative (opNode, variable = 'x') {
                 ]
               })
             ]
-          })
-        ]
+          })]
+        }), new OperatorNode({
+          operator: '>=',
+          children: [opNode.children[0], new ConstantNode({ value: 1 })]
+        }),
+          new ConstantNode({ value: NaN })]
+      })
+    case 'atanh':
+      var isAtanh = true
+    case 'acoth':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [
+            opNode.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '-',
+              children: [
+                new ConstantNode({ value: 1 }),
+                new OperatorNode({
+                  operator: '^',
+                  children: [
+                    opNode.children[0].clone(),
+                    new ConstantNode({ value: 2 })
+                  ]
+                })
+              ]
+            })
+          ]
+        }), new OperatorNode({
+          operator: isAtanh ? '<=' : '>=',
+          children: [new OperatorNode({
+            operator: 'abs',
+            children: [opNode.children[0].clone()]
+          }), new ConstantNode({ value: 1 })]
+        }),
+          new ConstantNode({ value: NaN })]
+      })
+    case 'asech':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [
+            new OperatorNode({
+              operator: '*',
+              children: [
+                new ConstantNode({ value: -1 }),
+                opNode.children[0].derivative(variable)
+              ]
+            }),
+            new OperatorNode({
+              operator: '*',
+              children: [
+                opNode.children[0].clone(),
+                new OperatorNode({
+                  operator: 'sqrt',
+                  children: [
+                    new OperatorNode({
+                      operator: '-',
+                      children: [
+                        new ConstantNode({ value: 1 }),
+                        new OperatorNode({
+                          operator: '^',
+                          children: [
+                            opNode.children[0].clone(),
+                            new ConstantNode({ value: 2 })
+                          ]
+                        })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        }), new OperatorNode({
+          operator: '>',
+          children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+        }), new ConstantNode({ value: NaN })]
       })
     case 'acsch':
       return new OperatorNode({
@@ -751,27 +775,6 @@ function operator_derivative (opNode, variable = 'x') {
               })
             ]
           })
-        ]
-      })
-    case 'abs':
-      return new OperatorNode({
-        operator: 'ifelse',
-        children: [
-          new OperatorNode({
-            operator: '*',
-            children: [
-              new ConstantNode({ value: -1 }),
-              opNode.children[0].clone()
-            ]
-          }),
-          new OperatorNode({
-            operator: '<',
-            children: [
-              opNode.children[0].clone(),
-              new ConstantNode({ value: 0 })
-            ]
-          }),
-          opNode.children[0].clone()
         ]
       })
     case 'gamma':
@@ -816,40 +819,40 @@ function operator_derivative (opNode, variable = 'x') {
             operator: '*',
             children: [
               new ConstantNode({ value: -1 }),
-              opNode.derivative(variable)
+              opNode.children[0].derivative(variable)
             ]
           }),
           new OperatorNode({
             operator: '<',
             children: [
-              opNode.clone(),
+              opNode.children[0].clone(),
               new ConstantNode({ value: 0 })
             ]
           }),
-          opNode.derivative(variable)
+          opNode.children[0].derivative(variable)
         ]
       })
     case 'min':
       if (opNode.children.length === 0) {
-        return new ConstantNode({value: 0})
+        return new ConstantNode({ value: 0 })
       } else if (opNode.children.length === 1) {
         return opNode.children[0].derivative(variable)
       }
 
       // Translate to ifelse statement, then take derivative
-      let next_level = opNode.children.slice(1)
+      var next_level = opNode.children.slice(1)
 
       if (next_level.length === 1) {
         next_level = next_level[0].clone()
       } else {
         next_level = new OperatorNode({
-          operator: "min",
+          operator: 'min',
           children: next_level.clone()
         })
       }
 
       return new OperatorNode({
-        operator: "ifelse",
+        operator: 'ifelse',
         children: [
           opNode.children[0].derivative(variable),
           new OperatorNode({
@@ -862,10 +865,43 @@ function operator_derivative (opNode, variable = 'x') {
           next_level.derivative(variable)
         ]
       })
-    case "floor":
-      return new ConstantNode({value: 0})
-    case "ceil":
-      return new ConstantNode({value: 0})
+    case 'max':
+      if (opNode.children.length === 0) {
+        return new ConstantNode({ value: 0 })
+      } else if (opNode.children.length === 1) {
+        return opNode.children[0].derivative(variable)
+      }
+
+      // Translate to ifelse statement, then take derivative
+      var next_level = opNode.children.slice(1)
+
+      if (next_level.length === 1) {
+        next_level = next_level[0].clone()
+      } else {
+        next_level = new OperatorNode({
+          operator: 'max',
+          children: next_level.map(cow => cow.clone())
+        })
+      }
+
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [
+          opNode.children[0].derivative(variable),
+          new OperatorNode({
+            operator: '>',
+            children: [
+              opNode.children[0],
+              next_level
+            ]
+          }),
+          next_level.derivative(variable)
+        ]
+      })
+    case 'floor':
+      return new ConstantNode({ value: 0 })
+    case 'ceil':
+      return new ConstantNode({ value: 0 })
     case 'digamma':
       // digamma = polygamma(0, x)
       return new OperatorNode({
@@ -884,6 +920,19 @@ function operator_derivative (opNode, variable = 'x') {
           opNode.children[0]
         ]
       }).derivative(variable)
+    case 'ln_gamma':
+      return new OperatorNode({
+        operator: '*',
+        children: [
+          new OperatorNode({
+            operator: 'digamma',
+            children: [
+              opNode.children[0]
+            ]
+          }),
+          opNode.children[0].derivative(variable)
+        ]
+      })
     case 'polygamma':
       return new OperatorNode({
         operator: '*',
@@ -896,6 +945,73 @@ function operator_derivative (opNode, variable = 'x') {
         }),
           opNode.children[1].derivative(variable)
         ]
+      })
+    case 'ln':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [
+            opNode.children[0].derivative(variable),
+            opNode.children[0].clone()
+          ]
+        }), new OperatorNode({
+          operator: '>',
+          children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+        }), new ConstantNode({ value: NaN })]
+      })
+    case 'log10':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [
+            opNode.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '*',
+              children: [opNode.children[0].clone(), LN10.clone()]
+            })
+          ]
+        }), new OperatorNode({
+          operator: '>',
+          children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+        }), new ConstantNode({ value: NaN })]
+      })
+    case 'log2':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [
+            opNode.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '*',
+              children: [opNode.children[0], LN2.clone()]
+            })
+          ]
+        }), new OperatorNode({
+          operator: '>',
+          children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+        }), new ConstantNode({ value: NaN })]
+      })
+    case 'logb':
+      return new OperatorNode({
+        operator: 'ifelse',
+        children: [new OperatorNode({
+          operator: '/',
+          children: [new OperatorNode({
+            operator: 'ln',
+            children: [opNode.children[1]]
+          }).derivative(), new OperatorNode({
+            operator: 'ln',
+            children: [
+              opNode.children[0]
+            ]
+          })]
+        }), new OperatorNode({
+          operator: '>',
+          children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+        }), new ConstantNode({ value: NaN })]
       })
     default:
       // No symbolic derivative, oof

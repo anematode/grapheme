@@ -4074,68 +4074,13 @@ var Grapheme = (function (exports) {
         })
       case 'acosh':
         return new OperatorNode({
-          operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              new OperatorNode({
-                operator: 'sqrt',
-                children: [
-                  new OperatorNode({
-                    operator: '-',
-                    children: [
-                      new OperatorNode({
-                        operator: '^',
-                        children: [
-                          opNode.children[0].clone(),
-                          new ConstantNode({ value: 2 })
-                        ]
-                      }),
-                      new ConstantNode({ value: 1 })
-                    ]
-                  })
-                ]
-              })
-            ]
-          })]
-        })
-      case 'atanh':
-      case 'acoth':
-        return new OperatorNode({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode({
-              operator: '-',
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '*',
+            children: [new ConstantNode({ value: -1 }), new OperatorNode({
+              operator: '/',
               children: [
-                new ConstantNode({ value: 1 }),
-                new OperatorNode({
-                  operator: '^',
-                  children: [
-                    opNode.children[0].clone(),
-                    new ConstantNode({ value: 2 })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'asech':
-        return new OperatorNode({
-          operator: '/',
-          children: [
-            new OperatorNode({
-              operator: '*',
-              children: [
-                new ConstantNode({ value: -1 }),
-                opNode.children[0].derivative(variable)
-              ]
-            }),
-            new OperatorNode({
-              operator: '*',
-              children: [
-                opNode.children[0].clone(),
+                opNode.children[0].derivative(variable),
                 new OperatorNode({
                   operator: 'sqrt',
                   children: [
@@ -4155,8 +4100,87 @@ var Grapheme = (function (exports) {
                   ]
                 })
               ]
-            })
-          ]
+            })]
+          }), new OperatorNode({
+            operator: '>=',
+            children: [opNode.children[0], new ConstantNode({ value: 1 })]
+          }),
+            new ConstantNode({ value: NaN })]
+        })
+      case 'atanh':
+        var isAtanh = true;
+      case 'acoth':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [
+              opNode.children[0].derivative(variable),
+              new OperatorNode({
+                operator: '-',
+                children: [
+                  new ConstantNode({ value: 1 }),
+                  new OperatorNode({
+                    operator: '^',
+                    children: [
+                      opNode.children[0].clone(),
+                      new ConstantNode({ value: 2 })
+                    ]
+                  })
+                ]
+              })
+            ]
+          }), new OperatorNode({
+            operator: isAtanh ? '<=' : '>=',
+            children: [new OperatorNode({
+              operator: 'abs',
+              children: [opNode.children[0].clone()]
+            }), new ConstantNode({ value: 1 })]
+          }),
+            new ConstantNode({ value: NaN })]
+        })
+      case 'asech':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [
+              new OperatorNode({
+                operator: '*',
+                children: [
+                  new ConstantNode({ value: -1 }),
+                  opNode.children[0].derivative(variable)
+                ]
+              }),
+              new OperatorNode({
+                operator: '*',
+                children: [
+                  opNode.children[0].clone(),
+                  new OperatorNode({
+                    operator: 'sqrt',
+                    children: [
+                      new OperatorNode({
+                        operator: '-',
+                        children: [
+                          new ConstantNode({ value: 1 }),
+                          new OperatorNode({
+                            operator: '^',
+                            children: [
+                              opNode.children[0].clone(),
+                              new ConstantNode({ value: 2 })
+                            ]
+                          })
+                        ]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          }), new OperatorNode({
+            operator: '>',
+            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+          }), new ConstantNode({ value: NaN })]
         })
       case 'acsch':
         return new OperatorNode({
@@ -4195,27 +4219,6 @@ var Grapheme = (function (exports) {
                 })
               ]
             })
-          ]
-        })
-      case 'abs':
-        return new OperatorNode({
-          operator: 'ifelse',
-          children: [
-            new OperatorNode({
-              operator: '*',
-              children: [
-                new ConstantNode({ value: -1 }),
-                opNode.children[0].clone()
-              ]
-            }),
-            new OperatorNode({
-              operator: '<',
-              children: [
-                opNode.children[0].clone(),
-                new ConstantNode({ value: 0 })
-              ]
-            }),
-            opNode.children[0].clone()
           ]
         })
       case 'gamma':
@@ -4260,40 +4263,40 @@ var Grapheme = (function (exports) {
               operator: '*',
               children: [
                 new ConstantNode({ value: -1 }),
-                opNode.derivative(variable)
+                opNode.children[0].derivative(variable)
               ]
             }),
             new OperatorNode({
               operator: '<',
               children: [
-                opNode.clone(),
+                opNode.children[0].clone(),
                 new ConstantNode({ value: 0 })
               ]
             }),
-            opNode.derivative(variable)
+            opNode.children[0].derivative(variable)
           ]
         })
       case 'min':
         if (opNode.children.length === 0) {
-          return new ConstantNode({value: 0})
+          return new ConstantNode({ value: 0 })
         } else if (opNode.children.length === 1) {
           return opNode.children[0].derivative(variable)
         }
 
         // Translate to ifelse statement, then take derivative
-        let next_level = opNode.children.slice(1);
+        var next_level = opNode.children.slice(1);
 
         if (next_level.length === 1) {
           next_level = next_level[0].clone();
         } else {
           next_level = new OperatorNode({
-            operator: "min",
+            operator: 'min',
             children: next_level.clone()
           });
         }
 
         return new OperatorNode({
-          operator: "ifelse",
+          operator: 'ifelse',
           children: [
             opNode.children[0].derivative(variable),
             new OperatorNode({
@@ -4306,10 +4309,43 @@ var Grapheme = (function (exports) {
             next_level.derivative(variable)
           ]
         })
-      case "floor":
-        return new ConstantNode({value: 0})
-      case "ceil":
-        return new ConstantNode({value: 0})
+      case 'max':
+        if (opNode.children.length === 0) {
+          return new ConstantNode({ value: 0 })
+        } else if (opNode.children.length === 1) {
+          return opNode.children[0].derivative(variable)
+        }
+
+        // Translate to ifelse statement, then take derivative
+        var next_level = opNode.children.slice(1);
+
+        if (next_level.length === 1) {
+          next_level = next_level[0].clone();
+        } else {
+          next_level = new OperatorNode({
+            operator: 'max',
+            children: next_level.map(cow => cow.clone())
+          });
+        }
+
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [
+            opNode.children[0].derivative(variable),
+            new OperatorNode({
+              operator: '>',
+              children: [
+                opNode.children[0],
+                next_level
+              ]
+            }),
+            next_level.derivative(variable)
+          ]
+        })
+      case 'floor':
+        return new ConstantNode({ value: 0 })
+      case 'ceil':
+        return new ConstantNode({ value: 0 })
       case 'digamma':
         // digamma = polygamma(0, x)
         return new OperatorNode({
@@ -4328,6 +4364,19 @@ var Grapheme = (function (exports) {
             opNode.children[0]
           ]
         }).derivative(variable)
+      case 'ln_gamma':
+        return new OperatorNode({
+          operator: '*',
+          children: [
+            new OperatorNode({
+              operator: 'digamma',
+              children: [
+                opNode.children[0]
+              ]
+            }),
+            opNode.children[0].derivative(variable)
+          ]
+        })
       case 'polygamma':
         return new OperatorNode({
           operator: '*',
@@ -4341,6 +4390,73 @@ var Grapheme = (function (exports) {
             opNode.children[1].derivative(variable)
           ]
         })
+      case 'ln':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [
+              opNode.children[0].derivative(variable),
+              opNode.children[0].clone()
+            ]
+          }), new OperatorNode({
+            operator: '>',
+            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+          }), new ConstantNode({ value: NaN })]
+        })
+      case 'log10':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [
+              opNode.children[0].derivative(variable),
+              new OperatorNode({
+                operator: '*',
+                children: [opNode.children[0].clone(), LN10.clone()]
+              })
+            ]
+          }), new OperatorNode({
+            operator: '>',
+            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+          }), new ConstantNode({ value: NaN })]
+        })
+      case 'log2':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [
+              opNode.children[0].derivative(variable),
+              new OperatorNode({
+                operator: '*',
+                children: [opNode.children[0], LN2.clone()]
+              })
+            ]
+          }), new OperatorNode({
+            operator: '>',
+            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+          }), new ConstantNode({ value: NaN })]
+        })
+      case 'logb':
+        return new OperatorNode({
+          operator: 'ifelse',
+          children: [new OperatorNode({
+            operator: '/',
+            children: [new OperatorNode({
+              operator: 'ln',
+              children: [opNode.children[1]]
+            }).derivative(), new OperatorNode({
+              operator: 'ln',
+              children: [
+                opNode.children[0]
+              ]
+            })]
+          }), new OperatorNode({
+            operator: '>',
+            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
+          }), new ConstantNode({ value: NaN })]
+        })
       default:
         // No symbolic derivative, oof
         throw new Error('unimplemented')
@@ -4348,6 +4464,9 @@ var Grapheme = (function (exports) {
   }
 
   // const fs = require( ...
+
+  // List of operators (currently)
+  // +, -, *, /, ^,
 
   const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
 
@@ -4361,6 +4480,13 @@ var Grapheme = (function (exports) {
 
       this.children = children;
       this.parent = parent;
+    }
+
+    isConstant() {
+      if (this.children.length === 0)
+        return true
+
+      return this.children.every(child => child.isConstant())
     }
 
     hasChildren() {
@@ -4465,6 +4591,10 @@ var Grapheme = (function (exports) {
       this.name = name;
     }
 
+    isConstant() {
+      return false
+    }
+
     _getCompileText (defineVariable) {
       if (comparisonOperators.includes(this.name))
         return '"' + this.name + '"'
@@ -4549,7 +4679,7 @@ var Grapheme = (function (exports) {
     'atanh': ['Math.atanh'],
     'asec': ['Math.acos(1/', '+', ')'],
     'acsc': ['Math.asin(1/', '+', ')'],
-    'acot': ['Math.atan(1/', '+', ')'],
+    'acot': ['Grapheme.Functions.Arccot', ','],
     'acsch': ['Math.asinh(1/', '+', ')'],
     'asech': ['Math.acosh(1/', '+', ')'],
     'acoth': ['Math.atanh(1/', '+', ')'],
@@ -4560,10 +4690,11 @@ var Grapheme = (function (exports) {
     'digamma': ['Grapheme.Functions.Digamma', ','],
     'trigamma': ['Grapheme.Functions.Trigamma', ','],
     'polygamma': ['Grapheme.Functions.Polygamma', ','],
+    'pow_rational': ['Grapheme.Functions.PowRational', ','],
     'max': ['Math.max', ','],
     'min': ['Math.min', ','],
     'floor': ['Math.floor', ','],
-    'ceil': ['Math.ceil', ','],
+    'ceil': ['Math.ceil', ',']
   };
 
   const OperatorSynonyms = {
@@ -4590,7 +4721,8 @@ var Grapheme = (function (exports) {
     "arccot": "acot",
     "arsec": "asec",
     "arcsc": "acsc",
-    "arcot": "acot"
+    "arcot": "acot",
+    "log": "ln"
   };
 
   const OperatorNames = {
@@ -4608,7 +4740,8 @@ var Grapheme = (function (exports) {
     "acoth": "\\operatorname{coth}^{-1}",
     "gamma": "\\Gamma",
     "digamma": "\\psi",
-    "trigamma": "\\psi_1"
+    "trigamma": "\\psi_1",
+    "ln_gamma": "\\operatorname{ln} \\Gamma"
   };
 
   let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"];
@@ -4669,6 +4802,9 @@ var Grapheme = (function (exports) {
           return `${this.children[0].latex()} > ${this.children[1].latex()}`
         case ">=":
           return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
+        case "pow_rational":
+          // Normally unused third child stores what the user actually inputted
+          return `${this.children[0].latex()}^{${this.children[3].latex()}}`
         case "factorial":
           let needs_parens = this.needsParentheses();
           let latex_n = this.children[0].latex();
@@ -4677,6 +4813,14 @@ var Grapheme = (function (exports) {
             return `\\left(${latex_n}\\right)!`
           else
             return latex_n + '!'
+        case "logb":
+          let log_needs_parens = this.children[1].needsParentheses();
+          let base_needs_parens = this.children[0].needsParentheses();
+
+          let base = `${base_needs_parens ? '\\left(' : ''}${this.children[0].latex()}${base_needs_parens ? '\\right)' : ''}`;
+          let log = `${log_needs_parens ? '\\left(' : ''}${this.children[1].latex()}${log_needs_parens ? '\\right)' : ''}`;
+
+          return `\\operatorname{log}_{${base}}{${log}}`
         case "ifelse":
           return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
         case "cchain":
@@ -4861,6 +5005,10 @@ var Grapheme = (function (exports) {
       return new ConstantNode({ value: this.value })
     }
   }
+
+
+  const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]});
+  const LN10 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]});
 
   // a * b - c * d ^ g
 
@@ -5861,7 +6009,7 @@ void main() {
       let that = this; // ew
       let tri_strip_vertices_threshold = tri_strip_vertices.length - 2;
 
-      function addVertex(x, y) {
+      function addVertex (x, y) {
         if (gl_tri_strip_i > tri_strip_vertices_threshold) {
           // not enough space!!!!
 
@@ -5881,10 +6029,6 @@ void main() {
         }
       }
 
-      function duplicateVertex() {
-        addVertex(tri_strip_vertices[gl_tri_strip_i - 2], tri_strip_vertices[gl_tri_strip_i - 1]);
-      }
-
       let vertices = this.vertices;
       let original_vertex_count = vertices.length / 2;
 
@@ -5893,7 +6037,7 @@ void main() {
 
       let max_miter_length = th / Math.cos(this.join_res / 2);
 
-      let x1,x2,x3,y1,y2,y3;
+      let x1, x2, x3, y1, y2, y3;
       let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, nu_x, nu_y, pu_x, pu_y, dis;
 
       for (let i = 0; i < original_vertex_count; ++i) {
@@ -5922,8 +6066,9 @@ void main() {
             nu_y /= dis;
           }
 
-          if (isNaN(nu_x) || isNaN(nu_y))
-            continue; // undefined >:(
+          if (isNaN(nu_x) || isNaN(nu_y)) {
+            continue
+          } // undefined >:(
 
           if (this.endcap_type === 1) {
             // rounded endcap
@@ -5938,12 +6083,12 @@ void main() {
               addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
               addVertex(o_x, o_y);
             }
-            continue;
+            continue
           } else {
             // no endcap
             addVertex(x2 + th * nu_y, y2 - th * nu_x);
             addVertex(x2 - th * nu_y, y2 + th * nu_x);
-            continue;
+            continue
           }
         }
 
@@ -5960,8 +6105,9 @@ void main() {
             pu_y /= dis;
           }
 
-          if (isNaN(pu_x) || isNaN(pu_y))
-            continue; // undefined >:(
+          if (isNaN(pu_x) || isNaN(pu_y)) {
+            continue
+          } // undefined >:(
 
           addVertex(x2 + th * pu_y, y2 - th * pu_x);
           addVertex(x2 - th * pu_y, y2 + th * pu_x);
@@ -5978,117 +6124,112 @@ void main() {
               addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
               addVertex(o_x, o_y);
             }
-            continue;
+            continue
           } else {
-            break;
+            break
           }
         }
 
-        if (isNaN(x2) || isNaN(x2)) {
-          duplicateVertex();
-          need_to_dupe_vertex = true;
+        // all vertices are defined, time to draw a joinerrrrr
+        if (this.join_type === 2 || this.join_type === 3) {
+          // find the two angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
 
-          continue;
-        } else { // all vertices are defined, time to draw a joinerrrrr
-          if (this.join_type === 2 || this.join_type === 3) {
-            // find the two angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
+          v1x = x1 - x2;
+          v1y = y1 - y2;
+          v2x = x3 - x2;
+          v2y = y3 - y2;
 
-            v1x = x1 - x2;
-            v1y = y1 - y2;
-            v2x = x3 - x2;
-            v2y = y3 - y2;
+          v1l = Math.hypot(v1x, v1y);
+          v2l = Math.hypot(v2x, v2y);
 
-            v1l = Math.hypot(v1x, v1y);
-            v2l = Math.hypot(v2x, v2y);
+          b1_x = v2l * v1x + v1l * v2x, b1_y = v2l * v1y + v1l * v2y;
+          scale = 1 / Math.hypot(b1_x, b1_y);
 
-            b1_x = v2l * v1x + v1l * v2x, b1_y = v2l * v1y + v1l * v2y;
+          if (scale === Infinity || scale === -Infinity) {
+            b1_x = -v1y;
+            b1_y = v1x;
             scale = 1 / Math.hypot(b1_x, b1_y);
+          }
 
+          b1_x *= scale;
+          b1_y *= scale;
+
+          scale = th * v1l / (b1_x * v1y - b1_y * v1x);
+
+          if (this.join_type === 2 || (Math.abs(scale) < max_miter_length)) {
+            // if the length of the miter is massive and we're in dynamic mode, we exit this if statement and do a rounded join
             if (scale === Infinity || scale === -Infinity) {
-              b1_x = -v1y;
-              b1_y = v1x;
-              scale = 1 / Math.hypot(b1_x, b1_y);
+              scale = 1;
             }
 
             b1_x *= scale;
             b1_y *= scale;
 
-            scale = th * v1l / (b1_x * v1y - b1_y * v1x);
+            addVertex(x2 - b1_x, y2 - b1_y);
+            addVertex(x2 + b1_x, y2 + b1_y);
 
-            if (this.join_type === 2 || (Math.abs(scale) < max_miter_length)) {
-              // if the length of the miter is massive and we're in dynamic mode, we exit this if statement and do a rounded join
-              if (scale === Infinity || scale === -Infinity)
-                scale = 1;
-
-              b1_x *= scale;
-              b1_y *= scale;
-
-              addVertex(x2 - b1_x, y2 - b1_y);
-              addVertex(x2 + b1_x, y2 + b1_y);
-
-              continue;
-            }
+            continue
           }
-
-          nu_x = x3 - x2;
-          nu_y = y3 - y2;
-          dis = Math.hypot(nu_x, nu_y);
-
-          if (dis < 0.001) {
-            nu_x = 1;
-            nu_y = 0;
-          } else {
-            nu_x /= dis;
-            nu_y /= dis;
-          }
-
-          pu_x = x2 - x1;
-          pu_y = y2 - y1;
-          dis = Math.hypot(pu_x, pu_y);
-
-          if (dis === 0) {
-            pu_x = 1;
-            pu_y = 0;
-          } else {
-            pu_x /= dis;
-            pu_y /= dis;
-          }
-
-          addVertex(x2 + th * pu_y, y2 - th * pu_x);
-          addVertex(x2 - th * pu_y, y2 + th * pu_x);
-
-          if (this.join_type === 1 || this.join_type === 3) {
-            let a1 = Math.atan2(-pu_y, -pu_x) - Math.PI/2;
-            let a2 = Math.atan2(nu_y, nu_x) - Math.PI/2;
-
-            // if right turn, flip a2
-            // if left turn, flip a1
-
-            let start_a, end_a;
-
-            if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
-              // left turn
-              start_a = Math.PI + a1;
-              end_a = a2;
-            } else {
-              start_a = Math.PI + a2;
-              end_a = a1;
-            }
-
-            let angle_subtended = mod(end_a - start_a, 2 * Math.PI);
-            let steps_needed = Math.ceil(angle_subtended / this.join_res);
-
-            for (let i = 0; i <= steps_needed; ++i) {
-              let theta_c = start_a + angle_subtended * i / steps_needed;
-
-              addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
-              addVertex(x2, y2);
-            }
-          }
-
-          addVertex(x2 + th * nu_y, y2 - th * nu_x);
-          addVertex(x2 - th * nu_y, y2 + th * nu_x);
         }
+
+        nu_x = x3 - x2;
+        nu_y = y3 - y2;
+        dis = Math.hypot(nu_x, nu_y);
+
+        if (dis < 0.001) {
+          nu_x = 1;
+          nu_y = 0;
+        } else {
+          nu_x /= dis;
+          nu_y /= dis;
+        }
+
+        pu_x = x2 - x1;
+        pu_y = y2 - y1;
+        dis = Math.hypot(pu_x, pu_y);
+
+        if (dis === 0) {
+          pu_x = 1;
+          pu_y = 0;
+        } else {
+          pu_x /= dis;
+          pu_y /= dis;
+        }
+
+        addVertex(x2 + th * pu_y, y2 - th * pu_x);
+        addVertex(x2 - th * pu_y, y2 + th * pu_x);
+
+        if (this.join_type === 1 || this.join_type === 3) {
+          let a1 = Math.atan2(-pu_y, -pu_x) - Math.PI / 2;
+          let a2 = Math.atan2(nu_y, nu_x) - Math.PI / 2;
+
+          // if right turn, flip a2
+          // if left turn, flip a1
+
+          let start_a, end_a;
+
+          if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
+            // left turn
+            start_a = Math.PI + a1;
+            end_a = a2;
+          } else {
+            start_a = Math.PI + a2;
+            end_a = a1;
+          }
+
+          let angle_subtended = mod(end_a - start_a, 2 * Math.PI);
+          let steps_needed = Math.ceil(angle_subtended / this.join_res);
+
+          for (let i = 0; i <= steps_needed; ++i) {
+            let theta_c = start_a + angle_subtended * i / steps_needed;
+
+            addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
+            addVertex(x2, y2);
+          }
+        }
+
+        addVertex(x2 + th * nu_y, y2 - th * nu_x);
+        addVertex(x2 - th * nu_y, y2 + th * nu_x);
       }
 
       if (gl_tri_strip_i * 2 < tri_strip_vertices.length) {
@@ -6140,21 +6281,22 @@ void main() {
       this.needsBufferCopy = true;
     }
 
-    isClick(point) {
+    isClick (point) {
       return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
     }
 
-    distanceFrom(point) {
+    distanceFrom (point) {
       return point_line_segment_min_distance(point.x, point.y, this.vertices)
     }
 
-    closestTo(point) {
+    closestTo (point) {
       return point_line_segment_min_closest(point.x, point.y, this.vertices)
     }
 
     render (info) {
-      if (!this.visible)
+      if (!this.visible) {
         return
+      }
 
       super.render(info);
 
@@ -7430,7 +7572,7 @@ void main() {
 
   const Functions = {
     LogB: (b, v) => {
-      return Math.ln(v) / Math.ln(b)
+      return Math.log(v) / Math.log(b)
     },
     Factorial: (a) => {
       return Functions.Gamma(a + 1)
@@ -7449,6 +7591,15 @@ void main() {
     },
     Polygamma: (n, a) => {
       return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
     },
     PowRational: (x, p, q) => {
       // Calculates x ^ (p / q), where p and q are integers
@@ -7477,34 +7628,6 @@ void main() {
           return -ret
         }
       }
-    },
-    Reals: {
-      MUL: (r1, r2) => {
-        r1.multiply_real(r2);
-
-        return r1
-      },
-      ADD: (r1, r2) => {
-        r1.add_real(r2);
-
-        return r1
-      },
-      SUB: (r1, r2) => {
-        r1.subtract_real(r2);
-
-        return r1
-      },
-      DIV: (r1, r2) => {
-        r1.divide_real(r2);
-
-        return r1
-      },
-      POW: (r1, r2) => {
-        r1.pow_real(r2);
-
-        return r1
-      },
-
     }
   };
 
@@ -8141,10 +8264,10 @@ void main() {
     Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
   }
 
-  var STACK_BASE = 5264960,
-      STACK_MAX = 22080,
-      DYNAMIC_BASE = 5264960,
-      DYNAMICTOP_PTR = 21920;
+  var STACK_BASE = 5265088,
+      STACK_MAX = 22208,
+      DYNAMIC_BASE = 5265088,
+      DYNAMICTOP_PTR = 22048;
 
   assert$1(STACK_BASE % 16 === 0, 'stack must start aligned');
   assert$1(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -8595,7 +8718,7 @@ void main() {
 
 
 
-  // STATICTOP = STATIC_BASE + 21056;
+  // STATICTOP = STATIC_BASE + 21184;
   /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors(); } });
 
 
@@ -8651,7 +8774,7 @@ void main() {
       }
 
     function _emscripten_get_sbrk_ptr() {
-        return 21920;
+        return 22048;
       }
 
     function _emscripten_memcpy_big(dest, src, num) {
@@ -9136,6 +9259,27 @@ void main() {
     return real__emscripten_bind_Real_gamma_0.apply(null, arguments);
   };
 
+  var real__emscripten_bind_Real_factorial_0 = asm["emscripten_bind_Real_factorial_0"];
+  asm["emscripten_bind_Real_factorial_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_factorial_0.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_ln_gamma_0 = asm["emscripten_bind_Real_ln_gamma_0"];
+  asm["emscripten_bind_Real_ln_gamma_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_ln_gamma_0.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_digamma_0 = asm["emscripten_bind_Real_digamma_0"];
+  asm["emscripten_bind_Real_digamma_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_digamma_0.apply(null, arguments);
+  };
+
   var real__emscripten_bind_Real_set_pi_0 = asm["emscripten_bind_Real_set_pi_0"];
   asm["emscripten_bind_Real_set_pi_0"] = function() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
@@ -9155,6 +9299,48 @@ void main() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
     assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
     return real__emscripten_bind_Real_is_inf_0.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_equals_1 = asm["emscripten_bind_Real_equals_1"];
+  asm["emscripten_bind_Real_equals_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_equals_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_greater_than_1 = asm["emscripten_bind_Real_greater_than_1"];
+  asm["emscripten_bind_Real_greater_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_greater_than_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_greater_equal_than_1 = asm["emscripten_bind_Real_greater_equal_than_1"];
+  asm["emscripten_bind_Real_greater_equal_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_greater_equal_than_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_less_than_1 = asm["emscripten_bind_Real_less_than_1"];
+  asm["emscripten_bind_Real_less_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_less_than_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_less_equal_than_1 = asm["emscripten_bind_Real_less_equal_than_1"];
+  asm["emscripten_bind_Real_less_equal_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_less_equal_than_1.apply(null, arguments);
+  };
+
+  var real__emscripten_bind_Real_logb_real_1 = asm["emscripten_bind_Real_logb_real_1"];
+  asm["emscripten_bind_Real_logb_real_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return real__emscripten_bind_Real_logb_real_1.apply(null, arguments);
   };
 
   var real__emscripten_bind_Real___destroy___0 = asm["emscripten_bind_Real___destroy___0"];
@@ -9620,6 +9806,24 @@ void main() {
     return Module["asm"]["emscripten_bind_Real_gamma_0"].apply(null, arguments)
   };
 
+  var _emscripten_bind_Real_factorial_0 = Module["_emscripten_bind_Real_factorial_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_factorial_0"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_ln_gamma_0 = Module["_emscripten_bind_Real_ln_gamma_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_ln_gamma_0"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_digamma_0 = Module["_emscripten_bind_Real_digamma_0"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_digamma_0"].apply(null, arguments)
+  };
+
   var _emscripten_bind_Real_set_pi_0 = Module["_emscripten_bind_Real_set_pi_0"] = function() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
     assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -9636,6 +9840,42 @@ void main() {
     assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
     assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
     return Module["asm"]["emscripten_bind_Real_is_inf_0"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_equals_1 = Module["_emscripten_bind_Real_equals_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_equals_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_greater_than_1 = Module["_emscripten_bind_Real_greater_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_greater_than_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_greater_equal_than_1 = Module["_emscripten_bind_Real_greater_equal_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_greater_equal_than_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_less_than_1 = Module["_emscripten_bind_Real_less_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_less_than_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_less_equal_than_1 = Module["_emscripten_bind_Real_less_equal_than_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_less_equal_than_1"].apply(null, arguments)
+  };
+
+  var _emscripten_bind_Real_logb_real_1 = Module["_emscripten_bind_Real_logb_real_1"] = function() {
+    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    return Module["asm"]["emscripten_bind_Real_logb_real_1"].apply(null, arguments)
   };
 
   var _emscripten_bind_Real___destroy___0 = Module["_emscripten_bind_Real___destroy___0"] = function() {
@@ -10302,6 +10542,18 @@ void main() {
     var self = this.ptr;
     _emscripten_bind_Real_gamma_0(self);
   };
+  Real.prototype['factorial'] = Real.prototype.factorial = /** @suppress {undefinedVars, duplicate} */function() {
+    var self = this.ptr;
+    _emscripten_bind_Real_factorial_0(self);
+  };
+  Real.prototype['ln_gamma'] = Real.prototype.ln_gamma = /** @suppress {undefinedVars, duplicate} */function() {
+    var self = this.ptr;
+    _emscripten_bind_Real_ln_gamma_0(self);
+  };
+  Real.prototype['digamma'] = Real.prototype.digamma = /** @suppress {undefinedVars, duplicate} */function() {
+    var self = this.ptr;
+    _emscripten_bind_Real_digamma_0(self);
+  };
   Real.prototype['set_pi'] = Real.prototype.set_pi = /** @suppress {undefinedVars, duplicate} */function() {
     var self = this.ptr;
     _emscripten_bind_Real_set_pi_0(self);
@@ -10313,6 +10565,36 @@ void main() {
   Real.prototype['is_inf'] = Real.prototype.is_inf = /** @suppress {undefinedVars, duplicate} */function() {
     var self = this.ptr;
     return _emscripten_bind_Real_is_inf_0(self);
+  };
+  Real.prototype['equals'] = Real.prototype.equals = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    return !!(_emscripten_bind_Real_equals_1(self, r));
+  };
+  Real.prototype['greater_than'] = Real.prototype.greater_than = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    return !!(_emscripten_bind_Real_greater_than_1(self, r));
+  };
+  Real.prototype['greater_equal_than'] = Real.prototype.greater_equal_than = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    return !!(_emscripten_bind_Real_greater_equal_than_1(self, r));
+  };
+  Real.prototype['less_than'] = Real.prototype.less_than = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    return !!(_emscripten_bind_Real_less_than_1(self, r));
+  };
+  Real.prototype['less_equal_than'] = Real.prototype.less_equal_than = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    return !!(_emscripten_bind_Real_less_equal_than_1(self, r));
+  };
+  Real.prototype['logb_real'] = Real.prototype.logb_real = /** @suppress {undefinedVars, duplicate} */function(r) {
+    var self = this.ptr;
+    if (r && typeof r === 'object') r = r.ptr;
+    _emscripten_bind_Real_logb_real_1(self, r);
   };
     Real.prototype['__destroy__'] = Real.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} */function() {
     var self = this.ptr;
@@ -10381,7 +10663,6 @@ void main() {
   exports.InteractiveFunctionPlot2D = InteractiveFunctionPlot2D;
   exports.Interpolations = Interpolations;
   exports.Label2D = Label2D;
-  exports.Module = Module;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;

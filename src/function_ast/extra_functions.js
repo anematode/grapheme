@@ -3,7 +3,7 @@ import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../math/gamma_fun
 
 const Functions = {
   LogB: (b, v) => {
-    return Math.ln(v) / Math.ln(b)
+    return Math.log(v) / Math.log(b)
   },
   Factorial: (a) => {
     return Functions.Gamma(a + 1)
@@ -22,6 +22,15 @@ const Functions = {
   },
   Polygamma: (n, a) => {
     return polygamma(n, a)
+  },
+  Arccot: (z) => {
+    let t = Math.atan(1 / z)
+
+    if (t < 0) {
+      t += Math.PI
+    }
+
+    return t
   },
   PowRational: (x, p, q) => {
     // Calculates x ^ (p / q), where p and q are integers
@@ -50,34 +59,6 @@ const Functions = {
         return -ret
       }
     }
-  },
-  Reals: {
-    MUL: (r1, r2) => {
-      r1.multiply_real(r2)
-
-      return r1
-    },
-    ADD: (r1, r2) => {
-      r1.add_real(r2)
-
-      return r1
-    },
-    SUB: (r1, r2) => {
-      r1.subtract_real(r2)
-
-      return r1
-    },
-    DIV: (r1, r2) => {
-      r1.divide_real(r2)
-
-      return r1
-    },
-    POW: (r1, r2) => {
-      r1.pow_real(r2)
-
-      return r1
-    },
-
   }
 }
 

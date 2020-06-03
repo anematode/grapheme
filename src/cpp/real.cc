@@ -230,9 +230,19 @@ void Real::acsc() {
     asin();
 }
 
+Real cotAdd(1);
+
 void Real::acot() {
     mpfr_ui_div(ptr, 1, ptr, MPFR_RNDN);
     atan();
+    if (mpfr_cmp_d(ptr, 0) < 0) {
+        int prec = get_precision();
+        if (cotAdd.get_precision() > prec) {
+            cotAdd.set_precision(prec);
+            mpfr_const_pi(cotAdd.ptr, MPFR_RNDN);
+        }
+        mpfr_add(ptr, ptr, cotAdd.ptr);
+    }
 }
 
 void Real::sinh() {
@@ -291,7 +301,7 @@ void Real::gamma() {
 }
 
 void Real::factorial() {
-    mpfr_add_d(ptr, 1, MPFR_RNDN);
+    mpfr_add_d(ptr, ptr, 1, MPFR_RNDN);
     mpfr_gamma(ptr, ptr, MPFR_RNDN);
 }
 
@@ -312,7 +322,33 @@ int Real::is_inf() {
 }
 
 void Real::digamma() {
-    return mpfr_digamma(ptr, ptr, MPFR_RNDN)
+    mpfr_digamma(ptr, ptr, MPFR_RNDN);
 }
+
+bool Real::equals(Real& r) {
+    return mpfr_equal_p(ptr, r.ptr);
+}
+
+bool Real::greater_equal_than(Real& r) {
+    return mpfr_greaterequal_p(ptr, r.ptr);
+}
+
+bool Real::less_equal_than(Real& r) {
+    return mpfr_lessequal_p(ptr, r.ptr);
+}
+
+bool Real::greater_than(Real& r) {
+    return mpfr_greater_p(ptr, r.ptr);
+}
+
+bool Real::less_than(Real& r) {
+    return mpfr_less_p(ptr, r.ptr);
+}
+
+void Real::logb_real(Real& r) {
+    mpfr_log(r.ptr, r.ptr, MPFR_RNDN);
+    mpfr_log(ptr, ptr, MPFR_RNDN);
+    mpfr_div(ptr, ptr, r.ptr, MPFR_RNDN);
+}a
 
 }
