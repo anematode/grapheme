@@ -1,9 +1,7 @@
 import { Group as GraphemeGroup } from './grapheme_group'
-import { Element as GraphemeElement } from './grapheme_element'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
 import { DefaultUniverse, Universe } from './grapheme_universe'
-import { Keyboard } from './keyboard'
 
 /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas,
  * as well as domElement, which is a canvas element to be added to the canvas. */

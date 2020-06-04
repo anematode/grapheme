@@ -1,16 +1,19 @@
 import { Element as GraphemeElement } from "./grapheme_element"
 import {InteractiveCanvas} from './interactive_canvas'
 
+// Interactive event names
 const listenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"]
 
-/** @class InteractiveElement An element which takes up space a plot and supports an "isClick" function.
+/** @class InteractiveElement An element which takes up space in a plot and supports an "isClick" function.
  * Used exclusively for 2D plots (3D plots will have a raycasting system).
  */
 class InteractiveElement extends GraphemeElement {
   /**
    * Construct an InteractiveElement
-   * @param params
+   * @param params {Object}
    * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
+   * @param params.precedence See base class.
+   * @param params.alwaysUpdate See base class.
    */
   constructor(params={}) {
     super(params)
@@ -18,7 +21,9 @@ class InteractiveElement extends GraphemeElement {
     const {
       interactivityEnabled = false
     } = params
+
     this.interactivityEnabled = interactivityEnabled
+    this.interactivityListeners = {}
   }
 
   /**
@@ -29,90 +34,102 @@ class InteractiveElement extends GraphemeElement {
     return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
   }
 
+  /**
+   * Whether this element has interactivity listeners to fire when the mouse moves and is not pressed down. Used
+   * internally to elide calls to isClick when the element would do nothing even if it returned true.
+   * @returns {boolean}
+   * @private
+   */
   _hasMouseMoveInteractivityListeners() {
     const listeners = this.interactivityListeners
+
     return !!(listeners["interactive-mouseon"] || listeners["interactive-mouseoff"] || listeners["interactivity-mousemove"])
   }
 
   /**
-   * Set whether interactivity is enabled
-   * @param value
+   * Set whether interactivity is enabled.
+   * @param value {boolean}
    */
   set interactivityEnabled(value) {
     if (this.interactivityEnabled === value)
       return
 
-    if (!this.interactivityListeners)
-      this.interactivityListeners = {}
-
-    let interactivityListeners = this.interactivityListeners
+    let listeners = this.interactivityListeners
 
     if (value) {
+      // Enable interactivity
+
+      // Warn if the element is added to a non-interactive canvas
       if (this.plot && !(this.plot instanceof InteractiveCanvas))
         console.warn("Interactive element in a non-interactive canvas")
 
-      let mouseDown = null
+      // The position on the canvas of where the mouse was pressed. null if the mouse is not currently pressed.
+      let mouseDownPos = null
 
       // Whether the previous mousemove was on the element
       let prevIsClick = false
 
-      for (let key of listenerKeys) {
-        let key_ = key
-
+      listenerKeys.forEach(key => {
         let callback = (evt) => {
-          // Optimize away mouse moves
-          if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDown)
+          // Elide mouse moves
+          if (key === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDownPos)
             return
 
-          let position = evt.pos
-          let isClick = this.isClick(position)
+          let eventPos = evt.pos
 
-          let res = false
+          // Whether the event occurred on this element
+          let isClick = this.isClick(eventPos)
+
+          // Whether to stop propagation
+          let stopPropagation = false
 
           // Trigger mouse on and mouse off events
           if (isClick && !prevIsClick) {
             if (this.triggerEvent("interactive-mouseon", evt))
-              res = true
+              stopPropagation = true
           } else if (!isClick && prevIsClick) {
             if (this.triggerEvent("interactive-mouseoff", evt))
-              res = true
+              stopPropagation = true
           }
 
           // Set whether the previous mouse move is on the element
-          if (key_ === "mousemove" && isClick)
+          if (key === "mousemove" && isClick)
             prevIsClick = true
-          else if (key_ === "mousemove" && !isClick)
+          else if (key === "mousemove" && !isClick)
             prevIsClick = false
 
           if (isClick) {
-            if (this.triggerEvent("interactive-" + key_, evt))
-              res = true
+            if (this.triggerEvent("interactive-" + key, evt))
+              stopPropagation = true
           }
 
           // Trigger drag events
-          if (key_ === "mousemove") {
-            if (mouseDown) {
+          if (key === "mousemove") {
+            if (mouseDownPos) {
               // return to allow the prevention of propagation
-              if (this.triggerEvent("interactive-drag", {start: mouseDown, ...evt}))
-                res = true
+              if (this.triggerEvent("interactive-drag", {start: mouseDownPos, ...evt}))
+                stopPropagation = true
             }
-          } else if (key_ === "mousedown" && isClick) {
-            mouseDown = evt.pos
-          } else if (key_ === "mouseup") {
-            mouseDown = null
+          } else if (key === "mousedown" && isClick) {
+            // Set the position of the mouse
+            mouseDownPos = eventPos
+          } else if (key === "mouseup") {
+            // Prevent the mouse from
+            mouseDownPos = null
           }
 
-          return res
+          return stopPropagation
         }
 
         this.addEventListener(key, callback)
-        interactivityListeners[key] = callback
-      }
+        listeners[key] = callback
+      })
 
     } else {
+      // Disable interactivity
       for (let key in this.interactivityListeners) {
         if (this.interactivityListeners.hasOwnProperty(key)) {
-          this.removeEventListener(key, interactivityListeners[key])
+          this.removeEventListener(key, listeners[key])
         }
       }
 
@@ -120,7 +137,10 @@ class InteractiveElement extends GraphemeElement {
     }
   }
 
-  // Derived classes need to define this function
+  /**
+   * Derived classes need to define this function
+   * @param position
+   */
   isClick(position) {
     throw new Error("isClick unimplemented for InteractiveElement")
   }

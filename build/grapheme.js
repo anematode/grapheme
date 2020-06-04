@@ -711,6 +711,312 @@ var Grapheme = (function (exports) {
     roundToCanvasPixel: roundToCanvasPixel
   });
 
+  /**
+   @class GLResourceManager stores GL resources on a per-context basis. This allows the
+   separation of elements and their drawing buffers in a relatively complete way.
+   It is given a gl context to operate on, and creates programs in manager.programs
+   and buffers in manager.buffers. programs and buffers are simply key-value pairs
+   which objects can create (and destroy) as they please.
+   */
+  class GLResourceManager {
+    /**
+     * Construct a GLResourceManager
+     * @param gl {WebGLRenderingContext} WebGL context the manager will have dominion over
+     */
+    constructor (gl) {
+      // WebGL rendering context
+      this.gl = gl;
+
+      // Compiled programs and created buffers
+      this.programs = {};
+      this.buffers = {};
+    }
+
+    /**
+     * Compile a program and store it in this.programs
+     * @param programName {string} Name of the program, used to identify the program
+     * @param vertexShaderSource {string} Source code of the vertex shader
+     * @param fragmentShaderSource {string} Source code of the fragment shader
+     * @param vertexAttributeNames {Array} Array of vertex attribute names
+     * @param uniformNames {Array} Array of uniform names
+     */
+    compileProgram (programName, vertexShaderSource, fragmentShaderSource,
+                    vertexAttributeNames = [], uniformNames = []) {
+      if (this.hasProgram(programName)) {
+        // if this program name is already taken, delete the old one
+        this.deleteProgram(programName);
+      }
+
+      const { gl } = this;
+
+      // The actual gl program itself
+      const glProgram = createGLProgram(gl,
+        createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
+        createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
+
+      // pairs of uniform names and their respective locations
+      const uniforms = {};
+      for (let i = 0; i < uniformNames.length; ++i) {
+        const uniformName = uniformNames[i];
+
+        uniforms[uniformName] = gl.getUniformLocation(glProgram, uniformName);
+      }
+
+      // pairs of vertex attribute names and their respective locations
+      const vertexAttribs = {};
+      for (let i = 0; i < vertexAttributeNames.length; ++i) {
+        const vertexAttribName = vertexAttributeNames[i];
+
+        vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
+      }
+
+      this.programs[programName] = {
+        program: glProgram,
+        uniforms,
+        attribs: vertexAttribs
+      };
+    }
+
+    /**
+     * Whether a program with programName exists
+     * @param programName {string} Name of the program
+     * @returns {boolean} Whether that program exists
+     */
+    hasProgram (programName) {
+      return !!this.programs[programName]
+    }
+
+    /**
+     * Retrieve program from storage
+     * @param programName {string} Name of the program
+     * @returns {Object} Object of the form {program, uniforms, vertexAttribs}
+     */
+    getProgram (programName) {
+      return this.programs[programName]
+    }
+
+    /**
+     * Delete a program
+     * @param programName {string} Name of the program to be deleted
+     */
+    deleteProgram (programName) {
+      if (!this.hasProgram(programName)) return
+
+      const programInfo = this.programs[programName];
+      this.gl.deleteProgram(programInfo.program);
+
+      // Remove the key from this.programs
+      delete this.programs[programName];
+    }
+
+    /**
+     * Create a buffer with a certain name, typically including a WebGLElement's id
+     * @param bufferName {string} Name of the buffer
+     */
+    createBuffer (bufferName) {
+      // If buffer already exists, return
+      if (this.hasBuffer(bufferName)) return
+
+      const { gl } = this;
+
+      // Create a new buffer
+      this.buffers[bufferName] = gl.createBuffer();
+    }
+
+    /**
+     * Whether this manager has a buffer with a given name
+     * @param bufferName Name of the buffer
+     * @returns {boolean} Whether this manager has a buffer with that name
+     */
+    hasBuffer (bufferName) {
+      return !!this.buffers[bufferName]
+    }
+
+    /**
+     * Retrieve a buffer with a given name, and create it if it does not already exist
+     * @param bufferName Name of the buffer
+     * @returns {WebGLBuffer} Corresponding buffer
+     */
+    getBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName);
+      return this.buffers[bufferName]
+    }
+
+    /**
+     * Delete buffer with given name
+     * @param bufferName {string} Name of the buffer
+     */
+    deleteBuffer (bufferName) {
+      if (!this.hasBuffer(bufferName)) return
+
+      const buffer = this.getBuffer(bufferName);
+      const { gl } = this;
+
+      // Delete the buffer from GL memory
+      gl.deleteBuffer(buffer);
+      delete this.buffers[bufferName];
+    }
+  }
+
+  /** @class GraphemeUniverse Universe for plots to live in. Allows WebGL rendering, variables, etc. */
+  class GraphemeUniverse {
+    /**
+     * Construct a new GraphemeUniverse.
+     * @constructor
+     */
+    constructor() {
+      // Add this to the list of all extant universes
+      Universes.push(this);
+
+      // List of canvases using this universe
+      /** @private */ this.canvases = [];
+
+      // Canvas to draw
+      /** @private */ this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement("canvas");
+
+      // gl context
+      /** @public */ this.gl = this.glCanvas.getContext("webgl");
+
+      // gl manager
+      /** @public */ this.glManager = new GLResourceManager(this.gl);
+
+      if (!this.gl)
+        throw new Error("Grapheme needs WebGL to run! Sorry.")
+    }
+
+    /**
+     * Clear the WebGL canvas for rendering.
+     */
+    clear() {
+      let gl = this.gl;
+
+      // Set the clear color to transparent black
+      gl.clearColor(0,0,0,0);
+
+      // Clear the canvas
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    /**
+     * Copy the contents of the WebGL canvas on top of the plot canvas
+     * @param canvas {GraphemeCanvas}
+     */
+    copyToCanvas(canvas) {
+      const ctx = canvas.ctx;
+
+      // Set the canvas transform to identity (since this.glCanvas does not factor in the device pixel ratio)
+      ctx.resetTransform();
+
+      // Draw the glCanvas to the plot canvas with drawImage
+      ctx.drawImage(this.glCanvas, 0, 0);
+
+      // Reset the canvas transform
+      canvas.resetCanvasCtxTransform();
+    }
+
+    /**
+     * Set the size of the canvas to width and height. This is used internally; the user should never have to call it.
+     * @param width {number} The width of the canvas.
+     * @param height {number} The height of the canvas.
+     * @private
+     */
+    _setSize(width, height) {
+      const glCanvas = this.glCanvas;
+
+      glCanvas.width = width;
+      glCanvas.height = height;
+    }
+
+    /**
+     * Expand the canvas to fit the max dimensions of all governed canvases. Called every time a canvas is rendered, so it
+     * ought to be fast.
+     */
+    expandToFit() {
+      let maxWidth = 1;
+      let maxHeight = 1;
+
+      for (let i = 0; i < this.canvases.length; ++i) {
+        let canvas = this.canvases[i];
+
+        // Set max dims. Note we use canvasWidth/Height instead of width/height because glCanvas does not factor in dpr.
+        if (canvas.canvasWidth > maxWidth)
+          maxWidth = canvas.canvasWidth;
+        if (canvas.canvasHeight > maxHeight)
+          maxHeight = canvas.canvasHeight;
+      }
+
+      this._setSize(maxWidth, maxHeight);
+    }
+
+    /**
+     * Add canvas to this universe
+     * @param canvas {GraphemeCanvas} Canvas to add to this universe
+     */
+    add(canvas) {
+      if (canvas.universe !== this)
+        throw new Error("Canvas already part of a universe")
+      if (this.isChild(canvas))
+        throw new Error("Canvas is already added to this universe")
+
+      this.canvases.push(canvas);
+    }
+
+    /**
+     * Remove canvas from this universe
+     * @param canvas Canvas to remove
+     */
+    remove(canvas) {
+      let index = this.canvases.indexOf(canvas);
+
+      if (index !== -1)
+        this.canvases.splice(index, 1);
+    }
+
+    /**
+     * Whether canvas is a child of this universe
+     * @param canvas Canvas to test
+     * @returns {boolean} Whether canvas is a child
+     */
+    isChild(canvas) {
+      return this.canvases.indexOf(canvas) !== -1
+    }
+
+    /**
+     * Trigger an event on all child canvases
+     * @param type {string} The type of the event
+     * @param event {Object} The event to pass to canvases
+     * @returns {boolean} Whether an event handler stopped propagation.
+     */
+    triggerEvent(type, event) {
+      // Trigger event in all canvases
+      for (let i = 0; i < this.canvases.length; ++i) {
+        if (this.canvases[i].triggerEvent(type, event)) {
+          // Stop if event stopped propagation
+          return true
+        }
+      }
+
+      return false
+    }
+
+    /**
+     * Destroy this universe and all of its canvases
+     */
+    destroy() {
+      // Remove universe from list of universes handled by utils
+      removeUniverse(this);
+
+      // Destroy all child canvases
+      this.canvases.forEach(canvas => canvas.destroy());
+    }
+  }
+
+  // The DefaultUniverse is the default universe that plots use. Other universes can be used by creating them, then passing
+  // them in the constructor to the plot. Because the number of WebGL contexts per page is limited to six, it's best to just
+  // use the DefaultUniverse; an unlimited number of plots can use the same universe, and the number of Canvas2DRendering
+  // contexts per page is not capped.
+  const DefaultUniverse = new GraphemeUniverse();
+
   /** @class GraphemeElement A component of Grapheme that supports a update() function, which prepares it for the rendering
    * stage, and a render() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
    * elements together. */
@@ -1032,411 +1338,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /**
-   @class GLResourceManager stores GL resources on a per-context basis. This allows the
-   separation of elements and their drawing buffers in a relatively complete way.
-   It is given a gl context to operate on, and creates programs in manager.programs
-   and buffers in manager.buffers. programs and buffers are simply key-value pairs
-   which objects can create (and destroy) as they please.
-   */
-  class GLResourceManager {
-    /**
-     * Construct a GLResourceManager
-     * @param gl {WebGLRenderingContext} WebGL context the manager will have dominion over
-     */
-    constructor (gl) {
-      // WebGL rendering context
-      this.gl = gl;
-
-      // Compiled programs and created buffers
-      this.programs = {};
-      this.buffers = {};
-    }
-
-    /**
-     * Compile a program and store it in this.programs
-     * @param programName {string} Name of the program, used to identify the program
-     * @param vertexShaderSource {string} Source code of the vertex shader
-     * @param fragmentShaderSource {string} Source code of the fragment shader
-     * @param vertexAttributeNames {Array} Array of vertex attribute names
-     * @param uniformNames {Array} Array of uniform names
-     */
-    compileProgram (programName, vertexShaderSource, fragmentShaderSource,
-                    vertexAttributeNames = [], uniformNames = []) {
-      if (this.hasProgram(programName)) {
-        // if this program name is already taken, delete the old one
-        this.deleteProgram(programName);
-      }
-
-      const { gl } = this;
-
-      // The actual gl program itself
-      const glProgram = createGLProgram(gl,
-        createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
-        createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
-
-      // pairs of uniform names and their respective locations
-      const uniforms = {};
-      for (let i = 0; i < uniformNames.length; ++i) {
-        const uniformName = uniformNames[i];
-
-        uniforms[uniformName] = gl.getUniformLocation(glProgram, uniformName);
-      }
-
-      // pairs of vertex attribute names and their respective locations
-      const vertexAttribs = {};
-      for (let i = 0; i < vertexAttributeNames.length; ++i) {
-        const vertexAttribName = vertexAttributeNames[i];
-
-        vertexAttribs[vertexAttribName] = gl.getAttribLocation(glProgram, vertexAttribName);
-      }
-
-      this.programs[programName] = {
-        program: glProgram,
-        uniforms,
-        attribs: vertexAttribs
-      };
-    }
-
-    /**
-     * Whether a program with programName exists
-     * @param programName {string} Name of the program
-     * @returns {boolean} Whether that program exists
-     */
-    hasProgram (programName) {
-      return !!this.programs[programName]
-    }
-
-    /**
-     * Retrieve program from storage
-     * @param programName {string} Name of the program
-     * @returns {Object} Object of the form {program, uniforms, vertexAttribs}
-     */
-    getProgram (programName) {
-      return this.programs[programName]
-    }
-
-    /**
-     * Delete a program
-     * @param programName {string} Name of the program to be deleted
-     */
-    deleteProgram (programName) {
-      if (!this.hasProgram(programName)) return
-
-      const programInfo = this.programs[programName];
-      this.gl.deleteProgram(programInfo.program);
-
-      // Remove the key from this.programs
-      delete this.programs[programName];
-    }
-
-    /**
-     * Create a buffer with a certain name, typically including a WebGLElement's id
-     * @param bufferName {string} Name of the buffer
-     */
-    createBuffer (bufferName) {
-      // If buffer already exists, return
-      if (this.hasBuffer(bufferName)) return
-
-      const { gl } = this;
-
-      // Create a new buffer
-      this.buffers[bufferName] = gl.createBuffer();
-    }
-
-    /**
-     * Whether this manager has a buffer with a given name
-     * @param bufferName Name of the buffer
-     * @returns {boolean} Whether this manager has a buffer with that name
-     */
-    hasBuffer (bufferName) {
-      return !!this.buffers[bufferName]
-    }
-
-    /**
-     * Retrieve a buffer with a given name, and create it if it does not already exist
-     * @param bufferName Name of the buffer
-     * @returns {WebGLBuffer} Corresponding buffer
-     */
-    getBuffer (bufferName) {
-      if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName);
-      return this.buffers[bufferName]
-    }
-
-    /**
-     * Delete buffer with given name
-     * @param bufferName {string} Name of the buffer
-     */
-    deleteBuffer (bufferName) {
-      if (!this.hasBuffer(bufferName)) return
-
-      const buffer = this.getBuffer(bufferName);
-      const { gl } = this;
-
-      // Delete the buffer from GL memory
-      gl.deleteBuffer(buffer);
-      delete this.buffers[bufferName];
-    }
-  }
-
-  /** @class GraphemeUniverse Universe for plots to live in. Allows WebGL rendering, variables, etc. */
-  class GraphemeUniverse {
-    /**
-     * Construct a new GraphemeUniverse.
-     * @constructor
-     */
-    constructor() {
-      // Add this to the list of all extant universes
-      Universes.push(this);
-
-      // List of canvases using this universe
-      /** @private */ this.canvases = [];
-
-      // Canvas to draw
-      /** @private */ this.glCanvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement("canvas");
-
-      // gl context
-      /** @public */ this.gl = this.glCanvas.getContext("webgl");
-
-      // gl manager
-      /** @public */ this.glManager = new GLResourceManager(this.gl);
-
-      if (!this.gl)
-        throw new Error("Grapheme needs WebGL to run! Sorry.")
-    }
-
-    /**
-     * Clear the WebGL canvas for rendering.
-     */
-    clear() {
-      let gl = this.gl;
-
-      // Set the clear color to transparent black
-      gl.clearColor(0,0,0,0);
-
-      // Clear the canvas
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-
-    /**
-     * Copy the contents of the WebGL canvas on top of the plot canvas
-     * @param canvas {GraphemeCanvas}
-     */
-    copyToCanvas(canvas) {
-      const ctx = canvas.ctx;
-
-      // Set the canvas transform to identity (since this.glCanvas does not factor in the device pixel ratio)
-      ctx.resetTransform();
-
-      // Draw the glCanvas to the plot canvas with drawImage
-      ctx.drawImage(this.glCanvas, 0, 0);
-
-      // Reset the canvas transform
-      canvas.resetCanvasCtxTransform();
-    }
-
-    /**
-     * Set the size of the canvas to width and height. This is used internally; the user should never have to call it.
-     * @param width {number} The width of the canvas.
-     * @param height {number} The height of the canvas.
-     * @private
-     */
-    _setSize(width, height) {
-      const glCanvas = this.glCanvas;
-
-      glCanvas.width = width;
-      glCanvas.height = height;
-    }
-
-    /**
-     * Expand the canvas to fit the max dimensions of all governed canvases. Called every time a canvas is rendered, so it
-     * ought to be fast.
-     */
-    expandToFit() {
-      let maxWidth = 1;
-      let maxHeight = 1;
-
-      for (let i = 0; i < this.canvases.length; ++i) {
-        let canvas = this.canvases[i];
-
-        // Set max dims. Note we use canvasWidth/Height instead of width/height because glCanvas does not factor in dpr.
-        if (canvas.canvasWidth > maxWidth)
-          maxWidth = canvas.canvasWidth;
-        if (canvas.canvasHeight > maxHeight)
-          maxHeight = canvas.canvasHeight;
-      }
-
-      this._setSize(maxWidth, maxHeight);
-    }
-
-    /**
-     * Add canvas to this universe
-     * @param canvas {GraphemeCanvas} Canvas to add to this universe
-     */
-    add(canvas) {
-      if (canvas.universe !== this)
-        throw new Error("Canvas already part of a universe")
-      if (this.isChild(canvas))
-        throw new Error("Canvas is already added to this universe")
-
-      this.canvases.push(canvas);
-    }
-
-    /**
-     * Remove canvas from this universe
-     * @param canvas Canvas to remove
-     */
-    remove(canvas) {
-      let index = this.canvases.indexOf(canvas);
-
-      if (index !== -1)
-        this.canvases.splice(index, 1);
-    }
-
-    /**
-     * Whether canvas is a child of this universe
-     * @param canvas Canvas to test
-     * @returns {boolean} Whether canvas is a child
-     */
-    isChild(canvas) {
-      return this.canvases.indexOf(canvas) !== -1
-    }
-
-    /**
-     * Trigger an event on all child canvases
-     * @param type {string} The type of the event
-     * @param event {Object} The event to pass to canvases
-     * @returns {boolean} Whether an event handler stopped propagation.
-     */
-    triggerEvent(type, event) {
-      // Trigger event in all canvases
-      for (let i = 0; i < this.canvases.length; ++i) {
-        if (this.canvases[i].triggerEvent(type, event)) {
-          // Stop if event stopped propagation
-          return true
-        }
-      }
-
-      return false
-    }
-
-    /**
-     * Destroy this universe and all of its canvases
-     */
-    destroy() {
-      // Remove universe from list of universes handled by utils
-      removeUniverse(this);
-
-      // Destroy all child canvases
-      this.canvases.forEach(canvas => canvas.destroy());
-    }
-  }
-
-  // The DefaultUniverse is the default universe that plots use. Other universes can be used by creating them, then passing
-  // them in the constructor to the plot. Because the number of WebGL contexts per page is limited to six, it's best to just
-  // use the DefaultUniverse; an unlimited number of plots can use the same universe, and the number of Canvas2DRendering
-  // contexts per page is not capped.
-  const DefaultUniverse = new GraphemeUniverse();
-
-  /**
-   * @class Keyboard Keeps track of the held keys on a keyboard and allows for listeners to be attached to said keys.
-   */
-  class Keyboard {
-    constructor(domElement) {
-      // Element to attach listeners to
-      this.element = domElement;
-
-      this.keys = {};
-      this.domListeners = {};
-
-      this.eventListeners = {};
-
-      this.enabled = true;
-    }
-
-    get enabled() {
-      return Object.keys(this.domListeners).length !== 0
-    }
-
-    set enabled(value) {
-      if (value === this.enabled)
-        return
-
-      if (value) {
-        let callback = this.domListeners.keydown = (evt) => {
-          this.onKeyDown(evt);
-        };
-
-        this.element.addEventListener("keydown", callback);
-
-        callback = this.domListeners.keyup = (evt) => {
-          this.onKeyUp(evt);
-        };
-
-        this.element.addEventListener("keyup", callback);
-
-        callback = this.domListeners.keypress = (evt) => {
-          this.onKeyPress(evt);
-        };
-
-        this.element.addEventListener("keypress", callback);
-      } else {
-        let listeners = this.domListeners;
-
-        this.element.removeEventListener("keyup", listeners.keyup);
-        this.element.removeEventListener("keydown", listeners.keydown);
-        this.element.removeEventListener("keypress", listeners.keypress);
-      }
-    }
-
-    addEventListener(name, callback) {
-      let listeners = this.eventListeners[name];
-
-      if (!listeners)
-        listeners = this.eventListeners[name] = [];
-
-      listeners.push(callback);
-    }
-
-    removeEventListener(name, callback) {
-      let listeners = this.eventListeners[name];
-
-      let index = listeners.indexOf(callback);
-
-      if (index !== -1) {
-        listeners.splice(index, 1);
-      }
-    }
-
-    triggerEvent(name, event) {
-      let listeners = this.eventListeners[name];
-
-      return listeners && listeners.some(listener => listener(event))
-    }
-
-    onKeyDown(evt) {
-      let key = evt.key;
-
-      this.keys[key] = true;
-
-      this.triggerEvent("keydown-" + key, evt);
-    }
-
-    onKeyUp(evt) {
-      let key = evt.key;
-
-      this.keys[key] = false;
-
-      this.triggerEvent("keyup-" + key, evt);
-    }
-
-    onKeyPress(evt) {
-      let key = evt.key;
-
-      this.triggerEvent("keypress-" + key, evt);
-    }
-  }
-
   /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas,
    * as well as domElement, which is a canvas element to be added to the canvas. */
   class GraphemeCanvas extends GraphemeGroup {
@@ -1670,26 +1571,185 @@ var Grapheme = (function (exports) {
     }
   }
 
+  /**
+   * @class Keyboard Keeps track of the held keys on a keyboard and allows for listeners to be attached to said keys.
+   */
+  class Keyboard {
+    /**
+     * Construct a Keyboard tracker.
+     * @constructor
+     * @param domElement The element to attach listeners to
+     */
+    constructor(domElement) {
+      // Element to attach listeners to
+      /** @public */ this.element = domElement;
+
+      // Dictionary of pressed keys
+      /** @public */ this.keys = {};
+
+      // listeners on the dom element
+      /** @private */ this.domListeners = {};
+
+      // user-defined event listeners
+      /** @private */ this.eventListeners = {};
+
+      // whether the keyboard is enabled
+      this.enabled = true;
+    }
+
+    /**
+     * Detach event listeners if necessary and change the element to listen to
+     * @param newElem Element to attach listeners to
+     */
+    changeElementTo(newElem) {
+      let value = this.enabled;
+      this.enabled = false;
+
+      this.element = newElem;
+
+      this.enabled = value;
+    }
+
+    /**
+     * Get whether the keyboard is enabled
+     * @returns {boolean}
+     */
+    get enabled() {
+      // Check whether there are any listeners
+      return Object.keys(this.domListeners).length !== 0
+    }
+
+    /**
+     * Enabled or disable the keyboard
+     * @param value {boolean} Whether the keyboard should be enabled
+     */
+    set enabled(value) {
+      if (value === this.enabled)
+        return
+
+      if (value) {
+        // Enable the keyboard
+
+        this.element.addEventListener("keydown", this.domListeners.keydown = (evt) => {
+          this.onKeyDown(evt);
+        });
+
+        this.element.addEventListener("keyup", this.domListeners.keyup = (evt) => {
+          this.onKeyUp(evt);
+        });
+
+        this.element.addEventListener("keypress", this.domListeners.keypress = (evt) => {
+          this.onKeyPress(evt);
+        });
+      } else {
+        // Disable the keyboard
+
+        let listeners = this.domListeners;
+
+        this.element.removeEventListener("keyup", listeners.keyup);
+        this.element.removeEventListener("keydown", listeners.keydown);
+        this.element.removeEventListener("keypress", listeners.keypress);
+      }
+    }
+
+    /**
+     * Add an event listener to this keyboard
+     * @param name {string} The event to listen for
+     * @param callback {Function} The function to call
+     */
+    addEventListener(name, callback) {
+      let listeners = this.eventListeners[name];
+
+      if (!listeners)
+        listeners = this.eventListeners[name] = [];
+
+      listeners.push(callback);
+    }
+
+    /**
+     * Remove an event listener from this keyboard
+     * @param name {string} The event to listen for
+     * @param callback {Function} The callback function
+     */
+    removeEventListener(name, callback) {
+      let listeners = this.eventListeners[name];
+
+      let index = listeners.indexOf(callback);
+
+      if (index !== -1)
+        listeners.splice(index, 1);
+    }
+
+    /**
+     * Trigger an event.
+     * @param name {string} Name of the event
+     * @param event The event to pass to event listeners
+     * @returns {boolean} Whether an event returned true
+     */
+    triggerEvent(name, event) {
+      let listeners = this.eventListeners[name];
+
+      return listeners && listeners.some(listener => listener(event))
+    }
+
+    /**
+     * Callback for key down
+     * @param evt {KeyboardEvent}
+     * @private
+     */
+    onKeyDown(evt) {
+      let key = evt.key;
+
+      this.keys[key] = true;
+
+      this.triggerEvent("keydown-" + key, evt);
+    }
+
+    /**
+     * Callback for key up
+     * @param evt {KeyboardEvent}
+     * @private
+     */
+    onKeyUp(evt) {
+      let key = evt.key;
+
+      this.keys[key] = false;
+
+      this.triggerEvent("keyup-" + key, evt);
+    }
+
+    /**
+     * Callback for key press
+     * @param evt {KeyboardEvent}
+     * @private
+     */
+    onKeyPress(evt) {
+      let key = evt.key;
+
+      this.triggerEvent("keypress-" + key, evt);
+    }
+  }
+
   // List of events to listen for
   const mouseEvents = ['click', 'mousemove', 'mousedown', 'mouseup', 'wheel'];
   const touchEvents = ['touchstart', 'touchmove', 'touchend', 'touchcancel'];
   const pointerEvents = ['pointerdown', 'pointerup', 'pointermove'];
 
   /**
-   * @class Canvas that supports interactivity events.
+   * @class InteractiveCanvas Canvas that supports interactivity events.
    * The callbacks are given above, and the events have the following structure:
    * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
    */
   class InteractiveCanvas extends GraphemeCanvas {
     /**
      * Construct an interactive canvas
-     * @param universe GraphemeUniverse this canvas is a part of
+     * @param universe {GraphemeUniverse} The universe to add this canvas to
      */
     constructor (universe = DefaultUniverse) {
       super(universe);
 
       // Used for tracking key presses
-      this.keyboard = new Keyboard(window);
+      this.keyboard = new Keyboard(window /* attach listeners to window */);
 
       // Used for listening to mouse/touch events
       this.interactivityListeners = {};
@@ -1712,16 +1772,15 @@ var Grapheme = (function (exports) {
      */
     set interactivityEnabled (enable) {
       if (enable) {
-        // Add interactivity listeners
+        // Add interactivity listeners for each mouse event
         mouseEvents.forEach(evtName => {
           let callback = (evt) => {
             // Calculate where the click is
             let rect = this.domElement.getBoundingClientRect();
+            let pos = new Vec2(evt.clientX - rect.left, evt.clientY - rect.top);
 
-            this.triggerEvent(evtName, {
-              pos: new Vec2(evt.clientX - rect.left, evt.clientY - rect.top),
-              rawEvent: evt
-            });
+            // Trigger the event
+            this.triggerEvent(evtName, { pos, rawEvent: evt });
 
             // Prevent the default action e.g. scrolling
             evt.preventDefault();
@@ -1734,18 +1793,22 @@ var Grapheme = (function (exports) {
           this.domElement.addEventListener(evtName, callback);
         });
 
+        // For each pointer event
         pointerEvents.forEach(evtName => {
           // Handle pointer events
-          this.domElement.addEventListener(evtName, this.interactivityListeners[evtName] = (event) => this.handlePointer(event));
+          this.domElement.addEventListener(evtName,
+            this.interactivityListeners[evtName] = (event) => this.handlePointer(event));
         });
 
+        // For each touch event
         touchEvents.forEach(evtName => {
           // Handle touch events
-          this.domElement.addEventListener(evtName, this.interactivityListeners[evtName] = (event) => this.handleTouch(event));
+          this.domElement.addEventListener(evtName,
+            this.interactivityListeners[evtName] = (event) => this.handleTouch(event));
         });
       } else {
         // Remove all interactivity listeners
-        mouseEvents.concat(touchEvents).concat(pointerEvents).forEach(evtName => {
+        [...mouseEvents, ...pointerEvents, ...touchEvents].forEach(evtName => {
           this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName]);
         });
 
@@ -1758,10 +1821,11 @@ var Grapheme = (function (exports) {
 
     /**
      * Handle touch events by converting them to corresponding mouse events
-     * @param event The touch event.
+     * @param event {TouchEvent} The touch event.
      */
     handleTouch (event) {
       // Credit to https://stackoverflow.com/questions/1517924/javascript-mapping-touch-events-to-mouse-events
+
       let touches = event.changedTouches,
         first = touches[0],
         type = '';
@@ -1791,20 +1855,21 @@ var Grapheme = (function (exports) {
       if (type === 'mouseup') {
         // also emit a click event
 
-        let simulatedEvent2 = document.createEvent('MouseEvent');
-        simulatedEvent2.initMouseEvent('click', true, true, window, 1,
+        simulatedEvent = document.createEvent('MouseEvent');
+        simulatedEvent.initMouseEvent('click', true, true, window, 1,
           first.screenX, first.screenY,
           first.clientX, first.clientY, false,
           false, false, false, 0, null);
 
-        first.target.dispatchEvent(simulatedEvent2);
+        first.target.dispatchEvent(simulatedEvent);
         event.preventDefault();
       }
     }
 
     /**
-     * Handle pointer events. TODO
-     * @param event Pointer event
+     * Handle pointer events.
+     * @param event {PointerEvent} Pointer event
+     * @todo
      */
     handlePointer (event) {
       if (event.type === 'pointerup') ; else if (event.type === 'pointermove') ;
@@ -9663,16 +9728,19 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // Interactive event names
   const listenerKeys = ["click", "mousemove", "mousedown", "mouseup", "wheel"];
 
-  /** @class InteractiveElement An element which takes up space a plot and supports an "isClick" function.
+  /** @class InteractiveElement An element which takes up space in a plot and supports an "isClick" function.
    * Used exclusively for 2D plots (3D plots will have a raycasting system).
    */
   class InteractiveElement extends GraphemeElement {
     /**
      * Construct an InteractiveElement
-     * @param params
+     * @param params {Object}
      * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
+     * @param params.precedence See base class.
+     * @param params.alwaysUpdate See base class.
      */
     constructor(params={}) {
       super(params);
@@ -9680,7 +9748,9 @@ var Grapheme = (function (exports) {
       const {
         interactivityEnabled = false
       } = params;
+
       this.interactivityEnabled = interactivityEnabled;
+      this.interactivityListeners = {};
     }
 
     /**
@@ -9691,90 +9761,102 @@ var Grapheme = (function (exports) {
       return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
     }
 
+    /**
+     * Whether this element has interactivity listeners to fire when the mouse moves and is not pressed down. Used
+     * internally to elide calls to isClick when the element would do nothing even if it returned true.
+     * @returns {boolean}
+     * @private
+     */
     _hasMouseMoveInteractivityListeners() {
       const listeners = this.interactivityListeners;
+
       return !!(listeners["interactive-mouseon"] || listeners["interactive-mouseoff"] || listeners["interactivity-mousemove"])
     }
 
     /**
-     * Set whether interactivity is enabled
-     * @param value
+     * Set whether interactivity is enabled.
+     * @param value {boolean}
      */
     set interactivityEnabled(value) {
       if (this.interactivityEnabled === value)
         return
 
-      if (!this.interactivityListeners)
-        this.interactivityListeners = {};
-
-      let interactivityListeners = this.interactivityListeners;
+      let listeners = this.interactivityListeners;
 
       if (value) {
+        // Enable interactivity
+
+        // Warn if the element is added to a non-interactive canvas
         if (this.plot && !(this.plot instanceof InteractiveCanvas))
           console.warn("Interactive element in a non-interactive canvas");
 
-        let mouseDown = null;
+        // The position on the canvas of where the mouse was pressed. null if the mouse is not currently pressed.
+        let mouseDownPos = null;
 
         // Whether the previous mousemove was on the element
         let prevIsClick = false;
 
-        for (let key of listenerKeys) {
-          let key_ = key;
-
+        listenerKeys.forEach(key => {
           let callback = (evt) => {
-            // Optimize away mouse moves
-            if (key_ === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDown)
+            // Elide mouse moves
+            if (key === "mousemove" && !this._hasMouseMoveInteractivityListeners() && !mouseDownPos)
               return
 
-            let position = evt.pos;
-            let isClick = this.isClick(position);
+            let eventPos = evt.pos;
 
-            let res = false;
+            // Whether the event occurred on this element
+            let isClick = this.isClick(eventPos);
+
+            // Whether to stop propagation
+            let stopPropagation = false;
 
             // Trigger mouse on and mouse off events
             if (isClick && !prevIsClick) {
               if (this.triggerEvent("interactive-mouseon", evt))
-                res = true;
+                stopPropagation = true;
             } else if (!isClick && prevIsClick) {
               if (this.triggerEvent("interactive-mouseoff", evt))
-                res = true;
+                stopPropagation = true;
             }
 
             // Set whether the previous mouse move is on the element
-            if (key_ === "mousemove" && isClick)
+            if (key === "mousemove" && isClick)
               prevIsClick = true;
-            else if (key_ === "mousemove" && !isClick)
+            else if (key === "mousemove" && !isClick)
               prevIsClick = false;
 
             if (isClick) {
-              if (this.triggerEvent("interactive-" + key_, evt))
-                res = true;
+              if (this.triggerEvent("interactive-" + key, evt))
+                stopPropagation = true;
             }
 
             // Trigger drag events
-            if (key_ === "mousemove") {
-              if (mouseDown) {
+            if (key === "mousemove") {
+              if (mouseDownPos) {
                 // return to allow the prevention of propagation
-                if (this.triggerEvent("interactive-drag", {start: mouseDown, ...evt}))
-                  res = true;
+                if (this.triggerEvent("interactive-drag", {start: mouseDownPos, ...evt}))
+                  stopPropagation = true;
               }
-            } else if (key_ === "mousedown" && isClick) {
-              mouseDown = evt.pos;
-            } else if (key_ === "mouseup") {
-              mouseDown = null;
+            } else if (key === "mousedown" && isClick) {
+              // Set the position of the mouse
+              mouseDownPos = eventPos;
+            } else if (key === "mouseup") {
+              // Prevent the mouse from
+              mouseDownPos = null;
             }
 
-            return res
+            return stopPropagation
           };
 
           this.addEventListener(key, callback);
-          interactivityListeners[key] = callback;
-        }
+          listeners[key] = callback;
+        });
 
       } else {
+        // Disable interactivity
         for (let key in this.interactivityListeners) {
           if (this.interactivityListeners.hasOwnProperty(key)) {
-            this.removeEventListener(key, interactivityListeners[key]);
+            this.removeEventListener(key, listeners[key]);
           }
         }
 
@@ -9782,7 +9864,10 @@ var Grapheme = (function (exports) {
       }
     }
 
-    // Derived classes need to define this function
+    /**
+     * Derived classes need to define this function
+     * @param position
+     */
     isClick(position) {
       throw new Error("isClick unimplemented for InteractiveElement")
     }

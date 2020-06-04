@@ -1,7 +1,7 @@
+import { Universe, DefaultUniverse } from './grapheme_universe'
 import { Canvas as GraphemeCanvas } from './grapheme_canvas.js'
-import { Vec2 } from '../math/vec'
-import { DefaultUniverse } from './grapheme_universe'
 import { Keyboard } from './keyboard'
+import { Vec2 } from '../math/vec'
 
 // List of events to listen for
 const mouseEvents = ['click', 'mousemove', 'mousedown', 'mouseup', 'wheel']
@@ -9,20 +9,20 @@ const touchEvents = ['touchstart', 'touchmove', 'touchend', 'touchcancel']
 const pointerEvents = ['pointerdown', 'pointerup', 'pointermove']
 
 /**
- * @class Canvas that supports interactivity events.
+ * @class InteractiveCanvas Canvas that supports interactivity events.
  * The callbacks are given above, and the events have the following structure:
  * {pos: new Vec2(... pixel coordinates of mouse event in canvas ...), rawEvent: ... raw mouse event ...}
  */
 class InteractiveCanvas extends GraphemeCanvas {
   /**
    * Construct an interactive canvas
-   * @param universe GraphemeUniverse this canvas is a part of
+   * @param universe {GraphemeUniverse} The universe to add this canvas to
    */
   constructor (universe = DefaultUniverse) {
     super(universe)
 
     // Used for tracking key presses
-    this.keyboard = new Keyboard(window)
+    this.keyboard = new Keyboard(window /* attach listeners to window */)
 
     // Used for listening to mouse/touch events
     this.interactivityListeners = {}
@@ -45,16 +45,15 @@ class InteractiveCanvas extends GraphemeCanvas {
    */
   set interactivityEnabled (enable) {
     if (enable) {
-      // Add interactivity listeners
+      // Add interactivity listeners for each mouse event
       mouseEvents.forEach(evtName => {
         let callback = (evt) => {
           // Calculate where the click is
           let rect = this.domElement.getBoundingClientRect()
+          let pos = new Vec2(evt.clientX - rect.left, evt.clientY - rect.top)
 
-          this.triggerEvent(evtName, {
-            pos: new Vec2(evt.clientX - rect.left, evt.clientY - rect.top),
-            rawEvent: evt
-          })
+          // Trigger the event
+          this.triggerEvent(evtName, { pos, rawEvent: evt })
 
           // Prevent the default action e.g. scrolling
           evt.preventDefault()
@@ -67,18 +66,22 @@ class InteractiveCanvas extends GraphemeCanvas {
         this.domElement.addEventListener(evtName, callback)
       })
 
+      // For each pointer event
       pointerEvents.forEach(evtName => {
         // Handle pointer events
-        this.domElement.addEventListener(evtName, this.interactivityListeners[evtName] = (event) => this.handlePointer(event))
+        this.domElement.addEventListener(evtName,
+          this.interactivityListeners[evtName] = (event) => this.handlePointer(event))
       })
 
+      // For each touch event
       touchEvents.forEach(evtName => {
         // Handle touch events
-        this.domElement.addEventListener(evtName, this.interactivityListeners[evtName] = (event) => this.handleTouch(event))
+        this.domElement.addEventListener(evtName,
+          this.interactivityListeners[evtName] = (event) => this.handleTouch(event))
       })
     } else {
       // Remove all interactivity listeners
-      mouseEvents.concat(touchEvents).concat(pointerEvents).forEach(evtName => {
+      [...mouseEvents, ...pointerEvents, ...touchEvents].forEach(evtName => {
         this.domElement.removeEventListener(evtName, this.interactivityListeners[evtName])
       })
 
@@ -91,10 +94,11 @@ class InteractiveCanvas extends GraphemeCanvas {
 
   /**
    * Handle touch events by converting them to corresponding mouse events
-   * @param event The touch event.
+   * @param event {TouchEvent} The touch event.
    */
   handleTouch (event) {
     // Credit to https://stackoverflow.com/questions/1517924/javascript-mapping-touch-events-to-mouse-events
+
     let touches = event.changedTouches,
       first = touches[0],
       type = ''
@@ -124,20 +128,21 @@ class InteractiveCanvas extends GraphemeCanvas {
     if (type === 'mouseup') {
       // also emit a click event
 
-      let simulatedEvent2 = document.createEvent('MouseEvent')
-      simulatedEvent2.initMouseEvent('click', true, true, window, 1,
+      simulatedEvent = document.createEvent('MouseEvent')
+      simulatedEvent.initMouseEvent('click', true, true, window, 1,
         first.screenX, first.screenY,
         first.clientX, first.clientY, false,
         false, false, false, 0, null)
 
-      first.target.dispatchEvent(simulatedEvent2)
+      first.target.dispatchEvent(simulatedEvent)
       event.preventDefault()
     }
   }
 
   /**
-   * Handle pointer events. TODO
-   * @param event Pointer event
+   * Handle pointer events.
+   * @param event {PointerEvent} Pointer event
+   * @todo
    */
   handlePointer (event) {
     if (event.type === 'pointerup') {
