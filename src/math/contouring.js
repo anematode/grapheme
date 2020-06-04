@@ -109,74 +109,6 @@ function generateContours1(func, xmin, xmax, ymin, ymax, searchDepth=3, plotDept
     polyline.push(x1, y1, x2, y2, NaN, NaN)
   }
 
-  function add_contour_segment2(x1, y1, x2, y2) {
-     let pt1index = -1
-     let pt1attach = 0
-     let pt2index = -1
-     let pt2attach = 0
-
-     for (let i = 0; i < contours.length; ++i) {
-       let contour = contours[i]
-
-       let cx1 = contour.x1, cx2 = contour.x2, cy1 = contour.y1, cy2 = contour.y2
-
-       if (pt1index === -1) {
-         if (cx1 === x1 && cy1 === y1) {
-           pt1attach = 1
-           pt1index = i
-         } else if (cx2 === x1 && cy2 === x1) {
-           pt1attach = 2
-           pt1index = i
-         }
-       }
-
-       if (pt2index === -1) {
-         if (cx1 === x2 && cy1 === y2) {
-           pt2attach = 1
-           pt2index = i
-         } else if (cx2 === x2 && cy2 === x2) {
-           pt2attach = 2
-           pt2index = i
-         }
-       }
-     }
-
-     if (pt1index === -1 && pt2index === -1) {
-       // No contour found, add a new one
-       contours.push(new Contour(x1, y1, x2, y2))
-     } else if (pt1index === pt2index) {
-       // close off a contour
-       let contour = contours[pt1index]
-       contour.addSegment(x1, y1, x2, y2)
-
-       convertContour(contour)
-
-       contours.splice(pt1index, 1)
-     } else if (pt1index !== -1 && pt2index !== -1) {
-       // join contours
-       let contour1 = contours[pt1index]
-       let contour2 = contours[pt2index]
-
-       let arr
-       if (pt1attach === 1)
-         arr = contour1.pts1
-       else
-         arr = contour1.pts2
-
-       contour2.addPathTo(arr, (pt2attach === 2))
-
-       contours.splice(pt2index, 1)
-     } else if (pt1index !== -1) {
-       let contour1 = contours[pt1index]
-
-       contour1.addSegment(x1, y1, x2, y2)
-     } else {
-       let contour2 = contours[pt2index]
-
-       contour2.addSegment(x1, y1, x2, y2)
-     }
-  }
-
   function create_tree(depth, xmin, xmax, ymin, ymax, fxy, fxY, fXY, fXy) {
     let needs_subdivide = depth < searchDepth
 
@@ -298,11 +230,137 @@ function generateContours1(func, xmin, xmax, ymin, ymax, searchDepth=3, plotDept
 
   create_tree(0, xmin, xmax, ymin, ymax, xyCorner, xYCorner, XYCorner, XyCorner)
 
-  console.log(contours)
-
   convertContours()
 
   return polyline
 }
 
-export { generateContours1 }
+function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=9, renderingQuality=1, maxDepth=16) {
+  let polyline = []
+
+  function add_contour_segment(x1, y1, x2, y2) {
+    polyline.push(x1, y1, x2, y2, NaN, NaN)
+  }
+
+  function create_tree(depth, xmin, xmax, ymin, ymax, fxy, fxY, fXY, fXy) {
+    let needs_subdivide = depth < searchDepth
+
+    if (depth <= maxDepth && !needs_subdivide) {
+      let signxy = Math.sign(fxy)
+      let signxY = Math.sign(fxY)
+      let signXY = Math.sign(fXY)
+      let signXy = Math.sign(fXy)
+
+      // Search for contours
+      if (signxy !== signxY || signxY !== signXY || signXY !== signXy) {
+        let minDim = Math.min(xmax - xmin, ymax - ymin)
+        let radius = Math.abs(curvatureFunc((xmax + xmin) / 2, (ymax + ymin) / 2))
+
+        if (depth < maxDepth && radius < renderingQuality * minDim) {
+          // subdivide
+          needs_subdivide = true
+        } else {
+          let side1 = signxy !== signxY
+          let side2 = signxY !== signXY
+          let side3 = signXY !== signXy
+          let side4 = signXy !== signxy
+
+          let side1x, side3x, side2y, side4y
+          let side1y, side3y, side2x, side4x
+
+          if (side1) {
+            let side1a = Math.abs(fxy)
+            let side1b = Math.abs(fxY)
+            let side1ratio = side1a / (side1a + side1b)
+            side1x = xmin
+            side1y = ymin + side1ratio * (ymax - ymin)
+          }
+
+          if (side3) {
+            let side3a = Math.abs(fXy)
+            let side3b = Math.abs(fXY)
+            let side3ratio = side3a / (side3a + side3b)
+            side3x = xmax
+            side3y = ymin + side3ratio * (ymax - ymin)
+          }
+
+          if (side2) {
+            let side2a = Math.abs(fxY)
+            let side2b = Math.abs(fXY)
+            let side2ratio = side2a / (side2a + side2b)
+            side2x = xmin + side2ratio * (xmax - xmin)
+            side2y = ymax
+          }
+
+          if (side4) {
+            let side4a = Math.abs(fxy)
+            let side4b = Math.abs(fXy)
+            let side4ratio = side4a / (side4a + side4b)
+            side4x = xmin + side4ratio * (xmax - xmin)
+            side4y = ymin
+          }
+
+          if (side1 && side2 && side3 && side4) {
+            // Saddle point
+
+            add_contour_segment(side1x, side1y, side3x, side3y)
+            add_contour_segment(side2x, side2y, side4x, side4y)
+
+            return
+          }
+
+          if (side1 && side3) {
+            add_contour_segment(side1x, side1y, side3x, side3y)
+            return
+          }
+
+          if (side2 && side4) {
+            add_contour_segment(side2x, side2y, side4x, side4y)
+            return
+          }
+
+          if (side1 && side2) {
+            add_contour_segment(side1x, side1y, side2x, side2y)
+          } else if (side2 && side3) {
+            add_contour_segment(side3x, side3y, side2x, side2y)
+          } else if (side3 && side4) {
+            add_contour_segment(side3x, side3y, side4x, side4y)
+          } else if (side4 && side1) {
+            add_contour_segment(side1x, side1y, side4x, side4y)
+          }
+        }
+      } else {
+        // no contour, return
+        return
+      }
+    }
+
+    if (needs_subdivide) {
+      // subdivide
+      let midX = (xmin + xmax) / 2
+      let midY = (ymin + ymax) / 2
+
+      let mxmyCorner = func(midX, midY)
+      let mxyCorner = func(midX, ymin)
+      let mxYCorner = func(midX, ymax)
+      let xmyCorner = func(xmin, midY)
+      let XmyCorner = func(xmax, midY)
+
+      create_tree(depth + 1, xmin, midX, ymin, midY, fxy, xmyCorner, mxmyCorner, mxyCorner)
+      create_tree(depth + 1, xmin, midX, midY, ymax, xmyCorner, fxY, mxYCorner, mxmyCorner)
+      create_tree(depth + 1, midX, xmax, ymin, midY, mxyCorner, mxmyCorner, XmyCorner, fXy)
+      create_tree(depth + 1, midX, xmax, midY, ymax, mxmyCorner, mxYCorner, fXY, XmyCorner)
+    }
+  }
+
+  let xyCorner = func(xmin, ymin)
+  let xYCorner = func(xmin, ymax)
+  let XYCorner = func(xmax, ymax)
+  let XyCorner = func(xmax, ymin)
+
+  create_tree(0, xmin, xmax, ymin, ymax, xyCorner, xYCorner, XYCorner, XyCorner)
+
+  return polyline
+}
+
+export { generateContours1, generateContours2 }

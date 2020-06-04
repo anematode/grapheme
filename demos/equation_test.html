@@ -41,6 +41,10 @@
 
     function setFunction(text) {
         fplot.setEquation(text)
+
+        katex.render(fplot.equation.latex(false) + "=0", document.getElementById("katex-stuff"), {throwOnError:false})
+
+        fplot.update()
     }
 </script>
 

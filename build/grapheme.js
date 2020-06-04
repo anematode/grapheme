@@ -10313,6 +10313,46 @@ void main() {
     }
   }
 
+  function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
+    let arr = polyline._internal_polyline._gl_triangle_strip_vertices;
+
+    let newland = oldTransform.getPixelToPlotTransform();
+    let harvey = newTransform.getPlotToPixelTransform();
+
+    let x_m = harvey.x_m * newland.x_m;
+    let x_b = harvey.x_m * newland.x_b + harvey.x_b;
+    let y_m = harvey.y_m * newland.y_m;
+    let y_b = harvey.y_m * newland.y_b + harvey.y_b;
+
+    let length = arr.length;
+
+    for (let i = 0; i < length; i += 2) {
+      arr[i] = x_m * arr[i] + x_b;
+      arr[i+1] = y_m * arr[i+1] + y_b;
+    }
+
+    let ratio = oldTransform.coords.width / newTransform.coords.width;
+
+    if (adaptThickness) {
+      for (let i = 0; i < arr.length; i += 4) {
+        let ax = arr[i];
+        let ay = arr[i + 1];
+        let bx = arr[i + 2];
+        let by = arr[i + 3];
+
+        let vx = (bx - ax) / 2 * (1 - ratio);
+        let vy = (by - ay) / 2 * (1 - ratio);
+
+        arr[i] = ax + vx;
+        arr[i + 1] = ay + vy;
+        arr[i + 2] = bx - vx;
+        arr[i + 3] = by - vy;
+      }
+    }
+
+    polyline._internal_polyline.needsBufferCopy = true;
+  }
+
   // Allowed plotting modes:
   // rough = linear sample, no refinement
   // fine = linear sample with refinement
@@ -10358,45 +10398,9 @@ void main() {
     updateLight(adaptThickness=true) {
       let transform = this.plot.transform;
 
-      let arr = this.polyline._internal_polyline._gl_triangle_strip_vertices;
-
-      let newland = this.previousTransform.getPixelToPlotTransform();
-      let harvey = transform.getPlotToPixelTransform();
-
-      let x_m = harvey.x_m * newland.x_m;
-      let x_b = harvey.x_m * newland.x_b + harvey.x_b;
-      let y_m = harvey.y_m * newland.y_m;
-      let y_b = harvey.y_m * newland.y_b + harvey.y_b;
-
-      let length = arr.length;
-
-      for (let i = 0; i < length; i += 2) {
-        arr[i] = x_m * arr[i] + x_b;
-        arr[i+1] = y_m * arr[i+1] + y_b;
-      }
-
-      let ratio = transform.coords.width / this.previousTransform.coords.width;
-
-      if (adaptThickness) {
-        for (let i = 0; i < arr.length; i += 4) {
-          let ax = arr[i];
-          let ay = arr[i + 1];
-          let bx = arr[i + 2];
-          let by = arr[i + 3];
-
-          let vx = (bx - ax) / 2 * (1 - ratio);
-          let vy = (by - ay) / 2 * (1 - ratio);
-
-          arr[i] = ax + vx;
-          arr[i + 1] = ay + vy;
-          arr[i + 2] = bx - vx;
-          arr[i + 3] = by - vy;
-        }
-      }
-
-      this.polyline._internal_polyline.needsBufferCopy = true;
-
       this.previousTransform = transform.clone();
+
+      adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness);
     }
 
     update() {
@@ -12124,21 +12128,8 @@ void main() {
   };
   Object.freeze(Intervals);
 
-  // (y-5)*cos(4 * sqrt((x-4)^2+y^2))-x*sin(2*sqrt(x^2+y^2))
-  // Thanks to https://watermark.silverchair.com/330402.pdf?token=AQECAHi208BE49Ooan9kkhW_Ercy7Dm3ZL_9Cf3qfKAc485ysgAAAncwggJzBgkqhkiG9w0BBwagggJkMIICYAIBADCCAlkGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMzrZbABIi4_9nBCNkAgEQgIICKsRiYm5m-H_ulYXbyKa_4FvhHY-dNoJL8kXfXf0uNRLSZMKfnOTU9Hxp3W_uNaRzSNPu1K23SM9KtZUupvGjUW9KfUO4hdyyZQghDcA0va1ZwcyK6PlgX1rcyI76LrIk46C98-8Yd4LM4StDhVZBoSuJVvmYt2f3ruUFJ3ukOIyvgZGnqObOMzJN5PfXVXAEiW_0PvAJG-yGshJ-iIvUzhlvZQGONSkKOgpBLSwLDeA-GHfAkvbiRh19dlEG3P8PToJyLlAXAnBONLp7O1SyyTHhMGbQ4u6xkSNrT43C63naabWRauWGEKPr9q38X_d3JTN-9bsZw5eSzdjFLimR8xTQR3BCx_kHQVwYol8S79-QxmX-pnXjNJ8Q4OrAfIH0Gf97bkMH2iNTQcsBdp1t0cmkxFT_jdWshOO_vWLtv0ALnR742sfJ4VFEpeRCgQiFOgEcvRSTReQ69ERqoBBkL4uFIsQa7-lz466NJAXxaIWP7GhazOB1KJjzmNJm-7gbFUvaHUy24YR1vuGl0wXZn_ayi6uynoXASBRO5dMt3HsJ1UQkqRssdKMwfx2vmJAj1inl-5vkJf0TxTHTs_e2x7QD3T_bTxTOJmsx96wVKMvaE8uT1AFtzymzYbiwj4GaZgUGw-iH4_nSpJo0LCLesR-UoIjf_-M77aiirCbSM-DxEjRWp16h_pu13i19saWPgJV324Y7dlxqxdcrZ1rEntdTjjdIDAmLgbhP
-  // for some important ideas
-  function generateContours1(func, xmin, xmax, ymin, ymax, searchDepth=3, plotDepth=5) {
+  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=9, renderingQuality=1, maxDepth=16) {
     let polyline = [];
-    let contours = [];
-
-    function convertContour(contour) {
-      contour.addPathTo(polyline);
-      polyline.push(NaN, NaN);
-    }
-
-    function convertContours() {
-      contours.forEach(convertContour);
-    }
 
     function add_contour_segment(x1, y1, x2, y2) {
       polyline.push(x1, y1, x2, y2, NaN, NaN);
@@ -12147,7 +12138,7 @@ void main() {
     function create_tree(depth, xmin, xmax, ymin, ymax, fxy, fxY, fXY, fXy) {
       let needs_subdivide = depth < searchDepth;
 
-      if (depth <= plotDepth && !needs_subdivide) {
+      if (depth <= maxDepth && !needs_subdivide) {
         let signxy = Math.sign(fxy);
         let signxY = Math.sign(fxY);
         let signXY = Math.sign(fXY);
@@ -12155,7 +12146,10 @@ void main() {
 
         // Search for contours
         if (signxy !== signxY || signxY !== signXY || signXY !== signXy) {
-          if (depth < plotDepth) {
+          let minDim = Math.min(xmax - xmin, ymax - ymin);
+          let radius = Math.abs(curvatureFunc((xmax + xmin) / 2, (ymax + ymin) / 2));
+
+          if (depth < maxDepth && radius < renderingQuality * minDim) {
             // subdivide
             needs_subdivide = true;
           } else {
@@ -12220,17 +12214,11 @@ void main() {
 
             if (side1 && side2) {
               add_contour_segment(side1x, side1y, side2x, side2y);
-            }
-
-            if (side2 && side3) {
+            } else if (side2 && side3) {
               add_contour_segment(side3x, side3y, side2x, side2y);
-            }
-
-            if (side3 && side4) {
+            } else if (side3 && side4) {
               add_contour_segment(side3x, side3y, side4x, side4y);
-            }
-
-            if (side4 && side1) {
+            } else if (side4 && side1) {
               add_contour_segment(side1x, side1y, side4x, side4y);
             }
           }
@@ -12265,10 +12253,6 @@ void main() {
 
     create_tree(0, xmin, xmax, ymin, ymax, xyCorner, xYCorner, XYCorner, XyCorner);
 
-    console.log(contours);
-
-    convertContours();
-
     return polyline
   }
 
@@ -12284,17 +12268,31 @@ void main() {
       this.displayedElement = new WebGLPolylineWrapper();
       this.displayedElement.pen.useNative = false;
       this.displayedElement.pen.endcap = "none";
+      this.displayedElement.pen.color = Colors.RED;
 
-      this.addEventListener("plotcoordschanged", () => this.update());
-      /*this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 200 * Math.random())
-      })*/
+      this.addEventListener("plotcoordschanged", () => this.updateLight());
+      this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 200 * Math.random());
+      });
     }
 
     setEquation(text) {
       this.equation = parse_string(text);
 
       this.updateFunc();
+    }
+
+    updateLight(adaptThickness=false) {
+      if (!this.plot)
+        return
+
+      let transform = this.plot.transform;
+      let previousTransform = this.previousTransform;
+      let polyline = this.displayedElement;
+
+      adaptPolyline(polyline, previousTransform, transform, adaptThickness);
+
+      this.previousTransform = transform.clone();
     }
 
     updateFunc() {
@@ -12320,9 +12318,7 @@ void main() {
         let fxV = fx(x, y), fyV = fy(x, y), fxxV = fxx(x, y), fxyV = fxy(x,y), fyyV = fyy(x, y);
         let fxVSq = fxV * fxV, fyVSq = fyV * fyV;
 
-        window.fxx = fxx;
-
-        return Math.pow(fxVSq + fyVSq, 1.5) / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
+        return (fxVSq + fyVSq) ** 1.5 / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
       };
 
       this.compiledFunctions = {
@@ -12335,12 +12331,14 @@ void main() {
     update() {
       if (this.plot) {
         let coords = this.plot.transform.coords;
-        let vertices = generateContours1(this.compiledFunctions.eqn, coords.x1, coords.x2, coords.y1, coords.y2);
+        let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2);
 
         this.plot.transform.plotToPixelArr(vertices);
 
         this.displayedElement.vertices = vertices;
         this.displayedElement.update();
+
+        this.previousTransform = this.plot.transform.clone();
       }
     }
 

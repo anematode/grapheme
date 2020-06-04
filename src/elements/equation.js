@@ -5,7 +5,8 @@ import { Color, Colors } from '../other/color'
 import { Interval} from '../math/interval_arithm'
 import * as utils from "../core/utils"
 import {WebGLPolylineWrapper} from './webgl_polyline_wrapper'
-import { generateContours1 } from '../math/contouring'
+import { generateContours1, generateContours2 } from '../math/contouring'
+import { adaptPolyline } from '../math/adapt_polyline'
 
 const vertexShaderSource = `// set the float precision of the shader to medium precision
 precision mediump float;
@@ -38,17 +39,31 @@ class EquationPlot2D extends InteractiveElement {
     this.displayedElement = new WebGLPolylineWrapper()
     this.displayedElement.pen.useNative = false
     this.displayedElement.pen.endcap = "none"
+    this.displayedElement.pen.color = Colors.RED
 
-    this.addEventListener("plotcoordschanged", () => this.update())
-    /*this.addEventListener("plotcoordslingered", () => {
+    this.addEventListener("plotcoordschanged", () => this.updateLight())
+    this.addEventListener("plotcoordslingered", () => {
       setTimeout(() => this.update(), 200 * Math.random())
-    })*/
+    })
   }
 
   setEquation(text) {
     this.equation = parse_string(text)
 
     this.updateFunc()
+  }
+
+  updateLight(adaptThickness=false) {
+    if (!this.plot)
+      return
+
+    let transform = this.plot.transform
+    let previousTransform = this.previousTransform
+    let polyline = this.displayedElement
+
+    adaptPolyline(polyline, previousTransform, transform, adaptThickness)
+
+    this.previousTransform = transform.clone()
   }
 
   updateFunc() {
@@ -74,9 +89,7 @@ class EquationPlot2D extends InteractiveElement {
       let fxV = fx(x, y), fyV = fy(x, y), fxxV = fxx(x, y), fxyV = fxy(x,y), fyyV = fyy(x, y)
       let fxVSq = fxV * fxV, fyVSq = fyV * fyV
 
-      window.fxx = fxx
-
-      return Math.pow(fxVSq + fyVSq, 1.5) / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
+      return (fxVSq + fyVSq) ** 1.5 / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
     }
 
     this.compiledFunctions = {
@@ -89,12 +102,14 @@ class EquationPlot2D extends InteractiveElement {
   update() {
     if (this.plot) {
       let coords = this.plot.transform.coords
-      let vertices = generateContours1(this.compiledFunctions.eqn, coords.x1, coords.x2, coords.y1, coords.y2)
+      let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2)
 
       this.plot.transform.plotToPixelArr(vertices)
 
       this.displayedElement.vertices = vertices
       this.displayedElement.update()
+
+      this.previousTransform = this.plot.transform.clone()
     }
   }
 
