@@ -1,50 +1,62 @@
 
-/** @claas LabelManager
- * Manage the labels of a domElement, meant to be the container div of a grapheme window */
+/** @class LabelManager
+ * Manage the labels of a domElement, meant to be the container div of a grapheme window.
+ * Remove old labels and retrieve elements for reuse by labels. */
 class LabelManager {
   constructor (container) {
     // Pass it the dom element div for grapheme_window
-    this.container = container
+    /** @public */ this.container = container
 
     // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
-    this.labels = new Map()
+    /** @private */ this.labels = new Map()
 
-    this.currentRenderID = -1
+    // The current render ID
+    /** @private */ this.currentRenderID = -1
   }
 
+  /**
+   * Remove labels with an old render ID.
+   */
   removeOldLabels () {
-    const labelInfos = this.labels
+    const labels = this.labels
 
-    labelInfos.forEach((labelInfo, label) => {
+    labels.forEach((labelInfo, label) => {
+      // Delete labels who don't have the correct render ID
       if (labelInfo.renderID !== this.currentRenderID) {
         labelInfo.domElement.remove()
 
-        labelInfos.delete(label)
+        labels.delete(label)
       }
     })
   }
 
-  // Get element corresponding to a given label
+  /**
+   * Get dom element corresponding to a given label.
+   * @param label {BasicLabel}
+   */
   getElement (label) {
+    // Retrieve label info
     const labelInfo = this.labels.get(label)
-    let domElement
+
+    let element
 
     if (!labelInfo) {
       // Create a div for the label to use
-      domElement = document.createElement('div')
-      domElement.classList.add('grapheme-label')
-      this.container.appendChild(domElement)
+      element = document.createElement('div')
+      element.classList.add('grapheme-label')
 
-      // Set renderID so that we know if it needs updating later
-      this.labels.set(label, { renderID: this.currentRenderID, domElement })
+      this.container.appendChild(element)
+
+      // Update label info
+      this.labels.set(label, { renderID: this.currentRenderID, domElement: element })
     } else {
-      domElement = labelInfo.domElement
+      element = labelInfo.domElement
 
       // Update render ID
       labelInfo.renderID = this.currentRenderID
     }
 
-    return domElement
+    return element
   }
 }
 

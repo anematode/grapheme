@@ -54,7 +54,7 @@ class GraphemeCanvas extends GraphemeGroup {
     })
 
     // Object containing information to be passed to rendered elements defined by derived classes
-    /** @private */ this.extraInfo = {}
+    /** @protected */ this.extraInfo = {}
   }
 
   /**
