@@ -747,12 +747,12 @@ var Grapheme = (function (exports) {
     triggerEvent (type, event) {
       this.sortChildren();
 
+      // If child events should be triggered last, trigger all of this element's events first
       if (this.triggerChildEventsLast && this.eventListeners[type]) {
-          // Stop if event stopped propagation
         let res = this.eventListeners[type].some(listener => listener(event));
-        if (res) {
+        if (res)
+          // Stop if event stopped propagation
           return true
-        }
       }
 
       // Trigger event in all children
@@ -763,10 +763,11 @@ var Grapheme = (function (exports) {
         }
       }
 
+      // If child events should not be triggered last, trigger all of this element's events first
       if (!this.triggerChildEventsLast && this.eventListeners[type]) {
-        // Stop if event stopped propagation
         let res = this.eventListeners[type].some(listener => listener(event));
         if (res)
+          // Stop if event stopped propagation
           return true
       }
 
@@ -787,46 +788,61 @@ var Grapheme = (function (exports) {
      * @param info.ctx CanvasRenderingContext2D to draw to
      * @param info.plot The plot we are drawing onto
      * @param info.labelManager The LabelManager of the plot
+     * @param info.beforeNormalRender The callback for elements that don't use WebGL.
      */
     render (info) {
-      if (info.beforeNormalRender)
-        info.beforeNormalRender();
+      info.beforeNormalRender();
 
       // Update if needed
       if (this.alwaysUpdate)
         this.update();
 
+      // Render this element's children
       this.renderChildren(info);
     }
 
+    /**
+     * Render all the children of this element.
+     * @param info The information to be passed to the children.
+     */
     renderChildren(info) {
-      // Sort children
+      // Sort children by precedence
       this.sortChildren();
 
       // Render all children
       this.children.forEach((child) => child.render(info));
     }
 
-    // Whether element is a direct child of this
+    /**
+     * Return whether element is an immediate child of this element; in other words, whether this.children.includes(elem).
+     * @param element {GraphemeElement} The element to check.
+     * @returns {boolean} Whether the element is an immediate child.
+     */
     isChild (element) {
       return this.hasChild(element, false)
     }
 
-    // Whether element is a child (potentially recursive) of this
+    /**
+     * Return whether element is a child, potentially not an immediate child, of this element
+     * @param element {GraphemeElement} The element to check.
+     * @param recursive {boolean} Whether to check all children, not just immediate children
+     * @returns {boolean} Whether element is a child of this.
+     */
     hasChild (element, recursive = true) {
+      // If we should recurse, check if this has the child, then check all children
       if (recursive) {
         if (this.hasChild(element, false)) return true
         return this.children.some((child) => child.hasChild(element, recursive))
       }
 
-      const index = this.children.indexOf(element);
-      return (index !== -1)
+      // If not recursive, check whether children includes element
+      return this.children.includes(element)
     }
 
-    /** Append element(s) to this
-     *
-     * @param element Element to remove
-     * @param elements Parameter pack, elements to remove
+    /**
+     * Append elements to this element as children
+     * @param element {GraphemeElement} Element to add
+     * @param elements Parameter pack, elements to add
      */
     add (element, ...elements) {
       // Make sure this operation is valid
@@ -851,31 +867,35 @@ var Grapheme = (function (exports) {
       }
     }
 
-    /** Remove elements from this
-     *
-     * @param element Element to remove
+    /**
+     * Remove elements from this
+     * @param element {GraphemeElement} Element to remove
      * @param elements Parameter pack, elements to remove
      */
     remove (element, ...elements) {
       checkType(element, GraphemeElement);
 
       if (this.hasChild(element, false)) {
-        // if element is an immediate child
-
+        // if element is an immediate child, remove it
+        // get index of the element
         const index = this.children.indexOf(element);
+
+        // Remove it from this.children
         this.children.splice(index, 1);
 
+        // Orphanize the element
         element.parent = null;
         element.setPlot(null);
       }
 
+      // Deal with parameter pack
       if (elements.length > 0) {
         this.remove(...elements);
       }
     }
 
     /**
-     * Destroy this element
+     * Destroy this element. Also, destroy all children of this element.
      */
     destroy () {
       // Destroy all children
@@ -885,17 +905,20 @@ var Grapheme = (function (exports) {
       if (this.parent)
         this.parent.remove(this);
 
-      this.plot = null;
+      // Set plot to null (modifying all children as well)
+      this.setPlot(null);
     }
 
     /**
      * Add event listener to this element
-     * @param type Event to listen for
-     * @param callback Function to call
+     * @param type {string} Event type to listen for
+     * @param callback {Function} Function to call
      */
     addEventListener (type, callback) {
       const listenerArray = this.eventListeners[type];
+
       if (!listenerArray) {
+        // If the array doesn't exist yet, create it
         this.eventListeners[type] = [callback];
       } else {
         listenerArray.push(callback);
@@ -904,37 +927,49 @@ var Grapheme = (function (exports) {
 
     /**
      * Remove event listener from this element
-     * @param type Event to listen for
-     * @param callback Function to call
+     * @param type {string} Event type listened for
+     * @param callback {Function} Callback to remove
      */
     removeEventListener(type, callback) {
       const listenerArray = this.eventListeners[type];
       if (listenerArray) {
+        // Find the callback in the list of listeners and remove it
         let index = listenerArray.indexOf(callback);
-        if (index !== -1) {
+        if (index !== -1)
           listenerArray.splice(index, 1);
-        }
       }
     }
 
     /**
-     * Function called to update for rendering. Empty in case child classes don't define it.
+     * Function called to update for rendering. It is empty in case child classes don't define it.
      */
     update () {
 
     }
 
+    /**
+     * Set this.plot to the plot containing this element
+     * @param plot {Plot2D} The plot to set it to
+     */
     setPlot(plot) {
       this.plot = plot;
+
+      // Set it for all children as well
       this.children.forEach(child => child.setPlot(plot));
     }
 
+    /**
+     * Remove all children from this. Optimized for removing all children by not requiring successive calls to
+     * this.remove
+     */
     removeAllChildren() {
+      // Set parent/plot of all children to null
       this.children.forEach(child => {
         child.parent = null;
         child.setPlot(null);
       });
 
+      // Empty children array
       this.children = [];
     }
   }
@@ -959,7 +994,7 @@ var Grapheme = (function (exports) {
       this.currentRenderID = -1;
     }
 
-    cleanOldRenders () {
+    removeOldLabels () {
       const labelInfos = this.labels;
 
       labelInfos.forEach((labelInfo, label) => {
@@ -1357,7 +1392,8 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
+  /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas,
+   * as well as domElement, which is a canvas element to be added to the canvas. */
   class GraphemeCanvas extends GraphemeGroup {
     /**
      * Creates a GraphemeCanvas.
@@ -1513,36 +1549,55 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Render this GraphemeCanvas
+     * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
+     * constructs the information needed to render the child elements.
      */
     render () {
+      // Expand the universe's canvas to fit its windows, in case it is too small
       this.universe.expandToFit();
 
       const { labelManager, ctx } = this;
       const plot = this;
 
+      // Whether the universe's canvas needs to be copied over
       let needsWebGLCopy = false;
 
+      // Function called before an element that doesn't use WebGL is rendered
       const beforeNormalRender = () => {
         if (needsWebGLCopy) {
+          // Copy the universe's canvas over
           this.universe.copyToCanvas(this);
 
+          // Mark the copy as done
           needsWebGLCopy = false;
+
+          // Clear the universe's canvas for future renders
           this.universe.clear();
         }
       };
 
       const beforeWebGLRender = () => {
+        // Set the viewport of the universe to the entire canvas. Note that the universe canvas is not
+        // scaled with the device pixel ratio, so we must use this.canvasWidth/Height instead of this.width/height.
         this.universe.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 
+        // Mark that a copy is needed
         needsWebGLCopy = true;
       };
 
-      // Set ID of this render
+      // Set ID of this render. This is used to remove DOM elements from a previous render.
       labelManager.currentRenderID = getRenderID();
 
-      // Info to be given to rendered elements
-      const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe, extraInfo: this.extraInfo };
+      // Info to be passed to rendered elements; the object passed as "info" in render(info).
+      const info = {
+        labelManager, // the label manager
+        ctx, // The canvas context to draw to
+        plot, // The plot we are drawing
+        beforeNormalRender, // Callback for elements that don't use WebGL
+        beforeWebGLRender, // Callback for elements that use WebGL
+        universe: this.universe, // The universe to draw to (for WebGL stuff)
+        extraInfo: this.extraInfo // Extra info supplied by derived classes
+      };
 
       // Clear the canvas
       this.clear();
@@ -1550,19 +1605,22 @@ var Grapheme = (function (exports) {
       // Reset the rendering context transform
       this.resetCanvasCtxTransform();
 
+      // If this class defines a beforeRender function, call it
       if (this.beforeRender)
         this.beforeRender(info);
 
       // Render all children
       super.render(info);
 
+      // If this class defines an after render function, call it
       if (this.afterRender)
         this.afterRender(info);
 
+      // Copy over the canvas if necessary
       beforeNormalRender();
 
       // Get rid of old labels
-      labelManager.cleanOldRenders();
+      labelManager.removeOldLabels();
     }
   }
 

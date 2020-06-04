@@ -36,12 +36,12 @@ class GraphemeElement {
   triggerEvent (type, event) {
     this.sortChildren()
 
+    // If child events should be triggered last, trigger all of this element's events first
     if (this.triggerChildEventsLast && this.eventListeners[type]) {
-        // Stop if event stopped propagation
       let res = this.eventListeners[type].some(listener => listener(event))
-      if (res) {
+      if (res)
+        // Stop if event stopped propagation
         return true
-      }
     }
 
     // Trigger event in all children
@@ -52,10 +52,11 @@ class GraphemeElement {
       }
     }
 
+    // If child events should not be triggered last, trigger all of this element's events first
     if (!this.triggerChildEventsLast && this.eventListeners[type]) {
-      // Stop if event stopped propagation
       let res = this.eventListeners[type].some(listener => listener(event))
       if (res)
+        // Stop if event stopped propagation
         return true
     }
 
@@ -76,46 +77,61 @@ class GraphemeElement {
    * @param info.ctx CanvasRenderingContext2D to draw to
    * @param info.plot The plot we are drawing onto
    * @param info.labelManager The LabelManager of the plot
+   * @param info.beforeNormalRender The callback for elements that don't use WebGL.
    */
   render (info) {
-    if (info.beforeNormalRender)
-      info.beforeNormalRender()
+    info.beforeNormalRender()
 
     // Update if needed
     if (this.alwaysUpdate)
       this.update()
 
+    // Render this element's children
     this.renderChildren(info)
   }
 
+  /**
+   * Render all the children of this element.
+   * @param info The information to be passed to the children.
+   */
   renderChildren(info) {
-    // Sort children
+    // Sort children by precedence
     this.sortChildren()
 
     // Render all children
     this.children.forEach((child) => child.render(info))
   }
 
-  // Whether element is a direct child of this
+  /**
+   * Return whether element is an immediate child of this element; in other words, whether this.children.includes(elem).
+   * @param element {GraphemeElement} The element to check.
+   * @returns {boolean} Whether the element is an immediate child.
+   */
   isChild (element) {
     return this.hasChild(element, false)
   }
 
-  // Whether element is a child (potentially recursive) of this
+  /**
+   * Return whether element is a child, potentially not an immediate child, of this element
+   * @param element {GraphemeElement} The element to check.
+   * @param recursive {boolean} Whether to check all children, not just immediate children
+   * @returns {boolean} Whether element is a child of this.
+   */
   hasChild (element, recursive = true) {
+    // If we should recurse, check if this has the child, then check all children
     if (recursive) {
       if (this.hasChild(element, false)) return true
       return this.children.some((child) => child.hasChild(element, recursive))
     }
 
-    const index = this.children.indexOf(element)
-    return (index !== -1)
+    // If not recursive, check whether children includes element
+    return this.children.includes(element)
   }
 
-  /** Append element(s) to this
-   *
-   * @param element Element to remove
-   * @param elements Parameter pack, elements to remove
+  /**
+   * Append elements to this element as children
+   * @param element {GraphemeElement} Element to add
+   * @param elements Parameter pack, elements to add
    */
   add (element, ...elements) {
     // Make sure this operation is valid
@@ -140,31 +156,35 @@ class GraphemeElement {
     }
   }
 
-  /** Remove elements from this
-   *
-   * @param element Element to remove
+  /**
+   * Remove elements from this
+   * @param element {GraphemeElement} Element to remove
    * @param elements Parameter pack, elements to remove
    */
   remove (element, ...elements) {
     utils.checkType(element, GraphemeElement)
 
     if (this.hasChild(element, false)) {
-      // if element is an immediate child
-
+      // if element is an immediate child, remove it
+      // get index of the element
       const index = this.children.indexOf(element)
+
+      // Remove it from this.children
       this.children.splice(index, 1)
 
+      // Orphanize the element
       element.parent = null
       element.setPlot(null)
     }
 
+    // Deal with parameter pack
     if (elements.length > 0) {
       this.remove(...elements)
     }
   }
 
   /**
-   * Destroy this element
+   * Destroy this element. Also, destroy all children of this element.
    */
   destroy () {
     // Destroy all children
@@ -174,17 +194,20 @@ class GraphemeElement {
     if (this.parent)
       this.parent.remove(this)
 
-    this.plot = null
+    // Set plot to null (modifying all children as well)
+    this.setPlot(null)
   }
 
   /**
    * Add event listener to this element
-   * @param type Event to listen for
-   * @param callback Function to call
+   * @param type {string} Event type to listen for
+   * @param callback {Function} Function to call
    */
   addEventListener (type, callback) {
     const listenerArray = this.eventListeners[type]
+
     if (!listenerArray) {
+      // If the array doesn't exist yet, create it
       this.eventListeners[type] = [callback]
     } else {
       listenerArray.push(callback)
@@ -193,37 +216,49 @@ class GraphemeElement {
 
   /**
    * Remove event listener from this element
-   * @param type Event to listen for
-   * @param callback Function to call
+   * @param type {string} Event type listened for
+   * @param callback {Function} Callback to remove
    */
   removeEventListener(type, callback) {
     const listenerArray = this.eventListeners[type]
     if (listenerArray) {
+      // Find the callback in the list of listeners and remove it
       let index = listenerArray.indexOf(callback)
-      if (index !== -1) {
+      if (index !== -1)
         listenerArray.splice(index, 1)
-      }
     }
   }
 
   /**
-   * Function called to update for rendering. Empty in case child classes don't define it.
+   * Function called to update for rendering. It is empty in case child classes don't define it.
    */
   update () {
 
   }
 
+  /**
+   * Set this.plot to the plot containing this element
+   * @param plot {Plot2D} The plot to set it to
+   */
   setPlot(plot) {
     this.plot = plot
+
+    // Set it for all children as well
     this.children.forEach(child => child.setPlot(plot))
   }
 
+  /**
+   * Remove all children from this. Optimized for removing all children by not requiring successive calls to
+   * this.remove
+   */
   removeAllChildren() {
+    // Set parent/plot of all children to null
     this.children.forEach(child => {
       child.parent = null
       child.setPlot(null)
     })
 
+    // Empty children array
     this.children = []
   }
 }

@@ -12,7 +12,7 @@ class LabelManager {
     this.currentRenderID = -1
   }
 
-  cleanOldRenders () {
+  removeOldLabels () {
     const labelInfos = this.labels
 
     labelInfos.forEach((labelInfo, label) => {

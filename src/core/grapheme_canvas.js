@@ -5,7 +5,8 @@ import { LabelManager } from './label_manager'
 import { DefaultUniverse, Universe } from './grapheme_universe'
 import { Keyboard } from './keyboard'
 
-/** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas. */
+/** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas,
+ * as well as domElement, which is a canvas element to be added to the canvas. */
 class GraphemeCanvas extends GraphemeGroup {
   /**
    * Creates a GraphemeCanvas.
@@ -161,36 +162,55 @@ class GraphemeCanvas extends GraphemeGroup {
   }
 
   /**
-   * Render this GraphemeCanvas
+   * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
+   * constructs the information needed to render the child elements.
    */
   render () {
+    // Expand the universe's canvas to fit its windows, in case it is too small
     this.universe.expandToFit()
 
     const { labelManager, ctx } = this
     const plot = this
 
+    // Whether the universe's canvas needs to be copied over
     let needsWebGLCopy = false
 
+    // Function called before an element that doesn't use WebGL is rendered
     const beforeNormalRender = () => {
       if (needsWebGLCopy) {
+        // Copy the universe's canvas over
         this.universe.copyToCanvas(this)
 
+        // Mark the copy as done
         needsWebGLCopy = false
+
+        // Clear the universe's canvas for future renders
         this.universe.clear()
       }
     }
 
     const beforeWebGLRender = () => {
+      // Set the viewport of the universe to the entire canvas. Note that the universe canvas is not
+      // scaled with the device pixel ratio, so we must use this.canvasWidth/Height instead of this.width/height.
       this.universe.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight)
 
+      // Mark that a copy is needed
       needsWebGLCopy = true
     }
 
-    // Set ID of this render
+    // Set ID of this render. This is used to remove DOM elements from a previous render.
     labelManager.currentRenderID = utils.getRenderID()
 
-    // Info to be given to rendered elements
-    const info = { labelManager, ctx, plot, beforeNormalRender, beforeWebGLRender, universe: this.universe, extraInfo: this.extraInfo }
+    // Info to be passed to rendered elements; the object passed as "info" in render(info).
+    const info = {
+      labelManager, // the label manager
+      ctx, // The canvas context to draw to
+      plot, // The plot we are drawing
+      beforeNormalRender, // Callback for elements that don't use WebGL
+      beforeWebGLRender, // Callback for elements that use WebGL
+      universe: this.universe, // The universe to draw to (for WebGL stuff)
+      extraInfo: this.extraInfo // Extra info supplied by derived classes
+    }
 
     // Clear the canvas
     this.clear()
@@ -198,19 +218,22 @@ class GraphemeCanvas extends GraphemeGroup {
     // Reset the rendering context transform
     this.resetCanvasCtxTransform()
 
+    // If this class defines a beforeRender function, call it
     if (this.beforeRender)
       this.beforeRender(info)
 
     // Render all children
     super.render(info)
 
+    // If this class defines an after render function, call it
     if (this.afterRender)
       this.afterRender(info)
 
+    // Copy over the canvas if necessary
     beforeNormalRender()
 
     // Get rid of old labels
-    labelManager.cleanOldRenders()
+    labelManager.removeOldLabels()
   }
 }
 
