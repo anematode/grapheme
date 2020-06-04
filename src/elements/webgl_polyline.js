@@ -227,10 +227,9 @@ class WebGLPolyline extends WebGLElement {
             addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c))
             addVertex(o_x, o_y)
           }
-          continue
-        } else {
-          break
         }
+
+        continue
       }
 
       // all vertices are defined, time to draw a joinerrrrr

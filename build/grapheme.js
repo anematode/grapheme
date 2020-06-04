@@ -3469,6 +3469,10 @@ var Grapheme = (function (exports) {
   }
 
   function operator_derivative (opNode, variable = 'x') {
+    if (opNode.isConstant()) {
+      return new ConstantNode({value: 0})
+    }
+
     let node;
     switch (opNode.operator) {
       case '>':
@@ -3507,16 +3511,30 @@ var Grapheme = (function (exports) {
         node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '*':
-        node = new OperatorNode({ operator: '+' });
+        let firstChild = opNode.children[0], secondChild = opNode.children[1];
 
-        // product rule
-        let first = new OperatorNode({ operator: '*' });
-        let second = new OperatorNode({ operator: '*' });
+        if (firstChild.isConstant()) {
+          node = new OperatorNode({operator: '*', children: [
+            firstChild,
+              secondChild.derivative(variable)
+            ]});
+        } else if (secondChild.isConstant()) {
+          node = new OperatorNode({operator: '*', children: [
+              secondChild,
+              firstChild.derivative(variable)
+            ]});
+        } else {
+          node = new OperatorNode({ operator: '+' });
 
-        first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)];
-        second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
+          // product rule
+          let first = new OperatorNode({ operator: '*' });
+          let second = new OperatorNode({ operator: '*' });
 
-        node.children = [first, second];
+          first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)];
+          second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
+
+          node.children = [first, second];
+        }
         return node
       case '/':
         // Division rules
@@ -3547,8 +3565,10 @@ var Grapheme = (function (exports) {
         node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '^':
-        if (opNode.children[1] instanceof ConstantNode) {
-          let power = opNode.children[1].value;
+        let child1 = opNode.children[1];
+
+        if (child1.isConstant()) {
+          let power = child1.evaluateConstant();
 
           if (power === 0) {
             return new ConstantNode({ value: 0 })
@@ -3559,15 +3579,23 @@ var Grapheme = (function (exports) {
           let node2 = new OperatorNode({ operator: '*' });
           let pow = new OperatorNode({ operator: '^' });
 
-          pow.children = [opNode.children[0].clone(), new OperatorNode({operator: '-', children: [
-            opNode.children[1],
-            new ConstantNode({ value: 1 })]})];
+          let newPower;
+
+          if (child1 instanceof ConstantNode && powerExactlyRepresentableAsFloat(child1.text)) {
+            newPower = new ConstantNode({value: power - 1});
+          } else {
+            newPower = new OperatorNode({operator: '-', children: [
+                opNode.children[1],
+                new ConstantNode({ value: 1 })]});
+          }
+
+          pow.children = [opNode.children[0].clone(), newPower];
 
           node2.children = [opNode.children[0].derivative(variable), pow];
-          node.children = [opNode.children[1].clone(), node2];
+          node.children = [child1.clone(), node2];
 
           return node
-        } else if (opNode.children[0] instanceof ConstantNode) {
+        } else if (opNode.children[0].isConstant()) {
           return new OperatorNode({
             operator: '*',
             children: [
@@ -7472,6 +7500,659 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function multiplyPolynomials(coeffs1, coeffs2, degree) {
+    let ret = [];
+    for (let i = 0; i <= degree; ++i) {
+      ret.push(0);
+    }
+
+    for (let i = 0; i < coeffs1.length; ++i) {
+      for (let j = 0; j < coeffs2.length; ++j) {
+        ret[i + j] += coeffs1[i] * coeffs2[j];
+      }
+    }
+
+    return ret
+  }
+
+  class SingleVariablePolynomial {
+    constructor(coeffs=[0]) {
+      // Order: first is constant, second is linear, etc.
+      this.coeffs = coeffs;
+    }
+
+    _evaluateFloat(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        sum += coeffs[i] * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    evaluate(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        // TODO
+        if (isNaN(coeff))
+          coeff = coeff.approximate_as_float();
+
+        sum += coeff * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    degree() {
+      return this.coeffs.length - 1
+    }
+
+    derivative() {
+      let newCoeffs = [];
+      const coeffs = this.coeffs;
+
+      for (let i = 1; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        newCoeffs.push(i * coeff);
+      }
+
+      return new SingleVariablePolynomial(newCoeffs)
+    }
+
+    clone() {
+      return new SingleVariablePolynomial(this.coeffs.slice())
+    }
+
+    add(poly) {
+      let coeffs = this.coeffs;
+      let otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    subtract(poly) {
+      const coeffs = this.coeffs;
+      const otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    multiplyScalar(s) {
+      const coeffs = this.coeffs;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        coeffs[i] *= s;
+      }
+
+      return this
+    }
+
+    multiply(poly) {
+      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
+      return this
+    }
+
+    integral() {
+      // TODO
+    }
+  }
+
+  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
+
+  var g = 7;
+  var C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  var integer_factorials = [
+    1,
+    1,
+    2,
+    6,
+    24,
+    120,
+    720,
+    5040,
+    40320,
+    362880,
+    3628800,
+    39916800,
+    479001600,
+    6227020800,
+    87178291200,
+    1307674368000,
+    20922789888000,
+    355687428096000,
+    6402373705728000,
+    121645100408832000,
+    2432902008176640000,
+    51090942171709440000,
+    1.1240007277776077e+21,
+    2.585201673888498e+22,
+    6.204484017332394e+23,
+    1.5511210043330986e+25,
+    4.0329146112660565e+26,
+    1.0888869450418352e+28,
+    3.0488834461171384e+29,
+    8.841761993739701e+30,
+    2.6525285981219103e+32,
+    8.222838654177922e+33,
+    2.631308369336935e+35,
+    8.683317618811886e+36,
+    2.9523279903960412e+38,
+    1.0333147966386144e+40,
+    3.719933267899012e+41,
+    1.3763753091226343e+43,
+    5.23022617466601e+44,
+    2.0397882081197442e+46,
+    8.159152832478977e+47,
+    3.3452526613163803e+49,
+    1.4050061177528798e+51,
+    6.041526306337383e+52,
+    2.6582715747884485e+54,
+    1.1962222086548019e+56,
+    5.5026221598120885e+57,
+    2.5862324151116818e+59,
+    1.2413915592536073e+61,
+    6.082818640342675e+62,
+    3.0414093201713376e+64,
+    1.5511187532873822e+66,
+    8.065817517094388e+67,
+    4.2748832840600255e+69,
+    2.308436973392414e+71,
+    1.2696403353658276e+73,
+    7.109985878048635e+74,
+    4.052691950487722e+76,
+    2.350561331282879e+78,
+    1.3868311854568986e+80,
+    8.320987112741392e+81,
+    5.075802138772248e+83,
+    3.146997326038794e+85,
+    1.98260831540444e+87,
+    1.2688693218588417e+89,
+    8.247650592082472e+90,
+    5.443449390774431e+92,
+    3.647111091818868e+94,
+    2.4800355424368305e+96,
+    1.711224524281413e+98,
+    1.197857166996989e+100,
+    8.504785885678622e+101,
+    6.123445837688608e+103,
+    4.4701154615126834e+105,
+    3.3078854415193856e+107,
+    2.480914081139539e+109,
+    1.8854947016660498e+111,
+    1.4518309202828584e+113,
+    1.1324281178206295e+115,
+    8.946182130782973e+116,
+    7.156945704626378e+118,
+    5.797126020747366e+120,
+    4.75364333701284e+122,
+    3.945523969720657e+124,
+    3.314240134565352e+126,
+    2.8171041143805494e+128,
+    2.4227095383672724e+130,
+    2.107757298379527e+132,
+    1.8548264225739836e+134,
+    1.6507955160908452e+136,
+    1.4857159644817607e+138,
+    1.3520015276784023e+140,
+    1.24384140546413e+142,
+    1.1567725070816409e+144,
+    1.0873661566567424e+146,
+    1.0329978488239052e+148,
+    9.916779348709491e+149,
+    9.619275968248206e+151,
+    9.426890448883242e+153,
+    9.33262154439441e+155,
+    9.33262154439441e+157,
+    9.425947759838354e+159,
+    9.614466715035121e+161,
+    9.902900716486175e+163,
+    1.0299016745145622e+166,
+    1.0813967582402903e+168,
+    1.1462805637347078e+170,
+    1.2265202031961373e+172,
+    1.3246418194518284e+174,
+    1.4438595832024928e+176,
+    1.5882455415227421e+178,
+    1.7629525510902437e+180,
+    1.9745068572210728e+182,
+    2.2311927486598123e+184,
+    2.543559733472186e+186,
+    2.925093693493014e+188,
+    3.3931086844518965e+190,
+    3.969937160808719e+192,
+    4.6845258497542883e+194,
+    5.574585761207603e+196,
+    6.689502913449124e+198,
+    8.09429852527344e+200,
+    9.875044200833598e+202,
+    1.2146304367025325e+205,
+    1.5061417415111404e+207,
+    1.8826771768889254e+209,
+    2.372173242880046e+211,
+    3.012660018457658e+213,
+    3.8562048236258025e+215,
+    4.9745042224772855e+217,
+    6.466855489220472e+219,
+    8.471580690878817e+221,
+    1.118248651196004e+224,
+    1.4872707060906852e+226,
+    1.992942746161518e+228,
+    2.6904727073180495e+230,
+    3.659042881952547e+232,
+    5.01288874827499e+234,
+    6.917786472619486e+236,
+    9.615723196941086e+238,
+    1.346201247571752e+241,
+    1.89814375907617e+243,
+    2.6953641378881614e+245,
+    3.8543707171800706e+247,
+    5.550293832739301e+249,
+    8.047926057471987e+251,
+    1.17499720439091e+254,
+    1.7272458904546376e+256,
+    2.5563239178728637e+258,
+    3.808922637630567e+260,
+    5.7133839564458505e+262,
+    8.627209774233235e+264,
+    1.3113358856834518e+267,
+    2.006343905095681e+269,
+    3.089769613847349e+271,
+    4.789142901463391e+273,
+    7.47106292628289e+275,
+    1.1729568794264138e+278,
+    1.8532718694937338e+280,
+    2.946702272495037e+282,
+    4.714723635992059e+284,
+    7.590705053947215e+286,
+    1.2296942187394488e+289,
+    2.0044015765453015e+291,
+    3.2872185855342945e+293,
+    5.423910666131586e+295,
+    9.003691705778433e+297,
+    1.5036165148649983e+300,
+    2.526075744973197e+302,
+    4.2690680090047027e+304,
+    7.257415615307994e+306
+  ];
+
+  function gamma (z) {
+
+    // Define gamma specially for integral values
+    if (z % 1 === 0) {
+      if (z <= 0) {
+        return Infinity
+      }
+
+      let res = integer_factorials[Math.round(z - 1)];
+
+      if (!res) {
+        return Infinity
+      }
+      return res
+    }
+
+    if (z < 0.5) {
+      return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z))
+    } else {
+      z -= 1;
+
+      var x = C[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += C[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
+    }
+  }
+
+  function ln_gamma (z) {
+    if (z < 0.5) {
+      // Compute via reflection formula
+      let reflected = ln_gamma(1 - z);
+
+      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
+    } else {
+      z -= 1;
+
+      var x = C[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += C[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+
+      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
+    }
+  }
+
+
+
+  function polygamma (m, z) {
+    if (m % 1 !== 0) {
+      return NaN
+    }
+
+    if (m === 0) {
+      return digamma(z)
+    }
+
+    if (m === 1) {
+      return trigamma(z)
+    }
+
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return Infinity
+
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
+        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return polygamma(m, z+1) + sign * gamma(m + 1) / Math.pow(z, m+1)
+    }
+
+    // Series representation
+
+    let sum = 0;
+    for (let i = 0; i < 200; ++i) {
+      sum += 1 / Math.pow(z + i, m + 1);
+    }
+
+    return sign * gamma(m + 1) * sum
+
+  }
+
+  const GREGORY_COEFFICIENTS = [
+    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
+  ];
+
+  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
+
+  let POLY1 = new SingleVariablePolynomial([0, 1]);
+  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
+
+  function getPolygammaNumeratorPolynomial(n) {
+    let poly = PolygammaNumeratorPolynomials[n];
+    if (poly)
+      return poly
+
+    if (n > 10000)
+      return new SingleVariablePolynomial([0])
+
+    if (n > 20) {
+      // to prevent stack overflow issues
+      for (let i = 0; i < n; ++i) {
+        getPolygammaNumeratorPolynomial(i);
+      }
+    }
+
+    return PolygammaNumeratorPolynomials[n] =
+      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
+        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
+      )
+  }
+
+  function digamma (z) {
+    if (z < 0.5) {
+      // psi(1-x) - psi(x) = pi cot(pi x)
+      // psi(x) = psi(1-x) - pi cot (pi x)
+
+      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
+    } else if (z < 5) {
+      // psi(x+1) = psi(x) + 1/x
+      // psi(x) = psi(x+1) - 1/x
+
+      return digamma(z + 1) - 1 / z
+    }
+
+    let egg = 1;
+    let sum = Math.log(z);
+
+    for (let n = 1; n < 100; ++n) {
+      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
+
+      egg *= ((n-1) ? (n-1) : 1);
+      egg /= z + n - 1;
+
+      sum -= coeff * egg;
+    }
+
+    return sum
+  }
+
+  function trigamma(z) {
+    if (z < 0.5) {
+      if (z % 1 === 0) {
+        return Infinity
+      }
+
+      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
+      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
+
+      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
+    } else if (z < 8) {
+      // psi_1(z+1) = psi_1(z) - 1/z^2
+      // psi_1(z) = psi_1(z+1) + 1/z^2
+
+      return trigamma(z+1) + 1 / (z*z)
+    }
+
+    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
+  }
+
+  const Functions = {
+    LogB: (b, v) => {
+      return Math.log(v) / Math.log(b)
+    },
+    Factorial: (a) => {
+      return Functions.Gamma(a + 1)
+    },
+    Gamma: (a) => {
+      return gamma(a)
+    },
+    LnGamma: (a) => {
+      return ln_gamma(a)
+    },
+    Digamma: (a) => {
+      return digamma(a)
+    },
+    Trigamma: (a) => {
+      return trigamma(a)
+    },
+    Polygamma: (n, a) => {
+      return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
+    },
+    PowRational: (x, p, q) => {
+      // Calculates x ^ (p / q), where p and q are integers
+
+      if (p === 0) {
+        return 1
+      }
+
+      let gcd = gcd(p, q);
+
+      if (gcd !== 1) {
+        p /= gcd;
+        q /= gcd;
+      }
+
+      if (x >= 0) {
+        return Math.pow(x, p / q)
+      } else {
+        if (mod(q, 2) === 0)
+          return NaN
+
+        let ret = Math.pow(-x, p / q);
+        if (mod(p, 2) === 0) {
+          return ret
+        } else {
+          return -ret
+        }
+      }
+    }
+  };
+
+  function cchain(val1, compare, val2, ...args) {
+    if (!val2) {
+      return false
+    }
+
+    switch (compare) {
+      case '<':
+        if (val1 >= val2)
+          return false
+        break
+      case '>':
+        if (val1 <= val2)
+          return false
+        break
+      case '<=':
+        if (val1 > val2)
+          return false
+        break
+      case '>=':
+        if (val1 < val2)
+          return false
+        break
+      case '==':
+        if (val1 !== val2)
+          return false
+        break
+      case '!=':
+        if (val1 === val2)
+          return false
+        break
+    }
+
+    if (args.length > 0)
+      return cchain(val2, ...args)
+
+    return true
+  }
+  function piecewise(cond, val, ...args) {
+    if (!val) {
+      return cond
+    }
+
+    if (cond) {
+      return val
+    }
+
+    if (args.length === 0) {
+      // This is a fail
+      return val
+    } else {
+      return piecewise(...args)
+    }
+  }
+
+  function ifelse(val1, cond, val2) {
+    if (cond)
+      return val1
+    return val2
+  }
+
+  const Operators = {
+    '+': (x, y) => x + y,
+    '-': (x, y) => x - y,
+    '*': (x, y) => x * y,
+    '/': (x, y) => x / y,
+    '^': (x, y) => Math.pow(x, y),
+    '<': (x, y) => x < y,
+    '<=': (x, y) => x <= y,
+    '>': (x, y) => x > y,
+    '>=': (x, y) => x >= y,
+    '==': (x, y) => x === y,
+    '!=': (x, y) => x !== y,
+    'sin': Math.sin,
+    'tan': Math.tan,
+    'cos': Math.cos,
+    'csc': x => 1/Math.sin(x),
+    'sec': x => 1/Math.cos(x),
+    'cot': x => 1/Math.tan(x),
+    'asin': x => Math.asin(x),
+    'acos': x => Math.acos(x),
+    'atan': x => Math.atan(x),
+    'abs': x => Math.abs(x),
+    'sqrt': x => Math.sqrt(x),
+    'cbrt': x => Math.cbrt(x),
+    'ln': x => Math.log(x),
+    'log': x => Math.log(x),
+    'log10': x => Math.log10(x),
+    'log2': x => Math.log2(x),
+    'sinh': Math.sinh,
+    'cosh': Math.cosh,
+    'tanh': Math.tanh,
+    'csch': x => 1/Math.sinh(x),
+    'sech': x => 1/Math.cosh(x),
+    'coth': x => 1/Math.tanh(x),
+    'asinh': Math.asinh,
+    'acosh': Math.acosh,
+    'atanh': Math.atanh,
+    'asec': x => Math.acos(1/x),
+    'acsc': x => Math.asin(1/x),
+    'acot': Functions.Arccot,
+    'acsch': x => Math.asinh(1/x),
+    'asech': x => Math.acosh(1/x),
+    'acoth': x => Math.atanh(1/x),
+    'logb': Functions.LogB,
+    'gamma': Functions.Gamma,
+    'factorial': Functions.Factorial,
+    'ln_gamma': Functions.LnGamma,
+    'digamma': Functions.Digamma,
+    'trigamma': Functions.Trigamma,
+    'polygamma': Functions.Polygamma,
+    'pow_rational': Functions.PowRational,
+    'max': Math.max,
+    'min': Math.min,
+    'floor': Math.floor,
+    'ceil': Math.ceil,
+    'and': (x, y) => x && y,
+    'or': (x, y) => x || y,
+    'cchain': cchain,
+    'ifelse': ifelse,
+    'piecewise': piecewise
+  };
+
   // const fs = require( ...
 
   // List of operators (currently)
@@ -7480,6 +8161,8 @@ var Grapheme = (function (exports) {
   const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
 
   let floatRepresentabilityTester;
+  const matchIntegralComponent = /[0-9]*\./;
+  const trailingZeroes = /0+$/;
 
   function isExactlyRepresentableAsFloat(f) {
     if (typeof f === "number")
@@ -7488,14 +8171,10 @@ var Grapheme = (function (exports) {
       floatRepresentabilityTester = new OvinusReal(0, 53);
     floatRepresentabilityTester.value = f;
 
-    let matchIntegralComponent = /[0-9]*\./;
+    return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
+      f.replace(matchIntegralComponent, '');
 
-    if (floatRepresentabilityTester.value.replace(/0+$/,'').replace(matchIntegralComponent, '') ===
-      f.replace(matchIntegralComponent, '')) {
-      return true
-    }
 
-    return false
   }
 
   class ASTNode {
@@ -7511,10 +8190,11 @@ var Grapheme = (function (exports) {
     }
 
     isConstant() {
-      if (this.children.length === 0)
-        return true
-
       return this.children.every(child => child.isConstant())
+    }
+
+    evaluateConstant() {
+      return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
     }
 
     hasChildren() {
@@ -7555,8 +8235,9 @@ var Grapheme = (function (exports) {
       return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
     }
 
-    compileReal(precision=53) {
-      let variableNames = this.getVariableNames();
+    compileReal(exportedVariables, precision=53) {
+      if (!exportedVariables)
+        exportedVariables = this.getVariableNames();
 
       let Variables = {};
       let preamble = "";
@@ -7583,7 +8264,7 @@ var Grapheme = (function (exports) {
       let realVarNames = Object.keys(Variables);
       let realVars = realVarNames.map(name => Variables[name]);
 
-      let func = new Function(...realVarNames, ...variableNames, `${preamble}
+      let func = new Function(...realVarNames, ...exportedVariables, `${preamble}
       return ${text};`);
       let isValid = true;
 
@@ -7601,7 +8282,7 @@ var Grapheme = (function (exports) {
             throw new Error("Already freed compiled real function!")
           return func(...realVars, ...args)
         },
-        variable_list: variableNames,
+        variableNames: exportedVariables,
         free() {
           if (!isValid)
             throw new Error("Already freed compiled real function!")
@@ -7617,8 +8298,9 @@ var Grapheme = (function (exports) {
       }
     }
 
-    compileInterval() {
-      let variableNames = this.getVariableNames();
+    compileInterval(exportedVariables) {
+      if (!exportedVariables)
+        exportedVariables = this.getVariableNames();
       let preamble = "";
 
       const defineVariable = (variable, expression) => {
@@ -7627,11 +8309,12 @@ var Grapheme = (function (exports) {
 
       let returnVal = this._getIntervalCompileText(defineVariable);
 
-      return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
+      return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
     }
 
-    compile () {
-      let variableNames = this.getVariableNames();
+    compile (exportedVariables) {
+      if (!exportedVariables)
+        exportedVariables = this.getVariableNames();
 
       let preamble = "";
 
@@ -7641,7 +8324,7 @@ var Grapheme = (function (exports) {
 
       let returnVal = this._getCompileText(defineVariable);
 
-      return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
+      return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
     }
 
     derivative (variable) {
@@ -7716,6 +8399,10 @@ var Grapheme = (function (exports) {
       return false
     }
 
+    evaluateConstant() {
+      return NaN
+    }
+
     _getCompileText (defineVariable) {
       if (comparisonOperators.includes(this.name))
         return '"' + this.name + '"'
@@ -7777,10 +8464,14 @@ var Grapheme = (function (exports) {
     clone () {
       return new VariableNode({ name: this.name })
     }
+
+    isConstant() {
+      return false
+    }
   }
 
   const OperatorPatterns = {
-    'sin': ['Math.sin', '+'],
+    'sin': ['Math.sin'],
     '+': ['', '+'],
     '-': ['', '-'],
     '*': ['', '*'],
@@ -8138,6 +8829,10 @@ var Grapheme = (function (exports) {
 
       return node
     }
+
+    evaluateConstant () {
+      return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
+    }
   }
 
   class ConstantNode extends ASTNode {
@@ -8172,6 +8867,10 @@ var Grapheme = (function (exports) {
       return varName
     }
 
+    isConstant() {
+      return true
+    }
+
     _getCompileText (defineVariable) {
       return this.value + ''
     }
@@ -8195,6 +8894,35 @@ var Grapheme = (function (exports) {
     clone () {
       return new ConstantNode({ value: this.value, invisible: this.invisible, text: this.text })
     }
+
+    evaluateConstant() {
+      return this.value
+    }
+  }
+
+  function powerExactlyRepresentableAsFloat(power) {
+    if (typeof power === "number") return true
+
+    // todo, make more precise
+    if (Number.isInteger(parseFloat(power))) {
+      return true
+    }
+
+    return false
+
+    /*if (!floatRepresentabilityTester)
+      floatRepresentabilityTester = new Real(0, 53)
+
+    floatRepresentabilityTester.value = power
+
+    floatRepresentabilityTester.subtract_float(1)
+
+    floatRepresentabilityTester.set_precision(106)
+
+    floatRepresentabilityTester.add_float(1)
+
+    return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
+      power.replace(matchIntegralComponent, '');*/
   }
 
   const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]});
@@ -9321,10 +10049,9 @@ void main() {
               addVertex(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c));
               addVertex(o_x, o_y);
             }
-            continue
-          } else {
-            break
           }
+
+          continue
         }
 
         // all vertices are defined, time to draw a joinerrrrr
@@ -9562,6 +10289,7 @@ void main() {
       this._internal_polyline.thickness = pen.thickness / 2;
       this._internal_polyline.use_native = pen.useNative;
       this._internal_polyline.visible = pen.visible;
+      this._internal_polyline.endcap_type = (pen.endcap === "round") ? 1 : 0;
 
       // TODO: add other pen things
 
@@ -10311,537 +11039,6 @@ void main() {
     }
   }
 
-  function multiplyPolynomials(coeffs1, coeffs2, degree) {
-    let ret = [];
-    for (let i = 0; i <= degree; ++i) {
-      ret.push(0);
-    }
-
-    for (let i = 0; i < coeffs1.length; ++i) {
-      for (let j = 0; j < coeffs2.length; ++j) {
-        ret[i + j] += coeffs1[i] * coeffs2[j];
-      }
-    }
-
-    return ret
-  }
-
-  class SingleVariablePolynomial {
-    constructor(coeffs=[0]) {
-      // Order: first is constant, second is linear, etc.
-      this.coeffs = coeffs;
-    }
-
-    _evaluateFloat(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        sum += coeffs[i] * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    evaluate(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        // TODO
-        if (isNaN(coeff))
-          coeff = coeff.approximate_as_float();
-
-        sum += coeff * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    degree() {
-      return this.coeffs.length - 1
-    }
-
-    derivative() {
-      let newCoeffs = [];
-      const coeffs = this.coeffs;
-
-      for (let i = 1; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        newCoeffs.push(i * coeff);
-      }
-
-      return new SingleVariablePolynomial(newCoeffs)
-    }
-
-    clone() {
-      return new SingleVariablePolynomial(this.coeffs.slice())
-    }
-
-    add(poly) {
-      let coeffs = this.coeffs;
-      let otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    subtract(poly) {
-      const coeffs = this.coeffs;
-      const otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    multiplyScalar(s) {
-      const coeffs = this.coeffs;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        coeffs[i] *= s;
-      }
-
-      return this
-    }
-
-    multiply(poly) {
-      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
-      return this
-    }
-
-    integral() {
-      // TODO
-    }
-  }
-
-  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
-
-  var g = 7;
-  var C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-  var integer_factorials = [
-    1,
-    1,
-    2,
-    6,
-    24,
-    120,
-    720,
-    5040,
-    40320,
-    362880,
-    3628800,
-    39916800,
-    479001600,
-    6227020800,
-    87178291200,
-    1307674368000,
-    20922789888000,
-    355687428096000,
-    6402373705728000,
-    121645100408832000,
-    2432902008176640000,
-    51090942171709440000,
-    1.1240007277776077e+21,
-    2.585201673888498e+22,
-    6.204484017332394e+23,
-    1.5511210043330986e+25,
-    4.0329146112660565e+26,
-    1.0888869450418352e+28,
-    3.0488834461171384e+29,
-    8.841761993739701e+30,
-    2.6525285981219103e+32,
-    8.222838654177922e+33,
-    2.631308369336935e+35,
-    8.683317618811886e+36,
-    2.9523279903960412e+38,
-    1.0333147966386144e+40,
-    3.719933267899012e+41,
-    1.3763753091226343e+43,
-    5.23022617466601e+44,
-    2.0397882081197442e+46,
-    8.159152832478977e+47,
-    3.3452526613163803e+49,
-    1.4050061177528798e+51,
-    6.041526306337383e+52,
-    2.6582715747884485e+54,
-    1.1962222086548019e+56,
-    5.5026221598120885e+57,
-    2.5862324151116818e+59,
-    1.2413915592536073e+61,
-    6.082818640342675e+62,
-    3.0414093201713376e+64,
-    1.5511187532873822e+66,
-    8.065817517094388e+67,
-    4.2748832840600255e+69,
-    2.308436973392414e+71,
-    1.2696403353658276e+73,
-    7.109985878048635e+74,
-    4.052691950487722e+76,
-    2.350561331282879e+78,
-    1.3868311854568986e+80,
-    8.320987112741392e+81,
-    5.075802138772248e+83,
-    3.146997326038794e+85,
-    1.98260831540444e+87,
-    1.2688693218588417e+89,
-    8.247650592082472e+90,
-    5.443449390774431e+92,
-    3.647111091818868e+94,
-    2.4800355424368305e+96,
-    1.711224524281413e+98,
-    1.197857166996989e+100,
-    8.504785885678622e+101,
-    6.123445837688608e+103,
-    4.4701154615126834e+105,
-    3.3078854415193856e+107,
-    2.480914081139539e+109,
-    1.8854947016660498e+111,
-    1.4518309202828584e+113,
-    1.1324281178206295e+115,
-    8.946182130782973e+116,
-    7.156945704626378e+118,
-    5.797126020747366e+120,
-    4.75364333701284e+122,
-    3.945523969720657e+124,
-    3.314240134565352e+126,
-    2.8171041143805494e+128,
-    2.4227095383672724e+130,
-    2.107757298379527e+132,
-    1.8548264225739836e+134,
-    1.6507955160908452e+136,
-    1.4857159644817607e+138,
-    1.3520015276784023e+140,
-    1.24384140546413e+142,
-    1.1567725070816409e+144,
-    1.0873661566567424e+146,
-    1.0329978488239052e+148,
-    9.916779348709491e+149,
-    9.619275968248206e+151,
-    9.426890448883242e+153,
-    9.33262154439441e+155,
-    9.33262154439441e+157,
-    9.425947759838354e+159,
-    9.614466715035121e+161,
-    9.902900716486175e+163,
-    1.0299016745145622e+166,
-    1.0813967582402903e+168,
-    1.1462805637347078e+170,
-    1.2265202031961373e+172,
-    1.3246418194518284e+174,
-    1.4438595832024928e+176,
-    1.5882455415227421e+178,
-    1.7629525510902437e+180,
-    1.9745068572210728e+182,
-    2.2311927486598123e+184,
-    2.543559733472186e+186,
-    2.925093693493014e+188,
-    3.3931086844518965e+190,
-    3.969937160808719e+192,
-    4.6845258497542883e+194,
-    5.574585761207603e+196,
-    6.689502913449124e+198,
-    8.09429852527344e+200,
-    9.875044200833598e+202,
-    1.2146304367025325e+205,
-    1.5061417415111404e+207,
-    1.8826771768889254e+209,
-    2.372173242880046e+211,
-    3.012660018457658e+213,
-    3.8562048236258025e+215,
-    4.9745042224772855e+217,
-    6.466855489220472e+219,
-    8.471580690878817e+221,
-    1.118248651196004e+224,
-    1.4872707060906852e+226,
-    1.992942746161518e+228,
-    2.6904727073180495e+230,
-    3.659042881952547e+232,
-    5.01288874827499e+234,
-    6.917786472619486e+236,
-    9.615723196941086e+238,
-    1.346201247571752e+241,
-    1.89814375907617e+243,
-    2.6953641378881614e+245,
-    3.8543707171800706e+247,
-    5.550293832739301e+249,
-    8.047926057471987e+251,
-    1.17499720439091e+254,
-    1.7272458904546376e+256,
-    2.5563239178728637e+258,
-    3.808922637630567e+260,
-    5.7133839564458505e+262,
-    8.627209774233235e+264,
-    1.3113358856834518e+267,
-    2.006343905095681e+269,
-    3.089769613847349e+271,
-    4.789142901463391e+273,
-    7.47106292628289e+275,
-    1.1729568794264138e+278,
-    1.8532718694937338e+280,
-    2.946702272495037e+282,
-    4.714723635992059e+284,
-    7.590705053947215e+286,
-    1.2296942187394488e+289,
-    2.0044015765453015e+291,
-    3.2872185855342945e+293,
-    5.423910666131586e+295,
-    9.003691705778433e+297,
-    1.5036165148649983e+300,
-    2.526075744973197e+302,
-    4.2690680090047027e+304,
-    7.257415615307994e+306
-  ];
-
-  function gamma (z) {
-
-    // Define gamma specially for integral values
-    if (z % 1 === 0) {
-      if (z <= 0) {
-        return Infinity
-      }
-
-      let res = integer_factorials[Math.round(z - 1)];
-
-      if (!res) {
-        return Infinity
-      }
-      return res
-    }
-
-    if (z < 0.5) {
-      return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z))
-    } else {
-      z -= 1;
-
-      var x = C[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += C[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
-    }
-  }
-
-  function ln_gamma (z) {
-    if (z < 0.5) {
-      // Compute via reflection formula
-      let reflected = ln_gamma(1 - z);
-
-      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
-    } else {
-      z -= 1;
-
-      var x = C[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += C[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-
-      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
-    }
-  }
-
-
-
-  function polygamma (m, z) {
-    if (m % 1 !== 0) {
-      return NaN
-    }
-
-    if (m === 0) {
-      return digamma(z)
-    }
-
-    if (m === 1) {
-      return trigamma(z)
-    }
-
-    let sign = (m % 2 === 0) ? -1 : 1;
-    let numPoly = getPolygammaNumeratorPolynomial(m);
-
-    if (z < 0.5) {
-      if (z % 1 === 0)
-        return Infinity
-
-      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
-      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
-
-      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
-        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
-    } else if (z < 8) {
-      // Recurrence relation
-      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
-
-      return polygamma(m, z+1) + sign * gamma(m + 1) / Math.pow(z, m+1)
-    }
-
-    // Series representation
-
-    let sum = 0;
-    for (let i = 0; i < 200; ++i) {
-      sum += 1 / Math.pow(z + i, m + 1);
-    }
-
-    return sign * gamma(m + 1) * sum
-
-  }
-
-  const GREGORY_COEFFICIENTS = [
-    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
-  ];
-
-  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
-
-  let POLY1 = new SingleVariablePolynomial([0, 1]);
-  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
-
-  function getPolygammaNumeratorPolynomial(n) {
-    let poly = PolygammaNumeratorPolynomials[n];
-    if (poly)
-      return poly
-
-    if (n > 10000)
-      return new SingleVariablePolynomial([0])
-
-    if (n > 20) {
-      // to prevent stack overflow issues
-      for (let i = 0; i < n; ++i) {
-        getPolygammaNumeratorPolynomial(i);
-      }
-    }
-
-    return PolygammaNumeratorPolynomials[n] =
-      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
-        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
-      )
-  }
-
-  function digamma (z) {
-    if (z < 0.5) {
-      // psi(1-x) - psi(x) = pi cot(pi x)
-      // psi(x) = psi(1-x) - pi cot (pi x)
-
-      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
-    } else if (z < 5) {
-      // psi(x+1) = psi(x) + 1/x
-      // psi(x) = psi(x+1) - 1/x
-
-      return digamma(z + 1) - 1 / z
-    }
-
-    let egg = 1;
-    let sum = Math.log(z);
-
-    for (let n = 1; n < 100; ++n) {
-      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
-
-      egg *= ((n-1) ? (n-1) : 1);
-      egg /= z + n - 1;
-
-      sum -= coeff * egg;
-    }
-
-    return sum
-  }
-
-  function trigamma(z) {
-    if (z < 0.5) {
-      if (z % 1 === 0) {
-        return Infinity
-      }
-
-      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
-      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
-
-      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
-    } else if (z < 8) {
-      // psi_1(z+1) = psi_1(z) - 1/z^2
-      // psi_1(z) = psi_1(z+1) + 1/z^2
-
-      return trigamma(z+1) + 1 / (z*z)
-    }
-
-    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
-  }
-
-  const Functions = {
-    LogB: (b, v) => {
-      return Math.log(v) / Math.log(b)
-    },
-    Factorial: (a) => {
-      return Functions.Gamma(a + 1)
-    },
-    Gamma: (a) => {
-      return gamma(a)
-    },
-    LnGamma: (a) => {
-      return ln_gamma(a)
-    },
-    Digamma: (a) => {
-      return digamma(a)
-    },
-    Trigamma: (a) => {
-      return trigamma(a)
-    },
-    Polygamma: (n, a) => {
-      return polygamma(n, a)
-    },
-    Arccot: (z) => {
-      let t = Math.atan(1 / z);
-
-      if (t < 0) {
-        t += Math.PI;
-      }
-
-      return t
-    },
-    PowRational: (x, p, q) => {
-      // Calculates x ^ (p / q), where p and q are integers
-
-      if (p === 0) {
-        return 1
-      }
-
-      let gcd = gcd(p, q);
-
-      if (gcd !== 1) {
-        p /= gcd;
-        q /= gcd;
-      }
-
-      if (x >= 0) {
-        return Math.pow(x, p / q)
-      } else {
-        if (mod(q, 2) === 0)
-          return NaN
-
-        let ret = Math.pow(-x, p / q);
-        if (mod(p, 2) === 0) {
-          return ret
-        } else {
-          return -ret
-        }
-      }
-    }
-  };
-
   const REPRESENTATION_LENGTH = 20;
   const MAX_DENOM = 1e7;
 
@@ -10916,7 +11113,7 @@ void main() {
     return [n, d]
   }
 
-  function cchain(val1, compare, val2, ...args) {
+  function cchain$1(val1, compare, val2, ...args) {
     if (!val2) {
       return false
     }
@@ -10949,12 +11146,12 @@ void main() {
     }
 
     if (args.length > 0)
-      return cchain(val2, ...args)
+      return cchain$1(val2, ...args)
 
     return true
   }
 
-  function piecewise(cond, val, ...args) {
+  function piecewise$1(cond, val, ...args) {
     if (!val) {
       return cond
     }
@@ -10967,7 +11164,7 @@ void main() {
       // This is a fail
       return val
     } else {
-      return piecewise(...args)
+      return piecewise$1(...args)
     }
   }
 
@@ -11154,7 +11351,7 @@ void main() {
       r1.digamma();
       return r1
     },
-    'cchain': cchain,
+    'cchain': cchain$1,
     'ifelse': function (val1, cond, val2) {
       if (cond) {
         return val1
@@ -11162,7 +11359,7 @@ void main() {
         return val2
       }
     },
-    'piecewise': piecewise
+    'piecewise': piecewise$1
   };
 
   const APPROXIMATE_REAL_FUNCTIONS = {
@@ -11927,196 +12124,230 @@ void main() {
   };
   Object.freeze(Intervals);
 
-  const vertexShaderSource$1 = `// set the float precision of the shader to medium precision
-precision mediump float;
-// a vector containing the 2D position of the vertex
-attribute vec2 v_position;
-uniform vec2 xy_scale;
-vec2 displace = vec2(-1, 1);
-void main() {
-  // set the vertex's resultant position
-  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-}`;
-  // this frag shader is used for the polylines
-  const fragmentShaderSource$1 = `// set the float precision of the shader to medium precision
-precision mediump float;
-// vec4 containing the color of the line to be drawn
-uniform vec4 line_color;
-void main() {
-  gl_FragColor = line_color;
-}`;
+  // (y-5)*cos(4 * sqrt((x-4)^2+y^2))-x*sin(2*sqrt(x^2+y^2))
+  // Thanks to https://watermark.silverchair.com/330402.pdf?token=AQECAHi208BE49Ooan9kkhW_Ercy7Dm3ZL_9Cf3qfKAc485ysgAAAncwggJzBgkqhkiG9w0BBwagggJkMIICYAIBADCCAlkGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMzrZbABIi4_9nBCNkAgEQgIICKsRiYm5m-H_ulYXbyKa_4FvhHY-dNoJL8kXfXf0uNRLSZMKfnOTU9Hxp3W_uNaRzSNPu1K23SM9KtZUupvGjUW9KfUO4hdyyZQghDcA0va1ZwcyK6PlgX1rcyI76LrIk46C98-8Yd4LM4StDhVZBoSuJVvmYt2f3ruUFJ3ukOIyvgZGnqObOMzJN5PfXVXAEiW_0PvAJG-yGshJ-iIvUzhlvZQGONSkKOgpBLSwLDeA-GHfAkvbiRh19dlEG3P8PToJyLlAXAnBONLp7O1SyyTHhMGbQ4u6xkSNrT43C63naabWRauWGEKPr9q38X_d3JTN-9bsZw5eSzdjFLimR8xTQR3BCx_kHQVwYol8S79-QxmX-pnXjNJ8Q4OrAfIH0Gf97bkMH2iNTQcsBdp1t0cmkxFT_jdWshOO_vWLtv0ALnR742sfJ4VFEpeRCgQiFOgEcvRSTReQ69ERqoBBkL4uFIsQa7-lz466NJAXxaIWP7GhazOB1KJjzmNJm-7gbFUvaHUy24YR1vuGl0wXZn_ayi6uynoXASBRO5dMt3HsJ1UQkqRssdKMwfx2vmJAj1inl-5vkJf0TxTHTs_e2x7QD3T_bTxTOJmsx96wVKMvaE8uT1AFtzymzYbiwj4GaZgUGw-iH4_nSpJo0LCLesR-UoIjf_-M77aiirCbSM-DxEjRWp16h_pu13i19saWPgJV324Y7dlxqxdcrZ1rEntdTjjdIDAmLgbhP
+  // for some important ideas
+  function generateContours1(func, xmin, xmax, ymin, ymax, searchDepth=3, plotDepth=5) {
+    let polyline = [];
+    let contours = [];
 
-  class EquationDisplayElement extends WebGLElement {
-    constructor(params={}) {
-      super(params);
-
-      this.color = Colors.RED;
-
-      this.needsBufferCopy = true;
-      this.gl_vertices = [];
+    function convertContour(contour) {
+      contour.addPathTo(polyline);
+      polyline.push(NaN, NaN);
     }
 
-    calculateOffIntervalFunc(compiled, transform) {
-      let gl_vertices = this.gl_vertices;
+    function convertContours() {
+      contours.forEach(convertContour);
+    }
 
-      gl_vertices.length = 0;
+    function add_contour_segment(x1, y1, x2, y2) {
+      polyline.push(x1, y1, x2, y2, NaN, NaN);
+    }
 
-      let plotToPixel = transform.getPlotToPixelTransform();
-      let pixelToPlot = transform.getPixelToPlotTransform();
+    function create_tree(depth, xmin, xmax, ymin, ymax, fxy, fxY, fXY, fXy) {
+      let needs_subdivide = depth < searchDepth;
 
-      let yRes = Math.abs(pixelToPlot.y_m / dpr);
-      let xRes = Math.abs(pixelToPlot.x_m / dpr);
+      if (depth <= plotDepth && !needs_subdivide) {
+        let signxy = Math.sign(fxy);
+        let signxY = Math.sign(fxY);
+        let signXY = Math.sign(fXY);
+        let signXy = Math.sign(fXy);
 
-      // rectangles are stored as xmin, xmax, ymin, ymax
+        // Search for contours
+        if (signxy !== signxY || signxY !== signXY || signXY !== signXy) {
+          if (depth < plotDepth) {
+            // subdivide
+            needs_subdivide = true;
+          } else {
+            let side1 = signxy !== signxY;
+            let side2 = signxY !== signXY;
+            let side3 = signXY !== signXy;
+            let side4 = signXy !== signxy;
 
-      let rectangles = [transform.coords.x1, transform.coords.x2, transform.coords.y1, transform.coords.y2];
+            let side1x, side3x, side2y, side4y;
+            let side1y, side3y, side2x, side4x;
 
-      let {x_m, y_m, x_b, y_b} = plotToPixel;
+            if (side1) {
+              let side1a = Math.abs(fxy);
+              let side1b = Math.abs(fxY);
+              let side1ratio = side1a / (side1a + side1b);
+              side1x = xmin;
+              side1y = ymin + side1ratio * (ymax - ymin);
+            }
 
-      let thickness = 1;
+            if (side3) {
+              let side3a = Math.abs(fXy);
+              let side3b = Math.abs(fXY);
+              let side3ratio = side3a / (side3a + side3b);
+              side3x = xmax;
+              side3y = ymin + side3ratio * (ymax - ymin);
+            }
 
-      for (let k = 0; k < 20; ++k) {
-        let new_rectangles = [];
-        for (let i = 0; i < rectangles.length; i += 4) {
-          // for each rectangle
+            if (side2) {
+              let side2a = Math.abs(fxY);
+              let side2b = Math.abs(fXY);
+              let side2ratio = side2a / (side2a + side2b);
+              side2x = xmin + side2ratio * (xmax - xmin);
+              side2y = ymax;
+            }
 
-          let xmin = rectangles[i], xmax = rectangles[i + 1], ymin = rectangles[i + 2], ymax = rectangles[i + 3];
-          let xInterval = new Interval(xmin, xmax);
-          let yInterval = new Interval(ymin, ymax);
+            if (side4) {
+              let side4a = Math.abs(fxy);
+              let side4b = Math.abs(fXy);
+              let side4ratio = side4a / (side4a + side4b);
+              side4x = xmin + side4ratio * (xmax - xmin);
+              side4y = ymin;
+            }
 
-          let result = compiled.func(xInterval, yInterval);
+            if (side1 && side2 && side3 && side4) {
+              // Saddle point
 
-          if (result.defMax === false)
-            continue
+              add_contour_segment(side1x, side1y, side3x, side3y);
+              add_contour_segment(side2x, side2y, side4x, side4y);
 
-          // If result is yes, or the resolution in both directions is sufficiently small, create a rectangle
-          if (result.min === 1 || (xmax - xmin < xRes && ymax - ymin < yRes)) {
-            let xminPixel = x_m * xmin + x_b;
-            let yminPixel = y_m * ymin + y_b;
-            let xmaxPixel = x_m * xmax + x_b;
-            let ymaxPixel = y_m * ymax + y_b;
+              return
+            }
 
-            gl_vertices.push(xminPixel - thickness, yminPixel - thickness, xminPixel - thickness, ymaxPixel + thickness, xmaxPixel + thickness, yminPixel - thickness, xmaxPixel + thickness, ymaxPixel + thickness, NaN, NaN);
-            continue
+            if (side1 && side3) {
+              add_contour_segment(side1x, side1y, side3x, side3y);
+              return
+            }
+
+            if (side2 && side4) {
+              add_contour_segment(side2x, side2y, side4x, side4y);
+              return
+            }
+
+            if (side1 && side2) {
+              add_contour_segment(side1x, side1y, side2x, side2y);
+            }
+
+            if (side2 && side3) {
+              add_contour_segment(side3x, side3y, side2x, side2y);
+            }
+
+            if (side3 && side4) {
+              add_contour_segment(side3x, side3y, side4x, side4y);
+            }
+
+            if (side4 && side1) {
+              add_contour_segment(side1x, side1y, side4x, side4y);
+            }
           }
-          // If result is maybe, split into four smaller rectangles
-          if (result.max === 1) {
-            let midX = (xmin + xmax) / 2, midY = (ymin + ymax) / 2;
-            new_rectangles.push(xmin, midX, ymin, midY, xmin, midX, midY, ymax, midX, xmax, ymin, midY, midX, xmax, midY, ymax);
-            continue
-          }
-          // If result is no, do nothing
+        } else {
+          // no contour, return
+          return
         }
-
-        rectangles = new_rectangles;
       }
 
-      this.needsBufferCopy = true;
+      if (needs_subdivide) {
+        // subdivide
+        let midX = (xmin + xmax) / 2;
+        let midY = (ymin + ymax) / 2;
+
+        let mxmyCorner = func(midX, midY);
+        let mxyCorner = func(midX, ymin);
+        let mxYCorner = func(midX, ymax);
+        let xmyCorner = func(xmin, midY);
+        let XmyCorner = func(xmax, midY);
+
+        create_tree(depth + 1, xmin, midX, ymin, midY, fxy, xmyCorner, mxmyCorner, mxyCorner);
+        create_tree(depth + 1, xmin, midX, midY, ymax, xmyCorner, fxY, mxYCorner, mxmyCorner);
+        create_tree(depth + 1, midX, xmax, ymin, midY, mxyCorner, mxmyCorner, XmyCorner, fXy);
+        create_tree(depth + 1, midX, xmax, midY, ymax, mxmyCorner, mxYCorner, fXY, XmyCorner);
+      }
     }
 
-    render(info) {
-      super.render(info);
+    let xyCorner = func(xmin, ymin);
+    let xYCorner = func(xmin, ymax);
+    let XYCorner = func(xmax, ymax);
+    let XyCorner = func(xmax, ymin);
 
-      if (this.gl_vertices.length < 6)
-        return
+    create_tree(0, xmin, xmax, ymin, ymax, xyCorner, xYCorner, XYCorner, XyCorner);
 
-      const glManager = info.universe.glManager;
-      const gl = info.universe.gl;
+    console.log(contours);
 
-      let program = glManager.getProgram('equation');
+    convertContours();
 
-      if (!program) {
-        glManager.compileProgram('equation', vertexShaderSource$1, fragmentShaderSource$1, ['v_position'], ['line_color', 'xy_scale']);
-        program = glManager.getProgram('equation');
-      }
-
-      let buffer = glManager.getBuffer(this.id);
-
-      gl.useProgram(program.program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-      let color = this.color;
-      gl.uniform4f(program.uniforms.line_color, color.r / 255, color.g / 255, color.b / 255, color.a / 255);
-      gl.uniform2f(program.uniforms.xy_scale, 2 / info.plot.width, -2 / info.plot.height);
-
-      if (this.needsBufferCopy) {
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.gl_vertices), gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-        this.needsBufferCopy = false;
-      }
-
-      gl.enableVertexAttribArray(program.attribs.v_position);
-      gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.gl_vertices.length / 2);
-    }
+    return polyline
   }
 
   class EquationPlot2D extends InteractiveElement {
     constructor(params={}) {
       super(params);
 
-      this.equation = parse_string("x^2+y==y^5+x^3");
+      this.equation = parse_string("x^2+y");
       this.visible = true;
 
-      this.updateIntervalFunc();
-      this.update();
+      this.updateFunc();
 
-      this.displayedElement = new EquationDisplayElement();
+      this.displayedElement = new WebGLPolylineWrapper();
+      this.displayedElement.pen.useNative = false;
+      this.displayedElement.pen.endcap = "none";
 
-      this.addEventListener("plotcoordschanged", () => this.updateLight());
-      this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 200 * Math.random());
-      });
+      this.addEventListener("plotcoordschanged", () => this.update());
+      /*this.addEventListener("plotcoordslingered", () => {
+        setTimeout(() => this.update(), 200 * Math.random())
+      })*/
     }
 
     setEquation(text) {
       this.equation = parse_string(text);
 
-      this.updateIntervalFunc();
+      this.updateFunc();
     }
 
-    updateIntervalFunc() {
-      this.intervalFunc = this.equation.compileInterval();
+    updateFunc() {
+      let exportedVariables = ['x', 'y'];
+
+      let eqn = this.equation.compile(exportedVariables).func;
+      let interval = this.equation.compileInterval(exportedVariables).func;
+      //let real = this.equation.compileReal(exportedVariables)
+
+      let fxNode = this.equation.derivative('x');
+      let fyNode = this.equation.derivative('y');
+      let fxxNode = fxNode.derivative('x');
+      let fxyNode = fxNode.derivative('y');
+      let fyyNode = fyNode.derivative('y');
+
+      let fx = fxNode.compile(exportedVariables).func;
+      let fy = fyNode.compile(exportedVariables).func;
+      let fxx = fxxNode.compile(exportedVariables).func;
+      let fxy = fxyNode.compile(exportedVariables).func;
+      let fyy = fyyNode.compile(exportedVariables).func;
+
+      let curvatureFunc = (x, y) => {
+        let fxV = fx(x, y), fyV = fy(x, y), fxxV = fxx(x, y), fxyV = fxy(x,y), fyyV = fyy(x, y);
+        let fxVSq = fxV * fxV, fyVSq = fyV * fyV;
+
+        window.fxx = fxx;
+
+        return Math.pow(fxVSq + fyVSq, 1.5) / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
+      };
+
+      this.compiledFunctions = {
+        eqn,
+        interval,
+        curvatureFunc
+      };
     }
 
     update() {
       if (this.plot) {
-        this.displayedElement.calculateOffIntervalFunc(this.intervalFunc, this.plot.transform);
-        this.previousTransform = this.plot.transform.clone();
+        let coords = this.plot.transform.coords;
+        let vertices = generateContours1(this.compiledFunctions.eqn, coords.x1, coords.x2, coords.y1, coords.y2);
+
+        this.plot.transform.plotToPixelArr(vertices);
+
+        this.displayedElement.vertices = vertices;
+        this.displayedElement.update();
       }
-    }
-
-    updateLight(adaptThickness=true) {
-      if (!this.previousTransform)
-        return
-
-      let transform = this.plot.transform;
-
-      let arr = this.displayedElement.gl_vertices;
-
-      let newland = this.previousTransform.getPixelToPlotTransform();
-      let harvey = transform.getPlotToPixelTransform();
-
-      let x_m = harvey.x_m * newland.x_m;
-      let x_b = harvey.x_m * newland.x_b + harvey.x_b;
-      let y_m = harvey.y_m * newland.y_m;
-      let y_b = harvey.y_m * newland.y_b + harvey.y_b;
-
-      let length = arr.length;
-
-      for (let i = 0; i < length; i += 2) {
-        arr[i] = x_m * arr[i] + x_b;
-        arr[i+1] = y_m * arr[i+1] + y_b;
-      }
-
-      this.displayedElement.needsBufferCopy = true;
-
-      this.previousTransform = transform.clone();
     }
 
     render(info) {
       if (this.visible) {
         const gl = info.universe.gl;
+        const box = info.plot.transform.box;
 
         gl.enable(gl.SCISSOR_TEST);
         gl.scissor(box.top_left.x * dpr,
@@ -12187,6 +12418,7 @@ void main() {
   exports.point_line_segment_min_closest = point_line_segment_min_closest;
   exports.point_line_segment_min_distance = point_line_segment_min_distance;
   exports.polygamma = polygamma;
+  exports.powerExactlyRepresentableAsFloat = powerExactlyRepresentableAsFloat;
   exports.rgb = rgb;
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;

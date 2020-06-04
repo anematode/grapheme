@@ -18,6 +18,7 @@ class WebGLPolylineWrapper extends PolylineBase {
     this._internal_polyline.thickness = pen.thickness / 2
     this._internal_polyline.use_native = pen.useNative
     this._internal_polyline.visible = pen.visible
+    this._internal_polyline.endcap_type = (pen.endcap === "round") ? 1 : 0
 
     // TODO: add other pen things
 

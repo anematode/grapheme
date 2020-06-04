@@ -5,6 +5,7 @@ import { operator_derivative } from './derivative'
 import * as utils from "../core/utils"
 import { Real } from '../math/arbitrary_prec'
 import { StandardLabelFunction } from '../elements/gridlines'
+import { Operators } from './operators'
 
 // List of operators (currently)
 // +, -, *, /, ^,
@@ -12,6 +13,8 @@ import { StandardLabelFunction } from '../elements/gridlines'
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
 let floatRepresentabilityTester
+const matchIntegralComponent = /[0-9]*\./
+const trailingZeroes = /0+$/
 
 function isExactlyRepresentableAsFloat(f) {
   if (typeof f === "number")
@@ -20,14 +23,10 @@ function isExactlyRepresentableAsFloat(f) {
     floatRepresentabilityTester = new Real(0, 53)
   floatRepresentabilityTester.value = f
 
-  let matchIntegralComponent = /[0-9]*\./
+  return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
+    f.replace(matchIntegralComponent, '');
 
-  if (floatRepresentabilityTester.value.replace(/0+$/,'').replace(matchIntegralComponent, '') ===
-    f.replace(matchIntegralComponent, '')) {
-    return true
-  }
 
-  return false
 }
 
 class ASTNode {
@@ -43,10 +42,11 @@ class ASTNode {
   }
 
   isConstant() {
-    if (this.children.length === 0)
-      return true
-
     return this.children.every(child => child.isConstant())
+  }
+
+  evaluateConstant() {
+    return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
   }
 
   hasChildren() {
@@ -87,8 +87,9 @@ class ASTNode {
     return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
   }
 
-  compileReal(precision=53) {
-    let variableNames = this.getVariableNames()
+  compileReal(exportedVariables, precision=53) {
+    if (!exportedVariables)
+      exportedVariables = this.getVariableNames()
 
     let Variables = {}
     let preamble = ""
@@ -115,7 +116,7 @@ class ASTNode {
     let realVarNames = Object.keys(Variables)
     let realVars = realVarNames.map(name => Variables[name])
 
-    let func = new Function(...realVarNames, ...variableNames, `${preamble}
+    let func = new Function(...realVarNames, ...exportedVariables, `${preamble}
       return ${text};`)
     let isValid = true
 
@@ -133,7 +134,7 @@ class ASTNode {
           throw new Error("Already freed compiled real function!")
         return func(...realVars, ...args)
       },
-      variable_list: variableNames,
+      variableNames: exportedVariables,
       free() {
         if (!isValid)
           throw new Error("Already freed compiled real function!")
@@ -149,8 +150,9 @@ class ASTNode {
     }
   }
 
-  compileInterval() {
-    let variableNames = this.getVariableNames()
+  compileInterval(exportedVariables) {
+    if (!exportedVariables)
+      exportedVariables = this.getVariableNames()
     let preamble = ""
 
     const defineVariable = (variable, expression) => {
@@ -159,11 +161,12 @@ class ASTNode {
 
     let returnVal = this._getIntervalCompileText(defineVariable)
 
-    return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
+    return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
   }
 
-  compile () {
-    let variableNames = this.getVariableNames()
+  compile (exportedVariables) {
+    if (!exportedVariables)
+      exportedVariables = this.getVariableNames()
 
     let preamble = ""
 
@@ -173,7 +176,7 @@ class ASTNode {
 
     let returnVal = this._getCompileText(defineVariable)
 
-    return {func: new Function(...variableNames, preamble + 'return ' + returnVal), variableNames}
+    return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
   }
 
   derivative (variable) {
@@ -248,6 +251,10 @@ class VariableNode extends ASTNode {
     return false
   }
 
+  evaluateConstant() {
+    return NaN
+  }
+
   _getCompileText (defineVariable) {
     if (comparisonOperators.includes(this.name))
       return '"' + this.name + '"'
@@ -309,10 +316,14 @@ class VariableNode extends ASTNode {
   clone () {
     return new VariableNode({ name: this.name })
   }
+
+  isConstant() {
+    return false
+  }
 }
 
 const OperatorPatterns = {
-  'sin': ['Math.sin', '+'],
+  'sin': ['Math.sin'],
   '+': ['', '+'],
   '-': ['', '-'],
   '*': ['', '*'],
@@ -670,6 +681,10 @@ class OperatorNode extends ASTNode {
 
     return node
   }
+
+  evaluateConstant () {
+    return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
+  }
 }
 
 class ConstantNode extends ASTNode {
@@ -704,6 +719,10 @@ class ConstantNode extends ASTNode {
     return varName
   }
 
+  isConstant() {
+    return true
+  }
+
   _getCompileText (defineVariable) {
     return this.value + ''
   }
@@ -727,6 +746,35 @@ class ConstantNode extends ASTNode {
   clone () {
     return new ConstantNode({ value: this.value, invisible: this.invisible, text: this.text })
   }
+
+  evaluateConstant() {
+    return this.value
+  }
+}
+
+function powerExactlyRepresentableAsFloat(power) {
+  if (typeof power === "number") return true
+
+  // todo, make more precise
+  if (Number.isInteger(parseFloat(power))) {
+    return true
+  }
+
+  return false
+
+  /*if (!floatRepresentabilityTester)
+    floatRepresentabilityTester = new Real(0, 53)
+
+  floatRepresentabilityTester.value = power
+
+  floatRepresentabilityTester.subtract_float(1)
+
+  floatRepresentabilityTester.set_precision(106)
+
+  floatRepresentabilityTester.add_float(1)
+
+  return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
+    power.replace(matchIntegralComponent, '');*/
 }
 
 const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]})
@@ -736,4 +784,4 @@ const ONE_THIRD = new OperatorNode({operator: '/', children: [
     new ConstantNode({value: 3})
   ]})
 
-export { ONE_THIRD, VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms, LN2, LN10, isExactlyRepresentableAsFloat }
+export { ONE_THIRD, VariableNode, OperatorNode, ConstantNode, ASTNode, OperatorSynonyms, LN2, LN10, isExactlyRepresentableAsFloat, powerExactlyRepresentableAsFloat }

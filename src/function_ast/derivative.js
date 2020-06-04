@@ -1,6 +1,10 @@
-import { ConstantNode, OperatorNode, LN2, LN10, ONE_THIRD } from './node'
+import { ConstantNode, OperatorNode, LN2, LN10, ONE_THIRD, isExactlyRepresentableAsFloat, powerExactlyRepresentableAsFloat } from './node'
 
 function operator_derivative (opNode, variable = 'x') {
+  if (opNode.isConstant()) {
+    return new ConstantNode({value: 0})
+  }
+
   let node
   switch (opNode.operator) {
     case '>':
@@ -39,16 +43,30 @@ function operator_derivative (opNode, variable = 'x') {
       node.children = opNode.children.map(child => child.derivative(variable))
       return node
     case '*':
-      node = new OperatorNode({ operator: '+' })
+      let firstChild = opNode.children[0], secondChild = opNode.children[1]
 
-      // product rule
-      let first = new OperatorNode({ operator: '*' })
-      let second = new OperatorNode({ operator: '*' })
+      if (firstChild.isConstant()) {
+        node = new OperatorNode({operator: '*', children: [
+          firstChild,
+            secondChild.derivative(variable)
+          ]})
+      } else if (secondChild.isConstant()) {
+        node = new OperatorNode({operator: '*', children: [
+            secondChild,
+            firstChild.derivative(variable)
+          ]})
+      } else {
+        node = new OperatorNode({ operator: '+' })
 
-      first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)]
-      second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()]
+        // product rule
+        let first = new OperatorNode({ operator: '*' })
+        let second = new OperatorNode({ operator: '*' })
 
-      node.children = [first, second]
+        first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)]
+        second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()]
+
+        node.children = [first, second]
+      }
       return node
     case '/':
       // Division rules
@@ -79,8 +97,10 @@ function operator_derivative (opNode, variable = 'x') {
       node.children = opNode.children.map(child => child.derivative(variable))
       return node
     case '^':
-      if (opNode.children[1] instanceof ConstantNode) {
-        let power = opNode.children[1].value
+      let child1 = opNode.children[1]
+
+      if (child1.isConstant()) {
+        let power = child1.evaluateConstant()
 
         if (power === 0) {
           return new ConstantNode({ value: 0 })
@@ -91,15 +111,23 @@ function operator_derivative (opNode, variable = 'x') {
         let node2 = new OperatorNode({ operator: '*' })
         let pow = new OperatorNode({ operator: '^' })
 
-        pow.children = [opNode.children[0].clone(), new OperatorNode({operator: '-', children: [
-          opNode.children[1],
-          new ConstantNode({ value: 1 })]})]
+        let newPower
+
+        if (child1 instanceof ConstantNode && powerExactlyRepresentableAsFloat(child1.text)) {
+          newPower = new ConstantNode({value: power - 1})
+        } else {
+          newPower = new OperatorNode({operator: '-', children: [
+              opNode.children[1],
+              new ConstantNode({ value: 1 })]})
+        }
+
+        pow.children = [opNode.children[0].clone(), newPower]
 
         node2.children = [opNode.children[0].derivative(variable), pow]
-        node.children = [opNode.children[1].clone(), node2]
+        node.children = [child1.clone(), node2]
 
         return node
-      } else if (opNode.children[0] instanceof ConstantNode) {
+      } else if (opNode.children[0].isConstant()) {
         return new OperatorNode({
           operator: '*',
           children: [
