@@ -10,7 +10,6 @@ import { Keyboard } from './keyboard'
 class GraphemeCanvas extends GraphemeGroup {
   /**
    * Creates a GraphemeCanvas.
-   *
    * @constructor
    * @param universe {GraphemeUniverse} Universe this canvas will be a part of
    */
@@ -22,13 +21,14 @@ class GraphemeCanvas extends GraphemeGroup {
 
     this.universe = universe
 
+    // Add this canvas to the given universe
     this.universe.add(this)
 
     // Element to be put into the webpage
     /** @public */ this.domElement = document.createElement('div')
 
     // The canvas of a GraphemeCanvas
-    /** @public */ this.canvas = document.createElement('canvas')
+    /** @private */ this.canvas = document.createElement('canvas')
 
     // Append the canvas to the dom element
     this.domElement.appendChild(this.canvas)
@@ -50,11 +50,13 @@ class GraphemeCanvas extends GraphemeGroup {
     // Set the default size to 640 by 480 in CSS pixels
     this.setSize(640, 480)
 
+    // When the device pixel ratio changes, resize the canvas accordingly
     this.addEventListener("dprchanged", () => {
       this.setSize(this.width, this.height)
     })
 
-    this.extraInfo = {}
+    // Object containing information to be passed to rendered elements defined by derived classes
+    /** @private */ this.extraInfo = {}
   }
 
   /**
@@ -82,7 +84,6 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Set the canvas's display using CSS
     const canvas = this.canvas
-
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
 

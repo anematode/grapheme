@@ -133,11 +133,11 @@ class GLResourceManager {
 
   /**
    * Delete buffer with given name
-   * @param bufferName Name of the buffer
+   * @param bufferName {string} Name of the buffer
    */
   deleteBuffer (bufferName) {
     if (!this.hasBuffer(bufferName)) return
-    
+
     const buffer = this.getBuffer(bufferName)
     const { gl } = this
 

@@ -1,6 +1,8 @@
 import { Element as GraphemeElement } from './grapheme_element'
 
-/** @class Used semantically to group elements */
+/** @class GraphemeGroup
+ * Used semantically to group elements. All elements already support this.children.
+ * */
 class GraphemeGroup extends GraphemeElement {
   constructor (params = {}) {
     super(params)
