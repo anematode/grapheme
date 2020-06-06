@@ -1,31 +1,11 @@
 import { parse_string } from '../function_ast/parse_string'
-import { WebGLElement } from '../core/webgl_grapheme_element'
 import {InteractiveElement} from '../core/interactive_element'
-import { Color, Colors } from '../other/color'
+import { Colors } from '../other/color'
 import { Interval} from '../math/interval_arithm'
 import * as utils from "../core/utils"
 import {WebGLPolylineWrapper} from './webgl_polyline_wrapper'
 import { generateContours1, generateContours2 } from '../math/contouring'
 import { adaptPolyline } from '../math/adapt_polyline'
-
-const vertexShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// a vector containing the 2D position of the vertex
-attribute vec2 v_position;
-uniform vec2 xy_scale;
-vec2 displace = vec2(-1, 1);
-void main() {
-  // set the vertex's resultant position
-  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-}`
-// this frag shader is used for the polylines
-const fragmentShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// vec4 containing the color of the line to be drawn
-uniform vec4 line_color;
-void main() {
-  gl_FragColor = line_color;
-}`
 
 class EquationPlot2D extends InteractiveElement {
   constructor(params={}) {

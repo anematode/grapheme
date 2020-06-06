@@ -44,12 +44,12 @@ class Plot2D extends InteractiveCanvas {
 
     // When the plot changes in size, correct the transform aspect ratio
     this.addEventListener("resize", evt => {
-      this.transform.correctAspectRatio()
       this.calculateTransform()
+      this.transform.correctAspectRatio()
     })
 
     // Timeout to check for "plotcoordslingered"
-    let timeout = 0
+    let timeout = -1
 
     this.addEventListener("plotcoordschanged", evt => {
       clearTimeout(timeout)
