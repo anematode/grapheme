@@ -1042,6 +1042,9 @@ var Grapheme = (function (exports) {
 
       // Children of this element
       /** @public */ this.children = [];
+
+      // Whether this element is visible
+      /** @public */ this.visible = true;
     }
 
     /**
@@ -4909,8 +4912,6 @@ var Grapheme = (function (exports) {
       arguments_ = arguments;
     }
 
-    if (typeof quit === 'function') ;
-
     if (typeof print !== 'undefined') {
       // Prefer to use print/printErr where they exist, as they usually work better.
       if (typeof console === 'undefined') console = {};
@@ -8393,6 +8394,119 @@ var Grapheme = (function (exports) {
     'piecewise': piecewise
   };
 
+  function getLatex(opNode) {
+    switch (opNode.operator) {
+      case "^":
+        let exponent = opNode.children[1];
+
+        let exponent_latex;
+        if (exponent.type() === "node") {
+          exponent_latex = exponent.latex(false);
+        } else {
+          exponent_latex = exponent.latex();
+        }
+        return `${opNode.children[0].latex()}^{${exponent_latex}}`
+      case "*":
+        return `${opNode.children[0].latex()}\\cdot ${opNode.children[1].latex()}`
+      case "+":
+        return `${opNode.children[0].latex()}+${opNode.children[1].latex()}`
+      case "-":
+        return `${opNode.children[0].latex()}-${opNode.children[1].latex()}`
+      case "/":
+        return `\\frac{${opNode.children[0].latex()}}{${opNode.children[1].latex()}}`
+      case "<":
+        return `${opNode.children[0].latex()} < ${opNode.children[1].latex()}`
+      case "<=":
+        return `${opNode.children[0].latex()} \\leq ${opNode.children[1].latex()}`
+      case "==":
+        return `${opNode.children[0].latex()} = ${opNode.children[1].latex()}`
+      case "!=":
+        return `${opNode.children[0].latex()} \\neq ${opNode.children[1].latex()}`
+      case ">":
+        return `${opNode.children[0].latex()} > ${opNode.children[1].latex()}`
+      case ">=":
+        return `${opNode.children[0].latex()} \\geq ${opNode.children[1].latex()}`
+      case "pow_rational":
+        // Normally unused third child stores what the user actually inputted
+        return `${opNode.children[0].latex()}^{${opNode.children[3].latex()}}`
+      case "factorial":
+        let needs_parens = opNode.needsParentheses();
+        let latex_n = opNode.children[0].latex();
+
+        if (needs_parens)
+          return `\\left(${latex_n}\\right)!`
+        else
+          return latex_n + '!'
+      case "logb":
+        let log_needs_parens = opNode.children[1].needsParentheses();
+        let base_needs_parens = opNode.children[0].needsParentheses();
+
+        let base = `${base_needs_parens ? '\\left(' : ''}${opNode.children[0].latex()}${base_needs_parens ? '\\right)' : ''}`;
+        let log = `${log_needs_parens ? '\\left(' : ''}${opNode.children[1].latex()}${log_needs_parens ? '\\right)' : ''}`;
+
+        return `\\operatorname{log}_{${base}}{${log}}`
+      case "ifelse":
+        return `\\begin{cases} ${opNode.children[0].latex()} & ${opNode.children[1].latex()} \\\\ ${opNode.children[2].latex()} & \\text{otherwise} \\end{cases}`
+      case "cchain":
+        return opNode.children.map(child => child.latex()).join('')
+      case "polygamma":
+        return `\\psi^{(${opNode.children[0].latex()})}\\left(${opNode.children[1].latex()}\\right)`
+      case "piecewise":
+        let pre = `\\begin{cases} `;
+
+        let post;
+        if (opNode.children.length % 2 === 0) {
+
+          post = `0 & \\text{otherwise} \\end{cases}`;
+        } else {
+          post = ` \\text{otherwise} \\end{cases}`;
+        }
+
+        let latex = pre;
+
+        for (let i = 0; i < opNode.children.length; i += 2) {
+          let k = 0;
+          for (let j = 1; j >= 0; --j) {
+            let child = opNode.children[i+j];
+
+            if (!child)
+              continue
+
+            latex += child.latex();
+
+            if (k === 0) {
+              latex += " & ";
+            } else {
+              latex += " \\\\ ";
+            }
+
+            k++;
+          }
+        }
+
+        latex += post;
+
+        return latex
+      case "not":
+        return "\\neg(" + opNode.children.map(child => child.latex()).join('+') + ')'
+      case "and":
+        return opNode.children.map(child => child.latex()).join("\\land ")
+      case "or":
+        return opNode.children.map(child => child.latex()).join("\\lor ")
+      case "abs":
+        return '\\left|' + opNode.children.map(child => child.latex()).join(",") + '\\right|'
+      default:
+        let needs_parens2 = opNode.needsParentheses();
+
+        let operatorName = getOperatorName(opNode.operator);
+        if (!needs_parens2 && alwaysParenthesize(opNode.operator)) {
+          needs_parens2 = true;
+        }
+
+        return `${operatorName}${needs_parens2 ? '\\left(' : ''}${opNode.children.map(child => child.latex()).join(',\\,')}${needs_parens2 ? '\\right)' : ''}`
+    }
+  }
+
   // const fs = require( ...
 
   // List of operators (currently)
@@ -8404,17 +8518,17 @@ var Grapheme = (function (exports) {
   const matchIntegralComponent = /[0-9]*\./;
   const trailingZeroes = /0+$/;
 
-  function isExactlyRepresentableAsFloat(f) {
-    if (typeof f === "number")
+  function isExactlyRepresentableAsFloat (f) {
+    if (typeof f === 'number') {
       return true
-    if (!floatRepresentabilityTester)
+    }
+    if (!floatRepresentabilityTester) {
       floatRepresentabilityTester = new OvinusReal(0, 53);
+    }
     floatRepresentabilityTester.value = f;
 
     return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
-      f.replace(matchIntegralComponent, '');
-
-
+      f.replace(matchIntegralComponent, '')
   }
 
   class ASTNode {
@@ -8429,20 +8543,16 @@ var Grapheme = (function (exports) {
       this.parent = parent;
     }
 
-    isConstant() {
-      return this.children.every(child => child.isConstant())
+    _getCompileText (defineVariable) {
+      return this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join('+')
     }
 
-    evaluateConstant() {
-      return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
+    _getIntervalCompileText (defineVariable) {
+      return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
     }
 
-    hasChildren() {
-      return this.children.length !== 0
-    }
-
-    needsParentheses() {
-      return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
+    _getRealCompileText (defineRealVariable) {
+      return this.children.map(child => '(' + child._getRealCompileText(defineRealVariable) + ')').join('+')
     }
 
     applyAll (func, depth = 0) {
@@ -8455,44 +8565,71 @@ var Grapheme = (function (exports) {
       });
     }
 
-    latex(parens=true) {
-      let latex = this.children.map(child => child.latex()).join('+');
+    clone () {
+      let node = new ASTNode();
 
-      if (parens)
-        return String.raw`\left(${latex}\right)`
-      return latex
+      node.children = this.children.map(child => child.clone());
+
+      return node
     }
 
-    getText () {
-      return '(node)'
-    }
-
-    type() {
-      return "node"
-    }
-
-    _getIntervalCompileText(defineVariable) {
-      return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
-    }
-
-    compileReal(exportedVariables, precision=53) {
-      if (!exportedVariables)
+    compile (exportedVariables) {
+      if (!exportedVariables) {
         exportedVariables = this.getVariableNames();
+      }
+
+      let preamble = '';
+
+      const defineVariable = (variable, expression) => {
+        preamble += `let ${variable}=${expression};`;
+      };
+
+      let returnVal = this._getCompileText(defineVariable);
+
+      return {
+        func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
+        variableNames: exportedVariables
+      }
+    }
+
+    compileInterval (exportedVariables) {
+      if (!exportedVariables) {
+        exportedVariables = this.getVariableNames();
+      }
+      let preamble = '';
+
+      const defineVariable = (variable, expression) => {
+        preamble += `let ${variable}=${expression};`;
+      };
+
+      let returnVal = this._getIntervalCompileText(defineVariable);
+
+      return {
+        func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
+        variableNames: exportedVariables
+      }
+    }
+
+    compileReal (exportedVariables, precision = 53) {
+      if (!exportedVariables) {
+        exportedVariables = this.getVariableNames();
+      }
 
       let Variables = {};
-      let preamble = "";
+      let preamble = '';
 
       const defineRealVariable = (name, value, variable) => {
         Variables[name] = new OvinusReal(precision);
         if (value) {
-          if (value === "pi")
+          if (value === 'pi') {
             preamble += `${name}.set_pi()`;
-          else if (value === "e")
+          } else if (value === 'e') {
             preamble += `${name}.set_e()`;
-          else if (isExactlyRepresentableAsFloat(value))
+          } else if (isExactlyRepresentableAsFloat(value)) {
             preamble += `${name}.value = ${value.toString()}; `;
-          else
+          } else {
             preamble += `${name}.value = "${value}"; `;
+          }
 
         } else {
           preamble += `${name}.value = ${variable};`;
@@ -8509,62 +8646,37 @@ var Grapheme = (function (exports) {
       let isValid = true;
 
       return {
-        isValid() {
+        isValid () {
           return isValid
         },
         set_precision: (prec) => {
-          if (!isValid)
-            throw new Error("Already freed compiled real function!")
+          if (!isValid) {
+            throw new Error('Already freed compiled real function!')
+          }
           realVars.forEach(variable => variable.set_precision(prec));
         },
         evaluate: (...args) => {
-          if (!isValid)
-            throw new Error("Already freed compiled real function!")
+          if (!isValid) {
+            throw new Error('Already freed compiled real function!')
+          }
           return func(...realVars, ...args)
         },
         variableNames: exportedVariables,
-        free() {
-          if (!isValid)
-            throw new Error("Already freed compiled real function!")
+        free () {
+          if (!isValid) {
+            throw new Error('Already freed compiled real function!')
+          }
           isValid = false;
 
           realVars.forEach(variable => variable.__destroy__());
         },
-        _get_func() {
-          if (!isValid)
-            throw new Error("Already freed compiled real function!")
+        _get_func () {
+          if (!isValid) {
+            throw new Error('Already freed compiled real function!')
+          }
           return func
         }
       }
-    }
-
-    compileInterval(exportedVariables) {
-      if (!exportedVariables)
-        exportedVariables = this.getVariableNames();
-      let preamble = "";
-
-      const defineVariable = (variable, expression) => {
-        preamble += `let ${variable}=${expression};`;
-      };
-
-      let returnVal = this._getIntervalCompileText(defineVariable);
-
-      return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
-    }
-
-    compile (exportedVariables) {
-      if (!exportedVariables)
-        exportedVariables = this.getVariableNames();
-
-      let preamble = "";
-
-      const defineVariable = (variable, expression) => {
-        preamble += `let ${variable}=${expression};`;
-      };
-
-      let returnVal = this._getCompileText(defineVariable);
-
-      return {func: new Function(...exportedVariables, preamble + 'return ' + returnVal), variableNames: exportedVariables}
     }
 
     derivative (variable) {
@@ -8579,6 +8691,14 @@ var Grapheme = (function (exports) {
       });
 
       return node
+    }
+
+    evaluateConstant () {
+      return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
+    }
+
+    getText () {
+      return '(node)'
     }
 
     getVariableNames () {
@@ -8597,26 +8717,50 @@ var Grapheme = (function (exports) {
       return variableNames
     }
 
-    _getCompileText (defineVariable) {
-      return this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join('+')
+    hasChildren () {
+      return this.children.length !== 0
     }
 
-    _getRealCompileText(defineRealVariable) {
-      return this.children.map(child => '(' + child._getRealCompileText(defineRealVariable) + ')').join('+')
+    isConstant () {
+      return this.children.every(child => child.isConstant())
     }
 
-    clone () {
-      let node = new ASTNode();
+    latex (parens = true) {
+      let latex = this.children.map(child => child.latex()).join('+');
 
-      node.children = this.children.map(child => child.clone());
+      if (parens) {
+        return String.raw`\left(${latex}\right)`
+      }
+      return latex
+    }
 
-      return node
+    needsParentheses () {
+      return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
+    }
+
+    setParents () {
+      this.applyAll(child => {
+        if (child.children) {
+          child.children.forEach(subchild => subchild.parent = child);
+        }
+      });
+    }
+
+    toJSON () {
+      return {
+        type: 'node',
+        children: this.children.map(child => child.toJSON())
+      }
+    }
+
+    type () {
+      return 'node'
     }
   }
 
-  const greek = [ "alpha", "beta", "gamma", "Gamma", "delta", "Delta", "epsilon", "zeta", "eta", "theta", "Theta", "iota", "kappa", "lambda", "Lambda", "mu", "nu", "xi", "Xi", "pi", "Pi", "rho", "Rho", "sigma", "Sigma", "tau", "phi", "Phi", "chi", "psi", "Psi", "omega", "Omega" ];
+  const greek = ['alpha', 'beta', 'gamma', 'Gamma', 'delta', 'Delta', 'epsilon', 'zeta', 'eta', 'theta', 'Theta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi', 'rho', 'Rho', 'sigma', 'Sigma', 'tau', 'phi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega'];
 
-  function substituteGreekLetters(string) {
+  function substituteGreekLetters (string) {
     if (greek.includes(string)) {
       return '\\' + string
     }
@@ -8635,21 +8779,21 @@ var Grapheme = (function (exports) {
       this.name = name;
     }
 
-    isConstant() {
-      return false
-    }
-
-    evaluateConstant() {
-      return NaN
-    }
-
     _getCompileText (defineVariable) {
-      if (comparisonOperators.includes(this.name))
+      if (comparisonOperators.includes(this.name)) {
         return '"' + this.name + '"'
+      }
       return this.name
     }
 
-    _getRealCompileText(defineRealVariable) {
+    _getIntervalCompileText (defineVariable) {
+      if (comparisonOperators.includes(this.name)) {
+        return '"' + this.name + '"'
+      }
+      return this.name
+    }
+
+    _getRealCompileText (defineRealVariable) {
       if (comparisonOperators.includes(this.name)) {
         return `'${this.name}'`
       }
@@ -8660,14 +8804,8 @@ var Grapheme = (function (exports) {
       return var_name
     }
 
-    _getIntervalCompileText(defineVariable) {
-      if (comparisonOperators.includes(this.name))
-        return '"' + this.name + '"'
-      return this.name
-    }
-
-    type() {
-      return "variable"
+    clone () {
+      return new VariableNode({ name: this.name })
     }
 
     derivative (variable) {
@@ -8678,35 +8816,51 @@ var Grapheme = (function (exports) {
       }
     }
 
-    latex() {
-      if (comparisonOperators.includes(this.name)) {
-        switch (this.name) {
-          case ">": case "<":
-            return this.name
-          case ">=":
-            return "\\geq "
-          case "<=":
-            return "\\leq "
-          case "==":
-            return "="
-          case "!=":
-            return "\\neq "
-        }
-      }
-
-      return substituteGreekLetters(this.name)
+    evaluateConstant () {
+      return NaN
     }
 
     getText () {
       return this.name
     }
 
-    clone () {
-      return new VariableNode({ name: this.name })
+    isConstant () {
+      return false
     }
 
-    isConstant() {
+    isConstant () {
       return false
+    }
+
+    latex () {
+      if (comparisonOperators.includes(this.name)) {
+        switch (this.name) {
+          case '>':
+          case '<':
+            return this.name
+          case '>=':
+            return '\\geq '
+          case '<=':
+            return '\\leq '
+          case '==':
+            return '='
+          case '!=':
+            return '\\neq '
+        }
+      }
+
+      return substituteGreekLetters(this.name)
+    }
+
+    toJSON () {
+      return {
+        type: 'variable',
+        name: this.name
+      }
+    }
+
+    type () {
+      return 'variable'
     }
   }
 
@@ -8768,68 +8922,32 @@ var Grapheme = (function (exports) {
   };
 
   const OperatorSynonyms = {
-    "arcsinh": "asinh",
-    "arsinh": "asinh",
-    "arccosh": "acosh",
-    "arcosh": "acosh",
-    "arctanh": "atanh",
-    "artanh": "atanh",
-    "arcsech": "asech",
-    "arccsch": "acsch",
-    "arccoth": "acoth",
-    "arsech": "asech",
-    "arcsch": "acsch",
-    "arcoth": "acoth",
-    "arcsin": "asin",
-    "arsin": "asin",
-    "arccos": "acos",
-    "arcos": "acos",
-    "arctan": "atan",
-    "artan": "atan",
-    "arcsec": "asec",
-    "arccsc": "acsc",
-    "arccot": "acot",
-    "arsec": "asec",
-    "arcsc": "acsc",
-    "arcot": "acot",
-    "log": "ln"
+    'arcsinh': 'asinh',
+    'arsinh': 'asinh',
+    'arccosh': 'acosh',
+    'arcosh': 'acosh',
+    'arctanh': 'atanh',
+    'artanh': 'atanh',
+    'arcsech': 'asech',
+    'arccsch': 'acsch',
+    'arccoth': 'acoth',
+    'arsech': 'asech',
+    'arcsch': 'acsch',
+    'arcoth': 'acoth',
+    'arcsin': 'asin',
+    'arsin': 'asin',
+    'arccos': 'acos',
+    'arcos': 'acos',
+    'arctan': 'atan',
+    'artan': 'atan',
+    'arcsec': 'asec',
+    'arccsc': 'acsc',
+    'arccot': 'acot',
+    'arsec': 'asec',
+    'arcsc': 'acsc',
+    'arcot': 'acot',
+    'log': 'ln'
   };
-
-  const OperatorNames = {
-    "asin": "\\operatorname{sin}^{-1}",
-    "acos": "\\operatorname{cos}^{-1}",
-    "atan": "\\operatorname{tan}^{-1}",
-    "asec": "\\operatorname{sec}^{-1}",
-    "acsc": "\\operatorname{csc}^{-1}",
-    "acot": "\\operatorname{cot}^{-1}",
-    "asinh": "\\operatorname{sinh}^{-1}",
-    "acosh": "\\operatorname{cosh}^{-1}",
-    "atanh": "\\operatorname{tanh}^{-1}",
-    "asech": "\\operatorname{sech}^{-1}",
-    "acsch": "\\operatorname{csch}^{-1}",
-    "acoth": "\\operatorname{coth}^{-1}",
-    "gamma": "\\Gamma",
-    "digamma": "\\psi",
-    "trigamma": "\\psi_1",
-    "ln_gamma": "\\operatorname{ln} \\Gamma",
-    "log10": "\\operatorname{log}_{10}",
-    "log2": "\\operatorname{log}_{2}"
-  };
-
-  let canNotParenthesize = ["sin", "cos", "tan", "asin", "acos", "atan", "sec", "csc", "cot", "asec", "acsc", "acot", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "sech", "csch", "coth", "asech", "acsch", "acoth"];
-
-  function getOperatorName(op) {
-    let special = OperatorNames[op];
-    if (special) {
-      return special
-    }
-
-    return "\\operatorname{" + op + "}"
-  }
-
-  function alwaysParenthesize(op) {
-    return !(canNotParenthesize.includes(op))
-  }
 
   class OperatorNode extends ASTNode {
     constructor (params = {}) {
@@ -8842,156 +8960,14 @@ var Grapheme = (function (exports) {
       this.operator = operator;
     }
 
-    latex() {
-      switch (this.operator) {
-        case "^":
-          let exponent = this.children[1];
-
-          let exponent_latex;
-          if (exponent.type() === "node") {
-            exponent_latex = exponent.latex(false);
-          } else {
-            exponent_latex = exponent.latex();
-          }
-          return `${this.children[0].latex()}^{${exponent_latex}}`
-        case "*":
-          return `${this.children[0].latex()}\\cdot ${this.children[1].latex()}`
-        case "+":
-          return `${this.children[0].latex()}+${this.children[1].latex()}`
-        case "-":
-          return `${this.children[0].latex()}-${this.children[1].latex()}`
-        case "/":
-          return `\\frac{${this.children[0].latex()}}{${this.children[1].latex()}}`
-        case "<":
-          return `${this.children[0].latex()} < ${this.children[1].latex()}`
-        case "<=":
-          return `${this.children[0].latex()} \\leq ${this.children[1].latex()}`
-        case "==":
-          return `${this.children[0].latex()} = ${this.children[1].latex()}`
-        case "!=":
-          return `${this.children[0].latex()} \\neq ${this.children[1].latex()}`
-        case ">":
-          return `${this.children[0].latex()} > ${this.children[1].latex()}`
-        case ">=":
-          return `${this.children[0].latex()} \\geq ${this.children[1].latex()}`
-        case "pow_rational":
-          // Normally unused third child stores what the user actually inputted
-          return `${this.children[0].latex()}^{${this.children[3].latex()}}`
-        case "factorial":
-          let needs_parens = this.needsParentheses();
-          let latex_n = this.children[0].latex();
-
-          if (needs_parens)
-            return `\\left(${latex_n}\\right)!`
-          else
-            return latex_n + '!'
-        case "logb":
-          let log_needs_parens = this.children[1].needsParentheses();
-          let base_needs_parens = this.children[0].needsParentheses();
-
-          let base = `${base_needs_parens ? '\\left(' : ''}${this.children[0].latex()}${base_needs_parens ? '\\right)' : ''}`;
-          let log = `${log_needs_parens ? '\\left(' : ''}${this.children[1].latex()}${log_needs_parens ? '\\right)' : ''}`;
-
-          return `\\operatorname{log}_{${base}}{${log}}`
-        case "ifelse":
-          return `\\begin{cases} ${this.children[0].latex()} & ${this.children[1].latex()} \\\\ ${this.children[2].latex()} & \\text{otherwise} \\end{cases}`
-        case "cchain":
-          return this.children.map(child => child.latex()).join('')
-        case "polygamma":
-          return `\\psi^{(${this.children[0].latex()})}\\left(${this.children[1].latex()}\\right)`
-        case "piecewise":
-          let pre = `\\begin{cases} `;
-
-          let post;
-          if (this.children.length % 2 === 0) {
-
-            post = `0 & \\text{otherwise} \\end{cases}`;
-          } else {
-            post = ` \\text{otherwise} \\end{cases}`;
-          }
-
-          let latex = pre;
-
-          for (let i = 0; i < this.children.length; i += 2) {
-            let k = 0;
-            for (let j = 1; j >= 0; --j) {
-              let child = this.children[i+j];
-
-              if (!child)
-                continue
-
-              latex += child.latex();
-
-              if (k === 0) {
-                latex += " & ";
-              } else {
-                latex += " \\\\ ";
-              }
-
-              k++;
-            }
-          }
-
-          latex += post;
-
-          return latex
-        case "not":
-          return "\\neg(" + this.children.map(child => child.latex()).join('+') + ')'
-        case "and":
-          return this.children.map(child => child.latex()).join("\\land ")
-        case "or":
-          return this.children.map(child => child.latex()).join("\\lor ")
-        case "abs":
-          return '\\left|' + this.children.map(child => child.latex()).join(",") + '\\right|'
-        default:
-          let needs_parens2 = this.needsParentheses();
-
-          let operatorName = getOperatorName(this.operator);
-          if (!needs_parens2 && alwaysParenthesize(this.operator)) {
-            needs_parens2 = true;
-          }
-
-          return `${operatorName}${needs_parens2 ? '\\left(' : ''}${this.children.map(child => child.latex()).join(',\\,')}${needs_parens2 ? '\\right)' : ''}`
-      }
-    }
-
-    _getIntervalCompileText(defineVariable) {
-      const children_text = this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',');
-
-      return `Grapheme.Intervals['${this.operator}'](${children_text})`
-    }
-
-    _getRealCompileText(defineRealVariable) {
-      let children = this.children;
-      if (this.operator === "piecewise") {
-        if (children.length % 2 === 0) {
-          // add default value of 0
-          children = children.slice();
-          children.push(new ConstantNode({value: 0, text: "0"}));
-        }
-      }
-
-      if (this.operator === "ifelse") {
-        if (children.length === 2) {
-          // add default value of 0
-          children.push(new ConstantNode({value: 0, text: "0"}));
-          return
-        }
-      }
-
-      const children_text = children.map(child => child._getRealCompileText(defineRealVariable)).join(',');
-
-      return `Grapheme.REAL_FUNCTIONS['${this.operator}'](${children_text})`
-    }
-
     _getCompileText (defineVariable) {
 
       switch (this.operator) {
-        case "cchain":
+        case 'cchain':
           let components = this.children;
           let ids = [];
           for (let i = 0; i < components.length; i += 2) {
-            let variableId = "$" + getRenderID();
+            let variableId = '$' + getRenderID();
 
             defineVariable(variableId, components[i]._getCompileText(defineVariable));
 
@@ -9006,17 +8982,17 @@ var Grapheme = (function (exports) {
             let rhs = ids[(i + 1) / 2];
 
             // comparisons in cchains are variables
-            comparisons.push("(" + lhs + comparison.name + rhs + ")");
+            comparisons.push('(' + lhs + comparison.name + rhs + ')');
           }
 
-          return comparisons.join("&&")
-        case "ifelse":
+          return comparisons.join('&&')
+        case 'ifelse':
           const res = this.children.map(child => child._getCompileText(defineVariable));
 
           return `((${res[1]})?(${res[0]}):(${res[2]}))`
-        case "piecewise":
+        case 'piecewise':
           if (this.children.length === 0) {
-            return "(0)"
+            return '(0)'
           }
 
           if (this.children.length === 1) {
@@ -9024,21 +9000,30 @@ var Grapheme = (function (exports) {
           }
 
           if (this.children.length === 3) {
-            return new OperatorNode({operator: "ifelse", children: [this.children[1], this.children[0], this.children[2]]})._getCompileText(defineVariable)
+            return new OperatorNode({
+              operator: 'ifelse',
+              children: [this.children[1], this.children[0], this.children[2]]
+            })._getCompileText(defineVariable)
           } else if (this.children.length === 2) {
-            return new OperatorNode({operator: "ifelse", children: [this.children[1], this.children[0], new ConstantNode({value: 0})]})._getCompileText(defineVariable)
+            return new OperatorNode({
+              operator: 'ifelse',
+              children: [this.children[1], this.children[0], new ConstantNode({ value: 0 })]
+            })._getCompileText(defineVariable)
           } else {
-            let remainder = new OperatorNode({operator: "piecewise", children: this.children.slice(2)})._getCompileText(defineVariable);
+            let remainder = new OperatorNode({
+              operator: 'piecewise',
+              children: this.children.slice(2)
+            })._getCompileText(defineVariable);
 
             let condition = this.children[0]._getCompileText(defineVariable);
             let value = this.children[1]._getCompileText(defineVariable);
 
             return `((${condition})?(${value}):(${remainder}))`
           }
-        case "and":
-          return this.children.map(child => child._getCompileText(defineVariable)).join("&&")
-        case "or":
-          return this.children.map(child => child._getCompileText(defineVariable)).join("||")
+        case 'and':
+          return this.children.map(child => child._getCompileText(defineVariable)).join('&&')
+        case 'or':
+          return this.children.map(child => child._getCompileText(defineVariable)).join('||')
       }
 
       let pattern = OperatorPatterns[this.operator];
@@ -9050,16 +9035,39 @@ var Grapheme = (function (exports) {
       return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
     }
 
-    type() {
-      return "operator"
+    _getIntervalCompileText (defineVariable) {
+      const children_text = this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',');
+
+      return `Grapheme.Intervals['${this.operator}'](${children_text})`
     }
 
-    derivative (variable) {
-      return operator_derivative(this, variable)
-    }
+    _getRealCompileText (defineRealVariable) {
+      let children = this.children;
+      if (this.operator === 'piecewise') {
+        if (children.length % 2 === 0) {
+          // add default value of 0
+          children = children.slice();
+          children.push(new ConstantNode({
+            value: 0,
+            text: '0'
+          }));
+        }
+      }
 
-    getText () {
-      return this.operator
+      if (this.operator === 'ifelse') {
+        if (children.length === 2) {
+          // add default value of 0
+          children.push(new ConstantNode({
+            value: 0,
+            text: '0'
+          }));
+          return
+        }
+      }
+
+      const children_text = children.map(child => child._getRealCompileText(defineRealVariable)).join(',');
+
+      return `Grapheme.REAL_FUNCTIONS['${this.operator}'](${children_text})`
     }
 
     clone () {
@@ -9070,8 +9078,32 @@ var Grapheme = (function (exports) {
       return node
     }
 
+    derivative (variable) {
+      return operator_derivative(this, variable)
+    }
+
     evaluateConstant () {
       return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
+    }
+
+    getText () {
+      return this.operator
+    }
+
+    latex () {
+      return getLatex(this)
+    }
+
+    toJSON () {
+      return {
+        type: 'operator',
+        operator: this.operator,
+        children: this.children.map(child => child.toJSON())
+      }
+    }
+
+    type () {
+      return 'operator'
     }
   }
 
@@ -9081,7 +9113,7 @@ var Grapheme = (function (exports) {
 
       const {
         value = 0,
-        text = "",
+        text = '',
         invisible = false
       } = params;
 
@@ -9090,13 +9122,11 @@ var Grapheme = (function (exports) {
       this.invisible = invisible;
     }
 
-    _getRealCompileText(defineRealVariable) {
-      let var_name = '$' + getRenderID();
-      defineRealVariable(var_name, this.text);
-      return var_name
+    _getCompileText (defineVariable) {
+      return this.value + ''
     }
 
-    _getIntervalCompileText(defineVariable) {
+    _getIntervalCompileText (defineVariable) {
       let varName = '$' + getRenderID();
       if (isNaN(this.value)) {
         defineVariable(varName, `new Grapheme.Interval(NaN, NaN, false, false, true, true)`);
@@ -9107,41 +9137,56 @@ var Grapheme = (function (exports) {
       return varName
     }
 
-    isConstant() {
-      return true
+    _getRealCompileText (defineRealVariable) {
+      let var_name = '$' + getRenderID();
+      defineRealVariable(var_name, this.text);
+      return var_name
     }
 
-    _getCompileText (defineVariable) {
-      return this.value + ''
+    clone () {
+      return new ConstantNode({
+        value: this.value,
+        invisible: this.invisible,
+        text: this.text
+      })
     }
 
     derivative () {
       return new ConstantNode({ value: 0 })
     }
 
+    evaluateConstant () {
+      return this.value
+    }
+
     getText () {
       return this.invisible ? '' : this.text
     }
 
-    latex() {
+    isConstant () {
+      return true
+    }
+
+    latex () {
       return this.getText()
     }
 
-    type() {
-      return "constant"
+    toJSON () {
+      return {
+        value: this.value,
+        text: this.text,
+        invisible: this.invisible,
+        type: 'constant'
+      }
     }
 
-    clone () {
-      return new ConstantNode({ value: this.value, invisible: this.invisible, text: this.text })
-    }
-
-    evaluateConstant() {
-      return this.value
+    type () {
+      return 'constant'
     }
   }
 
-  function powerExactlyRepresentableAsFloat(power) {
-    if (typeof power === "number") return true
+  function powerExactlyRepresentableAsFloat (power) {
+    if (typeof power === 'number') return true
 
     // todo, make more precise
     if (Number.isInteger(parseFloat(power))) {
@@ -9165,12 +9210,21 @@ var Grapheme = (function (exports) {
       power.replace(matchIntegralComponent, '');*/
   }
 
-  const LN2 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]});
-  const LN10 = new OperatorNode({operator: 'ln', children: [new ConstantNode({value: 10})]});
-  const ONE_THIRD = new OperatorNode({operator: '/', children: [
-    new ConstantNode({value: 1}),
-      new ConstantNode({value: 3})
-    ]});
+  const LN2 = new OperatorNode({
+    operator: 'ln',
+    children: [new ConstantNode({ value: 10 })]
+  });
+  const LN10 = new OperatorNode({
+    operator: 'ln',
+    children: [new ConstantNode({ value: 10 })]
+  });
+  const ONE_THIRD = new OperatorNode({
+    operator: '/',
+    children: [
+      new ConstantNode({ value: 1 }),
+      new ConstantNode({ value: 3 })
+    ]
+  });
 
   // a * b - c * d ^ g
 
@@ -9570,21 +9624,8 @@ var Grapheme = (function (exports) {
       });
     }
 
-    /*root.applyAll(child => {
-      const children = child.children
-
-      for (let i = 0; i < children.length; ++i) {
-        let child = children[i]
-
-        if (child instanceof VariableNode && comparisonOperators.includes(child.name)) {
-          children[i] = new OperatorNode({operator: child.name})
-        }
-      }
-    })*/
-
     combineOperators(comparisonOperators);
     combineOperators(["and", "or"]);
-
 
     root.applyAll(child => {
       if (child.children) {
@@ -9592,10 +9633,7 @@ var Grapheme = (function (exports) {
       }
     });
 
-    root.applyAll(child => {
-      if (child.children)
-        child.children.forEach(subchild => subchild.parent = child);
-    });
+    root.setParents();
 
     return root
   }
@@ -10707,11 +10745,8 @@ void main() {
       if (!this.polyline) {
         this.polyline = new WebGLPolylineWrapper({
           pen: this.pen,
-          alwaysUpdate: false,
-          trackVertexIndices: true
+          alwaysUpdate: false
         });
-
-        this.polyline._internal_polyline.track_vertex_indices = true;
       }
 
       this.polyline.vertices = vertices;
@@ -12389,7 +12424,7 @@ void main() {
     }
 
     if (args.length > 0)
-      return CCHAIN(val2)
+      return CCHAIN()
 
     return true
   }
@@ -12403,7 +12438,7 @@ void main() {
   };
   Object.freeze(Intervals);
 
-  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=9, renderingQuality=1, maxDepth=16) {
+  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=10, renderingQuality=10, maxDepth=16) {
     let polyline = [];
 
     function add_contour_segment(x1, y1, x2, y2) {
@@ -12531,28 +12566,33 @@ void main() {
     return polyline
   }
 
+  /**
+   * Plots an equation of x and y of the form equation(x,y) = 0.
+   */
   class EquationPlot2D extends InteractiveElement {
     constructor(params={}) {
       super(params);
 
       this.equation = parse_string("x^2+y");
-      this.visible = true;
 
       this.updateFunc();
 
-      this.displayedElement = new WebGLPolylineWrapper();
-      this.displayedElement.pen.useNative = false;
-      this.displayedElement.pen.endcap = "none";
-      this.displayedElement.pen.color = Colors.RED;
+      const disp = this.displayedElement = new WebGLPolylineWrapper();
+      disp.pen.useNative = false;
+      disp.pen.endcap = "none";
+      disp.pen.color = Colors.RED;
 
-      this.addEventListener("plotcoordschanged", () => this.updateLight());
-      this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 200 * Math.random());
-      });
+      this.addEventListener("plotcoordschanged", () => this.update());
     }
 
     setEquation(text) {
-      this.equation = parse_string(text);
+      if (typeof text === "string") {
+        this.equation = parse_string(text);
+      } else if (text instanceof ASTNode) {
+        this.equation = text;
+      } else {
+        throw new Error("Given equation is not text or AST")
+      }
 
       this.updateFunc();
     }
@@ -12635,6 +12675,21 @@ void main() {
     }
   }
 
+  function nodeFromJSON(topNode) {
+    let children = topNode.children ? topNode.children.map(child => nodeFromJSON(child)) : [];
+
+    switch (topNode.type) {
+      case "operator":
+        return new OperatorNode({operator: topNode.operator, children})
+      case "variable":
+        return new VariableNode({name: topNode.name, children})
+      case "node":
+        return new ASTNode({children})
+      case "constant":
+        return new ConstantNode({value: topNode.value, text: topNode.text, invisible: topNode.invisible})
+    }
+  }
+
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
@@ -12687,6 +12742,7 @@ void main() {
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.isExactlyRepresentableAsFloat = isExactlyRepresentableAsFloat;
   exports.ln_gamma = ln_gamma;
+  exports.nodeFromJSON = nodeFromJSON;
   exports.parse_string = parse_string;
   exports.point_line_segment_min_closest = point_line_segment_min_closest;
   exports.point_line_segment_min_distance = point_line_segment_min_distance;

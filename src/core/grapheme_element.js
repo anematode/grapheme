@@ -25,6 +25,9 @@ class GraphemeElement {
 
     // Children of this element
     /** @public */ this.children = []
+
+    // Whether this element is visible
+    /** @public */ this.visible = true
   }
 
   /**

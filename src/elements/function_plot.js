@@ -89,11 +89,8 @@ class FunctionPlot2D extends InteractiveElement {
     if (!this.polyline) {
       this.polyline = new WebGLPolylineWrapper({
         pen: this.pen,
-        alwaysUpdate: false,
-        trackVertexIndices: true
+        alwaysUpdate: false
       })
-
-      this.polyline._internal_polyline.track_vertex_indices = true
     }
 
     this.polyline.vertices = vertices

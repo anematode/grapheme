@@ -6,29 +6,35 @@ import * as utils from "../core/utils"
 import {WebGLPolylineWrapper} from './webgl_polyline_wrapper'
 import { generateContours1, generateContours2 } from '../math/contouring'
 import { adaptPolyline } from '../math/adapt_polyline'
+import { ASTNode } from '../function_ast/node'
 
+/**
+ * Plots an equation of x and y of the form equation(x,y) = 0.
+ */
 class EquationPlot2D extends InteractiveElement {
   constructor(params={}) {
     super(params)
 
     this.equation = parse_string("x^2+y")
-    this.visible = true
 
     this.updateFunc()
 
-    this.displayedElement = new WebGLPolylineWrapper()
-    this.displayedElement.pen.useNative = false
-    this.displayedElement.pen.endcap = "none"
-    this.displayedElement.pen.color = Colors.RED
+    const disp = this.displayedElement = new WebGLPolylineWrapper()
+    disp.pen.useNative = false
+    disp.pen.endcap = "none"
+    disp.pen.color = Colors.RED
 
-    this.addEventListener("plotcoordschanged", () => this.updateLight())
-    this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.update(), 200 * Math.random())
-    })
+    this.addEventListener("plotcoordschanged", () => this.update())
   }
 
   setEquation(text) {
-    this.equation = parse_string(text)
+    if (typeof text === "string") {
+      this.equation = parse_string(text)
+    } else if (text instanceof ASTNode) {
+      this.equation = text
+    } else {
+      throw new Error("Given equation is not text or AST")
+    }
 
     this.updateFunc()
   }
