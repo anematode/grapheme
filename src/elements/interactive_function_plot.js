@@ -42,8 +42,8 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     this.inspectionPoint = null
   }
 
-  update() {
-    super.update()
+  updateSync() {
+    super.updateSync()
 
     if (this.inspectionPoint)
       this.inspectionPoint.point.style.fill = this.pen.color

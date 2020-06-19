@@ -371,7 +371,7 @@ class WebGLPolyline extends WebGLElement {
     this._gl_triangle_strip_vertices_total = Math.ceil(vertices.length / 2)
   }
 
-  update () {
+  updateSync () {
     if (!this.use_native) {
       this._calculateTriangles()
     } else {
@@ -395,7 +395,7 @@ class WebGLPolyline extends WebGLElement {
     return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
   }
 
-  render (info) {
+  renderSync (info) {
     if (!this.visible) {
       return
     }

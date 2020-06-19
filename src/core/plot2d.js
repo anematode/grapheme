@@ -72,7 +72,7 @@ class Plot2D extends InteractiveCanvas {
     })
 
     // Calculate the transform so it's valid from the start
-    this.update()
+    this.updateSync()
   }
 
   /**
@@ -129,7 +129,7 @@ class Plot2D extends InteractiveCanvas {
   }
 
   /**
-   * Called before each render. We reset the smart label manager's tracking of label positions.
+   * Called before each renderSync. We reset the smart label manager's tracking of label positions.
    * clearing the bounding boxes for the labels to take up.
    * @param info {Object} (unused)
    */
@@ -138,9 +138,9 @@ class Plot2D extends InteractiveCanvas {
   }
 
   /**
-   * Called after each render, used to display labels that have indicated they want to be displayed on top
+   * Called after each renderSync, used to display labels that have indicated they want to be displayed on top
    * of everything. This overrides the usual precedence system.
-   * @param info {Object} render info
+   * @param info {Object} renderSync info
    */
   afterRender(info) {
     this.extraInfo.smartLabelManager.renderLabels(info)
@@ -149,7 +149,7 @@ class Plot2D extends InteractiveCanvas {
   /**
    * Update function
    */
-  update () {
+  updateSync () {
     // Update the transform (the position of the plotting box)
     this.calculateTransform()
   }

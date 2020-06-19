@@ -7,21 +7,21 @@ class LabelManager {
     // Pass it the dom element div for grapheme_window
     /** @public */ this.container = container
 
-    // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
+    // Mapping from Label keys to {renderID: the last renderSync ID, domElement: html element to use}
     /** @private */ this.labels = new Map()
 
-    // The current render ID
+    // The current renderSync ID
     /** @private */ this.currentRenderID = -1
   }
 
   /**
-   * Remove labels with an old render ID.
+   * Remove labels with an old renderSync ID.
    */
   removeOldLabels () {
     const labels = this.labels
 
     labels.forEach((labelInfo, label) => {
-      // Delete labels who don't have the correct render ID
+      // Delete labels who don't have the correct renderSync ID
       if (labelInfo.renderID !== this.currentRenderID) {
         labelInfo.domElement.remove()
 
@@ -52,7 +52,7 @@ class LabelManager {
     } else {
       element = labelInfo.domElement
 
-      // Update render ID
+      // Update renderSync ID
       labelInfo.renderID = this.currentRenderID
     }
 

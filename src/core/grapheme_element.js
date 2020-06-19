@@ -1,7 +1,7 @@
 import * as utils from './utils'
 
-/** @class GraphemeElement A component of Grapheme that supports a update() function, which prepares it for the rendering
- * stage, and a render() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
+/** @class GraphemeElement A component of Grapheme that supports a updateSync() function, which prepares it for the rendering
+ * stage, and a renderSync() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
  * elements together. */
 class GraphemeElement {
   constructor ({
@@ -17,7 +17,7 @@ class GraphemeElement {
     // The plot this element belongs to
     /** @public */ this.plot = null
 
-    // Whether to always update when render is called
+    // Whether to always updateSync when renderSync is called
     /** @public */ this.alwaysUpdate = alwaysUpdate
 
     // Custom event listeners
@@ -25,6 +25,9 @@ class GraphemeElement {
 
     // Children of this element
     /** @public */ this.children = []
+
+    // Whether this element is currently updating asynchronously
+    /** @protected */ this.updating = false
   }
 
   /**
@@ -79,15 +82,57 @@ class GraphemeElement {
    * @param info.labelManager The LabelManager of the plot
    * @param info.beforeNormalRender The callback for elements that don't use WebGL.
    */
-  render (info) {
-    info.beforeNormalRender()
+  renderSync (info) {
+    info.beforeNormalRender(this)
 
     // Update if needed
     if (this.alwaysUpdate)
-      this.update()
+      this.updateSync()
 
     // Render this element's children
     this.renderChildren(info)
+  }
+
+  render(info) {
+    this.renderSync(info)
+  }
+
+  update() {
+    this.updateSync()
+  }
+
+  childCount() {
+    return 1 + this.children.length
+  }
+
+  async updateAsync() {
+    return new Promise(resolve => this.updateSync())
+  }
+
+  async renderAsync(info, partialComplete) {
+    info.beforeNormalRender(this)
+
+    // Update if needed
+    if (this.alwaysUpdate)
+      await this.updateAsync()
+
+    // Render this element's children
+    this.renderChildrenAsync(info, partialComplete)
+  }
+
+  /**
+   * Render all the children of this element asynchronously.
+   * @param info The information to be passed to the children.
+   */
+  async renderChildrenAsync(info, partialComplete) {
+    // Sort children by precedence
+    this.sortChildren()
+
+    // Render all children
+    for (let child of this.children)
+      await child.renderAsync(info, partialComplete)
+
+    partialComplete()
   }
 
   /**
@@ -99,7 +144,7 @@ class GraphemeElement {
     this.sortChildren()
 
     // Render all children
-    this.children.forEach((child) => child.render(info))
+    this.children.forEach((child) => child.renderSync(info))
   }
 
   /**
@@ -230,9 +275,9 @@ class GraphemeElement {
   }
 
   /**
-   * Function called to update for rendering. It is empty in case child classes don't define it.
+   * Function called to updateSync for rendering. It is empty in case child classes don't define it.
    */
-  update () {
+  updateSync () {
 
   }
 

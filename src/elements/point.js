@@ -55,13 +55,13 @@ class PointElement extends GraphemeElement {
   }
 
 
-  update() {
+  updateSync() {
     this._path = new Path2D()
     this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI)
   }
 
-  render(info) {
-    super.render(info)
+  renderSync(info) {
+    super.renderSync(info)
     this.style.prepareContext(info.ctx)
 
     if (this.style.doFill)

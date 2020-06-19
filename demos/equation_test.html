@@ -42,7 +42,7 @@
     function setFunction(text) {
         fplot.setEquation(text)
 
-        katex.render(fplot.equation.latex(false) + "=0", document.getElementById("katex-stuff"), {throwOnError:false})
+        katex.renderSync(fplot.equation.latex(false) + "=0", document.getElementById("katex-stuff"), {throwOnError:false})
 
         fplot.update()
     }

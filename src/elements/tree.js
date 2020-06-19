@@ -22,7 +22,7 @@ class TreeElement extends GraphemeElement {
     this.labels = []
   }
 
-  update() {
+  updateSync() {
     this.vertices = []
     this.labels = []
 
@@ -81,17 +81,17 @@ class TreeElement extends GraphemeElement {
 
   }
 
-  render(info) {
-    super.render(info)
+  renderSync(info) {
+    super.renderSync(info)
 
     let polyline = new PolylineElement({pen: this.pen})
     polyline.vertices = this.vertices.slice()
 
     this.plot.transform.plotToPixelArr(polyline.vertices)
 
-    polyline.render(info)
+    polyline.renderSync(info)
 
-    this.labels.forEach(label => label.render(info))
+    this.labels.forEach(label => label.renderSync(info))
   }
 }
 

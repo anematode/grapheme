@@ -42,7 +42,7 @@ class PieChart extends GraphemeElement {
     this._labels = []
   }
 
-  update() {
+  updateSync () {
     let box = this.box
 
     if (!box) {
@@ -111,8 +111,8 @@ class PieChart extends GraphemeElement {
     }
   }
 
-  render(info) {
-    super.render(info)
+  renderSync (info) {
+    super.renderSync(info)
 
     const ctx = info.ctx
 
@@ -143,7 +143,7 @@ class PieChart extends GraphemeElement {
     }
 
     for (let i = 0; i < this._labels.length; ++i) {
-      this._labels[i].render(info)
+      this._labels[i].renderSync(info)
     }
   }
 }

@@ -6,23 +6,25 @@ class WebGLPolylineWrapper extends PolylineBase {
   constructor(params={}) {
     super(params)
 
-    this._internal_polyline = new WebGLPolyline()
+    this.internal = new WebGLPolyline()
   }
 
-  update() {
-    this._internal_polyline.vertices = this.vertices
+  updateSync() {
+    const internal = this.internal
+
+    internal.vertices = this.vertices
 
     const pen = this.pen
 
-    this._internal_polyline.color = pen.color.toNumber()
-    this._internal_polyline.thickness = pen.thickness / 2
-    this._internal_polyline.use_native = pen.useNative
-    this._internal_polyline.visible = pen.visible
-    this._internal_polyline.endcap_type = (pen.endcap === "round") ? 1 : 0
+    internal.color = pen.color.toNumber()
+    internal.thickness = pen.thickness / 2
+    internal.use_native = pen.useNative
+    internal.visible = pen.visible
+    internal.endcap_type = (pen.endcap === "round") ? 1 : 0
 
     // TODO: add other pen things
 
-    this._internal_polyline.update()
+    internal.updateSync()
   }
 
   isClick(point) {
@@ -37,8 +39,8 @@ class WebGLPolylineWrapper extends PolylineBase {
     return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
   }
 
-  render(info) {
-    this._internal_polyline.render(info)
+  renderSync(info) {
+    this.internal.renderSync(info)
   }
 }
 

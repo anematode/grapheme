@@ -1,4 +1,4 @@
-import { Element as GraphemeElement } from './grapheme_element'
+import {Element as GraphemeElement} from './grapheme_element'
 import * as utils from "./utils"
 
 /**
@@ -18,14 +18,14 @@ class WebGLElement extends GraphemeElement {
 
   /**
    *
-   * @param info {Object} The render info
+   * @param info {Object} The renderSync info
    * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
    */
   render(info) {
     // Call beforeWebGLRender()
     info.beforeWebGLRender()
 
-    // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
+    // Sort this element's children. We don't want to call super.renderSync() because that will run beforeNormalRender
     this.sortChildren()
 
     // Update if needed
@@ -33,7 +33,7 @@ class WebGLElement extends GraphemeElement {
       this.update()
 
     // Render all children
-    this.children.forEach(child => child.render(info))
+    this.children.forEach(child => child.renderSync(info))
   }
 }
 

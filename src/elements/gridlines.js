@@ -104,7 +104,7 @@ class Gridlines extends GraphemeElement {
   }
 
 
-  update() {
+  updateSync() {
     let transform = this.plot.transform
     let plotCoords = transform.coords
     let plotBox = transform.box
@@ -273,18 +273,18 @@ class Gridlines extends GraphemeElement {
     }
   }
 
-  render(info) {
-    super.render(info)
+  renderSync(info) {
+    super.renderSync(info)
 
     for (let key in this._polylines) {
       if (this._polylines.hasOwnProperty(key)) {
 
-        this._polylines[key].render(info)
+        this._polylines[key].renderSync(info)
       }
     }
 
     for (let label of this._labels) {
-      label.render(info)
+      label.renderSync(info)
     }
   }
 }
