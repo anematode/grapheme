@@ -52,19 +52,23 @@
       fplot.setFunction(func)
       fplot.update()
 
+      cow =node
+
       egg = node.derivative('x')
 
       dplot.setFunction(egg.compile().func)
       dplot.update()
 
       katex.render(node.latex(false), document.getElementById("katex-stuff"), {throwOnError:false})
+
+      window.egg = node
     }
 
   let ia = 0;
   function render() {
     ia += 0.1;
 
-    plot.renderAsync(console.log).then(console.log)
+    plot.render();
     requestAnimationFrame(render);
   }
 

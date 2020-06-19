@@ -16,7 +16,7 @@ class PointCloud extends GraphemeElement {
     this.vertices = vertices
   }
 
-  updateSync() {
+  update() {
     let path = this.path = new Path2D()
 
     let verts = utils.flattenVectors(this.vertices)
@@ -30,7 +30,7 @@ class PointCloud extends GraphemeElement {
     }
   }
 
-  renderSync(info) {
+  render(info) {
     super.render(info)
 
     const ctx = info.ctx

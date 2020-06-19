@@ -88,7 +88,7 @@ class GraphemeCanvas extends GraphemeGroup {
     // Scale up by device pixel ratio
     this.resetCanvasCtxTransform()
 
-    // Trigger the resize event to let elements know to updateSync
+    // Trigger the resize event to let elements know to update
     this.triggerEvent("resize", {width, height})
   }
 
@@ -162,9 +162,9 @@ class GraphemeCanvas extends GraphemeGroup {
 
   /**
    * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
-   * constructs the information needed to renderSync the child elements.
+   * constructs the information needed to render the child elements.
    */
-  renderSync () {
+  render () {
     // Expand the universe's canvas to fit its windows, in case it is too small
     this.universe.expandToFit()
 
@@ -197,10 +197,10 @@ class GraphemeCanvas extends GraphemeGroup {
       needsWebGLCopy = true
     }
 
-    // Set ID of this renderSync. This is used to remove DOM elements from a previous renderSync.
+    // Set ID of this render. This is used to remove DOM elements from a previous render.
     labelManager.currentRenderID = utils.getRenderID()
 
-    // Info to be passed to rendered elements; the object passed as "info" in renderSync(info).
+    // Info to be passed to rendered elements; the object passed as "info" in render(info).
     const info = {
       labelManager, // the label manager
       ctx, // The canvas context to draw to
@@ -222,9 +222,9 @@ class GraphemeCanvas extends GraphemeGroup {
       this.beforeRender(info)
 
     // Render all children
-    super.renderSync(info)
+    super.render(info)
 
-    // If this class defines an after renderSync function, call it
+    // If this class defines an after render function, call it
     if (this.afterRender)
       this.afterRender(info)
 
@@ -233,103 +233,6 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Get rid of old labels
     labelManager.removeOldLabels()
-  }
-
-  childCount() {
-    let sum = 0
-
-    for (let i = 0; i < this.children.length; ++i) {
-      sum += this.children[i].childCount()
-    }
-
-    return (1 + sum)
-  }
-
-  /**
-   * Render this GraphemeCanvas asynchronously, providing percentage complete status updates to callback
-   */
-  async renderAsync (percentCompleteCallback = () => undefined) {
-    // Expand the universe's canvas to fit its windows, in case it is too small
-    this.universe.expandToFit()
-
-    const { labelManager, ctx } = this
-    const plot = this
-
-    // Whether the universe's canvas needs to be copied over
-    let needsWebGLCopy = false
-
-    // Function called before an element that doesn't use WebGL is rendered
-    const beforeNormalRender = () => {
-      if (needsWebGLCopy) {
-        // Copy the universe's canvas over
-        this.universe.copyToCanvas(this)
-
-        // Mark the copy as done
-        needsWebGLCopy = false
-
-        // Clear the universe's canvas for future renders
-        this.universe.clear()
-      }
-    }
-
-    const beforeWebGLRender = () => {
-      // Set the viewport of the universe to the entire canvas. Note that the universe canvas is not
-      // scaled with the device pixel ratio, so we must use this.canvasWidth/Height instead of this.width/height.
-      this.universe.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight)
-
-      // Mark that a copy is needed
-      needsWebGLCopy = true
-    }
-
-    // Set ID of this renderSync. This is used to remove DOM elements from a previous renderSync.
-    labelManager.currentRenderID = utils.getRenderID()
-
-    // Info to be passed to rendered elements; the object passed as "info" in renderSync(info).
-    const info = {
-      labelManager, // the label manager
-      ctx, // The canvas context to draw to
-      plot, // The plot we are drawing
-      beforeNormalRender, // Callback for elements that don't use WebGL
-      beforeWebGLRender, // Callback for elements that use WebGL
-      universe: this.universe, // The universe to draw to (for WebGL stuff)
-      extraInfo: this.extraInfo, // Extra info supplied by derived classes
-      percentCompleteCallback
-    }
-
-    // Clear the canvas
-    this.clear()
-
-    // Reset the rendering context transform
-    this.resetCanvasCtxTransform()
-
-    percentCompleteCallback(0)
-
-    let completed = 0
-    let total = this.childCount()
-
-    function partialComplete () {
-      completed++
-      percentCompleteCallback(completed / total)
-    }
-
-    // If this class defines a beforeRender function, call it
-    if (this.beforeRender)
-      this.beforeRender(info)
-
-    // Render all children
-    await super.renderAsync(info, partialComplete)
-
-    // If this class defines an after renderSync function, call it
-    if (this.afterRender)
-      this.afterRender(info)
-
-    // Copy over the canvas if necessary
-    beforeNormalRender()
-
-    // Get rid of old labels
-    labelManager.removeOldLabels()
-
-    percentCompleteCallback(1)
   }
 }
 

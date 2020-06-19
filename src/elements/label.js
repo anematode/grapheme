@@ -26,7 +26,7 @@ class BasicLabel extends LabelBase {
     this.style = params.style ? params.style : new BasicLabelStyle(params.style || {})
   }
 
-  renderSync (info) {
+  render (info) {
     const { text, position } = this
     const mode = this.style.mode
 
@@ -46,7 +46,7 @@ class BasicLabel extends LabelBase {
       if (oldLatex !== text) {
         labelElement.setAttribute('latex-content', text)
         // eslint-disable-next-line no-undef
-        katex.renderSync(text, labelElement, { throwOnError: false })
+        katex.render(text, labelElement, { throwOnError: false })
       }
     } else {
       if (oldLatex) { labelElement.removeAttribute('latex-content') }
@@ -67,8 +67,8 @@ class Label2D extends LabelBase {
     return utils.measureText(this.text, `${this.style.fontSize}px ${this.style.fontFamily}`)
   }
 
-  renderSync(info) {
-    super.renderSync(info)
+  render(info) {
+    super.render(info)
 
     this.style.drawText(info.ctx, this.text, this.position.x, this.position.y)
   }

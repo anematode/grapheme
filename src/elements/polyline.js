@@ -31,7 +31,7 @@ class PolylineElement extends PolylineBase {
     this.arrowPath = null
   }
 
-  updateSync () {
+  update () {
     const path = new Path2D()
     this.mainPath = path
 
@@ -107,11 +107,11 @@ class PolylineElement extends PolylineBase {
     return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
   }
 
-  renderSync (info) {
+  render (info) {
     if (!this.pen.visible)
       return
 
-    super.renderSync(info)
+    super.render(info)
 
     const ctx = info.ctx
 

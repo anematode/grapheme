@@ -26,7 +26,7 @@ function operator_derivative (opNode, variable = 'x') {
     case 'piecewise':
       node = opNode.clone()
 
-      for (let i = 1; i < node.children.length; i += 2) {
+      for (let i = 1; i < node.children.length; ++i) {
         node.children[i] = node.children[i].derivative(variable)
       }
 

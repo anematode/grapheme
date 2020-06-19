@@ -53,14 +53,14 @@ class InspectablePoint extends InteractiveElement {
     return this.point.isClick(pos)
   }
 
-  updateSync() {
+  update() {
     this.updatePosition()
   }
 
-  renderSync(info) {
-    super.renderSync(info)
+  render(info) {
+    super.render(info)
 
-    this.point.renderSync(info)
+    this.point.render(info)
 
     if (this.selected)
       this.label.render(info)

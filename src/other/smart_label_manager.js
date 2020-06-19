@@ -50,7 +50,7 @@ class SmartLabelManager {
   }
 
   renderLabels(info) {
-    this.labels.forEach(label => label.renderSync(info, true))
+    this.labels.forEach(label => label.render(info, true))
   }
 }
 

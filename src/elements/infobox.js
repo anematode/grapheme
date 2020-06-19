@@ -12,8 +12,8 @@ class Infobox extends GraphemeElement {
 
     this.box = new BoundingBox()
 
-    this.addEventListener("dprchanged", () => this.updateSync())
-    this.addEventListener("resize", () => this.updateSync())
+    this.addEventListener("dprchanged", () => this.update())
+    this.addEventListener("resize", () => this.update())
   }
 
   clearPosition() {
@@ -24,7 +24,11 @@ class Infobox extends GraphemeElement {
 
   }
 
-  renderSync(info) {
-    super.renderSync(info)
+  update() {
+
+  }
+
+  render(info) {
+    super.render(info)
   }
 }

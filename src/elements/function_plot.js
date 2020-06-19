@@ -34,9 +34,9 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.updateSync())
+    this.addEventListener("plotcoordschanged", () => this.update())
     /*this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.updateSync(), 100 * Math.random())
+      setTimeout(() => this.update(), 100 * Math.random())
     })*/
 
     this.interactivityEnabled = true
@@ -60,7 +60,7 @@ class FunctionPlot2D extends InteractiveElement {
     adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness)
   }
 
-  updateSync() {
+  update() {
     let transform = this.plot.transform
 
     this.previousTransform = transform.clone()
@@ -89,15 +89,18 @@ class FunctionPlot2D extends InteractiveElement {
     if (!this.polyline) {
       this.polyline = new WebGLPolylineWrapper({
         pen: this.pen,
-        alwaysUpdate: false
+        alwaysUpdate: false,
+        trackVertexIndices: true
       })
+
+      this.polyline._internal_polyline.track_vertex_indices = true
     }
 
     this.polyline.vertices = vertices
-    this.polyline.updateSync()
+    this.polyline.update()
   }
 
-  renderSync(info) {
+  render(info) {
     if (!this.polyline)
       return
 
@@ -110,7 +113,7 @@ class FunctionPlot2D extends InteractiveElement {
       box.width * utils.dpr,
       box.height * utils.dpr)
 
-    this.polyline.renderSync(info)
+    this.polyline.render(info)
 
     gl.disable(gl.SCISSOR_TEST)
 

@@ -1360,13 +1360,13 @@ function initRuntime() {
   checkStackCookie();
   assert(!runtimeInitialized);
   runtimeInitialized = true;
-
+  
   callRuntimeCallbacks(__ATINIT__);
 }
 
 function preMain() {
   checkStackCookie();
-
+  
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -1636,7 +1636,7 @@ function getBinary() {
 
 function getBinaryPromise() {
   // if we don't have the binary yet, and have the Fetch api, use that
-  // in some environments, like Electron's renderSync process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
+  // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
   if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
@@ -1807,18 +1807,18 @@ var ASM_CONSTS = [];
       return 1552;
     }
 
-
+  
   function abortOnCannotGrowMemory(requestedSize) {
       abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
     }function _emscripten_resize_heap(requestedSize) {
       abortOnCannotGrowMemory(requestedSize);
     }
 
-
+  
   function _emscripten_memcpy_big(dest, src, num) {
       HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
     }
-
+  
   function _memcpy(dest, src, num) {
       dest = dest|0; src = src|0; num = num|0;
       var ret = 0;
@@ -1830,7 +1830,7 @@ var ASM_CONSTS = [];
         _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
         return dest|0;
       }
-
+  
       ret = dest|0;
       dest_end = (dest + num)|0;
       if ((dest&3) == (src&3)) {
@@ -1894,19 +1894,19 @@ var ASM_CONSTS = [];
       ptr = ptr|0; value = value|0; num = num|0;
       var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
       end = (ptr + num)|0;
-
+  
       value = value & 0xff;
       if ((num|0) >= 67 /* 64 bytes for an unrolled loop + 3 bytes for unaligned head*/) {
         while ((ptr&3) != 0) {
           HEAP8[((ptr)>>0)]=value;
           ptr = (ptr+1)|0;
         }
-
+  
         aligned_end = (end & -4)|0;
         value4 = value | (value << 8) | (value << 16) | (value << 24);
-
+  
         block_aligned_end = (aligned_end - 64)|0;
-
+  
         while((ptr|0) <= (block_aligned_end|0)) {
           HEAP32[((ptr)>>2)]=value4;
           HEAP32[(((ptr)+(4))>>2)]=value4;
@@ -1926,7 +1926,7 @@ var ASM_CONSTS = [];
           HEAP32[(((ptr)+(60))>>2)]=value4;
           ptr = (ptr + 64)|0;
         }
-
+  
         while ((ptr|0) < (aligned_end|0) ) {
           HEAP32[((ptr)>>2)]=value4;
           ptr = (ptr+4)|0;
@@ -2545,7 +2545,7 @@ Module['VoidPtr'] = VoidPtr;
 };
 (function() {
   function setupEnums() {
-
+    
   }
   if (runtimeInitialized) setupEnums();
   else addOnPreMain(setupEnums);

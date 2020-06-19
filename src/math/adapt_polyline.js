@@ -1,6 +1,6 @@
 
 function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
-  let arr = polyline.internal._gl_triangle_strip_vertices
+  let arr = polyline._internal_polyline._gl_triangle_strip_vertices
 
   let newland = oldTransform.getPixelToPlotTransform()
   let harvey = newTransform.getPlotToPixelTransform()
@@ -36,7 +36,7 @@ function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true
     }
   }
 
-  polyline.internal.needsBufferCopy = true
+  polyline._internal_polyline.needsBufferCopy = true
 }
 
 export { adaptPolyline }

@@ -1017,8 +1017,8 @@ var Grapheme = (function (exports) {
   // contexts per page is not capped.
   const DefaultUniverse = new GraphemeUniverse();
 
-  /** @class GraphemeElement A component of Grapheme that supports a updateSync() function, which prepares it for the rendering
-   * stage, and a renderSync() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
+  /** @class GraphemeElement A component of Grapheme that supports a update() function, which prepares it for the rendering
+   * stage, and a render() function which renders the element to a GraphemeCanvas. It also has children, used for grouping
    * elements together. */
   class GraphemeElement {
     constructor ({
@@ -1034,7 +1034,7 @@ var Grapheme = (function (exports) {
       // The plot this element belongs to
       /** @public */ this.plot = null;
 
-      // Whether to always updateSync when renderSync is called
+      // Whether to always update when render is called
       /** @public */ this.alwaysUpdate = alwaysUpdate;
 
       // Custom event listeners
@@ -1042,9 +1042,6 @@ var Grapheme = (function (exports) {
 
       // Children of this element
       /** @public */ this.children = [];
-
-      // Whether this element is currently updating asynchronously
-      /** @protected */ this.updating = false;
     }
 
     /**
@@ -1099,57 +1096,15 @@ var Grapheme = (function (exports) {
      * @param info.labelManager The LabelManager of the plot
      * @param info.beforeNormalRender The callback for elements that don't use WebGL.
      */
-    renderSync (info) {
-      info.beforeNormalRender(this);
+    render (info) {
+      info.beforeNormalRender();
 
       // Update if needed
       if (this.alwaysUpdate)
-        this.updateSync();
+        this.update();
 
       // Render this element's children
       this.renderChildren(info);
-    }
-
-    render(info) {
-      this.renderSync(info);
-    }
-
-    update() {
-      this.updateSync();
-    }
-
-    childCount() {
-      return 1 + this.children.length
-    }
-
-    async updateAsync() {
-      return new Promise(resolve => this.updateSync())
-    }
-
-    async renderAsync(info, partialComplete) {
-      info.beforeNormalRender(this);
-
-      // Update if needed
-      if (this.alwaysUpdate)
-        await this.updateAsync();
-
-      // Render this element's children
-      this.renderChildrenAsync(info, partialComplete);
-    }
-
-    /**
-     * Render all the children of this element asynchronously.
-     * @param info The information to be passed to the children.
-     */
-    async renderChildrenAsync(info, partialComplete) {
-      // Sort children by precedence
-      this.sortChildren();
-
-      // Render all children
-      for (let child of this.children)
-        await child.renderAsync(info, partialComplete);
-
-      partialComplete();
     }
 
     /**
@@ -1161,7 +1116,7 @@ var Grapheme = (function (exports) {
       this.sortChildren();
 
       // Render all children
-      this.children.forEach((child) => child.renderSync(info));
+      this.children.forEach((child) => child.render(info));
     }
 
     /**
@@ -1292,9 +1247,9 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Function called to updateSync for rendering. It is empty in case child classes don't define it.
+     * Function called to update for rendering. It is empty in case child classes don't define it.
      */
-    updateSync () {
+    update () {
 
     }
 
@@ -1342,21 +1297,21 @@ var Grapheme = (function (exports) {
       // Pass it the dom element div for grapheme_window
       /** @public */ this.container = container;
 
-      // Mapping from Label keys to {renderID: the last renderSync ID, domElement: html element to use}
+      // Mapping from Label keys to {renderID: the last render ID, domElement: html element to use}
       /** @private */ this.labels = new Map();
 
-      // The current renderSync ID
+      // The current render ID
       /** @private */ this.currentRenderID = -1;
     }
 
     /**
-     * Remove labels with an old renderSync ID.
+     * Remove labels with an old render ID.
      */
     removeOldLabels () {
       const labels = this.labels;
 
       labels.forEach((labelInfo, label) => {
-        // Delete labels who don't have the correct renderSync ID
+        // Delete labels who don't have the correct render ID
         if (labelInfo.renderID !== this.currentRenderID) {
           labelInfo.domElement.remove();
 
@@ -1387,7 +1342,7 @@ var Grapheme = (function (exports) {
       } else {
         element = labelInfo.domElement;
 
-        // Update renderSync ID
+        // Update render ID
         labelInfo.renderID = this.currentRenderID;
       }
 
@@ -1480,7 +1435,7 @@ var Grapheme = (function (exports) {
       // Scale up by device pixel ratio
       this.resetCanvasCtxTransform();
 
-      // Trigger the resize event to let elements know to updateSync
+      // Trigger the resize event to let elements know to update
       this.triggerEvent("resize", {width, height});
     }
 
@@ -1554,9 +1509,9 @@ var Grapheme = (function (exports) {
 
     /**
      * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
-     * constructs the information needed to renderSync the child elements.
+     * constructs the information needed to render the child elements.
      */
-    renderSync () {
+    render () {
       // Expand the universe's canvas to fit its windows, in case it is too small
       this.universe.expandToFit();
 
@@ -1589,10 +1544,10 @@ var Grapheme = (function (exports) {
         needsWebGLCopy = true;
       };
 
-      // Set ID of this renderSync. This is used to remove DOM elements from a previous renderSync.
+      // Set ID of this render. This is used to remove DOM elements from a previous render.
       labelManager.currentRenderID = getRenderID();
 
-      // Info to be passed to rendered elements; the object passed as "info" in renderSync(info).
+      // Info to be passed to rendered elements; the object passed as "info" in render(info).
       const info = {
         labelManager, // the label manager
         ctx, // The canvas context to draw to
@@ -1614,9 +1569,9 @@ var Grapheme = (function (exports) {
         this.beforeRender(info);
 
       // Render all children
-      super.renderSync(info);
+      super.render(info);
 
-      // If this class defines an after renderSync function, call it
+      // If this class defines an after render function, call it
       if (this.afterRender)
         this.afterRender(info);
 
@@ -1625,103 +1580,6 @@ var Grapheme = (function (exports) {
 
       // Get rid of old labels
       labelManager.removeOldLabels();
-    }
-
-    childCount() {
-      let sum = 0;
-
-      for (let i = 0; i < this.children.length; ++i) {
-        sum += this.children[i].childCount();
-      }
-
-      return (1 + sum)
-    }
-
-    /**
-     * Render this GraphemeCanvas asynchronously, providing percentage complete status updates to callback
-     */
-    async renderAsync (percentCompleteCallback = () => undefined) {
-      // Expand the universe's canvas to fit its windows, in case it is too small
-      this.universe.expandToFit();
-
-      const { labelManager, ctx } = this;
-      const plot = this;
-
-      // Whether the universe's canvas needs to be copied over
-      let needsWebGLCopy = false;
-
-      // Function called before an element that doesn't use WebGL is rendered
-      const beforeNormalRender = () => {
-        if (needsWebGLCopy) {
-          // Copy the universe's canvas over
-          this.universe.copyToCanvas(this);
-
-          // Mark the copy as done
-          needsWebGLCopy = false;
-
-          // Clear the universe's canvas for future renders
-          this.universe.clear();
-        }
-      };
-
-      const beforeWebGLRender = () => {
-        // Set the viewport of the universe to the entire canvas. Note that the universe canvas is not
-        // scaled with the device pixel ratio, so we must use this.canvasWidth/Height instead of this.width/height.
-        this.universe.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
-
-        // Mark that a copy is needed
-        needsWebGLCopy = true;
-      };
-
-      // Set ID of this renderSync. This is used to remove DOM elements from a previous renderSync.
-      labelManager.currentRenderID = getRenderID();
-
-      // Info to be passed to rendered elements; the object passed as "info" in renderSync(info).
-      const info = {
-        labelManager, // the label manager
-        ctx, // The canvas context to draw to
-        plot, // The plot we are drawing
-        beforeNormalRender, // Callback for elements that don't use WebGL
-        beforeWebGLRender, // Callback for elements that use WebGL
-        universe: this.universe, // The universe to draw to (for WebGL stuff)
-        extraInfo: this.extraInfo, // Extra info supplied by derived classes
-        percentCompleteCallback
-      };
-
-      // Clear the canvas
-      this.clear();
-
-      // Reset the rendering context transform
-      this.resetCanvasCtxTransform();
-
-      percentCompleteCallback(0);
-
-      let completed = 0;
-      let total = this.childCount();
-
-      function partialComplete () {
-        completed++;
-        percentCompleteCallback(completed / total);
-      }
-
-      // If this class defines a beforeRender function, call it
-      if (this.beforeRender)
-        this.beforeRender(info);
-
-      // Render all children
-      await super.renderAsync(info, partialComplete);
-
-      // If this class defines an after renderSync function, call it
-      if (this.afterRender)
-        this.afterRender(info);
-
-      // Copy over the canvas if necessary
-      beforeNormalRender();
-
-      // Get rid of old labels
-      labelManager.removeOldLabels();
-
-      percentCompleteCallback(1);
     }
   }
 
@@ -2228,7 +2086,7 @@ var Grapheme = (function (exports) {
     }
 
     renderLabels(info) {
-      this.labels.forEach(label => label.renderSync(info, true));
+      this.labels.forEach(label => label.render(info, true));
     }
   }
 
@@ -2299,7 +2157,7 @@ var Grapheme = (function (exports) {
       });
 
       // Calculate the transform so it's valid from the start
-      this.updateSync();
+      this.update();
     }
 
     /**
@@ -2356,7 +2214,7 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Called before each renderSync. We reset the smart label manager's tracking of label positions.
+     * Called before each render. We reset the smart label manager's tracking of label positions.
      * clearing the bounding boxes for the labels to take up.
      * @param info {Object} (unused)
      */
@@ -2365,9 +2223,9 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Called after each renderSync, used to display labels that have indicated they want to be displayed on top
+     * Called after each render, used to display labels that have indicated they want to be displayed on top
      * of everything. This overrides the usual precedence system.
-     * @param info {Object} renderSync info
+     * @param info {Object} render info
      */
     afterRender(info) {
       this.extraInfo.smartLabelManager.renderLabels(info);
@@ -2376,7 +2234,7 @@ var Grapheme = (function (exports) {
     /**
      * Update function
      */
-    updateSync () {
+    update () {
       // Update the transform (the position of the plotting box)
       this.calculateTransform();
     }
@@ -2745,7 +2603,7 @@ var Grapheme = (function (exports) {
       this.style = params.style ? params.style : new BasicLabelStyle(params.style || {});
     }
 
-    renderSync (info) {
+    render (info) {
       const { text, position } = this;
       const mode = this.style.mode;
 
@@ -2765,7 +2623,7 @@ var Grapheme = (function (exports) {
         if (oldLatex !== text) {
           labelElement.setAttribute('latex-content', text);
           // eslint-disable-next-line no-undef
-          katex.renderSync(text, labelElement, { throwOnError: false });
+          katex.render(text, labelElement, { throwOnError: false });
         }
       } else {
         if (oldLatex) { labelElement.removeAttribute('latex-content'); }
@@ -2786,8 +2644,8 @@ var Grapheme = (function (exports) {
       return measureText(this.text, `${this.style.fontSize}px ${this.style.fontFamily}`)
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
       this.style.drawText(info.ctx, this.text, this.position.x, this.position.y);
     }
@@ -3271,7 +3129,7 @@ var Grapheme = (function (exports) {
       this.arrowPath = null;
     }
 
-    updateSync () {
+    update () {
       const path = new Path2D();
       this.mainPath = path;
 
@@ -3347,11 +3205,11 @@ var Grapheme = (function (exports) {
       return point_line_segment_min_closest(point.x, point.y, this.vertices)
     }
 
-    renderSync (info) {
+    render (info) {
       if (!this.pen.visible)
         return
 
-      super.renderSync(info);
+      super.render(info);
 
       const ctx = info.ctx;
 
@@ -3525,13 +3383,13 @@ var Grapheme = (function (exports) {
       return bboxc
     }
 
-    renderSync(info, force=false) {
+    render(info, force=false) {
       if (this.renderTop && !force) {
         info.extraInfo.smartLabelManager.renderTopLabel(this);
         return
       }
 
-      super.renderSync(info);
+      super.render(info);
 
       let bbox = this.boundingBoxNaive();
 
@@ -3665,7 +3523,7 @@ var Grapheme = (function (exports) {
     }
 
 
-    updateSync() {
+    update() {
       let transform = this.plot.transform;
       let plotCoords = transform.coords;
       let plotBox = transform.box;
@@ -3834,18 +3692,18 @@ var Grapheme = (function (exports) {
       }
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
       for (let key in this._polylines) {
         if (this._polylines.hasOwnProperty(key)) {
 
-          this._polylines[key].renderSync(info);
+          this._polylines[key].render(info);
         }
       }
 
       for (let label of this._labels) {
-        label.renderSync(info);
+        label.render(info);
       }
     }
   }
@@ -3876,7 +3734,7 @@ var Grapheme = (function (exports) {
       case 'piecewise':
         node = opNode.clone();
 
-        for (let i = 1; i < node.children.length; i += 2) {
+        for (let i = 1; i < node.children.length; ++i) {
           node.children[i] = node.children[i].derivative(variable);
         }
 
@@ -5050,6 +4908,8 @@ var Grapheme = (function (exports) {
     } else if (typeof arguments != 'undefined') {
       arguments_ = arguments;
     }
+
+    if (typeof quit === 'function') ;
 
     if (typeof print !== 'undefined') {
       // Prefer to use print/printErr where they exist, as they usually work better.
@@ -9821,8 +9681,8 @@ var Grapheme = (function (exports) {
       this.cells.set(new_cells);
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
       const ctx = info.ctx;
 
@@ -9866,7 +9726,7 @@ var Grapheme = (function (exports) {
       this.labels = [];
     }
 
-    updateSync() {
+    update() {
       this.vertices = [];
       this.labels = [];
 
@@ -9925,17 +9785,17 @@ var Grapheme = (function (exports) {
 
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
       let polyline = new PolylineElement({pen: this.pen});
       polyline.vertices = this.vertices.slice();
 
       this.plot.transform.plotToPixelArr(polyline.vertices);
 
-      polyline.renderSync(info);
+      polyline.render(info);
 
-      this.labels.forEach(label => label.renderSync(info));
+      this.labels.forEach(label => label.render(info));
     }
   }
 
@@ -10224,14 +10084,14 @@ var Grapheme = (function (exports) {
 
     /**
      *
-     * @param info {Object} The renderSync info
+     * @param info {Object} The render info
      * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
      */
     render(info) {
       // Call beforeWebGLRender()
       info.beforeWebGLRender();
 
-      // Sort this element's children. We don't want to call super.renderSync() because that will run beforeNormalRender
+      // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
       this.sortChildren();
 
       // Update if needed
@@ -10239,7 +10099,7 @@ var Grapheme = (function (exports) {
         this.update();
 
       // Render all children
-      this.children.forEach(child => child.renderSync(info));
+      this.children.forEach(child => child.render(info));
     }
   }
 
@@ -10608,7 +10468,7 @@ void main() {
       this._gl_triangle_strip_vertices_total = Math.ceil(vertices.length / 2);
     }
 
-    updateSync () {
+    update () {
       if (!this.use_native) {
         this._calculateTriangles();
       } else {
@@ -10632,7 +10492,7 @@ void main() {
       return point_line_segment_min_closest(point.x, point.y, this.vertices)
     }
 
-    renderSync (info) {
+    render (info) {
       if (!this.visible) {
         return
       }
@@ -10692,25 +10552,23 @@ void main() {
     constructor(params={}) {
       super(params);
 
-      this.internal = new WebGLPolyline();
+      this._internal_polyline = new WebGLPolyline();
     }
 
-    updateSync() {
-      const internal = this.internal;
-
-      internal.vertices = this.vertices;
+    update() {
+      this._internal_polyline.vertices = this.vertices;
 
       const pen = this.pen;
 
-      internal.color = pen.color.toNumber();
-      internal.thickness = pen.thickness / 2;
-      internal.use_native = pen.useNative;
-      internal.visible = pen.visible;
-      internal.endcap_type = (pen.endcap === "round") ? 1 : 0;
+      this._internal_polyline.color = pen.color.toNumber();
+      this._internal_polyline.thickness = pen.thickness / 2;
+      this._internal_polyline.use_native = pen.useNative;
+      this._internal_polyline.visible = pen.visible;
+      this._internal_polyline.endcap_type = (pen.endcap === "round") ? 1 : 0;
 
       // TODO: add other pen things
 
-      internal.updateSync();
+      this._internal_polyline.update();
     }
 
     isClick(point) {
@@ -10725,13 +10583,13 @@ void main() {
       return point_line_segment_min_closest(point.x, point.y, this.vertices)
     }
 
-    renderSync(info) {
-      this.internal.renderSync(info);
+    render(info) {
+      this._internal_polyline.render(info);
     }
   }
 
   function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
-    let arr = polyline.internal._gl_triangle_strip_vertices;
+    let arr = polyline._internal_polyline._gl_triangle_strip_vertices;
 
     let newland = oldTransform.getPixelToPlotTransform();
     let harvey = newTransform.getPlotToPixelTransform();
@@ -10767,7 +10625,7 @@ void main() {
       }
     }
 
-    polyline.internal.needsBufferCopy = true;
+    polyline._internal_polyline.needsBufferCopy = true;
   }
 
   // Allowed plotting modes:
@@ -10794,9 +10652,9 @@ void main() {
 
       this.alwaysUpdate = false;
 
-      this.addEventListener("plotcoordschanged", () => this.updateSync());
+      this.addEventListener("plotcoordschanged", () => this.update());
       /*this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.updateSync(), 100 * Math.random())
+        setTimeout(() => this.update(), 100 * Math.random())
       })*/
 
       this.interactivityEnabled = true;
@@ -10820,7 +10678,7 @@ void main() {
       adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness);
     }
 
-    updateSync() {
+    update() {
       let transform = this.plot.transform;
 
       this.previousTransform = transform.clone();
@@ -10849,15 +10707,18 @@ void main() {
       if (!this.polyline) {
         this.polyline = new WebGLPolylineWrapper({
           pen: this.pen,
-          alwaysUpdate: false
+          alwaysUpdate: false,
+          trackVertexIndices: true
         });
+
+        this.polyline._internal_polyline.track_vertex_indices = true;
       }
 
       this.polyline.vertices = vertices;
-      this.polyline.updateSync();
+      this.polyline.update();
     }
 
-    renderSync(info) {
+    render(info) {
       if (!this.polyline)
         return
 
@@ -10870,7 +10731,7 @@ void main() {
         box.width * dpr,
         box.height * dpr);
 
-      this.polyline.renderSync(info);
+      this.polyline.render(info);
 
       gl.disable(gl.SCISSOR_TEST);
 
@@ -10920,7 +10781,7 @@ void main() {
       this._labels = [];
     }
 
-    updateSync () {
+    update() {
       let box = this.box;
 
       if (!box) {
@@ -10987,8 +10848,8 @@ void main() {
       }
     }
 
-    renderSync (info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
       const ctx = info.ctx;
 
@@ -11019,7 +10880,7 @@ void main() {
       }
 
       for (let i = 0; i < this._labels.length; ++i) {
-        this._labels[i].renderSync(info);
+        this._labels[i].render(info);
       }
     }
   }
@@ -11227,13 +11088,13 @@ void main() {
     }
 
 
-    updateSync() {
+    update() {
       this._path = new Path2D();
       this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
       this.style.prepareContext(info.ctx);
 
       if (this.style.doFill)
@@ -11267,7 +11128,7 @@ void main() {
       this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
     }
 
-    updateSync () {
+    update () {
       let position = this.plot.transform.plotToPixel(this.position);
 
       this.point.position = position;
@@ -11277,10 +11138,10 @@ void main() {
         this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')';
     }
 
-    renderSync (info) {
-      super.renderSync(info);
+    render (info) {
+      super.render(info);
 
-      this.point.renderSync(info);
+      this.point.render(info);
       this.label.render(info);
     }
   }
@@ -11319,8 +11180,8 @@ void main() {
       this.inspectionPoint = null;
     }
 
-    updateSync() {
-      super.updateSync();
+    update() {
+      super.update();
 
       if (this.inspectionPoint)
         this.inspectionPoint.point.style.fill = this.pen.color;
@@ -11443,14 +11304,14 @@ void main() {
       return this.point.isClick(pos)
     }
 
-    updateSync() {
+    update() {
       this.updatePosition();
     }
 
-    renderSync(info) {
-      super.renderSync(info);
+    render(info) {
+      super.render(info);
 
-      this.point.renderSync(info);
+      this.point.render(info);
 
       if (this.selected)
         this.label.render(info);
@@ -12528,7 +12389,7 @@ void main() {
     }
 
     if (args.length > 0)
-      return CCHAIN()
+      return CCHAIN(val2)
 
     return true
   }
@@ -12686,7 +12547,7 @@ void main() {
 
       this.addEventListener("plotcoordschanged", () => this.updateLight());
       this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.updateSync(), 200 * Math.random());
+        setTimeout(() => this.update(), 200 * Math.random());
       });
     }
 
@@ -12742,7 +12603,7 @@ void main() {
       };
     }
 
-    updateSync() {
+    update() {
       if (this.plot) {
         let coords = this.plot.transform.coords;
         let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2);
@@ -12750,13 +12611,13 @@ void main() {
         this.plot.transform.plotToPixelArr(vertices);
 
         this.displayedElement.vertices = vertices;
-        this.displayedElement.updateSync();
+        this.displayedElement.update();
 
         this.previousTransform = this.plot.transform.clone();
       }
     }
 
-    renderSync(info) {
+    render(info) {
       if (this.visible) {
         const gl = info.universe.gl;
         const box = info.plot.transform.box;
@@ -12767,7 +12628,7 @@ void main() {
           box.width * dpr,
           box.height * dpr);
 
-        this.displayedElement.renderSync(info);
+        this.displayedElement.render(info);
 
         gl.disable(gl.SCISSOR_TEST);
       }

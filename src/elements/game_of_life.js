@@ -67,8 +67,8 @@ class ConwaysGameOfLifeElement extends GraphemeElement {
     this.cells.set(new_cells)
   }
 
-  renderSync(info) {
-    super.renderSync(info)
+  render(info) {
+    super.render(info)
 
     const ctx = info.ctx
 

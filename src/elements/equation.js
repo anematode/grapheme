@@ -23,7 +23,7 @@ class EquationPlot2D extends InteractiveElement {
 
     this.addEventListener("plotcoordschanged", () => this.updateLight())
     this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.updateSync(), 200 * Math.random())
+      setTimeout(() => this.update(), 200 * Math.random())
     })
   }
 
@@ -79,7 +79,7 @@ class EquationPlot2D extends InteractiveElement {
     }
   }
 
-  updateSync() {
+  update() {
     if (this.plot) {
       let coords = this.plot.transform.coords
       let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2)
@@ -87,13 +87,13 @@ class EquationPlot2D extends InteractiveElement {
       this.plot.transform.plotToPixelArr(vertices)
 
       this.displayedElement.vertices = vertices
-      this.displayedElement.updateSync()
+      this.displayedElement.update()
 
       this.previousTransform = this.plot.transform.clone()
     }
   }
 
-  renderSync(info) {
+  render(info) {
     if (this.visible) {
       const gl = info.universe.gl
       const box = info.plot.transform.box
@@ -104,7 +104,7 @@ class EquationPlot2D extends InteractiveElement {
         box.width * utils.dpr,
         box.height * utils.dpr)
 
-      this.displayedElement.renderSync(info)
+      this.displayedElement.render(info)
 
       gl.disable(gl.SCISSOR_TEST)
     }

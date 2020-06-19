@@ -90,13 +90,13 @@ class SmartLabel extends Label2D {
     return bboxc
   }
 
-  renderSync(info, force=false) {
+  render(info, force=false) {
     if (this.renderTop && !force) {
       info.extraInfo.smartLabelManager.renderTopLabel(this)
       return
     }
 
-    super.renderSync(info)
+    super.render(info)
 
     let bbox = this.boundingBoxNaive()
 

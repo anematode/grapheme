@@ -17,7 +17,7 @@ class LabeledPoint extends GraphemeElement {
     this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
   }
 
-  updateSync () {
+  update () {
     let position = this.plot.transform.plotToPixel(this.position)
 
     this.point.position = position
@@ -27,10 +27,10 @@ class LabeledPoint extends GraphemeElement {
       this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')'
   }
 
-  renderSync (info) {
-    super.renderSync(info)
+  render (info) {
+    super.render(info)
 
-    this.point.renderSync(info)
+    this.point.render(info)
     this.label.render(info)
   }
 }
