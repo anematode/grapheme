@@ -4,9 +4,9 @@ import { PolylineBase, PolylineElement } from './polyline'
 import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
-import { WebGLPolylineWrapper } from './webgl_polyline_wrapper'
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
+import { WebGLPolyline } from './webgl_polyline'
 
 let MAX_POINTS = 10000
 
@@ -87,7 +87,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.plot.transform.plotToPixelArr(vertices)
 
     if (!this.polyline) {
-      this.polyline = new WebGLPolylineWrapper({
+      this.polyline = new WebGLPolyline({
         pen: this.pen,
         alwaysUpdate: false
       })

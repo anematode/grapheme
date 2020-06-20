@@ -3,7 +3,6 @@
 
 import { operator_derivative } from './derivative'
 import * as utils from '../core/utils'
-import { Real } from '../math/arbitrary_prec'
 import { StandardLabelFunction } from '../elements/gridlines'
 import { Operators } from './operators'
 import { getLatex } from './latex'
@@ -22,7 +21,7 @@ function isExactlyRepresentableAsFloat (f) {
     return true
   }
   if (!floatRepresentabilityTester) {
-    floatRepresentabilityTester = new Real(0, 53)
+    floatRepresentabilityTester = new Grapheme.Real(0, 53)
   }
   floatRepresentabilityTester.value = f
 
@@ -118,7 +117,7 @@ class ASTNode {
     let preamble = ''
 
     const defineRealVariable = (name, value, variable) => {
-      Variables[name] = new Real(precision)
+      Variables[name] = new Grapheme.Real(precision)
       if (value) {
         if (value === 'pi') {
           preamble += `${name}.set_pi()`

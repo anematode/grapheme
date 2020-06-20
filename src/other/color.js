@@ -28,6 +28,15 @@ class Color {
     }
   }
 
+  toJSON() {
+    return {
+      r: this.r,
+      g: this.g,
+      b: this.b,
+      a: this.a
+    }
+  }
+
   hex () {
     const rnd = this.rounded()
     return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => utils.zeroFill(x.toString(16), 2)).join('')}`

@@ -45,6 +45,23 @@ class Pen {
     ctx.lineCap = this.endcap
     ctx.lineJoin = this.join
   }
+
+  toJSON () {
+    return {
+      color: this.color.toJSON(),
+      thickness: this.thickness,
+      dashPattern: this.dashPattern.slice(),
+      dashOffset: this.dashOffset,
+      endcap: this.endcap,
+      endcapRes: this.endcapRes,
+      join: this.join,
+      joinRes: this.joinRes,
+      useNative: this.useNative,
+      arrowhead: this.arrowhead,
+      arrowLocations: this.arrowLocations.slice(),
+      visible: this.visible
+    }
+  }
 }
 
 export { Pen }

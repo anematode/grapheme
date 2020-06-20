@@ -3,7 +3,7 @@ import {InteractiveElement} from '../core/interactive_element'
 import { Colors } from '../other/color'
 import { Interval} from '../math/interval_arithm'
 import * as utils from "../core/utils"
-import {WebGLPolylineWrapper} from './webgl_polyline_wrapper'
+import {WebGLPolyline} from './webgl_polyline'
 import { generateContours1, generateContours2 } from '../math/contouring'
 import { adaptPolyline } from '../math/adapt_polyline'
 import { ASTNode } from '../function_ast/node'
@@ -19,7 +19,7 @@ class EquationPlot2D extends InteractiveElement {
 
     this.updateFunc()
 
-    const disp = this.displayedElement = new WebGLPolylineWrapper()
+    const disp = this.displayedElement = new WebGLPolyline()
     disp.pen.useNative = false
     disp.pen.endcap = "none"
     disp.pen.color = Colors.RED

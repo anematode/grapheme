@@ -67,21 +67,32 @@ class GLResourceManager {
   }
 
   /**
-   * Whether a program with programName exists
-   * @param programName {string} Name of the program
-   * @returns {boolean} Whether that program exists
+   * Create a buffer with a certain name, typically including a WebGLElement's id
+   * @param bufferName {string} Name of the buffer
    */
-  hasProgram (programName) {
-    return !!this.programs[programName]
+  createBuffer (bufferName) {
+    // If buffer already exists, return
+    if (this.hasBuffer(bufferName)) return
+
+    const { gl } = this
+
+    // Create a new buffer
+    this.buffers[bufferName] = gl.createBuffer()
   }
 
   /**
-   * Retrieve program from storage
-   * @param programName {string} Name of the program
-   * @returns {Object} Object of the form {program, uniforms, vertexAttribs}
+   * Delete buffer with given name
+   * @param bufferName {string} Name of the buffer
    */
-  getProgram (programName) {
-    return this.programs[programName]
+  deleteBuffer (bufferName) {
+    if (!this.hasBuffer(bufferName)) return
+
+    const buffer = this.getBuffer(bufferName)
+    const { gl } = this
+
+    // Delete the buffer from GL memory
+    gl.deleteBuffer(buffer)
+    delete this.buffers[bufferName]
   }
 
   /**
@@ -99,17 +110,22 @@ class GLResourceManager {
   }
 
   /**
-   * Create a buffer with a certain name, typically including a WebGLElement's id
-   * @param bufferName {string} Name of the buffer
+   * Retrieve a buffer with a given name, and create it if it does not already exist
+   * @param bufferName Name of the buffer
+   * @returns {WebGLBuffer} Corresponding buffer
    */
-  createBuffer (bufferName) {
-    // If buffer already exists, return
-    if (this.hasBuffer(bufferName)) return
+  getBuffer (bufferName) {
+    if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName)
+    return this.buffers[bufferName]
+  }
 
-    const { gl } = this
-
-    // Create a new buffer
-    this.buffers[bufferName] = gl.createBuffer()
+  /**
+   * Retrieve program from storage
+   * @param programName {string} Name of the program
+   * @returns {Object} Object of the form {program, uniforms, vertexAttribs}
+   */
+  getProgram (programName) {
+    return this.programs[programName]
   }
 
   /**
@@ -122,28 +138,12 @@ class GLResourceManager {
   }
 
   /**
-   * Retrieve a buffer with a given name, and create it if it does not already exist
-   * @param bufferName Name of the buffer
-   * @returns {WebGLBuffer} Corresponding buffer
+   * Whether a program with programName exists
+   * @param programName {string} Name of the program
+   * @returns {boolean} Whether that program exists
    */
-  getBuffer (bufferName) {
-    if (!this.hasBuffer(bufferName)) this.createBuffer(bufferName)
-    return this.buffers[bufferName]
-  }
-
-  /**
-   * Delete buffer with given name
-   * @param bufferName {string} Name of the buffer
-   */
-  deleteBuffer (bufferName) {
-    if (!this.hasBuffer(bufferName)) return
-
-    const buffer = this.getBuffer(bufferName)
-    const { gl } = this
-
-    // Delete the buffer from GL memory
-    gl.deleteBuffer(buffer)
-    delete this.buffers[bufferName]
+  hasProgram (programName) {
+    return !!this.programs[programName]
   }
 }
 

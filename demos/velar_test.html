@@ -54,6 +54,8 @@
 
       let egg = node.derivative('x')
 
+      window.node = node
+
       dplot.setFunction(egg.compile().func)
       dplot.update()
 

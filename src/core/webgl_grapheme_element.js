@@ -1,5 +1,5 @@
 import { Element as GraphemeElement } from './grapheme_element'
-import * as utils from "./utils"
+import * as utils from './utils'
 
 /**
  * @class WebGLElement An element that supports WebGL rendering.
@@ -9,7 +9,7 @@ class WebGLElement extends GraphemeElement {
    * Construct a new WebGLElement
    * @param params Parameters
    */
-  constructor(params={}) {
+  constructor (params = {}) {
     super(params)
 
     // id used for things like WebGL buffers
@@ -21,7 +21,7 @@ class WebGLElement extends GraphemeElement {
    * @param info {Object} The render info
    * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
    */
-  render(info) {
+  render (info) {
     // Call beforeWebGLRender()
     info.beforeWebGLRender()
 
@@ -29,8 +29,9 @@ class WebGLElement extends GraphemeElement {
     this.sortChildren()
 
     // Update if needed
-    if (this.alwaysUpdate)
+    if (this.alwaysUpdate) {
       this.update()
+    }
 
     // Render all children
     this.children.forEach(child => child.render(info))

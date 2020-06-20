@@ -53,7 +53,10 @@ class InteractiveCanvas extends GraphemeCanvas {
           let pos = new Vec2(evt.clientX - rect.left, evt.clientY - rect.top)
 
           // Trigger the event
-          this.triggerEvent(evtName, { pos, rawEvent: evt })
+          this.triggerEvent(evtName, {
+            pos,
+            rawEvent: evt
+          })
 
           // Prevent the default action e.g. scrolling
           evt.preventDefault()
@@ -90,6 +93,21 @@ class InteractiveCanvas extends GraphemeCanvas {
 
     // Set whether the keyboard is enabled
     this.keyboard.enabled = enable
+  }
+
+  /**
+   * Handle pointer events.
+   * @param event {PointerEvent} Pointer event
+   * @todo
+   */
+  handlePointer (event) {
+    if (event.type === 'pointerup') {
+
+    } else if (event.type === 'pointermove') {
+
+    } else {
+
+    }
   }
 
   /**
@@ -136,21 +154,6 @@ class InteractiveCanvas extends GraphemeCanvas {
 
       first.target.dispatchEvent(simulatedEvent)
       event.preventDefault()
-    }
-  }
-
-  /**
-   * Handle pointer events.
-   * @param event {PointerEvent} Pointer event
-   * @todo
-   */
-  handlePointer (event) {
-    if (event.type === 'pointerup') {
-
-    } else if (event.type === 'pointermove') {
-
-    } else {
-
     }
   }
 }
