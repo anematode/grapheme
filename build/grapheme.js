@@ -4912,6 +4912,8 @@ var Grapheme = (function (exports) {
       arguments_ = arguments;
     }
 
+    if (typeof quit === 'function') ;
+
     if (typeof print !== 'undefined') {
       // Prefer to use print/printErr where they exist, as they usually work better.
       if (typeof console === 'undefined') console = {};
@@ -12424,7 +12426,7 @@ void main() {
     }
 
     if (args.length > 0)
-      return CCHAIN()
+      return CCHAIN(val2)
 
     return true
   }
