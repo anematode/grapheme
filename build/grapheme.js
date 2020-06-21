@@ -1045,8 +1045,8 @@ var Grapheme = (function (exports) {
       // The plot this element belongs to
       /** @public */ this.plot = null;
 
-      // Whether to always update when render is called
-      /** @public */ this.alwaysUpdate = alwaysUpdate;
+      // Whether update() needs to be called before render()
+      /** @public */ this.needsUpdate = true;
 
       // Custom event listeners
       /** @private */ this.eventListeners = {};
@@ -1102,6 +1102,16 @@ var Grapheme = (function (exports) {
       }
     }
 
+    applyToChildren(func, recursive=true) {
+      func(this);
+
+      this.children.forEach(func);
+
+      if (recursive) {
+        this.children.forEach(child => child.applyToChildren(func, true));
+      }
+    }
+
     /**
      * Destroy this element. Also, destroy all children of this element.
      */
@@ -1141,6 +1151,10 @@ var Grapheme = (function (exports) {
      */
     isChild (element) {
       return this.hasChild(element, false)
+    }
+
+    markUpdate() {
+      this.needsUpdate = true;
     }
 
     /**
@@ -1210,10 +1224,6 @@ var Grapheme = (function (exports) {
      */
     render (info) {
       info.beforeNormalRender();
-
-      // Update if needed
-      if (this.alwaysUpdate)
-        this.update();
 
       // Render this element's children
       this.renderChildren(info);
@@ -1287,10 +1297,17 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Function called to update for rendering. It is empty in case child classes don't define it.
+     * Function called to update for rendering.
      */
     update () {
+      this.needsUpdate = false;
+    }
 
+    /**
+     * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly after a setTimeout
+     */
+    async updateAsync() {
+      this.update();
     }
   }
 
@@ -1486,6 +1503,14 @@ var Grapheme = (function (exports) {
       delete this.labelManager;
     }
 
+    updateChildren(info, criteria) {
+      this.applyToChildren((child) => {
+          if (criteria(child)) {
+            child.update();
+          }
+        }, true);
+    }
+
     /**
      * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
      * constructs the information needed to render the child elements.
@@ -1544,6 +1569,8 @@ var Grapheme = (function (exports) {
 
       // Reset the rendering context transform
       this.resetCanvasCtxTransform();
+
+      this.updateChildren(info, child => child.needsUpdate);
 
       // If this class defines a beforeRender function, call it
       if (this.beforeRender)
@@ -2265,6 +2292,8 @@ var Grapheme = (function (exports) {
      * Update function
      */
     update () {
+      super.update();
+
       // Update the transform (the position of the plotting box)
       this.calculateTransform();
     }
@@ -3186,6 +3215,7 @@ var Grapheme = (function (exports) {
     }
 
     update () {
+      super.update();
       const path = new Path2D();
       this.mainPath = path;
 
@@ -3262,14 +3292,15 @@ var Grapheme = (function (exports) {
     }
 
     render (info) {
-      if (!this.pen.visible)
-        return
-
       super.render(info);
+
+      if (!this.pen.visible || !this.mainPath || !this.arrowPath)
+        return
 
       const ctx = info.ctx;
 
       this.pen.prepareContext(ctx);
+
       ctx.stroke(this.mainPath);
       ctx.fill(this.arrowPath);
     }
@@ -3485,7 +3516,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /* Unicode characters for exponent signs, LOL */
+  /* Unicode characters for exponent signs */
   const exponent_reference = {
     '-': String.fromCharCode(8315),
     '0': String.fromCharCode(8304),
@@ -3553,7 +3584,9 @@ var Grapheme = (function (exports) {
     }
   };
 
-  // I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
+  /*
+   * @class Gridlines A set of gridlines for a Plot2D
+   */
   class Gridlines extends GraphemeElement {
     constructor(params={}) {
       super(params);
@@ -3576,10 +3609,13 @@ var Grapheme = (function (exports) {
       };
 
       this._polylines = {};
+
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
     }
 
+    update(info) {
+      super.update();
 
-    update() {
       let transform = this.plot.transform;
       let plotCoords = transform.coords;
       let plotBox = transform.box;
@@ -3589,7 +3625,7 @@ var Grapheme = (function (exports) {
       const markers = this.strategizer(plotCoords.x1, plotCoords.x2, plotBox.width, plotCoords.y1, plotCoords.y2, plotBox.height);
 
       let polylines = this._polylines = {};
-      let computed_label_styles = this.computed_label_styles = {};
+      let computed_label_styles = {};
 
       let label_padding = this.label_padding;
 
@@ -3745,6 +3781,10 @@ var Grapheme = (function (exports) {
 
       if (this.pens["box"]) {
         polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]});
+      }
+
+      for (let key in polylines) {
+        polylines[key].update(info);
       }
     }
 
@@ -6839,6 +6879,8 @@ var Grapheme = (function (exports) {
     }
 
     update() {
+      super.update();
+
       this.vertices = [];
       this.labels = [];
 
@@ -7254,11 +7296,6 @@ var Grapheme = (function (exports) {
       // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
       this.sortChildren();
 
-      // Update if needed
-      if (this.alwaysUpdate) {
-        this.update();
-      }
-
       // Render all children
       this.children.forEach(child => child.render(info));
     }
@@ -7611,6 +7648,8 @@ void main() {
     }
 
     update () {
+      super.update();
+
       if (this.useNative) {
         // use native LINE_STRIP for extreme speed
         this._calculateNativeLines();
@@ -7712,10 +7751,7 @@ void main() {
 
       this.alwaysUpdate = false;
 
-      this.addEventListener("plotcoordschanged", () => this.update());
-      /*this.addEventListener("plotcoordslingered", () => {
-        setTimeout(() => this.update(), 100 * Math.random())
-      })*/
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
 
       this.interactivityEnabled = true;
     }
@@ -7739,6 +7775,8 @@ void main() {
     }
 
     update() {
+      super.update();
+
       let transform = this.plot.transform;
 
       this.previousTransform = transform.clone();
@@ -7839,6 +7877,8 @@ void main() {
     }
 
     update() {
+      super.update();
+
       let box = this.box;
 
       if (!box) {
@@ -8146,6 +8186,7 @@ void main() {
 
 
     update() {
+      super.update();
       this._path = new Path2D();
       this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
     }
@@ -8186,6 +8227,8 @@ void main() {
     }
 
     update () {
+      super.update();
+
       let position = this.plot.transform.plotToPixel(this.position);
 
       this.point.position = position;
@@ -8362,6 +8405,8 @@ void main() {
     }
 
     update() {
+      super.update();
+
       this.updatePosition();
     }
 
@@ -12645,6 +12690,8 @@ void main() {
     }
 
     update() {
+      super.update();
+
       if (this.plot) {
         let coords = this.plot.transform.coords;
         let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2);

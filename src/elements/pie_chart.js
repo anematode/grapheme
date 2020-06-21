@@ -43,6 +43,8 @@ class PieChart extends GraphemeElement {
   }
 
   update() {
+    super.update()
+
     let box = this.box
 
     if (!box) {

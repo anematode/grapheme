@@ -18,6 +18,8 @@ class LabeledPoint extends GraphemeElement {
   }
 
   update () {
+    super.update()
+
     let position = this.plot.transform.plotToPixel(this.position)
 
     this.point.position = position

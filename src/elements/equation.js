@@ -86,6 +86,8 @@ class EquationPlot2D extends InteractiveElement {
   }
 
   update() {
+    super.update()
+
     if (this.plot) {
       let coords = this.plot.transform.coords
       let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2)

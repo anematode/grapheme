@@ -76,6 +76,8 @@ class WebGLPolyline extends WebGLElement {
   }
 
   update () {
+    super.update()
+
     if (this.useNative) {
       // use native LINE_STRIP for extreme speed
       this._calculateNativeLines()

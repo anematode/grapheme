@@ -5,38 +5,52 @@
 namespace Grapheme {
 
 Real::Real(int precision) {
+    // Init the real with a given precision
     mpfr_init2(ptr, precision);
 }
 
 Real::~Real() {
+    // Free the mpfr_ptr
     mpfr_clear(ptr);
 }
 
+// Set the precision of the number
 void Real::set_precision(int precision) {
     mpfr_set_prec(ptr, precision);
 }
 
+// Get the precision of the number
 int Real::get_precision() {
     return mpfr_get_prec(ptr);
 }
 
+// Set the number from a float
 void Real::set_value_from_float(double value) {
     mpfr_set_d(ptr, value, MPFR_RNDN);
 }
 
+// Set the number from a string (preferred for arbitrary precision calculations, unless the number is exactly
+// representable as a float)
 void Real::set_value_from_string(char* string) {
     mpfr_set_str(ptr, string, 10, MPFR_RNDN);
 }
 
+// Pointer to temporarily saved value, to be deleted later (because we need to read the string out of WASM memory)
 std::string* saved_value1 = nullptr;
 
+// Get the value of the real to the desired precision, with infinite precision if precision == 0
 char* Real::get_value(int precision) {
+    // Delete the saved value, since it is no longer useful
     if (saved_value1)
         delete saved_value1;
 
+    // Get radix (aka where the decimal point should be)
     long radix = 0;
+
+    // Convert the number to a string
     char* ret = mpfr_get_str(nullptr, &radix, 10, precision, ptr, MPFR_RNDN);
 
+    // Insert a decimal point at the correct location, keeping in mind negative numbers have a starting '-'
     int index = 0;
 
     if (ret[0] == '-') {
@@ -58,17 +72,22 @@ char* Real::get_value(int precision) {
         *result += ret[i];
     }
 
+    // Free the intermediate result string
     mpfr_free_str(ret);
 
+    // Mark the result to be cleared later
     saved_value1 = result;
 
+    // Convert the std::string to a char* and return it
     return &(*result)[0];
 }
 
+// Pointer to temporarily saved value, to be deleted later (because we need to read the string out of WASM memory)
 char* saved_value2 = nullptr;
 
+// Get the number's value without a decimal point
 char* Real::get_value_no_point(int precision) {
-
+    // Free unused string
     if (saved_value2)
         mpfr_free_str(saved_value2);
 
@@ -79,26 +98,32 @@ char* Real::get_value_no_point(int precision) {
     return ret;
 }
 
+// Copy values between reals
 void Real::set_value_from_real(Real& r) {
     mpfr_set(ptr, r.ptr, MPFR_RNDN);
 }
 
+// Set this real's value to NaN
 void Real::set_nan() {
     mpfr_set_nan(ptr);
 }
 
+// Set this real's value to an Infinity of given sign
 void Real::set_inf(int sign) {
     mpfr_set_inf(ptr, sign);
 }
 
+// Set the real's value to 0 of given sign
 void Real::set_zero(int sign) {
     mpfr_set_zero(ptr, sign);
 }
 
+// Return the nearest double to the real
 double Real::approximate_as_float() {
     return mpfr_get_d(ptr, MPFR_RNDN);
 }
 
+// The following functions are relatively self-explanatory
 void Real::add_float(double r) {
     mpfr_add_d(ptr, ptr, r, MPFR_RNDN);
 }
@@ -233,6 +258,7 @@ void Real::acsc() {
 Real cotAdd(1);
 
 void Real::acot() {
+    // Implementation of arccot()
     mpfr_ui_div(ptr, 1, ptr, MPFR_RNDN);
     atan();
     if (mpfr_cmp_d(ptr, 0) < 0) {

@@ -1,6 +1,4 @@
-import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
-import { PolylineBase, PolylineElement } from './polyline'
 import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
@@ -34,10 +32,7 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.alwaysUpdate = false
 
-    this.addEventListener("plotcoordschanged", () => this.update())
-    /*this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.update(), 100 * Math.random())
-    })*/
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
 
     this.interactivityEnabled = true
   }
@@ -61,6 +56,8 @@ class FunctionPlot2D extends InteractiveElement {
   }
 
   update() {
+    super.update()
+
     let transform = this.plot.transform
 
     this.previousTransform = transform.clone()

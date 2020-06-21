@@ -28,11 +28,6 @@ class WebGLElement extends GraphemeElement {
     // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
     this.sortChildren()
 
-    // Update if needed
-    if (this.alwaysUpdate) {
-      this.update()
-    }
-
     // Render all children
     this.children.forEach(child => child.render(info))
   }

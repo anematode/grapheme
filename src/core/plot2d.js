@@ -158,6 +158,8 @@ class Plot2D extends InteractiveCanvas {
    * Update function
    */
   update () {
+    super.update()
+
     // Update the transform (the position of the plotting box)
     this.calculateTransform()
   }

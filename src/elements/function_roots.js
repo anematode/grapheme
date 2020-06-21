@@ -27,6 +27,8 @@ class FunctionPoints extends GraphemeElement {
   }
 
   update() {
+    super.update()
+
     this.points = this.points.filter(point => point.selected === true)
 
     this.removeAllChildren()

@@ -17,8 +17,8 @@ class GraphemeElement {
     // The plot this element belongs to
     /** @public */ this.plot = null
 
-    // Whether to always update when render is called
-    /** @public */ this.alwaysUpdate = alwaysUpdate
+    // Whether update() needs to be called before render()
+    /** @public */ this.needsUpdate = true
 
     // Custom event listeners
     /** @private */ this.eventListeners = {}
@@ -74,6 +74,16 @@ class GraphemeElement {
     }
   }
 
+  applyToChildren(func, recursive=true) {
+    func(this)
+
+    this.children.forEach(func)
+
+    if (recursive) {
+      this.children.forEach(child => child.applyToChildren(func, true))
+    }
+  }
+
   /**
    * Destroy this element. Also, destroy all children of this element.
    */
@@ -113,6 +123,10 @@ class GraphemeElement {
    */
   isChild (element) {
     return this.hasChild(element, false)
+  }
+
+  markUpdate() {
+    this.needsUpdate = true
   }
 
   /**
@@ -182,10 +196,6 @@ class GraphemeElement {
    */
   render (info) {
     info.beforeNormalRender()
-
-    // Update if needed
-    if (this.alwaysUpdate)
-      this.update()
 
     // Render this element's children
     this.renderChildren(info)
@@ -259,10 +269,17 @@ class GraphemeElement {
   }
 
   /**
-   * Function called to update for rendering. It is empty in case child classes don't define it.
+   * Function called to update for rendering.
    */
   update () {
+    this.needsUpdate = false
+  }
 
+  /**
+   * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly after a setTimeout
+   */
+  async updateAsync() {
+    this.update()
   }
 }
 

@@ -23,6 +23,8 @@ class TreeElement extends GraphemeElement {
   }
 
   update() {
+    super.update()
+
     this.vertices = []
     this.labels = []
 

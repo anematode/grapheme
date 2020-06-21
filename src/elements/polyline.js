@@ -32,6 +32,7 @@ class PolylineElement extends PolylineBase {
   }
 
   update () {
+    super.update()
     const path = new Path2D()
     this.mainPath = path
 
@@ -108,14 +109,15 @@ class PolylineElement extends PolylineBase {
   }
 
   render (info) {
-    if (!this.pen.visible)
-      return
-
     super.render(info)
+
+    if (!this.pen.visible || !this.mainPath || !this.arrowPath)
+      return
 
     const ctx = info.ctx
 
     this.pen.prepareContext(ctx)
+
     ctx.stroke(this.mainPath)
     ctx.fill(this.arrowPath)
   }

@@ -125,6 +125,14 @@ class GraphemeCanvas extends GraphemeGroup {
     delete this.labelManager
   }
 
+  updateChildren(info, criteria) {
+    this.applyToChildren((child) => {
+        if (criteria(child)) {
+          child.update()
+        }
+      }, true)
+  }
+
   /**
    * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
    * constructs the information needed to render the child elements.
@@ -183,6 +191,8 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Reset the rendering context transform
     this.resetCanvasCtxTransform()
+
+    this.updateChildren(info, child => child.needsUpdate)
 
     // If this class defines a beforeRender function, call it
     if (this.beforeRender)
