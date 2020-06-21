@@ -279,7 +279,7 @@ class GraphemeElement {
   }
 
   /**
-   * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly after a setTimeout
+   * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly
    */
   async updateAsync() {
     this.update()
