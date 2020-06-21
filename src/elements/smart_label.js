@@ -90,8 +90,8 @@ class SmartLabel extends Label2D {
     return bboxc
   }
 
-  render(info, force=false) {
-    if (this.renderTop && !force) {
+  render(info) {
+    if (this.renderTop) {
       info.smartLabelManager.renderTopLabel(this)
       return
     }

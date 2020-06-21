@@ -3470,8 +3470,8 @@ var Grapheme = (function (exports) {
       return bboxc
     }
 
-    render(info, force=false) {
-      if (this.renderTop && !force) {
+    render(info) {
+      if (this.renderTop) {
         info.smartLabelManager.renderTopLabel(this);
         return
       }
