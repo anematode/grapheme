@@ -3470,20 +3470,18 @@ var Grapheme = (function (exports) {
       return bboxc
     }
 
-    render(info) {
-      if (this.renderTop) {
+    render(info, force=false) {
+      if (this.renderTop && !force) {
         info.smartLabelManager.renderTopLabel(this);
         return
       }
-
-      super.render(info);
 
       let bbox = this.boundingBoxNaive();
 
       let dir = this.forceDir;
       const sS = this.style.shadowSize;
 
-      if (this.forceDir) ; else {
+      if (!this.forceDir) {
         let min_area = Infinity;
 
         if (info.smartLabelManager && !this.forceDir) {
@@ -3513,6 +3511,8 @@ var Grapheme = (function (exports) {
       this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y);
 
       info.smartLabelManager.addBox(computed);
+
+      super.render(info);
     }
   }
 
@@ -7106,201 +7106,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  let MAX_DEPTH = 25;
-  let MAX_POINTS = 1e6;
-
-  // TODO: Stop this function from making too many points
-  function adaptively_sample_1d(start, end, func, initialPoints=500,
-    aspectRatio = 1, yRes = 0,
-    angle_threshold=0.1, depth=0,
-    includeEndpoints=true, ptCount=0) {
-    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
-      return [NaN, NaN]
-
-    let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
-
-    let angles = new Float64Array(angles_between(vertices, angle_threshold, aspectRatio));
-
-    let final_vertices = [];
-
-    for (let i = 0; i < vertices.length; i += 2) {
-      let angle_i = i / 2;
-
-      if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
-        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
-
-        vs.forEach(a => final_vertices.push(a));
-
-        ptCount += vs.length;
-
-        if (ptCount > MAX_POINTS)
-          return final_vertices
-      } else {
-        final_vertices.push(vertices[i]);
-        final_vertices.push(vertices[i+1]);
-      }
-    }
-
-    return final_vertices
-  }
-
-  function sample_1d(start, end, func, points=500, includeEndpoints=true) {
-    let vertices = [];
-
-    for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
-      let x = start + i * (end - start) / points;
-      vertices.push(x, func(x));
-    }
-
-    return vertices
-  }
-
-  function find_roots(start, end, func, derivative, initialPoints = 500, iterations=10, accuracy=0.001) {
-    let res = (end - start) / initialPoints;
-
-    let points = [];
-
-    initialPoints--;
-
-    // Initial guesses
-    for (let i = 0; i <= initialPoints; ++i) {
-      let fraction = i / initialPoints;
-
-      let x = start + (end - start) * fraction;
-      points.push(x, func(x));
-    }
-
-    function iterateRoots() {
-      for (let i = 0; i < points.length; i += 2) {
-        if (Math.abs(points[i+1]) < accuracy)
-          continue
-
-        let x = points[i];
-        let slope = derivative(x);
-
-        let y = points[i+1];
-
-        let new_x = x - y / slope;
-
-        points[i] = new_x;
-        points[i+1] = func(new_x);
-      }
-    }
-
-    for (let i = 0; i < iterations; ++i)
-      iterateRoots();
-
-    let keptRoots = [];
-
-    for (let i = 0; i < points.length; i += 2) {
-      // remove roots which are in an area of many 0s
-
-      let x = points[i];
-
-      if (Math.abs(func(x - res)) < accuracy || Math.abs(func(x + res)) < accuracy)
-        continue
-
-      keptRoots.push(x, points[i+1]);
-    }
-
-    points = [];
-
-    for (let i = 0; i < keptRoots.length; i += 2) {
-      let x = keptRoots[i];
-
-      let keepRoot = true;
-
-      for (let j = 0; j < points.length; ++j) {
-        // check if there is a root close by
-
-        if (Math.abs(points[j] - x) < res) {
-          // already a root nearby
-
-          keepRoot = false;
-          break
-        }
-      }
-
-      if (keepRoot) {
-        points.push(x, keptRoots[i+1]);
-      }
-    }
-
-    return points
-  }
-
-  function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
-    let arr = polyline._internal_polyline._gl_triangle_strip_vertices;
-
-    let newland = oldTransform.getPixelToPlotTransform();
-    let harvey = newTransform.getPlotToPixelTransform();
-
-    let x_m = harvey.x_m * newland.x_m;
-    let x_b = harvey.x_m * newland.x_b + harvey.x_b;
-    let y_m = harvey.y_m * newland.y_m;
-    let y_b = harvey.y_m * newland.y_b + harvey.y_b;
-
-    let length = arr.length;
-
-    for (let i = 0; i < length; i += 2) {
-      arr[i] = x_m * arr[i] + x_b;
-      arr[i+1] = y_m * arr[i+1] + y_b;
-    }
-
-    let ratio = oldTransform.coords.width / newTransform.coords.width;
-
-    if (adaptThickness) {
-      for (let i = 0; i < arr.length; i += 4) {
-        let ax = arr[i];
-        let ay = arr[i + 1];
-        let bx = arr[i + 2];
-        let by = arr[i + 3];
-
-        let vx = (bx - ax) / 2 * (1 - ratio);
-        let vy = (by - ay) / 2 * (1 - ratio);
-
-        arr[i] = ax + vx;
-        arr[i + 1] = ay + vy;
-        arr[i + 2] = bx - vx;
-        arr[i + 3] = by - vy;
-      }
-    }
-
-    polyline._internal_polyline.needsBufferCopy = true;
-  }
-
-  /**
-   * @class WebGLElement An element that supports WebGL rendering.
-   */
-  class WebGLElement extends GraphemeElement {
-    /**
-     * Construct a new WebGLElement
-     * @param params Parameters
-     */
-    constructor (params = {}) {
-      super(params);
-
-      // id used for things like WebGL buffers
-      /** @protected */ this.id = generateUUID();
-    }
-
-    /**
-     *
-     * @param info {Object} The render info
-     * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
-     */
-    render (info) {
-      // Call beforeWebGLRender()
-      info.beforeWebGLRender();
-
-      // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
-      this.sortChildren();
-
-      // Render all children
-      this.children.forEach(child => child.render(info));
-    }
-  }
-
   const ENDCAP_TYPES = {
     'butt': 0,
     'round': 1,
@@ -7573,6 +7378,229 @@ var Grapheme = (function (exports) {
     return {
       glVertices,
       vertexCount: Math.ceil(index / 2)
+    }
+  }
+
+  let MAX_DEPTH = 25;
+  let MAX_POINTS = 1e6;
+
+  // TODO: Stop this function from making too many points
+  function adaptively_sample_1d(start, end, func, initialPoints=500,
+    aspectRatio = 1, yRes = 0,
+    angle_threshold=0.1, depth=0,
+    includeEndpoints=true, ptCount=0) {
+    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+      return new Float64Array([NaN, NaN])
+
+    let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
+
+    let angles = new Float32Array(angles_between(vertices, angle_threshold, aspectRatio));
+
+    let final_vertices = new Float64Array(16);
+    let index = 0;
+    let maxSize = final_vertices.length - 2;
+
+    function expandArray(size=-1) {
+      let newArr = new Float64Array((size === -1) ? final_vertices.length * 2 : size);
+      newArr.set(final_vertices);
+
+      final_vertices = newArr;
+
+      maxSize = final_vertices.length - 2;
+    }
+
+    function addVertex(x, y) {
+      if (index > maxSize) {
+        expandArray();
+      }
+
+      final_vertices[index++] = x;
+      final_vertices[index++] = y;
+    }
+
+    function addVertices(arr) {
+      let totalLen = index + arr.length;
+
+      if (totalLen >= final_vertices.length) {
+        expandArray(nextPowerOfTwo(totalLen));
+      }
+
+      final_vertices.set(arr, index);
+      index += arr.length;
+    }
+
+    for (let i = 0; i < vertices.length; i += 2) {
+      let angle_i = i / 2;
+
+      if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 2, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
+
+        addVertices(vs);
+
+        if (index > MAX_POINTS)
+          return final_vertices.subarray(0, index)
+      } else {
+        addVertex(vertices[i], vertices[i+1]);
+      }
+    }
+
+    return final_vertices.subarray(0, index)
+  }
+
+  function sample_1d(start, end, func, points=500, includeEndpoints=true) {
+    let vertices = [];
+
+    for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
+      let x = start + i * (end - start) / points;
+      vertices.push(x, func(x));
+    }
+
+    return vertices
+  }
+
+  function find_roots(start, end, func, derivative, initialPoints = 500, iterations=10, accuracy=0.001) {
+    let res = (end - start) / initialPoints;
+
+    let points = [];
+
+    initialPoints--;
+
+    // Initial guesses
+    for (let i = 0; i <= initialPoints; ++i) {
+      let fraction = i / initialPoints;
+
+      let x = start + (end - start) * fraction;
+      points.push(x, func(x));
+    }
+
+    function iterateRoots() {
+      for (let i = 0; i < points.length; i += 2) {
+        if (Math.abs(points[i+1]) < accuracy)
+          continue
+
+        let x = points[i];
+        let slope = derivative(x);
+
+        let y = points[i+1];
+
+        let new_x = x - y / slope;
+
+        points[i] = new_x;
+        points[i+1] = func(new_x);
+      }
+    }
+
+    for (let i = 0; i < iterations; ++i)
+      iterateRoots();
+
+    let keptRoots = [];
+
+    for (let i = 0; i < points.length; i += 2) {
+      // remove roots which are in an area of many 0s
+
+      let x = points[i];
+
+      if (Math.abs(func(x - res)) < accuracy || Math.abs(func(x + res)) < accuracy)
+        continue
+
+      keptRoots.push(x, points[i+1]);
+    }
+
+    points = [];
+
+    for (let i = 0; i < keptRoots.length; i += 2) {
+      let x = keptRoots[i];
+
+      let keepRoot = true;
+
+      for (let j = 0; j < points.length; ++j) {
+        // check if there is a root close by
+
+        if (Math.abs(points[j] - x) < res) {
+          // already a root nearby
+
+          keepRoot = false;
+          break
+        }
+      }
+
+      if (keepRoot) {
+        points.push(x, keptRoots[i+1]);
+      }
+    }
+
+    return points
+  }
+
+  function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
+    let arr = polyline._internal_polyline._gl_triangle_strip_vertices;
+
+    let newland = oldTransform.getPixelToPlotTransform();
+    let harvey = newTransform.getPlotToPixelTransform();
+
+    let x_m = harvey.x_m * newland.x_m;
+    let x_b = harvey.x_m * newland.x_b + harvey.x_b;
+    let y_m = harvey.y_m * newland.y_m;
+    let y_b = harvey.y_m * newland.y_b + harvey.y_b;
+
+    let length = arr.length;
+
+    for (let i = 0; i < length; i += 2) {
+      arr[i] = x_m * arr[i] + x_b;
+      arr[i+1] = y_m * arr[i+1] + y_b;
+    }
+
+    let ratio = oldTransform.coords.width / newTransform.coords.width;
+
+    if (adaptThickness) {
+      for (let i = 0; i < arr.length; i += 4) {
+        let ax = arr[i];
+        let ay = arr[i + 1];
+        let bx = arr[i + 2];
+        let by = arr[i + 3];
+
+        let vx = (bx - ax) / 2 * (1 - ratio);
+        let vy = (by - ay) / 2 * (1 - ratio);
+
+        arr[i] = ax + vx;
+        arr[i + 1] = ay + vy;
+        arr[i + 2] = bx - vx;
+        arr[i + 3] = by - vy;
+      }
+    }
+
+    polyline._internal_polyline.needsBufferCopy = true;
+  }
+
+  /**
+   * @class WebGLElement An element that supports WebGL rendering.
+   */
+  class WebGLElement extends GraphemeElement {
+    /**
+     * Construct a new WebGLElement
+     * @param params Parameters
+     */
+    constructor (params = {}) {
+      super(params);
+
+      // id used for things like WebGL buffers
+      /** @protected */ this.id = generateUUID();
+    }
+
+    /**
+     *
+     * @param info {Object} The render info
+     * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
+     */
+    render (info) {
+      // Call beforeWebGLRender()
+      info.beforeWebGLRender();
+
+      // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
+      this.sortChildren();
+
+      // Render all children
+      this.children.forEach(child => child.render(info));
     }
   }
 
@@ -8187,12 +8215,14 @@ void main() {
 
     update() {
       super.update();
+
       this._path = new Path2D();
       this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
     }
 
     render(info) {
       super.render(info);
+
       this.style.prepareContext(info.ctx);
 
       if (this.style.doFill)
@@ -8216,33 +8246,24 @@ void main() {
     }
   }
 
-  class LabeledPoint extends GraphemeElement {
+  class LabeledPoint extends PointElement {
     constructor (params = {}) {
       super();
 
       this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position);
-
-      this.point = new PointElement();
       this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}});
+
+      this.add(this.label);
     }
 
     update () {
       super.update();
 
-      let position = this.plot.transform.plotToPixel(this.position);
-
-      this.point.position = position;
-      this.label.objectBox = this.point.getBBox();
-
-      if (this.position)
-        this.label.text = "(" + this.position.asArray().map(StandardLabelFunction).join(', ') + ')';
+      this.label.objectBox = this.getBBox();
     }
 
     render (info) {
       super.render(info);
-
-      this.point.render(info);
-      this.label.render(info);
     }
   }
 
@@ -8284,7 +8305,7 @@ void main() {
       super.update();
 
       if (this.inspectionPoint)
-        this.inspectionPoint.point.style.fill = this.pen.color;
+        this.inspectionPoint.style.fill = this.pen.color;
     }
 
     set inspectionEnabled (value) {
@@ -8317,12 +8338,19 @@ void main() {
               labelStyle: this.inspectionPointLabelStyle
             });
 
-            this.inspectionPoint.point.style.fill = this.pen.color;
+            this.inspectionPoint.style.fill = this.pen.color;
 
             this.add(this.inspectionPoint);
           } else {
-            this.inspectionPoint.position = new Vec2(x, y);
+            let pos = new Vec2(x, y);
+            let inspectionPt = this.inspectionPoint;
+
+            inspectionPt.position =  this.plot.transform.plotToPixel(pos);
+
+            inspectionPt.label.text = "(" + pos.asArray().map(StandardLabelFunction).join(', ') + ')';
           }
+
+          this.inspectionPoint.markUpdate();
 
           return true
         };

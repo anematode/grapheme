@@ -46,7 +46,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     super.update()
 
     if (this.inspectionPoint)
-      this.inspectionPoint.point.style.fill = this.pen.color
+      this.inspectionPoint.style.fill = this.pen.color
   }
 
   set inspectionEnabled (value) {
@@ -79,12 +79,19 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
             labelStyle: this.inspectionPointLabelStyle
           })
 
-          this.inspectionPoint.point.style.fill = this.pen.color
+          this.inspectionPoint.style.fill = this.pen.color
 
           this.add(this.inspectionPoint)
         } else {
-          this.inspectionPoint.position = new Vec2(x, y)
+          let pos = new Vec2(x, y)
+          let inspectionPt = this.inspectionPoint
+
+          inspectionPt.position =  this.plot.transform.plotToPixel(pos)
+
+          inspectionPt.label.text = "(" + pos.asArray().map(StandardLabelFunction).join(', ') + ')'
         }
+
+        this.inspectionPoint.markUpdate()
 
         return true
       }

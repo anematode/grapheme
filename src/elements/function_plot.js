@@ -1,7 +1,7 @@
 import { Pen } from '../styles/pen'
 import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
-import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
+import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm'
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'

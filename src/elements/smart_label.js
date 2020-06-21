@@ -90,22 +90,18 @@ class SmartLabel extends Label2D {
     return bboxc
   }
 
-  render(info) {
-    if (this.renderTop) {
+  render(info, force=false) {
+    if (this.renderTop && !force) {
       info.smartLabelManager.renderTopLabel(this)
       return
     }
-
-    super.render(info)
 
     let bbox = this.boundingBoxNaive()
 
     let dir = this.forceDir
     const sS = this.style.shadowSize
 
-    if (this.forceDir) {
-
-    } else {
+    if (!this.forceDir) {
       let min_area = Infinity
 
       if (info.smartLabelManager && !this.forceDir) {
@@ -135,6 +131,8 @@ class SmartLabel extends Label2D {
     this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y)
 
     info.smartLabelManager.addBox(computed)
+
+    super.render(info)
   }
 }
 
