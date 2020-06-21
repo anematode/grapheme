@@ -1,4 +1,4 @@
-import { calculatePolylineVertices } from '../math/polyline_vertices'
+import { calculatePolylineVertices } from '../math/polyline_triangulation'
 import { BeastJob } from './beast_job'
 
 class PolylineVerticesJob extends BeastJob {

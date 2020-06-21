@@ -1,4 +1,4 @@
-import { calculatePolylineVertices } from '../math/polyline_vertices'
+import { calculatePolylineVertices } from '../math/polyline_triangulation'
 import { PolylineVerticesJob } from './polyline_vertices_job'
 
 let JOBS = []

@@ -1,8 +1,8 @@
 import * as utils from '../core/utils'
 import { WebGLElement } from '../core/webgl_grapheme_element'
-import * as GEOCALC from '../math/geometry_calculations'
+import * as GEOCALC from '../math/geometry_algorithms'
 import { Pen } from '../styles/pen'
-import { nextPowerOfTwo, calculatePolylineVertices } from '../math/polyline_vertices'
+import { nextPowerOfTwo, calculatePolylineVertices } from '../math/polyline_triangulation'
 
 // this vertex shader is used for the polylines
 const vertexShaderSource = `// set the float precision of the shader to medium precision
@@ -93,11 +93,11 @@ class WebGLPolyline extends WebGLElement {
   }
 
   distanceFrom (point) {
-    return GEOCALC.point_line_segment_min_distance(point.x, point.y, this.vertices)
+    return GEOCALC.pointLineSegmentMinDistance(point.x, point.y, this.vertices)
   }
 
   closestTo (point) {
-    return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
+    return GEOCALC.pointLineSegmentClosest(point.x, point.y, this.vertices)
   }
 
   render (info) {

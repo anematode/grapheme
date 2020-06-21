@@ -2873,8 +2873,8 @@ var Grapheme = (function (exports) {
     Squat: createTriangleArrowhead(3, 3)
   };
 
-  function GeometryASMFunctionsCreate(stdlib, foreign, buffer) {
-    "use asm";
+  function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
+    'use asm';
 
     var sqrt = stdlib.Math.sqrt;
     var abs = stdlib.Math.abs;
@@ -2883,7 +2883,7 @@ var Grapheme = (function (exports) {
     var Infinity = stdlib.Infinity;
     var PI = stdlib.Math.PI;
 
-    function hypot(x, y) {
+    function hypot (x, y) {
       x = +x;
       y = +y;
 
@@ -2898,7 +2898,7 @@ var Grapheme = (function (exports) {
       return abs(x) * sqrt(1.0 + quot * quot)
     }
 
-    function point_line_segment_distance(px, py, ax, ay, bx, by) {
+    function point_line_segment_distance (px, py, ax, ay, bx, by) {
       // All input values are floats
       px = +px;
       py = +py;
@@ -2934,17 +2934,17 @@ var Grapheme = (function (exports) {
       return d
     }
 
-    function point_line_segment_min_distance(px, py, start, end) {
+    function point_line_segment_min_distance (px, py, start, end) {
       px = +px;
       py = +py;
-      start = start|0;
-      end = end|0;
+      start = start | 0;
+      end = end | 0;
 
       var p = 0, q = 0, min_distance = 0.0, distance = 0.0;
       min_distance = Infinity;
 
       for (p = start << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-        distance = +point_line_segment_distance(px, py, +values[p>>3], +values[(p+8)>>3], +values[(p+16)>>3], +values[(p+24)>>3]);
+        distance = +point_line_segment_distance(px, py, +values[p >> 3], +values[(p + 8) >> 3], +values[(p + 16) >> 3], +values[(p + 24) >> 3]);
 
         if (distance < min_distance) {
           min_distance = distance;
@@ -2954,7 +2954,7 @@ var Grapheme = (function (exports) {
       return min_distance
     }
 
-    function point_line_segment_closest(px, py, ax, ay, bx, by) {
+    function point_line_segment_closest (px, py, ax, ay, bx, by) {
       // All input values are floats
       px = +px;
       py = +py;
@@ -2994,17 +2994,17 @@ var Grapheme = (function (exports) {
       return +hypot(px - tx, py - ty)
     }
 
-    function point_line_segment_min_closest(px, py, start, end) {
+    function point_line_segment_min_closest (px, py, start, end) {
       px = +px;
       py = +py;
-      start = start|0;
-      end = end|0;
+      start = start | 0;
+      end = end | 0;
 
       var p = 0, q = 0, min_distance = 0.0, distance = 0.0, cx = 0.0, cy = 0.0;
       min_distance = Infinity;
 
       for (p = start << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-        distance = +point_line_segment_closest(px, py, +values[p>>3], +values[(p+8)>>3], +values[(p+16)>>3], +values[(p+24)>>3]);
+        distance = +point_line_segment_closest(px, py, +values[p >> 3], +values[(p + 8) >> 3], +values[(p + 16) >> 3], +values[(p + 24) >> 3]);
 
         if (distance < min_distance) {
           min_distance = distance;
@@ -3019,16 +3019,17 @@ var Grapheme = (function (exports) {
       return +min_distance
     }
 
-    function min(x, y) {
+    function min (x, y) {
       x = +x;
       y = +y;
 
-      if (x < y)
+      if (x < y) {
         return x
+      }
       return y
     }
 
-    function angle_between(x1, y1, x2, y2, x3, y3) {
+    function angle_between (x1, y1, x2, y2, x3, y3) {
       x1 = +x1;
       y1 = +y1;
       x2 = +x2;
@@ -3040,7 +3041,7 @@ var Grapheme = (function (exports) {
     }
 
     // Returns 0 if no refinement needed, 1 if left refinement, 2 if right refinement, 3 if both refinment
-    function needs_refinement(x1, y1, x2, y2, x3, y3, threshold) {
+    function needs_refinement (x1, y1, x2, y2, x3, y3, threshold) {
       x1 = +x1;
       y1 = +y1;
       x2 = +x2;
@@ -3052,7 +3053,7 @@ var Grapheme = (function (exports) {
       var angle = 0.0;
 
       angle = +angle_between(x2, y2, x1, y1, x3, y3);
-      angle = +min(abs(angle-PI), abs(angle+PI));
+      angle = +min(abs(angle - PI), abs(angle + PI));
 
       if (angle > threshold) {
         return 3
@@ -3082,7 +3083,7 @@ var Grapheme = (function (exports) {
       return 0
     }
 
-    function angles_between(start, end, threshold, aspectRatio) {
+    function angles_between (start, end, threshold, aspectRatio) {
       start = start | 0;
       end = end | 0;
       threshold = +threshold;
@@ -3091,27 +3092,32 @@ var Grapheme = (function (exports) {
       var p = 0, q = 0, res = 0, indx = 0;
 
       for (p = (start + 2) << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-        res = needs_refinement(+values[(p-16)>>3],
-          +(values[(p-8)>>3] * aspectRatio),
-          +values[p>>3],
-          +(values[(p+8)>>3] * aspectRatio),
-          +values[(p+16)>>3],
-          +(values[(p+24)>>3] * aspectRatio),
+        res = needs_refinement(+values[(p - 16) >> 3],
+          +(values[(p - 8) >> 3] * aspectRatio),
+          +values[p >> 3],
+          +(values[(p + 8) >> 3] * aspectRatio),
+          +values[(p + 16) >> 3],
+          +(values[(p + 24) >> 3] * aspectRatio),
           +threshold) | 0;
 
-        indx = (((p-4)>>1)) | 0;
+        indx = (((p - 4) >> 1)) | 0;
 
-        values[indx>>3] = +(res|0);
+        values[indx >> 3] = +(res | 0);
       }
     }
 
-
-    return {angles_between: angles_between, point_line_segment_min_distance: point_line_segment_min_distance, point_line_segment_min_closest: point_line_segment_min_closest, needs_refinement: needs_refinement}
+    return {
+      angles_between: angles_between,
+      point_line_segment_min_distance: point_line_segment_min_distance,
+      point_line_segment_min_closest: point_line_segment_min_closest,
+      needs_refinement: needs_refinement
+    }
   }
 
-  function _point_line_segment_compute(px, py, polyline_vertices, func) {
-    if (polyline_vertices.length < 4)
+  function _point_line_segment_compute (px, py, polyline_vertices, func) {
+    if (polyline_vertices.length < 4) {
       return Infinity
+    }
 
     let f64 = ASMViews.f64;
     let is_typed_array = polyline_vertices instanceof Float64Array || polyline_vertices instanceof Float32Array;
@@ -3155,23 +3161,26 @@ var Grapheme = (function (exports) {
     return func(px, py, 0, polyline_vertices.length)
   }
 
-
-  function point_line_segment_min_distance(px, py, polyline_vertices) {
+  function pointLineSegmentMinDistance (px, py, polyline_vertices) {
     return _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_distance)
   }
 
-  function point_line_segment_min_closest(px, py, polyline_vertices) {
+  function pointLineSegmentClosest (px, py, polyline_vertices) {
     let distance = _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_closest);
 
     let x = ASMViews.f64[0];
     let y = ASMViews.f64[1];
 
-    return {x, y, distance}
+    return {
+      x,
+      y,
+      distance
+    }
   }
 
-  function angles_between(polyline_vertices, threshold=0.03, aspectRatio=1) {
+  function anglesBetween (polyline_vertices, threshold = 0.03, aspectRatio = 1) {
     if (polyline_vertices.length >= BufferSizes.f64) {
-      throw new Error("Polyline too numerous")
+      throw new Error('Polyline too numerous')
     }
 
     if (polyline_vertices instanceof Float32Array || polyline_vertices instanceof Float64Array) {
@@ -3186,15 +3195,150 @@ var Grapheme = (function (exports) {
 
     GeometryASMFunctions.angles_between(0, i, threshold, aspectRatio);
 
-    return ASMViews.f64.subarray(0, i/2 - 2)
+    return ASMViews.f64.subarray(0, i / 2 - 2)
   }
 
   let heap = new ArrayBuffer(0x200000);
-  let stdlib = {Math: Math, Float64Array: Float64Array, Infinity: Infinity};
+  let stdlib = {
+    Math: Math,
+    Float64Array: Float64Array,
+    Infinity: Infinity
+  };
 
-  let ASMViews = {f64: new Float64Array(heap)};
-  let BufferSizes = {f64: ASMViews.f64.length};
+  let ASMViews = { f64: new Float64Array(heap) };
+  let BufferSizes = { f64: ASMViews.f64.length };
   var GeometryASMFunctions = GeometryASMFunctionsCreate(stdlib, null, heap);
+
+  /**
+   * Test whether three points are in counterclockwise order
+   * @param x1
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
+   * @returns {boolean}
+   */
+  function pointsCCW (x1, y1, x2, y2, x3, y3) {
+    return (y3 - y1) * (x2 - x1) > (y2 - y1) * (x3 - x1)
+  }
+
+  /**
+   * Returns whether two line segments (namely, (x1, y1) -- (x2, y2) and (x3, y3) -- (x4, y4)) intersect
+   * @param x1
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
+   * @param x4
+   * @param y4
+   */
+  function lineSegmentIntersect (x1, y1, x2, y2, x3, y3, x4, y4) {
+    return (pointsCCW(x1, y1, x3, y3, x4, y4) !== pointsCCW(x2, y2, x3, y3, x4, y4)) && (pointsCCW(x1, y1, x2, y2, x3, y3) !== pointsCCW(x1, y1, x2, y2, x4, y4))
+  }
+
+  // Credit to cortijon on StackOverflow! Thanks bro/sis
+  function getLineIntersection (p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
+    let s1_x, s1_y, s2_x, s2_y;
+
+    s1_x = p1_x - p0_x;
+    s1_y = p1_y - p0_y;
+    s2_x = p3_x - p2_x;
+    s2_y = p3_y - p2_y;
+
+    const s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
+    const t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
+      // Collision detected
+      const intX = p0_x + (t * s1_x);
+      const intY = p0_y + (t * s1_y);
+
+      return [intX, intY]
+    }
+
+    return null
+  }
+
+  function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2) {
+    // Return the component of the line segment that resides inside a box with boundaries x in (box_x1 .. box_x2), y in
+    // (box_y1 .. box_y2), which may potentially be the entire line segment.
+
+    let pt1InBox = box_x1 <= x1 && x1 <= box_x2 && box_y1 <= y1 && y1 <= box_y2;
+    let pt2InBox = box_x1 <= x2 && x2 <= box_x2 && box_y1 <= y2 && y2 <= box_y2;
+
+    if (pt1InBox && pt2InBox) {
+      // The line segment is entirely in the box
+
+      return [x1, y1, x2, y2]
+    }
+
+    let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1);
+    let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2);
+    let int3 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y2, box_x1, box_y2);
+    let int4 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y2, box_x1, box_y1);
+
+    if (!(int1 || int2 || int3 || int4) && !pt1InBox && !pt2InBox) {
+      // If there are no intersections and the points are outside the box, that means none of the segment is inside the
+      // box, so we can return null
+
+      return null
+    }
+
+    let intersections = [int1, int2, int3, int4];
+
+    if (!pt1InBox && !pt2InBox) {
+
+      // Both points are outside of the box, but the segment intersects the box. I'm frustrated! We must RESTRICT by finding the pair of intersections with
+      // maximal separation. This deals with annoying corner cases. Thankfully this code doesn't need to be too efficient
+      // since this is a rare case.
+
+      let maximalSeparationSquared = -1;
+      let x1, y1, x2, y2;
+
+      for (let i = 0; i < 3; ++i) {
+        let i1 = intersections[i];
+        if (i1) {
+          for (let j = i + 1; j < 4; ++j) {
+            let i2 = intersections[j];
+            if (i2) {
+              let dist = (i2[0] - i1[0]) ** 2 + (i2[1] - i1[1]) ** 2;
+
+              if (dist > maximalSeparationSquared) {
+                maximalSeparationSquared = dist;
+                x1 = i1[0];
+                y1 = i1[1];
+                x2 = i2[0];
+                y2 = i2[1];
+              }
+            }
+          }
+        }
+      }
+
+      return [x1, y1, x2, y2]
+    }
+
+
+    if (pt1InBox) {
+      for (let i = 0; i < 4; ++i) {
+        let intersection = intersections[i];
+
+        if (intersection)
+          return [x1, y1, intersection[0], intersection[1]]
+      }
+    } else if (pt2InBox) {
+      for (let i = 0; i < 4; ++i) {
+        let intersection = intersections[i];
+
+        if (intersection)
+          return [x2, y2, intersection[0], intersection[1]]
+      }
+    }
+
+    return [x1, y1, x2, y2]
+  }
 
   class PolylineBase extends GraphemeElement {
     constructor (params = {}) {
@@ -3293,11 +3437,11 @@ var Grapheme = (function (exports) {
     }
 
     distanceFrom(point) {
-      return point_line_segment_min_distance(point.x, point.y, this.vertices)
+      return pointLineSegmentMinDistance(point.x, point.y, this.vertices)
     }
 
     closestTo(point) {
-      return point_line_segment_min_closest(point.x, point.y, this.vertices)
+      return pointLineSegmentClosest(point.x, point.y, this.vertices)
     }
 
     render (info) {
@@ -7115,6 +7259,10 @@ var Grapheme = (function (exports) {
     }
   }
 
+  function getDashedPolyline() {
+
+  }
+
   const ENDCAP_TYPES = {
     'butt': 0,
     'round': 1,
@@ -7146,6 +7294,8 @@ var Grapheme = (function (exports) {
     if (pen.dashPattern.length === 0) {
       // No dashes to draw
       return convertTriangleStrip(vertices, pen);
+    } else {
+      return convertTriangleStrip(getDashedPolyline(), pen)
     }
   }
 
@@ -7403,7 +7553,7 @@ var Grapheme = (function (exports) {
 
     let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
 
-    let angles = new Float32Array(angles_between(vertices, angle_threshold, aspectRatio));
+    let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio));
 
     let final_vertices = new Float64Array(16);
     let index = 0;
@@ -7702,11 +7852,11 @@ void main() {
     }
 
     distanceFrom (point) {
-      return point_line_segment_min_distance(point.x, point.y, this.vertices)
+      return pointLineSegmentMinDistance(point.x, point.y, this.vertices)
     }
 
     closestTo (point) {
-      return point_line_segment_min_closest(point.x, point.y, this.vertices)
+      return pointLineSegmentClosest(point.x, point.y, this.vertices)
     }
 
     render (info) {
@@ -12995,24 +13145,27 @@ void main() {
   exports.WebGLPolyline = WebGLPolyline;
   exports._interpolationsEnabled = _interpolationsEnabled;
   exports.adaptively_sample_1d = adaptively_sample_1d;
-  exports.angles_between = angles_between;
+  exports.anglesBetween = anglesBetween;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
   exports.digamma = digamma;
   exports.find_roots = find_roots;
   exports.gamma = gamma;
+  exports.getLineIntersection = getLineIntersection;
   exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
   exports.get_continued_fraction = get_continued_fraction;
   exports.get_rational = get_rational;
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.isExactlyRepresentableAsFloat = isExactlyRepresentableAsFloat;
+  exports.lineSegmentIntersect = lineSegmentIntersect;
+  exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.nodeFromJSON = nodeFromJSON;
   exports.parse_string = parse_string;
-  exports.point_line_segment_min_closest = point_line_segment_min_closest;
-  exports.point_line_segment_min_distance = point_line_segment_min_distance;
+  exports.pointLineSegmentClosest = pointLineSegmentClosest;
+  exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
   exports.polygamma = polygamma;
   exports.powerExactlyRepresentableAsFloat = powerExactlyRepresentableAsFloat;
   exports.rgb = rgb;

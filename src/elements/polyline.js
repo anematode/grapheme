@@ -2,7 +2,7 @@ import {Element as GraphemeElement} from "../core/grapheme_element.js"
 import { Pen } from '../styles/pen'
 import * as utils from "../core/utils"
 import { Arrowheads } from '../other/arrowheads'
-import * as GEOCALC from '../math/geometry_calculations'
+import * as GEOCALC from '../math/geometry_algorithms'
 
 class PolylineBase extends GraphemeElement {
   constructor (params = {}) {
@@ -101,11 +101,11 @@ class PolylineElement extends PolylineBase {
   }
 
   distanceFrom(point) {
-    return GEOCALC.point_line_segment_min_distance(point.x, point.y, this.vertices)
+    return GEOCALC.pointLineSegmentMinDistance(point.x, point.y, this.vertices)
   }
 
   closestTo(point) {
-    return GEOCALC.point_line_segment_min_closest(point.x, point.y, this.vertices)
+    return GEOCALC.pointLineSegmentClosest(point.x, point.y, this.vertices)
   }
 
   render (info) {

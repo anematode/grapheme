@@ -1,4 +1,5 @@
 import * as utils from '../core/utils'
+import {getDashedPolyline} from "./dashed_polyline"
 
 const ENDCAP_TYPES = {
   'butt': 0,
@@ -33,7 +34,7 @@ function calculatePolylineVertices(vertices, pen, box) {
     // No dashes to draw
     return convertTriangleStrip(vertices, pen);
   } else {
-    // Dashes to draw, unimplemented
+    return convertTriangleStrip(getDashedPolyline(vertices, pen), pen)
   }
 }
 

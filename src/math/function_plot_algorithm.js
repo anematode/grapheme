@@ -1,5 +1,5 @@
-import { angles_between } from './geometry_calculations'
-import { nextPowerOfTwo } from './polyline_vertices'
+import { anglesBetween } from './geometry_algorithms'
+import { nextPowerOfTwo } from './polyline_triangulation'
 
 let MAX_DEPTH = 25
 let MAX_POINTS = 1e6
@@ -14,7 +14,7 @@ function adaptively_sample_1d(start, end, func, initialPoints=500,
 
   let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints)
 
-  let angles = new Float32Array(angles_between(vertices, angle_threshold, aspectRatio))
+  let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio))
 
   let final_vertices = new Float64Array(16)
   let index = 0
