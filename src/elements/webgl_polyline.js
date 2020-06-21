@@ -5,6 +5,7 @@ import { Pen } from '../styles/pen'
 import { nextPowerOfTwo, calculatePolylineVertices } from '../math/polyline_triangulation'
 import { BoundingBox } from '../math/bounding_box'
 import { Vec2 } from '../math/vec'
+import { getDashedPolyline } from '../math/dashed_polyline'
 
 // this vertex shader is used for the polylines
 const vertexShaderSource = `// set the float precision of the shader to medium precision
@@ -36,7 +37,6 @@ class WebGLPolyline extends WebGLElement {
     this.vertices = params.vertices ? params.vertices : [] // x,y values in pixel space
     this.pen = params.pen ? params.pen : new Pen()
 
-    this.useNative = false
     this.glVertices = null
     this.glVertexCount = 0
 
@@ -49,22 +49,19 @@ class WebGLPolyline extends WebGLElement {
     this.glVertexCount = result.vertexCount
   }
 
-  _calculateNativeLines () {
+  _calculateNativeLines (box) {
     let vertices = this.vertices
+
+    if (this.pen.dashPattern.length !== 0) {
+      vertices = getDashedPolyline(vertices, this.pen, box)
+    }
 
     if (vertices.length <= 3) {
       this.glVertexCount = 0
       return
     }
 
-    let glVertices = this.glVertices
-    if (!glVertices) {
-      glVertices = this.glVertices = new Float32Array(MIN_SIZE)
-    }
-
-    if (glVertices.length < vertices.length || glVertices.length > vertices.length * 2) {
-      glVertices = this.glVertices = new Float32Array(Math.min(Math.max(MIN_SIZE, nextPowerOfTwo(vertices.length)), MAX_SIZE))
-    }
+    let glVertices = new Float32Array(vertices.length)
 
     if (Array.isArray(vertices)) {
       for (let i = 0; i < vertices.length; ++i) {
@@ -75,33 +72,35 @@ class WebGLPolyline extends WebGLElement {
     }
 
     this.glVertexCount = Math.ceil(vertices.length / 2)
+    this.glVertices = glVertices
   }
 
   update (info) {
     super.update()
 
-    if (this.useNative) {
-      // use native LINE_STRIP for extreme speed
-      this._calculateNativeLines()
-    } else {
-      let box
-      let thickness = this.pen.thickness
+    let box, thickness = this.pen.thickness
 
-      if (info) {
-        box = info.plot.getCanvasBox().pad({
-          left: -thickness,
-          right: -thickness,
-          top: -thickness,
-          bottom: -thickness
-        })
-      } else {
-        box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
-          left: -thickness,
-          right: -thickness,
-          top: -thickness,
-          bottom: -thickness
-        })
-      }
+    if (info) {
+      box = info.plot.getCanvasBox().pad({
+        left: -thickness,
+        right: -thickness,
+        top: -thickness,
+        bottom: -thickness
+      })
+    } else {
+      // ANNOYING! This should never be the case these days
+      box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
+        left: -thickness,
+        right: -thickness,
+        top: -thickness,
+        bottom: -thickness
+      })
+    }
+
+    if (this.pen.useNative) {
+      // use native LINE_STRIP for extreme speed
+      this._calculateNativeLines(box)
+    } else {
 
       this._calculateTriangles(box)
     }
@@ -130,6 +129,7 @@ class WebGLPolyline extends WebGLElement {
 
     const glManager = info.universe.glManager
     const gl = info.universe.gl
+    const useNative = this.pen.useNative
 
     let program = glManager.getProgram('webgl-polyline')
 
@@ -141,7 +141,7 @@ class WebGLPolyline extends WebGLElement {
     let buffer = glManager.getBuffer(this.id)
     let vertexCount = this.glVertexCount
 
-    if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
+    if ((useNative && vertexCount < 2) || (!useNative && vertexCount < 3)) return
     // tell webgl to start using the gridline program
     gl.useProgram(program.program)
     // bind our webgl buffer to gl.ARRAY_BUFFER access point
@@ -168,7 +168,7 @@ class WebGLPolyline extends WebGLElement {
     // that it shouldn't normalize floats, and something i don't understand
     gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0)
     // draw the vertices as triangle strip
-    gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount)
+    gl.drawArrays(useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount)
   }
 
   destroy () {

@@ -11,7 +11,7 @@ class Pen {
       endcapRes = 1, // angle between consecutive endcap roundings, only used in WebGL
       join = 'miter', // join type, among "miter", "round", "bevel"
       joinRes = 1, // angle between consecutive join roundings
-      useNative = true, // whether to use native line drawing, only used in WebGL
+      useNative = false, // whether to use native line drawing, only used in WebGL
       arrowhead = "Normal", // arrowhead to draw
       arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
       visible = true

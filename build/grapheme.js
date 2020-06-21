@@ -2739,7 +2739,7 @@ var Grapheme = (function (exports) {
         endcapRes = 1, // angle between consecutive endcap roundings, only used in WebGL
         join = 'miter', // join type, among "miter", "round", "bevel"
         joinRes = 1, // angle between consecutive join roundings
-        useNative = true, // whether to use native line drawing, only used in WebGL
+        useNative = false, // whether to use native line drawing, only used in WebGL
         arrowhead = "Normal", // arrowhead to draw
         arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
         visible = true
@@ -7474,7 +7474,7 @@ var Grapheme = (function (exports) {
   const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
 
   // Parameters for the expanding/contracting float array for polyline
-  const MIN_SIZE$1 = 16;
+  const MIN_SIZE = 16;
 
   /**
    * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
@@ -7500,7 +7500,7 @@ var Grapheme = (function (exports) {
       return {glVertices: null, vertexCount: 0}
     }
 
-    let glVertices = new Float32Array(MIN_SIZE$1);
+    let glVertices = new Float32Array(MIN_SIZE);
 
     let index = 0;
     let arraySize = glVertices.length - 2;
@@ -7985,7 +7985,6 @@ void main() {
       this.vertices = params.vertices ? params.vertices : []; // x,y values in pixel space
       this.pen = params.pen ? params.pen : new Pen();
 
-      this.useNative = false;
       this.glVertices = null;
       this.glVertexCount = 0;
 
@@ -7998,22 +7997,19 @@ void main() {
       this.glVertexCount = result.vertexCount;
     }
 
-    _calculateNativeLines () {
+    _calculateNativeLines (box) {
       let vertices = this.vertices;
+
+      if (this.pen.dashPattern.length !== 0) {
+        vertices = getDashedPolyline(vertices, this.pen, box);
+      }
 
       if (vertices.length <= 3) {
         this.glVertexCount = 0;
         return
       }
 
-      let glVertices = this.glVertices;
-      if (!glVertices) {
-        glVertices = this.glVertices = new Float32Array(MIN_SIZE);
-      }
-
-      if (glVertices.length < vertices.length || glVertices.length > vertices.length * 2) {
-        glVertices = this.glVertices = new Float32Array(Math.min(Math.max(MIN_SIZE, nextPowerOfTwo(vertices.length)), MAX_SIZE));
-      }
+      let glVertices = new Float32Array(vertices.length);
 
       if (Array.isArray(vertices)) {
         for (let i = 0; i < vertices.length; ++i) {
@@ -8024,33 +8020,35 @@ void main() {
       }
 
       this.glVertexCount = Math.ceil(vertices.length / 2);
+      this.glVertices = glVertices;
     }
 
     update (info) {
       super.update();
 
-      if (this.useNative) {
-        // use native LINE_STRIP for extreme speed
-        this._calculateNativeLines();
-      } else {
-        let box;
-        let thickness = this.pen.thickness;
+      let box, thickness = this.pen.thickness;
 
-        if (info) {
-          box = info.plot.getCanvasBox().pad({
-            left: -thickness,
-            right: -thickness,
-            top: -thickness,
-            bottom: -thickness
-          });
-        } else {
-          box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
-            left: -thickness,
-            right: -thickness,
-            top: -thickness,
-            bottom: -thickness
-          });
-        }
+      if (info) {
+        box = info.plot.getCanvasBox().pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        });
+      } else {
+        // ANNOYING! This should never be the case these days
+        box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        });
+      }
+
+      if (this.pen.useNative) {
+        // use native LINE_STRIP for extreme speed
+        this._calculateNativeLines(box);
+      } else {
 
         this._calculateTriangles(box);
       }
@@ -8079,6 +8077,7 @@ void main() {
 
       const glManager = info.universe.glManager;
       const gl = info.universe.gl;
+      const useNative = this.pen.useNative;
 
       let program = glManager.getProgram('webgl-polyline');
 
@@ -8090,7 +8089,7 @@ void main() {
       let buffer = glManager.getBuffer(this.id);
       let vertexCount = this.glVertexCount;
 
-      if ((this.useNative && vertexCount < 2) || (!this.useNative && vertexCount < 3)) return
+      if ((useNative && vertexCount < 2) || (!useNative && vertexCount < 3)) return
       // tell webgl to start using the gridline program
       gl.useProgram(program.program);
       // bind our webgl buffer to gl.ARRAY_BUFFER access point
@@ -8117,7 +8116,7 @@ void main() {
       // that it shouldn't normalize floats, and something i don't understand
       gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
       // draw the vertices as triangle strip
-      gl.drawArrays(this.useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
+      gl.drawArrays(useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
     }
 
     destroy () {
@@ -8146,8 +8145,6 @@ void main() {
 
       this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2});
       this.polyline = null;
-
-      this.alwaysUpdate = false;
 
       this.addEventListener("plotcoordschanged", () => this.markUpdate());
 

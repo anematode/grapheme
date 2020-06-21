@@ -6,8 +6,6 @@ import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
 
-let MAX_POINTS = 10000
-
 // Allowed plotting modes:
 // rough = linear sample, no refinement
 // fine = linear sample with refinement
@@ -29,8 +27,6 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
     this.polyline = null
-
-    this.alwaysUpdate = false
 
     this.addEventListener("plotcoordschanged", () => this.markUpdate())
 
