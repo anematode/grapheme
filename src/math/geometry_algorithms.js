@@ -420,7 +420,7 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
     // since this is a rare case.
 
     let maximalSeparationSquared = -1
-    let x1, y1, x2, y2
+    let n_x1, n_y1, n_x2, n_y2
 
     for (let i = 0; i < 3; ++i) {
       let i1 = intersections[i]
@@ -432,17 +432,29 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
 
             if (dist > maximalSeparationSquared) {
               maximalSeparationSquared = dist
-              x1 = i1[0]
-              y1 = i1[1]
-              x2 = i2[0]
-              y2 = i2[1]
+              n_x1 = i1[0]
+              n_y1 = i1[1]
+              n_x2 = i2[0]
+              n_y2 = i2[1]
             }
           }
         }
       }
     }
 
-    return [x1, y1, x2, y2]
+    // Swap the order if necessary. We need the result of this calculation to be in the same order as the points
+    // that went in, since this will be used in the dashed line logic.
+    if (((n_x1 < n_x2) === (x1 > x2)) || ((n_y1 < n_y2) === (y1 > y2))) {
+      let tmp = n_x1
+      n_x1 = n_x2
+      n_x2 = tmp
+
+      tmp = n_y1
+      n_y1 = n_y2
+      n_y2 = tmp
+    }
+
+    return [n_x1, n_y1, n_x2, n_y2]
   }
 
 
