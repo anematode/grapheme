@@ -68,6 +68,8 @@ function isTypedArray (arr) {
   return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
 }
 
+const isWorker = typeof self !== "undefined"
+
 // https://stackoverflow.com/a/34749873
 function isObject (item) {
   return (item && typeof item === 'object' && !Array.isArray(item))
@@ -104,6 +106,9 @@ function mod (n, m) {
   return ((n % m) + m) % m
 }
 
+if (typeof window === "undefined")
+  self.window = self
+
 // device pixel ratio... duh
 let dpr = window.devicePixelRatio
 
@@ -134,7 +139,8 @@ function importGraphemeCSS () {
   }
 }
 
-importGraphemeCSS()
+if (!isWorker)
+  importGraphemeCSS()
 
 // This function takes in a GL rendering context, a type of shader (fragment/vertex),
 // and the GLSL source code for that shader, then returns the compiled shader

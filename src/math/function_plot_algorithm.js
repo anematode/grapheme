@@ -53,7 +53,7 @@ function adaptively_sample_1d(start, end, func, initialPoints=500,
     let angle_i = i / 2
 
     if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
-      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 2, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount)
+      let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount)
 
       addVertices(vs)
 

@@ -28,6 +28,9 @@ class GraphemeElement {
 
     // Whether this element is visible
     /** @public */ this.visible = true
+
+    // Jobs of this element, used with beasts
+    /** @protected */ this.jobs = []
   }
 
   /**

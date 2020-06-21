@@ -436,6 +436,8 @@ var Grapheme = (function (exports) {
     return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
   }
 
+  const isWorker = typeof self !== "undefined";
+
   // https://stackoverflow.com/a/34749873
   function isObject (item) {
     return (item && typeof item === 'object' && !Array.isArray(item))
@@ -472,6 +474,9 @@ var Grapheme = (function (exports) {
     return ((n % m) + m) % m
   }
 
+  if (typeof window === "undefined")
+    self.window = self;
+
   // device pixel ratio... duh
   let dpr = window.devicePixelRatio;
 
@@ -502,7 +507,8 @@ var Grapheme = (function (exports) {
     }
   }
 
-  importGraphemeCSS();
+  if (!isWorker)
+    importGraphemeCSS();
 
   // This function takes in a GL rendering context, a type of shader (fragment/vertex),
   // and the GLSL source code for that shader, then returns the compiled shader
@@ -1056,6 +1062,9 @@ var Grapheme = (function (exports) {
 
       // Whether this element is visible
       /** @public */ this.visible = true;
+
+      // Jobs of this element, used with beasts
+      /** @protected */ this.jobs = [];
     }
 
     /**
@@ -7433,7 +7442,7 @@ var Grapheme = (function (exports) {
       let angle_i = i / 2;
 
       if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
-        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 2, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
 
         addVertices(vs);
 
@@ -12766,7 +12775,186 @@ void main() {
     }
   }
 
+  let id = 0;
+
+  function getJobID() {
+    return id++
+  }
+
+  class Job {
+    constructor(beast, id) {
+      assert(beast instanceof Beast);
+
+      this.beast = beast;
+      this.id = id;
+
+      this.eventListeners = {};
+    }
+
+    addEventListener(type, callback) {
+      if (!this.eventListeners[type])
+        this.eventListeners[type] = [callback];
+      else
+        this.eventListeners[type].push(callback);
+    }
+
+    triggerEvent(type, evt) {
+      this.eventListeners[type] ? this.eventListeners[type].forEach(callback => callback(evt)) : null;
+    }
+
+    progress(callback) {
+      this.addEventListener("progress", callback);
+      return this
+    }
+
+    finished(callback) {
+      this.addEventListener("finished", callback);
+      return this
+    }
+
+    cancelled(callback) {
+      this.addEventListener("cancel", callback);
+      return this
+    }
+
+    onError(callback) {
+      this.addEventListener("error", callback);
+    }
+
+    error(err) {
+      if (this.eventListeners["error"].length > 0) {
+        this.triggerEvent("error");
+      } else {
+        throw new Error(err)
+      }
+    }
+
+    cancel() {
+      this.beast.cancelJob(this);
+      this.triggerEvent("cancel");
+    }
+  }
+
+  class Beast {
+    constructor() {
+      this.worker = new Worker("../build/grapheme_worker.js");
+
+      this.worker.onmessage = (evt) => {
+        this.onMessage(evt);
+      };
+
+      this.jobs = [];
+    }
+
+    cancelJob(job) {
+      this.worker.postMessage({job: "cancel", jobID: job.id});
+      this.removeJob(job);
+    }
+
+    removeJob(job) {
+      let index = this.jobs.indexOf(job);
+
+      if (index !== -1) {
+        this.jobs.splice(index, 1);
+      }
+    }
+
+    onMessage(evt) {
+      const data = evt.data;
+
+      switch (data.response) {
+        case "error":
+          this.jobs.forEach(job => {
+            if (job.id === data.jobID) {
+              job.error(data.data);
+            }
+          });
+          break
+        case "progress":
+          this.jobs.forEach(job => {
+            if (job.id === data.jobID) {
+              job.triggerEvent("progress", data.data);
+
+              if (data.data.progress === 1) {
+                this.removeJob(job);
+              }
+            }
+          });
+          break
+        default:
+          throw new Error("HUH?")
+      }
+    }
+
+    createJob(type, data) {
+      let id = getJobID();
+
+      this.worker.postMessage({job: type, jobID: id, data});
+
+      let job = new Job(this, id);
+
+      this.jobs.push(job);
+
+      return job
+    }
+
+    terminate() {
+      this.jobs.forEach(job => job.cancel());
+      this.jobs = [];
+
+      this.worker.terminate();
+    }
+  }
+
+  class BeastPool {
+    constructor() {
+      this.beasts = [];
+      this._index = 0;
+
+      this.setThreadCount(4);
+    }
+
+    get threadCount() {
+      return this.beasts.length
+    }
+
+    setThreadCount(t) {
+      let current = this.threadCount;
+
+      if (current === t)
+        return
+
+      if (current > t) {
+        this.beasts.slice(t).forEach(beast => beast.terminate());
+
+        this.beasts.length = t;
+      } else {
+        for (let i = 0; i < t - current; ++i) {
+          this.beasts.push(new Beast());
+        }
+      }
+    }
+
+    getBeast() {
+      if (this.threadCount <= 0)
+        throw new Error("No beasts to use!")
+
+      if (this._index >= this.threadCount) {
+        this._index = 0;
+      }
+
+      return this.beasts[this._index++]
+    }
+
+    destroy() {
+      this.beasts.forEach(beast => beast.terminate());
+    }
+  }
+
+  const BEAST_POOL = new BeastPool();
+
   exports.ASTNode = ASTNode;
+  exports.BEAST_POOL = BEAST_POOL;
   exports.BasicLabel = BasicLabel;
   exports.BoundingBox = BoundingBox;
   exports.Color = Color;
