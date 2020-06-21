@@ -2,6 +2,8 @@ import { Group as GraphemeGroup } from './grapheme_group'
 import * as utils from './utils'
 import { LabelManager } from './label_manager'
 import { DefaultUniverse, Universe } from './grapheme_universe'
+import { BoundingBox } from '../math/bounding_box'
+import { Vec2 } from '../math/vec'
 
 /** @class GraphemeCanvas A viewable instance of Grapheme. Provides the information required for rendering to canvas,
  * as well as domElement, which is a canvas element to be added to the canvas. */
@@ -125,10 +127,18 @@ class GraphemeCanvas extends GraphemeGroup {
     delete this.labelManager
   }
 
+  /**
+   * Get a bounding box corresponding to the entire canvas
+   * @returns {BoundingBox} The canvas bounding box
+   */
+  getCanvasBox () {
+    return new BoundingBox(new Vec2(0, 0), this.width, this.height)
+  }
+
   updateChildren(info, criteria) {
     this.applyToChildren((child) => {
         if (criteria(child)) {
-          child.update()
+          child.update(info)
         }
       }, true)
   }

@@ -447,42 +447,6 @@ const OperatorSynonyms = {
   'log': 'ln'
 }
 
-const OperatorNames = {
-  'asin': '\\operatorname{sin}^{-1}',
-  'acos': '\\operatorname{cos}^{-1}',
-  'atan': '\\operatorname{tan}^{-1}',
-  'asec': '\\operatorname{sec}^{-1}',
-  'acsc': '\\operatorname{csc}^{-1}',
-  'acot': '\\operatorname{cot}^{-1}',
-  'asinh': '\\operatorname{sinh}^{-1}',
-  'acosh': '\\operatorname{cosh}^{-1}',
-  'atanh': '\\operatorname{tanh}^{-1}',
-  'asech': '\\operatorname{sech}^{-1}',
-  'acsch': '\\operatorname{csch}^{-1}',
-  'acoth': '\\operatorname{coth}^{-1}',
-  'gamma': '\\Gamma',
-  'digamma': '\\psi',
-  'trigamma': '\\psi_1',
-  'ln_gamma': '\\operatorname{ln} \\Gamma',
-  'log10': '\\operatorname{log}_{10}',
-  'log2': '\\operatorname{log}_{2}'
-}
-
-let canNotParenthesize = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sec', 'csc', 'cot', 'asec', 'acsc', 'acot', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'sech', 'csch', 'coth', 'asech', 'acsch', 'acoth']
-
-function getOperatorName (op) {
-  let special = OperatorNames[op]
-  if (special) {
-    return special
-  }
-
-  return '\\operatorname{' + op + '}'
-}
-
-function alwaysParenthesize (op) {
-  return !(canNotParenthesize.includes(op))
-}
-
 class OperatorNode extends ASTNode {
   constructor (params = {}) {
     super(params)

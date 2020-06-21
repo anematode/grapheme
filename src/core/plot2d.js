@@ -106,14 +106,6 @@ class Plot2D extends InteractiveCanvas {
   }
 
   /**
-   * Get a bounding box corresponding to the entire canvas
-   * @returns {BoundingBox} The canvas bounding box
-   */
-  getCanvasBox () {
-    return new BoundingBox(new Vec2(0, 0), this.width, this.height)
-  }
-
-  /**
    * Handle mouse down events.
    * @param evt {Object} Event to handle
    * @returns {boolean} Returns true to stop propagation.

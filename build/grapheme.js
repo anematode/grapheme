@@ -1512,10 +1512,18 @@ var Grapheme = (function (exports) {
       delete this.labelManager;
     }
 
+    /**
+     * Get a bounding box corresponding to the entire canvas
+     * @returns {BoundingBox} The canvas bounding box
+     */
+    getCanvasBox () {
+      return new BoundingBox(new Vec2(0, 0), this.width, this.height)
+    }
+
     updateChildren(info, criteria) {
       this.applyToChildren((child) => {
           if (criteria(child)) {
-            child.update();
+            child.update(info);
           }
         }, true);
     }
@@ -2249,14 +2257,6 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Get a bounding box corresponding to the entire canvas
-     * @returns {BoundingBox} The canvas bounding box
-     */
-    getCanvasBox () {
-      return new BoundingBox(new Vec2(0, 0), this.width, this.height)
-    }
-
-    /**
      * Handle mouse down events.
      * @param evt {Object} Event to handle
      * @returns {boolean} Returns true to stop propagation.
@@ -2736,9 +2736,9 @@ var Grapheme = (function (exports) {
         dashPattern = [], // lengths of alternating dashes
         dashOffset = 0, // length of dash offset
         endcap = 'round', // endcap, among "butt", "round", "square"
-        endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
+        endcapRes = 1, // angle between consecutive endcap roundings, only used in WebGL
         join = 'miter', // join type, among "miter", "round", "bevel"
-        joinRes = 0.3, // angle between consecutive join roundings
+        joinRes = 1, // angle between consecutive join roundings
         useNative = true, // whether to use native line drawing, only used in WebGL
         arrowhead = "Normal", // arrowhead to draw
         arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
@@ -3345,7 +3345,7 @@ var Grapheme = (function (exports) {
         let intersection = intersections[i];
 
         if (intersection)
-          return [x2, y2, intersection[0], intersection[1]]
+          return [intersection[0], intersection[1], x2, y2]
       }
     }
 
@@ -5673,6 +5673,42 @@ var Grapheme = (function (exports) {
     'piecewise': piecewise
   };
 
+  let canNotParenthesize = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sec', 'csc', 'cot', 'asec', 'acsc', 'acot', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'sech', 'csch', 'coth', 'asech', 'acsch', 'acoth'];
+
+  function getOperatorName (op) {
+    let special = OperatorNames[op];
+    if (special) {
+      return special
+    }
+
+    return '\\operatorname{' + op + '}'
+  }
+
+  function alwaysParenthesize (op) {
+    return !(canNotParenthesize.includes(op))
+  }
+
+  const OperatorNames = {
+    'asin': '\\operatorname{sin}^{-1}',
+    'acos': '\\operatorname{cos}^{-1}',
+    'atan': '\\operatorname{tan}^{-1}',
+    'asec': '\\operatorname{sec}^{-1}',
+    'acsc': '\\operatorname{csc}^{-1}',
+    'acot': '\\operatorname{cot}^{-1}',
+    'asinh': '\\operatorname{sinh}^{-1}',
+    'acosh': '\\operatorname{cosh}^{-1}',
+    'atanh': '\\operatorname{tanh}^{-1}',
+    'asech': '\\operatorname{sech}^{-1}',
+    'acsch': '\\operatorname{csch}^{-1}',
+    'acoth': '\\operatorname{coth}^{-1}',
+    'gamma': '\\Gamma',
+    'digamma': '\\psi',
+    'trigamma': '\\psi_1',
+    'ln_gamma': '\\operatorname{ln} \\Gamma',
+    'log10': '\\operatorname{log}_{10}',
+    'log2': '\\operatorname{log}_{2}'
+  };
+
   function getLatex(opNode) {
     switch (opNode.operator) {
       case "^":
@@ -7271,8 +7307,152 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function getDashedPolyline() {
+  /**
+   * Convert a polyline into another polyline, but with dashes.
+   * @param vertices {Array} The vertices of the polyline.
+   * @param pen {Pen} The polyline's pen
+   * @param box {BoundingBox}
+   * @returns {Array}
+   */
+  function getDashedPolyline(vertices, pen, box) {
+    let dashPattern = pen.dashPattern;
 
+    if (dashPattern.length % 2 === 1) {
+      // If the dash pattern is odd in length, concat it to itself
+      dashPattern = dashPattern.concat(dashPattern);
+    }
+
+    let dashOffset = pen.dashOffset;
+    let patternLength = dashPattern.reduce((a, b) => a + b);
+
+    let currentOffset = dashOffset;
+    let currentIndex, currentLesserOffset;
+
+    recalculateOffset(0); // calculate the needed index
+
+    let result = [];
+
+    let box_x1 = box.x1, box_x2 = box.x2, box_y1 = box.y1, box_y2 = box.y2;
+
+    function recalculateOffset(length) {
+      if (length > 1e6) { // If there's an absurdly long segment, we just pretend the length is 0
+        length = 0;
+      }
+
+      currentOffset += length;
+      currentOffset %= patternLength;
+
+      let sum = 0, i, lesserOffset;
+      for (i = 0; i < dashPattern.length; ++i) {
+        sum += dashPattern[i];
+
+        if (currentOffset < sum) {
+          lesserOffset = dashPattern[i] - sum + currentOffset;
+          break
+        }
+      }
+
+      if (i === dashPattern.length)
+        --i;
+
+      currentIndex = i;
+      currentLesserOffset = lesserOffset;
+    }
+
+    function generateDashes(x1, y1, x2, y2) {
+      let length = Math.hypot(x2 - x1, y2 - y1);
+      let i = currentIndex;
+      let totalLen = 0;
+
+      for (let egg = 0; egg < 1e6; ++egg) { // Just in case I have some strange error in my code
+        let componentLen = dashPattern[i] - currentLesserOffset;
+        let endingLen = componentLen + totalLen;
+
+        if (i % 2 === 0) { // dash
+          if (endingLen >= length) {
+            result.push(x2, y2);
+            break
+          } else {
+            let r = endingLen / length;
+
+            result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r, NaN, NaN);
+
+            ++i;
+
+            i %= dashPattern.length;
+
+            currentLesserOffset = 0;
+          }
+        } else { // gap
+          if (endingLen >= length) {
+            break
+          } else {
+            let r = endingLen / length;
+
+            result.push(NaN, NaN, x1 + (x2 - x1) * r, y1 + (y2 - y1) * r);
+
+            ++i;
+
+            i %= dashPattern.length;
+
+            currentLesserOffset = 0;
+          }
+        }
+
+        totalLen += componentLen;
+      }
+
+      recalculateOffset(length);
+    }
+
+    if (currentIndex % 2 === 0) {
+      // We're beginning with a dash, so start it off
+      result.push(vertices[0], vertices[1]);
+    }
+
+    for (let i = 0; i < vertices.length - 2; i += 2) {
+      let x1 = vertices[i];
+      let y1 = vertices[i+1];
+      let x2 = vertices[i+2];
+      let y2 = vertices[i+3];
+
+      if (isNaN(x1) || isNaN(y1)) {
+        currentOffset = dashOffset;
+        recalculateOffset(0);
+
+        result.push(NaN, NaN);
+
+        continue
+      }
+
+      if (isNaN(x2) || isNaN(y2)) {
+        continue
+      }
+
+      let length = Math.hypot(x2 - x1, y2 - y1);
+
+      let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2);
+
+      if (!intersect) {
+        recalculateOffset(length);
+        continue
+      }
+
+      let pt1Contained = (intersect[0] === x1 && intersect[1] === y1);
+      let pt2Contained = (intersect[2] === x2 && intersect[3] === y2);
+
+      if (!pt1Contained) {
+        recalculateOffset(Math.hypot(x1 - intersect[0], y1 - intersect[1]));
+      }
+
+      generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
+
+      if (!pt2Contained) {
+        recalculateOffset(Math.hypot(x2 - intersect[2], y2 - intersect[3]));
+      }
+    }
+
+    return result
   }
 
   const ENDCAP_TYPES = {
@@ -7307,7 +7487,7 @@ var Grapheme = (function (exports) {
       // No dashes to draw
       return convertTriangleStrip(vertices, pen);
     } else {
-      return convertTriangleStrip(getDashedPolyline(), pen)
+      return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen)
     }
   }
 
@@ -7812,8 +7992,8 @@ void main() {
       this.alwaysUpdate = false;
     }
 
-    _calculateTriangles () {
-      let result = calculatePolylineVertices(this.vertices, this.pen);
+    _calculateTriangles (box) {
+      let result = calculatePolylineVertices(this.vertices, this.pen, box);
       this.glVertices = result.glVertices;
       this.glVertexCount = result.vertexCount;
     }
@@ -7846,14 +8026,33 @@ void main() {
       this.glVertexCount = Math.ceil(vertices.length / 2);
     }
 
-    update () {
+    update (info) {
       super.update();
 
       if (this.useNative) {
         // use native LINE_STRIP for extreme speed
         this._calculateNativeLines();
       } else {
-        this._calculateTriangles();
+        let box;
+        let thickness = this.pen.thickness;
+
+        if (info) {
+          box = info.plot.getCanvasBox().pad({
+            left: -thickness,
+            right: -thickness,
+            top: -thickness,
+            bottom: -thickness
+          });
+        } else {
+          box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
+            left: -thickness,
+            right: -thickness,
+            top: -thickness,
+            bottom: -thickness
+          });
+        }
+
+        this._calculateTriangles(box);
       }
 
       this.needsBufferCopy = true;
@@ -7973,7 +8172,7 @@ void main() {
       adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness);
     }
 
-    update() {
+    update(info) {
       super.update();
 
       let transform = this.plot.transform;
@@ -8009,7 +8208,7 @@ void main() {
       }
 
       this.polyline.vertices = vertices;
-      this.polyline.update();
+      this.polyline.update(info);
     }
 
     render(info) {
@@ -8472,8 +8671,8 @@ void main() {
       this.inspectionPoint = null;
     }
 
-    update() {
-      super.update();
+    update(info) {
+      super.update(info);
 
       if (this.inspectionPoint)
         this.inspectionPoint.style.fill = this.pen.color;
@@ -12683,7 +12882,7 @@ void main() {
   };
   Object.freeze(Intervals);
 
-  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=10, renderingQuality=10, maxDepth=16) {
+  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=4, renderingQuality=3, maxDepth=16) {
     let polyline = [];
 
     function add_contour_segment(x1, y1, x2, y2) {
@@ -12823,11 +13022,12 @@ void main() {
       this.updateFunc();
 
       const disp = this.displayedElement = new WebGLPolyline();
+
       disp.pen.useNative = false;
-      disp.pen.endcap = "none";
+      disp.pen.endcap = "butt";
       disp.pen.color = Colors.RED;
 
-      this.addEventListener("plotcoordschanged", () => this.update());
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
     }
 
     setEquation(text) {
@@ -12888,7 +13088,7 @@ void main() {
       };
     }
 
-    update() {
+    update(info) {
       super.update();
 
       if (this.plot) {
@@ -12898,7 +13098,7 @@ void main() {
         this.plot.transform.plotToPixelArr(vertices);
 
         this.displayedElement.vertices = vertices;
-        this.displayedElement.update();
+        this.displayedElement.update(info);
 
         this.previousTransform = this.plot.transform.clone();
       }

@@ -20,11 +20,12 @@ class EquationPlot2D extends InteractiveElement {
     this.updateFunc()
 
     const disp = this.displayedElement = new WebGLPolyline()
+
     disp.pen.useNative = false
-    disp.pen.endcap = "none"
+    disp.pen.endcap = "butt"
     disp.pen.color = Colors.RED
 
-    this.addEventListener("plotcoordschanged", () => this.update())
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
   setEquation(text) {
@@ -85,7 +86,7 @@ class EquationPlot2D extends InteractiveElement {
     }
   }
 
-  update() {
+  update(info) {
     super.update()
 
     if (this.plot) {
@@ -95,7 +96,7 @@ class EquationPlot2D extends InteractiveElement {
       this.plot.transform.plotToPixelArr(vertices)
 
       this.displayedElement.vertices = vertices
-      this.displayedElement.update()
+      this.displayedElement.update(info)
 
       this.previousTransform = this.plot.transform.clone()
     }

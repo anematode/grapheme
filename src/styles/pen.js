@@ -8,9 +8,9 @@ class Pen {
       dashPattern = [], // lengths of alternating dashes
       dashOffset = 0, // length of dash offset
       endcap = 'round', // endcap, among "butt", "round", "square"
-      endcapRes = 0.3, // angle between consecutive endcap roundings, only used in WebGL
+      endcapRes = 1, // angle between consecutive endcap roundings, only used in WebGL
       join = 'miter', // join type, among "miter", "round", "bevel"
-      joinRes = 0.3, // angle between consecutive join roundings
+      joinRes = 1, // angle between consecutive join roundings
       useNative = true, // whether to use native line drawing, only used in WebGL
       arrowhead = "Normal", // arrowhead to draw
       arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"

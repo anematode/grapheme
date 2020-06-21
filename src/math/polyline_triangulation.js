@@ -34,7 +34,7 @@ function calculatePolylineVertices(vertices, pen, box) {
     // No dashes to draw
     return convertTriangleStrip(vertices, pen);
   } else {
-    return convertTriangleStrip(getDashedPolyline(vertices, pen), pen)
+    return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen)
   }
 }
 

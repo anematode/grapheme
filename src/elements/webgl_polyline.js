@@ -3,6 +3,8 @@ import { WebGLElement } from '../core/webgl_grapheme_element'
 import * as GEOCALC from '../math/geometry_algorithms'
 import { Pen } from '../styles/pen'
 import { nextPowerOfTwo, calculatePolylineVertices } from '../math/polyline_triangulation'
+import { BoundingBox } from '../math/bounding_box'
+import { Vec2 } from '../math/vec'
 
 // this vertex shader is used for the polylines
 const vertexShaderSource = `// set the float precision of the shader to medium precision
@@ -41,8 +43,8 @@ class WebGLPolyline extends WebGLElement {
     this.alwaysUpdate = false
   }
 
-  _calculateTriangles () {
-    let result = calculatePolylineVertices(this.vertices, this.pen)
+  _calculateTriangles (box) {
+    let result = calculatePolylineVertices(this.vertices, this.pen, box)
     this.glVertices = result.glVertices
     this.glVertexCount = result.vertexCount
   }
@@ -75,14 +77,33 @@ class WebGLPolyline extends WebGLElement {
     this.glVertexCount = Math.ceil(vertices.length / 2)
   }
 
-  update () {
+  update (info) {
     super.update()
 
     if (this.useNative) {
       // use native LINE_STRIP for extreme speed
       this._calculateNativeLines()
     } else {
-      this._calculateTriangles()
+      let box
+      let thickness = this.pen.thickness
+
+      if (info) {
+        box = info.plot.getCanvasBox().pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        })
+      } else {
+        box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        })
+      }
+
+      this._calculateTriangles(box)
     }
 
     this.needsBufferCopy = true

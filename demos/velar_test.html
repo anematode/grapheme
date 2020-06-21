@@ -35,6 +35,8 @@
 
   dplot.pen.color = Grapheme.Colors.BLACK
 
+  fplot.pen.dashPattern = dplot.pen.dashPattern = [12, 12]
+
     function setFunction(value) {
       let node = Grapheme.parse_string(value)
       let compile = node.compile()

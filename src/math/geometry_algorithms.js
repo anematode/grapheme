@@ -470,7 +470,7 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
       let intersection = intersections[i]
 
       if (intersection)
-        return [x2, y2, intersection[0], intersection[1]]
+        return [intersection[0], intersection[1], x2, y2]
     }
   }
 

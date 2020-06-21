@@ -55,7 +55,7 @@ class FunctionPlot2D extends InteractiveElement {
     adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness)
   }
 
-  update() {
+  update(info) {
     super.update()
 
     let transform = this.plot.transform
@@ -91,7 +91,7 @@ class FunctionPlot2D extends InteractiveElement {
     }
 
     this.polyline.vertices = vertices
-    this.polyline.update()
+    this.polyline.update(info)
   }
 
   render(info) {
