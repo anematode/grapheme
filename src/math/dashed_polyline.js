@@ -1,5 +1,10 @@
 import { lineSegmentIntersectsBox } from './geometry_algorithms'
 
+
+function fastHypot(x, y) {
+  return Math.sqrt(x * x + y * y)
+}
+
 /**
  * Convert a polyline into another polyline, but with dashes.
  * @param vertices {Array} The vertices of the polyline.
@@ -56,44 +61,36 @@ function getDashedPolyline(vertices, pen, box) {
   }
 
   function generateDashes(x1, y1, x2, y2) {
-    let length = Math.hypot(x2 - x1, y2 - y1)
+    let length = fastHypot(x2 - x1, y2 - y1)
     let i = currentIndex
-    let offset = currentLesserOffset
     let totalLen = 0
 
-    for (let egg = 0; egg < 1e6; ++egg) { // Just in case I have some strange error in my code
+    while (true) {
       let componentLen = dashPattern[i] - currentLesserOffset
       let endingLen = componentLen + totalLen
 
-      if (i % 2 === 0) { // dash
-        if (endingLen >= length) {
+      let inDash = i % 2 === 0
+
+      if (endingLen < length) {
+        if (!inDash)
+          result.push(NaN, NaN)
+
+        let r = endingLen / length
+
+        result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r)
+
+        if (inDash)
+          result.push(NaN, NaN)
+
+        ++i
+        i %= dashPattern.length
+
+        currentLesserOffset = 0
+      } else {
+        if (inDash)
           result.push(x2, y2)
-          break
-        } else {
-          let r = endingLen / length
 
-          result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r, NaN, NaN)
-
-          ++i
-
-          i %= dashPattern.length
-
-          currentLesserOffset = 0
-        }
-      } else { // gap
-        if (endingLen >= length) {
-          break
-        } else {
-          let r = endingLen / length
-
-          result.push(NaN, NaN, x1 + (x2 - x1) * r, y1 + (y2 - y1) * r)
-
-          ++i
-
-          i %= dashPattern.length
-
-          currentLesserOffset = 0
-        }
+        break
       }
 
       totalLen += componentLen
@@ -126,7 +123,7 @@ function getDashedPolyline(vertices, pen, box) {
       continue
     }
 
-    let length = Math.hypot(x2 - x1, y2 - y1)
+    let length = fastHypot(x2 - x1, y2 - y1)
 
     let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2)
 
@@ -139,17 +136,17 @@ function getDashedPolyline(vertices, pen, box) {
     let pt2Contained = (intersect[2] === x2 && intersect[3] === y2)
 
     if (!pt1Contained) {
-      recalculateOffset(Math.hypot(x1 - intersect[0], y1 - intersect[1]))
+      recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]))
     }
 
     generateDashes(intersect[0], intersect[1], intersect[2], intersect[3])
 
     if (!pt2Contained) {
-      recalculateOffset(Math.hypot(x2 - intersect[2], y2 - intersect[3]))
+      recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]))
     }
   }
 
   return result
 }
 
-export {getDashedPolyline}
+export {getDashedPolyline, fastHypot}
