@@ -7325,6 +7325,9 @@ var Grapheme = (function (exports) {
     let dashOffset = pen.dashOffset;
     let patternLength = dashPattern.reduce((a, b) => a + b);
 
+    if (patternLength < 2)
+      return vertices
+
     let currentOffset = dashOffset;
     let currentIndex, currentLesserOffset;
 
@@ -12879,7 +12882,7 @@ void main() {
   };
   Object.freeze(Intervals);
 
-  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=4, renderingQuality=3, maxDepth=16) {
+  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
     let polyline = [];
 
     function add_contour_segment(x1, y1, x2, y2) {

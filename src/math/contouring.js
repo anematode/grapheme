@@ -235,7 +235,7 @@ function generateContours1(func, xmin, xmax, ymin, ymax, searchDepth=3, plotDept
   return polyline
 }
 
-function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=4, renderingQuality=3, maxDepth=16) {
+function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
   let polyline = []
 
   function add_contour_segment(x1, y1, x2, y2) {

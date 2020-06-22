@@ -18,6 +18,9 @@ function getDashedPolyline(vertices, pen, box) {
   let dashOffset = pen.dashOffset
   let patternLength = dashPattern.reduce((a, b) => a + b)
 
+  if (patternLength < 2)
+    return vertices
+
   let currentOffset = dashOffset
   let currentIndex, currentLesserOffset
 

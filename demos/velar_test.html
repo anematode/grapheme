@@ -35,7 +35,9 @@
 
   dplot.pen.color = Grapheme.Colors.BLACK
 
-  fplot.pen.dashPattern = dplot.pen.dashPattern = [12, 12]
+  fplot.pen.dashPattern = dplot.pen.dashPattern = [0, 10]
+  fplot.pen.endcap = dplot.pen.endcap = "round"
+  fplot.pen.thickness = dplot.pen.thickness = 3
 
     function setFunction(value) {
       let node = Grapheme.parse_string(value)
