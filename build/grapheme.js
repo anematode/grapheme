@@ -7472,6 +7472,44 @@ var Grapheme = (function (exports) {
   }
 
   const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
+  const B = 4 / Math.PI;
+  const C$1 = -4 / (Math.PI ** 2);
+
+  function fastSin(x) { // crude, but good enough for this
+
+    x %= 6.28318530717;
+
+    if (x < -3.14159265)
+      x += 6.28318530717;
+    else
+    if (x > 3.14159265)
+      x -= 6.28318530717;
+
+
+    return B * x + C$1 * x * ((x < 0) ? -x : x)
+  }
+
+  function fastCos(x) {
+    return fastSin(x + 1.570796326794)
+  }
+
+  function fastAtan2(y, x) {
+    let abs_x = x < 0 ? -x : x;
+    let abs_y = y < 0 ? -y : y;
+
+    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x;
+    let s = a * a;
+    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+
+    if (abs_y > abs_x)
+      r = 1.57079637 - r;
+    if (x < 0)
+      r = 3.14159265 - r;
+    if (y < 0)
+      r = -r;
+
+    return r
+  }
 
   /**
    * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
@@ -7502,7 +7540,7 @@ var Grapheme = (function (exports) {
     let origVertexCount = vertices.length / 2;
 
     let th = pen.thickness;
-    let maxMiterLength = th / Math.cos(pen.joinRes / 2);
+    let maxMiterLength = th / fastCos(pen.joinRes / 2);
 
     let endcap = ENDCAP_TYPES[pen.endcap];
     let join = JOIN_TYPES[pen.join];
@@ -7547,7 +7585,7 @@ var Grapheme = (function (exports) {
 
         if (endcap === 1) {
           // rounded endcap
-          let theta = Math.atan2(nu_y, nu_x) + Math.PI / 2;
+          let theta = fastAtan2(nu_y, nu_x) + Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
 
           let o_x = x2 - th * nu_y, o_y = y2 + th * nu_x;
@@ -7555,7 +7593,7 @@ var Grapheme = (function (exports) {
           for (let i = 1; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
 
-            glVertices.push(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c), o_x, o_y);
+            glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), o_x, o_y);
           }
           continue
         } else {
@@ -7585,7 +7623,7 @@ var Grapheme = (function (exports) {
         glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x);
 
         if (endcap === 1) {
-          let theta = Math.atan2(pu_y, pu_x) + 3 * Math.PI / 2;
+          let theta = fastAtan2(pu_y, pu_x) + 3 * Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
 
           let o_x = x2 - th * pu_y, o_y = y2 + th * pu_x;
@@ -7593,7 +7631,7 @@ var Grapheme = (function (exports) {
           for (let i = 1; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
 
-            glVertices.push(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c), o_x, o_y);
+            glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), o_x, o_y);
           }
         }
 
@@ -7664,8 +7702,8 @@ var Grapheme = (function (exports) {
       glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x);
 
       if (join === 1 || join === 3) {
-        let a1 = Math.atan2(-pu_y, -pu_x) - Math.PI / 2;
-        let a2 = Math.atan2(nu_y, nu_x) - Math.PI / 2;
+        let a1 = fastAtan2(-pu_y, -pu_x) - Math.PI / 2;
+        let a2 = fastAtan2(nu_y, nu_x) - Math.PI / 2;
 
         // if right turn, flip a2
         // if left turn, flip a1
@@ -7687,7 +7725,7 @@ var Grapheme = (function (exports) {
         for (let i = 0; i <= steps_needed; ++i) {
           let theta_c = start_a + angle_subtended * i / steps_needed;
 
-          glVertices.push(x2 + th * Math.cos(theta_c), y2 + th * Math.sin(theta_c), x2, y2);
+          glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), x2, y2);
         }
       }
 
