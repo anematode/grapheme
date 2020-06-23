@@ -719,7 +719,8 @@ var Grapheme = (function (exports) {
     deleteBuffersNamed: deleteBuffersNamed,
     getRenderID: getRenderID,
     flattenVectors: flattenVectors,
-    roundToCanvasPixel: roundToCanvasPixel
+    roundToCanvasPixel: roundToCanvasPixel,
+    isWorker: isWorker
   });
 
   /**
@@ -3969,10 +3970,15 @@ var Grapheme = (function (exports) {
     }
   }
 
+  /**
+   * Calculates the d
+   * @param opNode {OperatorNode}
+   * @param variable {String} Variable to take the derivative relative to
+   * @returns {ASTNode}
+   */
   function operator_derivative (opNode, variable = 'x') {
-    if (opNode.isConstant()) {
+    if (opNode.isConstant())
       return new ConstantNode({value: 0})
-    }
 
     let node;
     switch (opNode.operator) {
@@ -3984,7 +3990,7 @@ var Grapheme = (function (exports) {
       case '==':
         return new ConstantNode({ value: 0 })
       case 'ifelse':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
           children: [
             opNode.children[0].derivative(variable),
@@ -4008,28 +4014,28 @@ var Grapheme = (function (exports) {
       case 'cchain':
         return opNode.clone()
       case '+':
-        node = new OperatorNode({ operator: '+' });
+        node = new OperatorNode$1({ operator: '+' });
         node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '*':
         let firstChild = opNode.children[0], secondChild = opNode.children[1];
 
         if (firstChild.isConstant()) {
-          node = new OperatorNode({operator: '*', children: [
+          node = new OperatorNode$1({operator: '*', children: [
             firstChild,
               secondChild.derivative(variable)
             ]});
         } else if (secondChild.isConstant()) {
-          node = new OperatorNode({operator: '*', children: [
+          node = new OperatorNode$1({operator: '*', children: [
               secondChild,
               firstChild.derivative(variable)
             ]});
         } else {
-          node = new OperatorNode({ operator: '+' });
+          node = new OperatorNode$1({ operator: '+' });
 
           // product rule
-          let first = new OperatorNode({ operator: '*' });
-          let second = new OperatorNode({ operator: '*' });
+          let first = new OperatorNode$1({ operator: '*' });
+          let second = new OperatorNode$1({ operator: '*' });
 
           first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)];
           second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
@@ -4040,21 +4046,21 @@ var Grapheme = (function (exports) {
       case '/':
         // Division rules
         if (opNode.children[1] instanceof ConstantNode) {
-          return new OperatorNode({
+          return new OperatorNode$1({
             operator: '/',
             children: [opNode.children[0].derivative(variable), opNode.children[1]]
           })
         } else {
-          node = new OperatorNode({ operator: '/' });
+          node = new OperatorNode$1({ operator: '/' });
 
-          let top = new OperatorNode({ operator: '-' });
-          let topFirst = new OperatorNode({ operator: '*' });
+          let top = new OperatorNode$1({ operator: '-' });
+          let topFirst = new OperatorNode$1({ operator: '*' });
           topFirst.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
-          let topSecond = new OperatorNode({ operator: '*' });
+          let topSecond = new OperatorNode$1({ operator: '*' });
           topSecond.children = [opNode.children[0], opNode.children[1].derivative(variable)];
 
           top.children = [topFirst, topSecond];
-          let bottom = new OperatorNode({ operator: '^' });
+          let bottom = new OperatorNode$1({ operator: '^' });
           bottom.children = [opNode.children[1].clone(), new ConstantNode({ value: 2 })];
 
           node.children = [top, bottom];
@@ -4062,7 +4068,7 @@ var Grapheme = (function (exports) {
 
         return node
       case '-':
-        node = new OperatorNode({ operator: '-' });
+        node = new OperatorNode$1({ operator: '-' });
         node.children = opNode.children.map(child => child.derivative(variable));
         return node
       case '^':
@@ -4076,16 +4082,16 @@ var Grapheme = (function (exports) {
           }
 
           // power rule
-          let node = new OperatorNode({ operator: '*' });
-          let node2 = new OperatorNode({ operator: '*' });
-          let pow = new OperatorNode({ operator: '^' });
+          let node = new OperatorNode$1({ operator: '*' });
+          let node2 = new OperatorNode$1({ operator: '*' });
+          let pow = new OperatorNode$1({ operator: '^' });
 
           let newPower;
 
           if (child1 instanceof ConstantNode && powerExactlyRepresentableAsFloat(child1.text)) {
             newPower = new ConstantNode({value: power - 1});
           } else {
-            newPower = new OperatorNode({operator: '-', children: [
+            newPower = new OperatorNode$1({operator: '-', children: [
                 opNode.children[1],
                 new ConstantNode({ value: 1 })]});
           }
@@ -4097,16 +4103,16 @@ var Grapheme = (function (exports) {
 
           return node
         } else if (opNode.children[0].isConstant()) {
-          return new OperatorNode({
+          return new OperatorNode$1({
             operator: '*',
             children: [
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: 'ln',
                 children: [
                   opNode.children[0].clone()
                 ]
               }),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [
                   opNode.clone(),
@@ -4116,18 +4122,18 @@ var Grapheme = (function (exports) {
             ]
           })
         } else {
-          return new OperatorNode({
+          return new OperatorNode$1({
             operator: '*',
             children: [
               opNode.clone(),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '+',
                 children: [
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: '*',
                     children: [
                       opNode.children[1].derivative(variable),
-                      new OperatorNode({
+                      new OperatorNode$1({
                         operator: 'ln',
                         children: [
                           opNode.children[0].clone()
@@ -4135,10 +4141,10 @@ var Grapheme = (function (exports) {
                       })
                     ]
                   }),
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: '*',
                     children: [
-                      new OperatorNode({
+                      new OperatorNode$1({
                         operator: '/',
                         children: [
                           opNode.children[1].clone(),
@@ -4154,10 +4160,10 @@ var Grapheme = (function (exports) {
           })
         }
       case 'sin':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'cos',
               children: [opNode.children[0].clone()]
             }),
@@ -4165,14 +4171,14 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'cos':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             new ConstantNode({ value: -1 }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sin',
                   children: [opNode.children[0].clone()]
                 }),
@@ -4182,13 +4188,13 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'tan':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '^',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sec',
                   children: [opNode.children[0].clone()]
                 }),
@@ -4199,23 +4205,23 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'csc':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             new ConstantNode({ value: -1 }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '*',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: 'csc',
                       children: [
                         opNode.children[0].clone()
                       ]
                     }),
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: 'cot',
                       children: [
                         opNode.children[0].clone()
@@ -4229,19 +4235,19 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'sec':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sec',
                   children: [
                     opNode.children[0].clone()
                   ]
                 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'tan',
                   children: [
                     opNode.children[0].clone()
@@ -4253,15 +4259,15 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'cot':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
             operator: '*',
             children: [
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '^',
                 children: [
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: 'csc',
                     children: [opNode.children[0].clone()]
                   }),
@@ -4273,14 +4279,14 @@ var Grapheme = (function (exports) {
           })]
         })
       case 'sqrt':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             new ConstantNode({ value: 0.5 }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '^',
                   children: [
                     opNode.children[0].clone(),
@@ -4293,14 +4299,14 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'cbrt':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             ONE_THIRD.clone(),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'pow_rational',
                   children: [
                     opNode.children[0].clone(),
@@ -4314,18 +4320,18 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'asin':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'sqrt',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '-',
                   children: [
                     new ConstantNode({ value: 1 }),
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '^',
                       children: [
                         opNode.children[0].clone(),
@@ -4339,20 +4345,20 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'acos':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
             operator: '/',
             children: [
               opNode.children[0].derivative(variable),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: 'sqrt',
                 children: [
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: '-',
                     children: [
                       new ConstantNode({ value: 1 }),
-                      new OperatorNode({
+                      new OperatorNode$1({
                         operator: '^',
                         children: [
                           opNode.children[0].clone(),
@@ -4367,15 +4373,15 @@ var Grapheme = (function (exports) {
           })]
         })
       case 'atan':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '+',
               children: [
                 new ConstantNode({ value: 1 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '^',
                   children: [
                     opNode.children[0].clone(),
@@ -4387,18 +4393,18 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'acot':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '+',
               children: [
                 new ConstantNode({ value: 1 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '^',
                   children: [
                     opNode.children[0].clone(),
@@ -4410,26 +4416,26 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'asec':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'abs',
                   children: [
                     opNode.children[0].clone()
                   ]
                 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sqrt',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '-',
                       children: [
-                        new OperatorNode({
+                        new OperatorNode$1({
                           operator: '^',
                           children: [
                             opNode.children[0].clone(),
@@ -4446,29 +4452,29 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'acsc':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'abs',
                   children: [
                     opNode.children[0].clone()
                   ]
                 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sqrt',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '-',
                       children: [
-                        new OperatorNode({
+                        new OperatorNode$1({
                           operator: '^',
                           children: [
                             opNode.children[0].clone(),
@@ -4485,11 +4491,11 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'sinh':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             opNode.children[0].derivative(),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'cosh',
               children: [
                 opNode.children[0].clone()
@@ -4498,11 +4504,11 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'cosh':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             opNode.children[0].derivative(),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'sinh',
               children: [
                 opNode.children[0].clone()
@@ -4511,13 +4517,13 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'tanh':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '^',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sech',
                   children: [ opNode.children[0].clone() ]
                 }),
@@ -4528,23 +4534,23 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'csch':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
             new ConstantNode({ value: -1 }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '*',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: 'csch',
                       children: [
                         opNode.children[0].clone()
                       ]
                     }),
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: 'coth',
                       children: [
                         opNode.children[0].clone()
@@ -4558,21 +4564,21 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'sech':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
             operator: '*',
             children: [
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: 'sech',
                     children: [
                       opNode.children[0].clone()
                     ]
                   }),
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: 'tanh',
                     children: [
                       opNode.children[0].clone()
@@ -4585,15 +4591,15 @@ var Grapheme = (function (exports) {
           })]
         })
       case 'coth':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode({
+          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
             operator: '*',
             children: [
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '^',
                 children: [
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: 'csch',
                     children: [opNode.children[0].clone()]
                   }),
@@ -4605,18 +4611,18 @@ var Grapheme = (function (exports) {
           })]
         })
       case 'asinh':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'sqrt',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: '+',
                   children: [
                     new ConstantNode({ value: 1 }),
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '^',
                       children: [
                         opNode.children[0].clone(),
@@ -4630,21 +4636,21 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'acosh':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '*',
-            children: [new ConstantNode({ value: -1 }), new OperatorNode({
+            children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
               operator: '/',
               children: [
                 opNode.children[0].derivative(variable),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sqrt',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '-',
                       children: [
-                        new OperatorNode({
+                        new OperatorNode$1({
                           operator: '^',
                           children: [
                             opNode.children[0].clone(),
@@ -4658,7 +4664,7 @@ var Grapheme = (function (exports) {
                 })
               ]
             })]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>=',
             children: [opNode.children[0], new ConstantNode({ value: 1 })]
           }),
@@ -4667,17 +4673,17 @@ var Grapheme = (function (exports) {
       case 'atanh':
         var isAtanh = true;
       case 'acoth':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
             children: [
               opNode.children[0].derivative(variable),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '-',
                 children: [
                   new ConstantNode({ value: 1 }),
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: '^',
                     children: [
                       opNode.children[0].clone(),
@@ -4687,9 +4693,9 @@ var Grapheme = (function (exports) {
                 ]
               })
             ]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: isAtanh ? '<=' : '>=',
-            children: [new OperatorNode({
+            children: [new OperatorNode$1({
               operator: 'abs',
               children: [opNode.children[0].clone()]
             }), new ConstantNode({ value: 1 })]
@@ -4697,30 +4703,30 @@ var Grapheme = (function (exports) {
             new ConstantNode({ value: NaN })]
         })
       case 'asech':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
             children: [
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [
                   new ConstantNode({ value: -1 }),
                   opNode.children[0].derivative(variable)
                 ]
               }),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [
                   opNode.children[0].clone(),
-                  new OperatorNode({
+                  new OperatorNode$1({
                     operator: 'sqrt',
                     children: [
-                      new OperatorNode({
+                      new OperatorNode$1({
                         operator: '-',
                         children: [
                           new ConstantNode({ value: 1 }),
-                          new OperatorNode({
+                          new OperatorNode$1({
                             operator: '^',
                             children: [
                               opNode.children[0].clone(),
@@ -4734,35 +4740,35 @@ var Grapheme = (function (exports) {
                 ]
               })
             ]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>',
             children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
           }), new ConstantNode({ value: NaN })]
         })
       case 'acsch':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '/',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
             }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'abs',
                   children: [
                     opNode.children[0].clone()
                   ]
                 }),
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'sqrt',
                   children: [
-                    new OperatorNode({
+                    new OperatorNode$1({
                       operator: '+',
                       children: [
-                        new OperatorNode({
+                        new OperatorNode$1({
                           operator: '^',
                           children: [
                             opNode.children[0].clone(),
@@ -4780,13 +4786,13 @@ var Grapheme = (function (exports) {
         })
       case 'gamma':
         // Derivative of gamma is polygamma(0, z) * gamma(z) * z'
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
-                new OperatorNode({
+                new OperatorNode$1({
                   operator: 'polygamma',
                   children: [
                     new ConstantNode({ value: 0 }),
@@ -4800,10 +4806,10 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'factorial':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'gamma',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '+',
               children: [
                 new ConstantNode({ value: 1 }),
@@ -4813,17 +4819,17 @@ var Grapheme = (function (exports) {
           ]
         }).derivative(variable)
       case 'abs':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '*',
               children: [
                 new ConstantNode({ value: -1 }),
                 opNode.children[0].derivative(variable)
               ]
             }),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '<',
               children: [
                 opNode.children[0].clone(),
@@ -4846,17 +4852,17 @@ var Grapheme = (function (exports) {
         if (next_level.length === 1) {
           next_level = next_level[0].clone();
         } else {
-          next_level = new OperatorNode({
+          next_level = new OperatorNode$1({
             operator: 'min',
             children: next_level.clone()
           });
         }
 
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '<',
               children: [
                 opNode.children[0],
@@ -4879,17 +4885,17 @@ var Grapheme = (function (exports) {
         if (next_level.length === 1) {
           next_level = next_level[0].clone();
         } else {
-          next_level = new OperatorNode({
+          next_level = new OperatorNode$1({
             operator: 'max',
             children: next_level.map(cow => cow.clone())
           });
         }
 
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
           children: [
             opNode.children[0].derivative(variable),
-            new OperatorNode({
+            new OperatorNode$1({
               operator: '>',
               children: [
                 opNode.children[0],
@@ -4899,13 +4905,15 @@ var Grapheme = (function (exports) {
             next_level.derivative(variable)
           ]
         })
+      case 'mod':
+        return opNode.children[1].derivative(variable)
       case 'floor':
         return new ConstantNode({ value: 0 })
       case 'ceil':
         return new ConstantNode({ value: 0 })
       case 'digamma':
         // digamma = polygamma(0, x)
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'polygamma',
           children: [
             new ConstantNode({ value: 0 }),
@@ -4914,7 +4922,7 @@ var Grapheme = (function (exports) {
         }).derivative(variable)
       case 'trigamma':
         // trigamma = polygamma(1, x)
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'polygamma',
           children: [
             new ConstantNode({ value: 1 }),
@@ -4922,10 +4930,10 @@ var Grapheme = (function (exports) {
           ]
         }).derivative(variable)
       case 'ln_gamma':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
           children: [
-            new OperatorNode({
+            new OperatorNode$1({
               operator: 'digamma',
               children: [
                 opNode.children[0]
@@ -4935,9 +4943,9 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'polygamma':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: '*',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: 'polygamma',
             children: [
               new ConstantNode({ value: opNode.children[0].value + 1 }),
@@ -4948,68 +4956,68 @@ var Grapheme = (function (exports) {
           ]
         })
       case 'ln':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
             children: [
               opNode.children[0].derivative(variable),
               opNode.children[0].clone()
             ]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>',
             children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
           }), new ConstantNode({ value: NaN })]
         })
       case 'log10':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
             children: [
               opNode.children[0].derivative(variable),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [opNode.children[0].clone(), LN10.clone()]
               })
             ]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>',
             children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
           }), new ConstantNode({ value: NaN })]
         })
       case 'log2':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
             children: [
               opNode.children[0].derivative(variable),
-              new OperatorNode({
+              new OperatorNode$1({
                 operator: '*',
                 children: [opNode.children[0], LN2.clone()]
               })
             ]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>',
             children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
           }), new ConstantNode({ value: NaN })]
         })
       case 'logb':
-        return new OperatorNode({
+        return new OperatorNode$1({
           operator: 'ifelse',
-          children: [new OperatorNode({
+          children: [new OperatorNode$1({
             operator: '/',
-            children: [new OperatorNode({
+            children: [new OperatorNode$1({
               operator: 'ln',
               children: [opNode.children[1]]
-            }).derivative(), new OperatorNode({
+            }).derivative(), new OperatorNode$1({
               operator: 'ln',
               children: [
                 opNode.children[0]
               ]
             })]
-          }), new OperatorNode({
+          }), new OperatorNode$1({
             operator: '>',
             children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
           }), new ConstantNode({ value: NaN })]
@@ -5490,7 +5498,7 @@ var Grapheme = (function (exports) {
     return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
   }
 
-  const Functions = {
+  const ExtraFunctions = {
     LogB: (b, v) => {
       return Math.log(v) / Math.log(b)
     },
@@ -5548,6 +5556,9 @@ var Grapheme = (function (exports) {
           return -ret
         }
       }
+    },
+    Mod: (n, m) => {
+      return ((n % m) + m) % m
     }
   };
 
@@ -5650,20 +5661,24 @@ var Grapheme = (function (exports) {
     'atanh': Math.atanh,
     'asec': x => Math.acos(1/x),
     'acsc': x => Math.asin(1/x),
-    'acot': Functions.Arccot,
+    'acot': ExtraFunctions.Arccot,
     'acsch': x => Math.asinh(1/x),
     'asech': x => Math.acosh(1/x),
     'acoth': x => Math.atanh(1/x),
-    'logb': Functions.LogB,
-    'gamma': Functions.Gamma,
-    'factorial': Functions.Factorial,
-    'ln_gamma': Functions.LnGamma,
-    'digamma': Functions.Digamma,
-    'trigamma': Functions.Trigamma,
-    'polygamma': Functions.Polygamma,
-    'pow_rational': Functions.PowRational,
+    'logb': ExtraFunctions.LogB,
+    'gamma': ExtraFunctions.Gamma,
+    'factorial': ExtraFunctions.Factorial,
+    'ln_gamma': ExtraFunctions.LnGamma,
+    'digamma': ExtraFunctions.Digamma,
+    'trigamma': ExtraFunctions.Trigamma,
+    'polygamma': ExtraFunctions.Polygamma,
+    'pow_rational': ExtraFunctions.PowRational,
     'max': Math.max,
     'min': Math.min,
+    'mod': ExtraFunctions.Mod,
+    'remainder': (n, m) => {
+      return n % m
+    },
     'floor': Math.floor,
     'ceil': Math.ceil,
     'and': (x, y) => x && y,
@@ -5822,12 +5837,333 @@ var Grapheme = (function (exports) {
     }
   }
 
+  const OperatorPatterns = {
+    'sin': ['Math.sin'],
+    '+': ['', '+'],
+    '-': ['', '-'],
+    '*': ['', '*'],
+    '/': ['', '/'],
+    '^': ['', '**'],
+    '<': ['', '<'],
+    '<=': ['', '<='],
+    '>': ['', '>'],
+    '>=': ['', '>='],
+    '==': ['', '==='],
+    '!=': ['', '!=='],
+    'tan': ['Math.tan'],
+    'cos': ['Math.cos'],
+    'csc': ['1/Math.sin'],
+    'sec': ['1/Math.cos'],
+    'cot': ['1/Math.tan'],
+    'asin': ['Math.asin'],
+    'acos': ['Math.acos'],
+    'atan': ['Math.atan'],
+    'abs': ['Math.abs'],
+    'sqrt': ['Math.sqrt'],
+    'cbrt': ['Math.cbrt'],
+    'ln': ['Math.log'],
+    'log': ['Math.log'],
+    'log10': ['Math.log10'],
+    'log2': ['Math.log2'],
+    'sinh': ['Math.sinh'],
+    'cosh': ['Math.cosh'],
+    'tanh': ['Math.tanh'],
+    'csch': ['1/Math.sinh'],
+    'sech': ['1/Math.cosh'],
+    'coth': ['1/Math.tanh'],
+    'asinh': ['Math.asinh'],
+    'acosh': ['Math.acosh'],
+    'atanh': ['Math.atanh'],
+    'asec': ['Math.acos(1/', '+', ')'],
+    'acsc': ['Math.asin(1/', '+', ')'],
+    'acot': [isWorker ? 'ExtraFunctions.Arccot' : 'Grapheme.ExtraFunctions.Arccot', ','],
+    'acsch': ['Math.asinh(1/', '+', ')'],
+    'asech': ['Math.acosh(1/', '+', ')'],
+    'acoth': ['Math.atanh(1/', '+', ')'],
+    'logb': [isWorker ? 'ExtraFunctions.LogB' : 'Grapheme.ExtraFunctions.LogB', ','],
+    'gamma': [isWorker ? 'ExtraFunctions.Gamma' : 'Grapheme.ExtraFunctions.Gamma', ','],
+    'factorial': [isWorker ? 'ExtraFunctions.Factorial' : 'Grapheme.ExtraFunctions.Factorial', ','],
+    'ln_gamma': [isWorker ? 'ExtraFunctions.LnGamma' : 'Grapheme.ExtraFunctions.LnGamma', ','],
+    'digamma': [isWorker ? 'ExtraFunctions.Digamma' : 'Grapheme.ExtraFunctions.Digamma', ','],
+    'trigamma': [isWorker ? 'ExtraFunctions.Trigamma' : 'Grapheme.ExtraFunctions.Trigamma', ','],
+    'polygamma': [isWorker ? 'ExtraFunctions.Polygamma' : 'Grapheme.ExtraFunctions.Polygamma', ','],
+    'pow_rational': [isWorker ? 'ExtraFunctions.PowRational' : 'Grapheme.ExtraFunctions.PowRational', ','],
+    'max': ['Math.max', ','],
+    'min': ['Math.min', ','],
+    'floor': ['Math.floor', ','],
+    'ceil': ['Math.ceil', ','],
+    'remainder': ['', '%']
+  };
+
+  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
+
+  function getOperatorCompileText(node, defineVariable) {
+    switch (node.operator) {
+      case 'cchain':
+        let components = node.children;
+        let ids = [];
+        for (let i = 0; i < components.length; i += 2) {
+          let variableId = '$' + getRenderID();
+
+          defineVariable(variableId, getCompileText(components[i], defineVariable));
+
+          ids.push(variableId);
+        }
+
+        let comparisons = [];
+
+        for (let i = 1; i < components.length; i += 2) {
+          let comparison = components[i];
+          let lhs = ids[(i - 1) / 2];
+          let rhs = ids[(i + 1) / 2];
+
+          // comparisons in cchains are variables
+          comparisons.push('(' + lhs + comparison.name + rhs + ')');
+        }
+
+        return comparisons.join('&&')
+      case 'ifelse':
+        const res = node.children.map(child => getCompileText(child, defineVariable));
+
+        return `((${res[1]})?(${res[0]}):(${res[2]}))`
+      case 'piecewise':
+        if (node.children.length === 0) {
+          return '(0)'
+        }
+
+        if (node.children.length === 1) {
+          return getCompileText(node.children[0], defineVariable)
+        }
+
+        if (node.children.length === 3) {
+          return getCompileText(OperatorNode({
+            operator: 'ifelse',
+            children: [node.children[1], node.children[0], node.children[2]]
+          }), defineVariable)
+        } else if (node.children.length === 2) {
+          return getCompileText(new OperatorNode({
+            operator: 'ifelse',
+            children: [node.children[1], node.children[0], new ConstantNode({ value: 0 })]
+          }), defineVariable)
+        } else {
+          let remainder = getCompileText(OperatorNode({
+            operator: 'piecewise',
+            children: node.children.slice(2)
+          }), defineVariable);
+
+          let condition = getCompileText(node.children[0], defineVariable);
+          let value = getCompileText(node.children[1], defineVariable);
+
+          return `((${condition})?(${value}):(${remainder}))`
+        }
+      case 'and':
+        return node.children.map(child => getCompileText(child, defineVariable)).join('&&')
+      case 'or':
+        return node.children.map(child => getCompileText(child, defineVariable)).join('||')
+    }
+
+    let pattern = OperatorPatterns[node.operator];
+
+    if (!pattern) {
+      throw new Error('Unrecognized operation')
+    }
+
+    return pattern[0] + '(' + node.children.map(child => '(' + getCompileText(child, defineVariable) + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
+  }
+
+  function getCompileText(node, defineVariable) {
+    switch (node.type()) {
+      case "node":
+        return node.children.map(child => '(' + getCompileText(child, defineVariable) + ')').join('+')
+      case "operator":
+        return getOperatorCompileText(node, defineVariable)
+      case "constant":
+        return node.value + ''
+      case "variable":
+        if (comparisonOperators.includes(node.name)) {
+          return '"' + node.name + '"'
+        }
+        return node.name
+    }
+  }
+
+  // Allowed modes: "normal", "interval", "real"
+  function compileNode(node, mode="normal", exportedVariables=['x']) {
+    let preamble = '';
+
+    const defineVariable = (variable, expression) => {
+      preamble += `let ${variable}=${expression};`;
+    };
+
+    let returnVal = getCompileText(node, defineVariable);
+
+    return {
+      func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
+      variableNames: exportedVariables
+    }
+  }
+
+
+  function getIntervalCompileText(node, defineVariable) {
+    switch (node.type()) {
+      case "node":
+        return node.children.map(child => getIntervalCompileText(child, defineVariable)).join(',')
+      case "operator":
+        const children_text = node.children.map(child => getIntervalCompileText(child, defineVariable)).join(',');
+
+        return `${isWorker ? "IntervalFunctions" : "Grapheme.IntervalFunctions"}['${node.operator}'](${children_text})`
+      case "constant":
+        let varName = '$' + getRenderID();
+        if (isNaN(node.value)) {
+          defineVariable(varName, `new ${isWorker ? "Interval" : "Grapheme.Interval"}(NaN, NaN, false, false, true, true)`);
+          return varName
+        }
+
+        defineVariable(varName, `new ${isWorker ? "Interval" : "Grapheme.Interval"}(${node.value}, ${node.value}, true, true, true, true)`);
+        return varName
+      case "variable":
+        if (comparisonOperators.includes(node.name)) {
+          return '"' + node.name + '"'
+        }
+        return node.name
+    }
+  }
+
+  function compileNodeInterval(node, exportedVariables=['x']) {
+    let preamble = '';
+
+    const defineVariable = (variable, expression) => {
+      preamble += `let ${variable}=${expression};`;
+    };
+
+    let returnVal = getIntervalCompileText(node, defineVariable);
+
+    return {
+      func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
+      variableNames: exportedVariables
+    }
+  }
+
+  function getRealCompileText(node, defineRealVariable) {
+    switch (node.type()) {
+      case "node":
+        return node.children.map(child => '(' + getRealCompileText(child, defineRealVariable) + ')').join(',')
+      case "operator":
+        let children = node.children;
+        if (node.operator === 'piecewise') {
+          if (children.length % 2 === 0) {
+            // add default value of 0
+            children = children.slice();
+            children.push(new ConstantNode({
+              value: 0,
+              text: '0'
+            }));
+          }
+        }
+
+        if (node.operator === 'ifelse') {
+          if (children.length === 2) {
+            // add default value of 0
+            children = children.slice();
+            children.push(new ConstantNode({
+              value: 0,
+              text: '0'
+            }));
+            return
+          }
+        }
+
+        const children_text = children.map(child => getRealCompileText(child, defineRealVariable)).join(',');
+
+        return `${isWorker ? "RealFunctions" : "Grapheme.RealFunctions"}S['${node.operator}'](${children_text})`
+      case "constant":
+        let varName = '$' + getRenderID();
+        defineRealVariable(varName, node.text);
+        return varName
+      case "variable":
+        if (comparisonOperators.includes(node.name)) {
+          return `'${node.name}'`
+        }
+        let name = '$' + getRenderID();
+
+        defineRealVariable(name, null, node.name);
+
+        return name
+
+    }
+  }
+
+  function compileNodeReal(node, exportedVariables=['x']) {
+    let Variables = {};
+    let preamble = '';
+
+    const defineRealVariable = (name, value, variable) => {
+      Variables[name] = new Grapheme.Real(precision);
+      if (value) {
+        if (value === 'pi') {
+          preamble += `${name}.set_pi()`;
+        } else if (value === 'e') {
+          preamble += `${name}.set_e()`;
+        } else if (isExactlyRepresentableAsFloat(value)) {
+          preamble += `${name}.value = ${value.toString()}; `;
+        } else {
+          preamble += `${name}.value = "${value}"; `;
+        }
+
+      } else {
+        preamble += `${name}.value = ${variable};`;
+      }
+    };
+
+    let text = getRealCompileText(node, defineRealVariable);
+
+    let realVarNames = Object.keys(Variables);
+    let realVars = realVarNames.map(name => Variables[name]);
+
+    let func = new Function(...realVarNames, ...exportedVariables, `${preamble}
+      return ${text};`);
+    let isValid = true;
+
+    return {
+      isValid () {
+        return isValid
+      },
+      set_precision: (prec) => {
+        if (!isValid) {
+          throw new Error('Already freed compiled real function!')
+        }
+        realVars.forEach(variable => variable.set_precision(prec));
+      },
+      evaluate: (...args) => {
+        if (!isValid) {
+          throw new Error('Already freed compiled real function!')
+        }
+        return func(...realVars, ...args)
+      },
+      variableNames: exportedVariables,
+      free () {
+        if (!isValid) {
+          throw new Error('Already freed compiled real function!')
+        }
+        isValid = false;
+
+        realVars.forEach(variable => variable.__destroy__());
+      },
+      _get_func () {
+        if (!isValid) {
+          throw new Error('Already freed compiled real function!')
+        }
+        return func
+      }
+    }
+  }
+
   // const fs = require( ...
 
   // List of operators (currently)
   // +, -, *, /, ^,
 
-  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
+  const comparisonOperators$1 = ['<', '>', '<=', '>=', '!=', '=='];
 
   let floatRepresentabilityTester;
   const matchIntegralComponent = /[0-9]*\./;
@@ -5858,16 +6194,11 @@ var Grapheme = (function (exports) {
       this.parent = parent;
     }
 
-    _getCompileText (defineVariable) {
-      return this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join('+')
-    }
+    getDependencies() {
 
-    _getIntervalCompileText (defineVariable) {
-      return this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',')
     }
 
     _getRealCompileText (defineRealVariable) {
-      return this.children.map(child => '(' + child._getRealCompileText(defineRealVariable) + ')').join('+')
     }
 
     applyAll (func, depth = 0) {
@@ -5893,36 +6224,15 @@ var Grapheme = (function (exports) {
         exportedVariables = this.getVariableNames();
       }
 
-      let preamble = '';
-
-      const defineVariable = (variable, expression) => {
-        preamble += `let ${variable}=${expression};`;
-      };
-
-      let returnVal = this._getCompileText(defineVariable);
-
-      return {
-        func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
-        variableNames: exportedVariables
-      }
+      return compileNode(this, exportedVariables)
     }
 
     compileInterval (exportedVariables) {
       if (!exportedVariables) {
         exportedVariables = this.getVariableNames();
       }
-      let preamble = '';
 
-      const defineVariable = (variable, expression) => {
-        preamble += `let ${variable}=${expression};`;
-      };
-
-      let returnVal = this._getIntervalCompileText(defineVariable);
-
-      return {
-        func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
-        variableNames: exportedVariables
-      }
+      return compileNodeInterval(this, exportedVariables)
     }
 
     compileReal (exportedVariables, precision = 53) {
@@ -5930,68 +6240,7 @@ var Grapheme = (function (exports) {
         exportedVariables = this.getVariableNames();
       }
 
-      let Variables = {};
-      let preamble = '';
-
-      const defineRealVariable = (name, value, variable) => {
-        Variables[name] = new Grapheme.Real(precision);
-        if (value) {
-          if (value === 'pi') {
-            preamble += `${name}.set_pi()`;
-          } else if (value === 'e') {
-            preamble += `${name}.set_e()`;
-          } else if (isExactlyRepresentableAsFloat(value)) {
-            preamble += `${name}.value = ${value.toString()}; `;
-          } else {
-            preamble += `${name}.value = "${value}"; `;
-          }
-
-        } else {
-          preamble += `${name}.value = ${variable};`;
-        }
-      };
-
-      let text = this._getRealCompileText(defineRealVariable);
-
-      let realVarNames = Object.keys(Variables);
-      let realVars = realVarNames.map(name => Variables[name]);
-
-      let func = new Function(...realVarNames, ...exportedVariables, `${preamble}
-      return ${text};`);
-      let isValid = true;
-
-      return {
-        isValid () {
-          return isValid
-        },
-        set_precision: (prec) => {
-          if (!isValid) {
-            throw new Error('Already freed compiled real function!')
-          }
-          realVars.forEach(variable => variable.set_precision(prec));
-        },
-        evaluate: (...args) => {
-          if (!isValid) {
-            throw new Error('Already freed compiled real function!')
-          }
-          return func(...realVars, ...args)
-        },
-        variableNames: exportedVariables,
-        free () {
-          if (!isValid) {
-            throw new Error('Already freed compiled real function!')
-          }
-          isValid = false;
-
-          realVars.forEach(variable => variable.__destroy__());
-        },
-        _get_func () {
-          if (!isValid) {
-            throw new Error('Already freed compiled real function!')
-          }
-          return func
-        }
-      }
+      return compileNodeReal(this, exportedVariables)
     }
 
     derivative (variable) {
@@ -6023,7 +6272,7 @@ var Grapheme = (function (exports) {
         if (child instanceof VariableNode) {
           let name = child.name;
 
-          if (variableNames.indexOf(name) === -1 && comparisonOperators.indexOf(name) === -1) {
+          if (variableNames.indexOf(name) === -1 && comparisonOperators$1.indexOf(name) === -1) {
             variableNames.push(name);
           }
         }
@@ -6094,31 +6343,6 @@ var Grapheme = (function (exports) {
       this.name = name;
     }
 
-    _getCompileText (defineVariable) {
-      if (comparisonOperators.includes(this.name)) {
-        return '"' + this.name + '"'
-      }
-      return this.name
-    }
-
-    _getIntervalCompileText (defineVariable) {
-      if (comparisonOperators.includes(this.name)) {
-        return '"' + this.name + '"'
-      }
-      return this.name
-    }
-
-    _getRealCompileText (defineRealVariable) {
-      if (comparisonOperators.includes(this.name)) {
-        return `'${this.name}'`
-      }
-      let var_name = '$' + getRenderID();
-
-      defineRealVariable(var_name, null, this.name);
-
-      return var_name
-    }
-
     clone () {
       return new VariableNode({ name: this.name })
     }
@@ -6148,7 +6372,7 @@ var Grapheme = (function (exports) {
     }
 
     latex () {
-      if (comparisonOperators.includes(this.name)) {
+      if (comparisonOperators$1.includes(this.name)) {
         switch (this.name) {
           case '>':
           case '<':
@@ -6179,63 +6403,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  const OperatorPatterns = {
-    'sin': ['Math.sin'],
-    '+': ['', '+'],
-    '-': ['', '-'],
-    '*': ['', '*'],
-    '/': ['', '/'],
-    '^': ['', '**'],
-    '<': ['', '<'],
-    '<=': ['', '<='],
-    '>': ['', '>'],
-    '>=': ['', '>='],
-    '==': ['', '==='],
-    '!=': ['', '!=='],
-    'tan': ['Math.tan'],
-    'cos': ['Math.cos'],
-    'csc': ['1/Math.sin'],
-    'sec': ['1/Math.cos'],
-    'cot': ['1/Math.tan'],
-    'asin': ['Math.asin'],
-    'acos': ['Math.acos'],
-    'atan': ['Math.atan'],
-    'abs': ['Math.abs'],
-    'sqrt': ['Math.sqrt'],
-    'cbrt': ['Math.cbrt'],
-    'ln': ['Math.log'],
-    'log': ['Math.log'],
-    'log10': ['Math.log10'],
-    'log2': ['Math.log2'],
-    'sinh': ['Math.sinh'],
-    'cosh': ['Math.cosh'],
-    'tanh': ['Math.tanh'],
-    'csch': ['1/Math.sinh'],
-    'sech': ['1/Math.cosh'],
-    'coth': ['1/Math.tanh'],
-    'asinh': ['Math.asinh'],
-    'acosh': ['Math.acosh'],
-    'atanh': ['Math.atanh'],
-    'asec': ['Math.acos(1/', '+', ')'],
-    'acsc': ['Math.asin(1/', '+', ')'],
-    'acot': ['Grapheme.Functions.Arccot', ','],
-    'acsch': ['Math.asinh(1/', '+', ')'],
-    'asech': ['Math.acosh(1/', '+', ')'],
-    'acoth': ['Math.atanh(1/', '+', ')'],
-    'logb': ['Grapheme.Functions.LogB', ','],
-    'gamma': ['Grapheme.Functions.Gamma', ','],
-    'factorial': ['Grapheme.Functions.Factorial', ','],
-    'ln_gamma': ['Grapheme.Functions.LnGamma', ','],
-    'digamma': ['Grapheme.Functions.Digamma', ','],
-    'trigamma': ['Grapheme.Functions.Trigamma', ','],
-    'polygamma': ['Grapheme.Functions.Polygamma', ','],
-    'pow_rational': ['Grapheme.Functions.PowRational', ','],
-    'max': ['Math.max', ','],
-    'min': ['Math.min', ','],
-    'floor': ['Math.floor', ','],
-    'ceil': ['Math.ceil', ',']
-  };
-
   const OperatorSynonyms = {
     'arcsinh': 'asinh',
     'arsinh': 'asinh',
@@ -6264,7 +6431,7 @@ var Grapheme = (function (exports) {
     'log': 'ln'
   };
 
-  class OperatorNode extends ASTNode {
+  class OperatorNode$1 extends ASTNode {
     constructor (params = {}) {
       super(params);
 
@@ -6275,118 +6442,8 @@ var Grapheme = (function (exports) {
       this.operator = operator;
     }
 
-    _getCompileText (defineVariable) {
-
-      switch (this.operator) {
-        case 'cchain':
-          let components = this.children;
-          let ids = [];
-          for (let i = 0; i < components.length; i += 2) {
-            let variableId = '$' + getRenderID();
-
-            defineVariable(variableId, components[i]._getCompileText(defineVariable));
-
-            ids.push(variableId);
-          }
-
-          let comparisons = [];
-
-          for (let i = 1; i < components.length; i += 2) {
-            let comparison = components[i];
-            let lhs = ids[(i - 1) / 2];
-            let rhs = ids[(i + 1) / 2];
-
-            // comparisons in cchains are variables
-            comparisons.push('(' + lhs + comparison.name + rhs + ')');
-          }
-
-          return comparisons.join('&&')
-        case 'ifelse':
-          const res = this.children.map(child => child._getCompileText(defineVariable));
-
-          return `((${res[1]})?(${res[0]}):(${res[2]}))`
-        case 'piecewise':
-          if (this.children.length === 0) {
-            return '(0)'
-          }
-
-          if (this.children.length === 1) {
-            return this.children[0]._getCompileText(defineVariable)
-          }
-
-          if (this.children.length === 3) {
-            return new OperatorNode({
-              operator: 'ifelse',
-              children: [this.children[1], this.children[0], this.children[2]]
-            })._getCompileText(defineVariable)
-          } else if (this.children.length === 2) {
-            return new OperatorNode({
-              operator: 'ifelse',
-              children: [this.children[1], this.children[0], new ConstantNode({ value: 0 })]
-            })._getCompileText(defineVariable)
-          } else {
-            let remainder = new OperatorNode({
-              operator: 'piecewise',
-              children: this.children.slice(2)
-            })._getCompileText(defineVariable);
-
-            let condition = this.children[0]._getCompileText(defineVariable);
-            let value = this.children[1]._getCompileText(defineVariable);
-
-            return `((${condition})?(${value}):(${remainder}))`
-          }
-        case 'and':
-          return this.children.map(child => child._getCompileText(defineVariable)).join('&&')
-        case 'or':
-          return this.children.map(child => child._getCompileText(defineVariable)).join('||')
-      }
-
-      let pattern = OperatorPatterns[this.operator];
-
-      if (!pattern) {
-        throw new Error('Unrecognized operation')
-      }
-
-      return pattern[0] + '(' + this.children.map(child => '(' + child._getCompileText(defineVariable) + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
-    }
-
-    _getIntervalCompileText (defineVariable) {
-      const children_text = this.children.map(child => child._getIntervalCompileText(defineVariable)).join(',');
-
-      return `Grapheme.Intervals['${this.operator}'](${children_text})`
-    }
-
-    _getRealCompileText (defineRealVariable) {
-      let children = this.children;
-      if (this.operator === 'piecewise') {
-        if (children.length % 2 === 0) {
-          // add default value of 0
-          children = children.slice();
-          children.push(new ConstantNode({
-            value: 0,
-            text: '0'
-          }));
-        }
-      }
-
-      if (this.operator === 'ifelse') {
-        if (children.length === 2) {
-          // add default value of 0
-          children.push(new ConstantNode({
-            value: 0,
-            text: '0'
-          }));
-          return
-        }
-      }
-
-      const children_text = children.map(child => child._getRealCompileText(defineRealVariable)).join(',');
-
-      return `Grapheme.REAL_FUNCTIONS['${this.operator}'](${children_text})`
-    }
-
     clone () {
-      let node = new OperatorNode({ operator: this.operator });
+      let node = new OperatorNode$1({ operator: this.operator });
 
       node.children = this.children.map(child => child.clone());
 
@@ -6435,27 +6492,6 @@ var Grapheme = (function (exports) {
       this.value = value;
       this.text = text ? text : StandardLabelFunction(value);
       this.invisible = invisible;
-    }
-
-    _getCompileText (defineVariable) {
-      return this.value + ''
-    }
-
-    _getIntervalCompileText (defineVariable) {
-      let varName = '$' + getRenderID();
-      if (isNaN(this.value)) {
-        defineVariable(varName, `new Grapheme.Interval(NaN, NaN, false, false, true, true)`);
-        return varName
-      }
-
-      defineVariable(varName, `new Grapheme.Interval(${this.value}, ${this.value}, true, true, true, true)`);
-      return varName
-    }
-
-    _getRealCompileText (defineRealVariable) {
-      let var_name = '$' + getRenderID();
-      defineRealVariable(var_name, this.text);
-      return var_name
     }
 
     clone () {
@@ -6507,33 +6543,17 @@ var Grapheme = (function (exports) {
     if (Number.isInteger(parseFloat(power))) {
       return true
     }
-
-    return false
-
-    /*if (!floatRepresentabilityTester)
-      floatRepresentabilityTester = new Real(0, 53)
-
-    floatRepresentabilityTester.value = power
-
-    floatRepresentabilityTester.subtract_float(1)
-
-    floatRepresentabilityTester.set_precision(106)
-
-    floatRepresentabilityTester.add_float(1)
-
-    return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
-      power.replace(matchIntegralComponent, '');*/
   }
 
-  const LN2 = new OperatorNode({
+  const LN2 = new OperatorNode$1({
     operator: 'ln',
     children: [new ConstantNode({ value: 10 })]
   });
-  const LN10 = new OperatorNode({
+  const LN10 = new OperatorNode$1({
     operator: 'ln',
     children: [new ConstantNode({ value: 10 })]
   });
-  const ONE_THIRD = new OperatorNode({
+  const ONE_THIRD = new OperatorNode$1({
     operator: '/',
     children: [
       new ConstantNode({ value: 1 }),
@@ -6824,7 +6844,7 @@ var Grapheme = (function (exports) {
             if (child_test.type === "function") {
               let synonym = OperatorSynonyms[child_test.name];
 
-              let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name });
+              let function_node = new OperatorNode$1({ operator: synonym ? synonym : child_test.name });
 
               children[i] = function_node;
 
@@ -6853,7 +6873,7 @@ var Grapheme = (function (exports) {
           let child2 = children[i + 1];
 
           if (child1.op && (child2.op === '-' || child2.op === '+')) {
-            const egg = new OperatorNode({
+            const egg = new OperatorNode$1({
               operator: "*",
               children: [
                 new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
@@ -6883,7 +6903,7 @@ var Grapheme = (function (exports) {
             let child_test = children[i];
 
             if (operators.includes(child_test.op)) {
-              let new_node = new OperatorNode({operator: child_test.op});
+              let new_node = new OperatorNode$1({operator: child_test.op});
 
               new_node.children = [children[i-1],children[i+1]];
 
@@ -6924,7 +6944,7 @@ var Grapheme = (function (exports) {
             }
 
             if (cchain_found) {
-              child.children = children.slice(0, i-1).concat(new OperatorNode({
+              child.children = children.slice(0, i-1).concat(new OperatorNode$1({
                 operator: "cchain",
                 children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
               })).concat(children.slice(j));
@@ -7329,7 +7349,7 @@ var Grapheme = (function (exports) {
     let dashOffset = pen.dashOffset;
     let patternLength = dashPattern.reduce((a, b) => a + b);
 
-    if (patternLength < 2)
+    if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0))
       return vertices
 
     let currentOffset = dashOffset;
@@ -7430,7 +7450,6 @@ var Grapheme = (function (exports) {
       }
 
       let length = fastHypot(x2 - x1, y2 - y1);
-
       let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2);
 
       if (!intersect) {
@@ -7550,7 +7569,7 @@ var Grapheme = (function (exports) {
     }
 
     let x1, x2, x3, y1, y2, y3;
-    let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, nu_x, nu_y, pu_x, pu_y, dis;
+    let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis;
 
     for (let i = 0; i < origVertexCount; ++i) {
       x1 = (i !== 0) ? vertices[2 * i - 2] : NaN; // Previous vertex
@@ -7566,29 +7585,29 @@ var Grapheme = (function (exports) {
       }
 
       if (isNaN(x1) || isNaN(y1)) { // starting endcap
-        let nu_x = x3 - x2;
-        let nu_y = y3 - y2;
+        v2x = x3 - x2;
+        v2y = y3 - y2;
 
-        v2l = fastHypot(nu_x, nu_y);
+        v2l = fastHypot(v2x, v2y);
 
         if (v2l < 0.001) {
-          nu_x = 1;
-          nu_y = 0;
+          v2x = 1;
+          v2y = 0;
         } else {
-          nu_x /= v2l;
-          nu_y /= v2l;
+          v2x /= v2l;
+          v2y /= v2l;
         }
 
-        if (isNaN(nu_x) || isNaN(nu_y)) {
+        if (isNaN(v2x) || isNaN(v2y)) {
           continue
         } // undefined >:(
 
         if (endcap === 1) {
           // rounded endcap
-          let theta = fastAtan2(nu_y, nu_x) + Math.PI / 2;
+          let theta = fastAtan2(v2y, v2x) + Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
 
-          let o_x = x2 - th * nu_y, o_y = y2 + th * nu_x;
+          let o_x = x2 - th * v2y, o_y = y2 + th * v2x;
 
           for (let i = 1; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
@@ -7598,35 +7617,36 @@ var Grapheme = (function (exports) {
           continue
         } else {
           // no endcap
-          glVertices.push(x2 + th * nu_y, y2 - th * nu_x, x2 - th * nu_y, y2 + th * nu_x);
+          glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x);
           continue
         }
       }
 
       if (isNaN(x3) || isNaN(y3)) { // ending endcap
-        let pu_x = x2 - x1;
-        let pu_y = y2 - y1;
-        let dis = fastHypot(pu_x, pu_y);
+        v1x = x2 - x1;
+        v1y = y2 - y1;
 
-        if (dis < 0.001) {
-          pu_x = 1;
-          pu_y = 0;
+        v1l = v2l;
+
+        if (v1l < 0.001) {
+          v1x = 1;
+          v1y = 0;
         } else {
-          pu_x /= dis;
-          pu_y /= dis;
+          v1x /= v1l;
+          v1y /= v1l;
         }
 
-        if (isNaN(pu_x) || isNaN(pu_y)) {
+        if (isNaN(v1x) || isNaN(v1y)) {
           continue
         } // undefined >:(
 
-        glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x);
+        glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x);
 
         if (endcap === 1) {
-          let theta = fastAtan2(pu_y, pu_x) + 3 * Math.PI / 2;
+          let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
 
-          let o_x = x2 - th * pu_y, o_y = y2 + th * pu_x;
+          let o_x = x2 - th * v1y, o_y = y2 + th * v1x;
 
           for (let i = 1; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
@@ -7665,7 +7685,7 @@ var Grapheme = (function (exports) {
         scale = th * v1l / (b1_x * v1y - b1_y * v1x);
 
         if (join === 2 || (Math.abs(scale) < maxMiterLength)) {
-          // if the length of the miter is massive and we're in dynamic mode, we exit pen if statement and do a rounded join
+          // if the length of the miter is massive and we're in dynamic mode, we exit this if statement and do a rounded join
           b1_x *= scale;
           b1_y *= scale;
 
@@ -7675,35 +7695,35 @@ var Grapheme = (function (exports) {
         }
       }
 
-      nu_x = x3 - x2;
-      nu_y = y3 - y2;
-      dis = fastHypot(nu_x, nu_y);
+      v2x = x3 - x2;
+      v2y = y3 - y2;
+      dis = fastHypot(v2x, v2y);
 
       if (dis < 0.001) {
-        nu_x = 1;
-        nu_y = 0;
+        v2x = 1;
+        v2y = 0;
       } else {
-        nu_x /= dis;
-        nu_y /= dis;
+        v2x /= dis;
+        v2y /= dis;
       }
 
-      pu_x = x2 - x1;
-      pu_y = y2 - y1;
-      dis = fastHypot(pu_x, pu_y);
+      v1x = x2 - x1;
+      v1y = y2 - y1;
+      dis = fastHypot(v1x, v1y);
 
       if (dis === 0) {
-        pu_x = 1;
-        pu_y = 0;
+        v1x = 1;
+        v1y = 0;
       } else {
-        pu_x /= dis;
-        pu_y /= dis;
+        v1x /= dis;
+        v1y /= dis;
       }
 
-      glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x);
+      glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x);
 
       if (join === 1 || join === 3) {
-        let a1 = fastAtan2(-pu_y, -pu_x) - Math.PI / 2;
-        let a2 = fastAtan2(nu_y, nu_x) - Math.PI / 2;
+        let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2;
+        let a2 = fastAtan2(v2y, v2x) - Math.PI / 2;
 
         // if right turn, flip a2
         // if left turn, flip a1
@@ -7729,7 +7749,7 @@ var Grapheme = (function (exports) {
         }
       }
 
-      glVertices.push(x2 + th * nu_y, y2 - th * nu_x, x2 - th * nu_y, y2 + th * nu_x);
+      glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x);
     }
 
     return {
@@ -12140,7 +12160,7 @@ void main() {
     }
   };
 
-  const REAL_FUNCTIONS = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS};
+  const RealFunctions = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS};
 
   // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
   // See more information at this (very readable) paper by Jeff Tupper:
@@ -12837,7 +12857,7 @@ void main() {
   }
 
   function GAMMA(i1) {
-    
+
   }
 
   function DIGAMMA(i1) {
@@ -12877,13 +12897,12 @@ void main() {
   }
 
 
-  const Intervals = {
+  const IntervalFunctions = Object.freeze({
     '+': ADD, '*': MULTIPLY, '/': DIVIDE, '-': SUBTRACT, '^': POW, 'pow_rational': POW_RATIONAL, 'sqrt': SQRT, 'cbrt': CBRT,
     '<': LESS_THAN, '>': GREATER_THAN, '<=': LESS_EQUAL_THAN, '>=': GREATER_EQUAL_THAN, '==': EQUAL, '!=': NOT_EQUAL,
     'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
     'cchain': CCHAIN
-  };
-  Object.freeze(Intervals);
+  });
 
   function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
     let polyline = [];
@@ -13125,18 +13144,25 @@ void main() {
     }
   }
 
-  function nodeFromJSON(topNode) {
-    let children = topNode.children ? topNode.children.map(child => nodeFromJSON(child)) : [];
+  /**
+   * Convert a JSONified node into a node that we can use. This works recursively
+   * @param json The JSON to convert
+   * @returns {ConstantNode|VariableNode|ASTNode|OperatorNode} The corresponding ASTNode
+   */
+  function nodeFromJSON(json) {
+    // Children of the node
+    let children = json.children ? json.children.map(child => nodeFromJSON(child)) : [];
 
-    switch (topNode.type) {
+    // Return corresponding node type
+    switch (json.type) {
       case "operator":
-        return new OperatorNode({operator: topNode.operator, children})
+        return new OperatorNode$1({operator: json.operator, children})
       case "variable":
-        return new VariableNode({name: topNode.name, children})
+        return new VariableNode({name: json.name, children})
       case "node":
         return new ASTNode({children})
       case "constant":
-        return new ConstantNode({value: topNode.value, text: topNode.text, invisible: topNode.invisible})
+        return new ConstantNode({value: json.value, text: json.text, invisible: json.invisible})
     }
   }
 
@@ -13328,8 +13354,8 @@ void main() {
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.DefaultUniverse = DefaultUniverse;
   exports.EquationPlot2D = EquationPlot2D;
+  exports.ExtraFunctions = ExtraFunctions;
   exports.FunctionPlot2D = FunctionPlot2D;
-  exports.Functions = Functions;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
   exports.Group = GraphemeGroup;
@@ -13337,21 +13363,21 @@ void main() {
   exports.InteractiveFunctionPlot2D = InteractiveFunctionPlot2D;
   exports.Interpolations = Interpolations;
   exports.Interval = Interval;
+  exports.IntervalFunctions = IntervalFunctions;
   exports.IntervalSet = IntervalSet;
-  exports.Intervals = Intervals;
   exports.LN10 = LN10;
   exports.LN2 = LN2;
   exports.Label2D = Label2D;
   exports.ONE_THIRD = ONE_THIRD;
-  exports.OperatorNode = OperatorNode;
+  exports.OperatorNode = OperatorNode$1;
   exports.OperatorSynonyms = OperatorSynonyms;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;
   exports.PolylineElement = PolylineElement;
-  exports.REAL_FUNCTIONS = REAL_FUNCTIONS;
   exports.Real = OvinusReal;
+  exports.RealFunctions = RealFunctions;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
   exports.Universe = GraphemeUniverse;

@@ -98,7 +98,7 @@ function convertTriangleStrip(vertices, pen) {
   }
 
   let x1, x2, x3, y1, y2, y3
-  let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, nu_x, nu_y, pu_x, pu_y, dis
+  let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis
 
   for (let i = 0; i < origVertexCount; ++i) {
     x1 = (i !== 0) ? vertices[2 * i - 2] : NaN // Previous vertex
@@ -114,29 +114,29 @@ function convertTriangleStrip(vertices, pen) {
     }
 
     if (isNaN(x1) || isNaN(y1)) { // starting endcap
-      let nu_x = x3 - x2
-      let nu_y = y3 - y2
+      v2x = x3 - x2
+      v2y = y3 - y2
 
-      v2l = fastHypot(nu_x, nu_y)
+      v2l = fastHypot(v2x, v2y)
 
       if (v2l < 0.001) {
-        nu_x = 1
-        nu_y = 0
+        v2x = 1
+        v2y = 0
       } else {
-        nu_x /= v2l
-        nu_y /= v2l
+        v2x /= v2l
+        v2y /= v2l
       }
 
-      if (isNaN(nu_x) || isNaN(nu_y)) {
+      if (isNaN(v2x) || isNaN(v2y)) {
         continue
       } // undefined >:(
 
       if (endcap === 1) {
         // rounded endcap
-        let theta = fastAtan2(nu_y, nu_x) + Math.PI / 2
+        let theta = fastAtan2(v2y, v2x) + Math.PI / 2
         let steps_needed = Math.ceil(Math.PI / pen.endcapRes)
 
-        let o_x = x2 - th * nu_y, o_y = y2 + th * nu_x
+        let o_x = x2 - th * v2y, o_y = y2 + th * v2x
 
         for (let i = 1; i <= steps_needed; ++i) {
           let theta_c = theta + i / steps_needed * Math.PI
@@ -146,35 +146,36 @@ function convertTriangleStrip(vertices, pen) {
         continue
       } else {
         // no endcap
-        glVertices.push(x2 + th * nu_y, y2 - th * nu_x, x2 - th * nu_y, y2 + th * nu_x)
+        glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x)
         continue
       }
     }
 
     if (isNaN(x3) || isNaN(y3)) { // ending endcap
-      let pu_x = x2 - x1
-      let pu_y = y2 - y1
-      let dis = fastHypot(pu_x, pu_y)
+      v1x = x2 - x1
+      v1y = y2 - y1
 
-      if (dis < 0.001) {
-        pu_x = 1
-        pu_y = 0
+      v1l = v2l
+
+      if (v1l < 0.001) {
+        v1x = 1
+        v1y = 0
       } else {
-        pu_x /= dis
-        pu_y /= dis
+        v1x /= v1l
+        v1y /= v1l
       }
 
-      if (isNaN(pu_x) || isNaN(pu_y)) {
+      if (isNaN(v1x) || isNaN(v1y)) {
         continue
       } // undefined >:(
 
-      glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x)
+      glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x)
 
       if (endcap === 1) {
-        let theta = fastAtan2(pu_y, pu_x) + 3 * Math.PI / 2
+        let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2
         let steps_needed = Math.ceil(Math.PI / pen.endcapRes)
 
-        let o_x = x2 - th * pu_y, o_y = y2 + th * pu_x
+        let o_x = x2 - th * v1y, o_y = y2 + th * v1x
 
         for (let i = 1; i <= steps_needed; ++i) {
           let theta_c = theta + i / steps_needed * Math.PI
@@ -213,7 +214,7 @@ function convertTriangleStrip(vertices, pen) {
       scale = th * v1l / (b1_x * v1y - b1_y * v1x)
 
       if (join === 2 || (Math.abs(scale) < maxMiterLength)) {
-        // if the length of the miter is massive and we're in dynamic mode, we exit pen if statement and do a rounded join
+        // if the length of the miter is massive and we're in dynamic mode, we exit this if statement and do a rounded join
         b1_x *= scale
         b1_y *= scale
 
@@ -223,35 +224,35 @@ function convertTriangleStrip(vertices, pen) {
       }
     }
 
-    nu_x = x3 - x2
-    nu_y = y3 - y2
-    dis = fastHypot(nu_x, nu_y)
+    v2x = x3 - x2
+    v2y = y3 - y2
+    dis = fastHypot(v2x, v2y)
 
     if (dis < 0.001) {
-      nu_x = 1
-      nu_y = 0
+      v2x = 1
+      v2y = 0
     } else {
-      nu_x /= dis
-      nu_y /= dis
+      v2x /= dis
+      v2y /= dis
     }
 
-    pu_x = x2 - x1
-    pu_y = y2 - y1
-    dis = fastHypot(pu_x, pu_y)
+    v1x = x2 - x1
+    v1y = y2 - y1
+    dis = fastHypot(v1x, v1y)
 
     if (dis === 0) {
-      pu_x = 1
-      pu_y = 0
+      v1x = 1
+      v1y = 0
     } else {
-      pu_x /= dis
-      pu_y /= dis
+      v1x /= dis
+      v1y /= dis
     }
 
-    glVertices.push(x2 + th * pu_y, y2 - th * pu_x, x2 - th * pu_y, y2 + th * pu_x)
+    glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x)
 
     if (join === 1 || join === 3) {
-      let a1 = fastAtan2(-pu_y, -pu_x) - Math.PI / 2
-      let a2 = fastAtan2(nu_y, nu_x) - Math.PI / 2
+      let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2
+      let a2 = fastAtan2(v2y, v2x) - Math.PI / 2
 
       // if right turn, flip a2
       // if left turn, flip a1
@@ -277,7 +278,7 @@ function convertTriangleStrip(vertices, pen) {
       }
     }
 
-    glVertices.push(x2 + th * nu_y, y2 - th * nu_x, x2 - th * nu_y, y2 + th * nu_x)
+    glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x)
   }
 
   return {

@@ -1,7 +1,7 @@
 import { mod, gcd } from "../core/utils"
 import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../math/gamma_function'
 
-const Functions = {
+const ExtraFunctions = {
   LogB: (b, v) => {
     return Math.log(v) / Math.log(b)
   },
@@ -59,7 +59,10 @@ const Functions = {
         return -ret
       }
     }
+  },
+  Mod: (n, m) => {
+    return ((n % m) + m) % m
   }
 }
 
-export { Functions }
+export { ExtraFunctions }

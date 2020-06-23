@@ -23,7 +23,7 @@ function getDashedPolyline(vertices, pen, box) {
   let dashOffset = pen.dashOffset
   let patternLength = dashPattern.reduce((a, b) => a + b)
 
-  if (patternLength < 2)
+  if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0))
     return vertices
 
   let currentOffset = dashOffset
@@ -124,7 +124,6 @@ function getDashedPolyline(vertices, pen, box) {
     }
 
     let length = fastHypot(x2 - x1, y2 - y1)
-
     let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2)
 
     if (!intersect) {

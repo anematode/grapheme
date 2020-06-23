@@ -351,5 +351,6 @@ export {
   deleteBuffersNamed,
   getRenderID,
   flattenVectors,
-  roundToCanvasPixel
+  roundToCanvasPixel,
+  isWorker
 }

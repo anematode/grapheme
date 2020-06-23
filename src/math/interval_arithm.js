@@ -788,7 +788,7 @@ function PIECEWISE(cond, i1, ...args) {
 }
 
 function GAMMA(i1) {
-  
+
 }
 
 function DIGAMMA(i1) {
@@ -855,12 +855,11 @@ function CCHAIN(i1, compare, i2, ...args) {
 }
 
 
-const Intervals = {
+const IntervalFunctions = Object.freeze({
   '+': ADD, '*': MULTIPLY, '/': DIVIDE, '-': SUBTRACT, '^': POW, 'pow_rational': POW_RATIONAL, 'sqrt': SQRT, 'cbrt': CBRT,
   '<': LESS_THAN, '>': GREATER_THAN, '<=': LESS_EQUAL_THAN, '>=': GREATER_EQUAL_THAN, '==': EQUAL, '!=': NOT_EQUAL,
   'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
   'cchain': CCHAIN
-}
-Object.freeze(Intervals)
+})
 
-export {Intervals, Interval, IntervalSet}
+export {IntervalFunctions, Interval, IntervalSet}
