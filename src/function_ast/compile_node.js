@@ -151,8 +151,7 @@ function getCompileText(node, defineVariable) {
   }
 }
 
-// Allowed modes: "normal", "interval", "real"
-export function compileNode(node, mode="normal", exportedVariables=['x']) {
+export function compileNode(node, exportedVariables=['x']) {
   let preamble = ''
 
   const defineVariable = (variable, expression) => {

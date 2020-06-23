@@ -5987,8 +5987,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // Allowed modes: "normal", "interval", "real"
-  function compileNode(node, mode="normal", exportedVariables=['x']) {
+  function compileNode(node, exportedVariables=['x']) {
     let preamble = '';
 
     const defineVariable = (variable, expression) => {
@@ -6560,6 +6559,8 @@ var Grapheme = (function (exports) {
       new ConstantNode({ value: 3 })
     ]
   });
+  const PI = new ConstantNode({text: "pi", value: Math.PI});
+  const E = new ConstantNode({text: "e", value: 2.71828182845904523});
 
   // a * b - c * d ^ g
 
@@ -8673,13 +8674,15 @@ void main() {
     constructor (params = {}) {
       super(params);
 
-      this.inspectionListeners = {};
+      this.inspListeners = {};
 
       this.inspectionEnabled = true;
-      this.inspectionPoint = null;
+
+      this.inspPt = null;
+      this.inspPos = null;
 
       this.inspectionPointLingers = true;
-      this.inspectionPointLabelStyle = new Label2DStyle({dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2});
+      this.inspPtLabelStyle = new Label2DStyle({dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2});
     }
 
     setFunction(func) {
@@ -8689,31 +8692,34 @@ void main() {
     }
 
     removeInspectionPoint() {
-      if (this.inspectionPoint)
-        this.remove(this.inspectionPoint);
-      this.inspectionPoint = null;
+      if (this.inspPt)
+        this.remove(this.inspPt);
+      this.inspPt = null;
     }
 
     update(info) {
       super.update(info);
 
-      if (this.inspectionPoint)
-        this.inspectionPoint.style.fill = this.pen.color;
+      if (this.inspPt && this.inspPos) {
+        this.inspPt.position = this.plot.transform.plotToPixel(this.inspPos);
+
+        this.inspPt.style.fill = this.pen.color;
+
+        this.inspPt.markUpdate();
+      }
     }
 
     set inspectionEnabled (value) {
-      if (value) {
+      if (value)
         this.interactivityEnabled = true;
-      }
 
-      if (this.inspectionEnabled === value) {
+      if (this.inspectionEnabled === value)
         return
-      }
 
       let inspLeo = 0;
 
       if (value) {
-        this.inspectionListeners['interactive-mousedown'] = this.inspectionListeners['interactive-drag'] = (evt) => {
+        this.inspListeners['interactive-mousedown'] = this.inspListeners['interactive-drag'] = (evt) => {
           inspLeo = 0;
           let position = evt.pos;
 
@@ -8725,53 +8731,55 @@ void main() {
           let x = this.plot.transform.pixelToPlotX(closestPoint.x);
           let y = this.function(x);
 
-          if (!this.inspectionPoint) {
-            this.inspectionPoint = new FunctionPlot2DInspectionPoint({
+          if (!this.inspPt) {
+            this.inspPt = new FunctionPlot2DInspectionPoint({
               position: { x, y },
-              labelStyle: this.inspectionPointLabelStyle
+              labelStyle: this.inspPtLabelStyle
             });
 
-            this.inspectionPoint.style.fill = this.pen.color;
+            this.inspPt.style.fill = this.pen.color;
 
-            this.add(this.inspectionPoint);
+            this.add(this.inspPt);
           } else {
             let pos = new Vec2(x, y);
-            let inspectionPt = this.inspectionPoint;
 
-            inspectionPt.position =  this.plot.transform.plotToPixel(pos);
+            this.inspPos = pos;
 
-            inspectionPt.label.text = "(" + pos.asArray().map(StandardLabelFunction).join(', ') + ')';
+            let inspPt = this.inspPt;
+            inspPt.position = this.plot.transform.plotToPixel(pos);
+
+            inspPt.label.text = "(" + pos.asArray().map(StandardLabelFunction).join(', ') + ')';
           }
 
-          this.inspectionPoint.markUpdate();
+          this.inspPt.markUpdate();
 
           return true
         };
 
-        this.inspectionListeners['mouseup'] = (evt) => {
+        this.inspListeners['mouseup'] = (evt) => {
           if (!this.inspectionPointLingers)
             this.removeInspectionPoint();
         };
 
-        this.inspectionListeners["click"] = (evt) => {
+        this.inspListeners["click"] = (evt) => {
           if (this.inspectionPointLingers && inspLeo > 0)
             this.removeInspectionPoint();
           inspLeo++;
         };
 
-        for (let key in this.inspectionListeners) {
-          this.addEventListener(key, this.inspectionListeners[key]);
+        for (let key in this.inspListeners) {
+          this.addEventListener(key, this.inspListeners[key]);
         }
       } else {
-        for (let key in this.inspectionListeners) {
-          this.removeEventListener(key, this.inspectionListeners[key]);
+        for (let key in this.inspListeners) {
+          this.removeEventListener(key, this.inspListeners[key]);
         }
 
-        if (this.inspectionPoint) {
-          this.remove(this.inspectionPoint);
+        if (this.inspPt) {
+          this.remove(this.inspPt);
         }
 
-        this.inspectionListeners = {};
+        this.inspListeners = {};
       }
     }
   }
@@ -13353,6 +13361,7 @@ void main() {
   exports.ConstantNode = ConstantNode;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.DefaultUniverse = DefaultUniverse;
+  exports.E = E;
   exports.EquationPlot2D = EquationPlot2D;
   exports.ExtraFunctions = ExtraFunctions;
   exports.FunctionPlot2D = FunctionPlot2D;
@@ -13371,6 +13380,7 @@ void main() {
   exports.ONE_THIRD = ONE_THIRD;
   exports.OperatorNode = OperatorNode$1;
   exports.OperatorSynonyms = OperatorSynonyms;
+  exports.PI = PI;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;

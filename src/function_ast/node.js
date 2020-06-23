@@ -408,6 +408,8 @@ const ONE_THIRD = new OperatorNode({
     new ConstantNode({ value: 3 })
   ]
 })
+const PI = new ConstantNode({text: "pi", value: Math.PI})
+const E = new ConstantNode({text: "e", value: 2.71828182845904523})
 
 export {
   ONE_THIRD,
@@ -418,6 +420,8 @@ export {
   OperatorSynonyms,
   LN2,
   LN10,
+  PI,
+  E,
   isExactlyRepresentableAsFloat,
   powerExactlyRepresentableAsFloat
 }
