@@ -1,4 +1,4 @@
-import { parse_string } from '../function_ast/parse_string'
+import { parseString } from '../function_ast/parse_string'
 import {InteractiveElement} from '../core/interactive_element'
 import { Colors } from '../other/color'
 import { Interval} from '../math/interval_arithm'
@@ -15,7 +15,7 @@ class EquationPlot2D extends InteractiveElement {
   constructor(params={}) {
     super(params)
 
-    this.equation = parse_string("x^2+y")
+    this.equation = parseString("x^2+y")
 
     this.updateFunc()
 
@@ -30,7 +30,7 @@ class EquationPlot2D extends InteractiveElement {
 
   setEquation(text) {
     if (typeof text === "string") {
-      this.equation = parse_string(text)
+      this.equation = parseString(text)
     } else if (text instanceof ASTNode) {
       this.equation = text
     } else {

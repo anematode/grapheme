@@ -1,7 +1,7 @@
 import { find_roots } from '../math/function_plot_algorithm'
 import { InspectablePoint } from './inspectable_point'
 import { StandardLabelFunction } from './gridlines'
-import { parse_string } from '../function_ast/parse_string'
+import { parseString } from '../function_ast/parse_string'
 
 class FunctionPoints extends GraphemeElement {
   constructor(params={}) {
@@ -9,7 +9,7 @@ class FunctionPoints extends GraphemeElement {
 
     this.points = []
 
-    this.func = parse_string("x^2")
+    this.func = parseString("x^2")
 
     this.updateDerivatives()
   }

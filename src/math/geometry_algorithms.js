@@ -399,6 +399,24 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
     return [x1, y1, x2, y2]
   }
 
+  // Infinities cause weird problems with getLineIntersection, so we just approximate them lol
+  if (x1 === Infinity)
+    x1 = 1e6
+  else if (x1 === -Infinity)
+    x1 = -1e6
+  if (x2 === Infinity)
+    x2 = 1e6
+  else if (x2 === -Infinity)
+    x2 = -1e6
+  if (y1 === Infinity)
+    y1 = 1e6
+  else if (y1 === -Infinity)
+    y1 = -1e6
+  if (y2 === Infinity)
+    y2 = 1e6
+  else if (y2 === -Infinity)
+    y2 = -1e6
+
   let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1)
   let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2)
   let int3 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y2, box_x1, box_y2)

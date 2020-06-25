@@ -436,7 +436,7 @@ var Grapheme = (function (exports) {
     return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
   }
 
-  const isWorker = typeof self !== "undefined";
+  const isWorker = typeof window === "undefined";
 
   // https://stackoverflow.com/a/34749873
   function isObject (item) {
@@ -3279,6 +3279,24 @@ var Grapheme = (function (exports) {
 
       return [x1, y1, x2, y2]
     }
+
+    // Infinities cause weird problems with getLineIntersection, so we just approximate them lol
+    if (x1 === Infinity)
+      x1 = 1e6;
+    else if (x1 === -Infinity)
+      x1 = -1e6;
+    if (x2 === Infinity)
+      x2 = 1e6;
+    else if (x2 === -Infinity)
+      x2 = -1e6;
+    if (y1 === Infinity)
+      y1 = 1e6;
+    else if (y1 === -Infinity)
+      y1 = -1e6;
+    if (y2 === Infinity)
+      y2 = 1e6;
+    else if (y2 === -Infinity)
+      y2 = -1e6;
 
     let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1);
     let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2);
@@ -7002,7 +7020,7 @@ var Grapheme = (function (exports) {
     return root
   }
 
-  function parse_string(string) {
+  function parseString(string) {
     check_parens_balanced(string);
 
     let tokens = [];
@@ -7360,6 +7378,8 @@ var Grapheme = (function (exports) {
     return Math.sqrt(x * x + y * y)
   }
 
+  const MAX_VERTICES = 1e6;
+
   /**
    * Convert a polyline into another polyline, but with dashes.
    * @param vertices {Array} The vertices of the polyline.
@@ -7418,9 +7438,8 @@ var Grapheme = (function (exports) {
     function generateDashes(x1, y1, x2, y2) {
       let length = fastHypot(x2 - x1, y2 - y1);
       let i = currentIndex;
-      let totalLen = 0;
-
-      while (true) {
+      let totalLen = 0, _;
+      for (_ = 0; _ < MAX_VERTICES; _++) {
         let componentLen = dashPattern[i] - currentLesserOffset;
         let endingLen = componentLen + totalLen;
 
@@ -7450,6 +7469,9 @@ var Grapheme = (function (exports) {
 
         totalLen += componentLen;
       }
+
+      if (_ === MAX_VERTICES)
+        console.log(x1, y1, x2, y2);
 
       recalculateOffset(length);
     }
@@ -7498,6 +7520,9 @@ var Grapheme = (function (exports) {
       if (!pt2Contained) {
         recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
       }
+
+      if (result.length > MAX_VERTICES)
+        return result
     }
 
     return result
@@ -13075,7 +13100,7 @@ void main() {
     constructor(params={}) {
       super(params);
 
-      this.equation = parse_string("x^2+y");
+      this.equation = parseString("x^2+y");
 
       this.updateFunc();
 
@@ -13090,7 +13115,7 @@ void main() {
 
     setEquation(text) {
       if (typeof text === "string") {
-        this.equation = parse_string(text);
+        this.equation = parseString(text);
       } else if (text instanceof ASTNode) {
         this.equation = text;
       } else {
@@ -13444,7 +13469,7 @@ void main() {
   exports.ln_gamma = ln_gamma;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.nodeFromJSON = nodeFromJSON;
-  exports.parse_string = parse_string;
+  exports.parseString = parseString;
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
   exports.polygamma = polygamma;

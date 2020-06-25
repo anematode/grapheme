@@ -5,6 +5,8 @@ function fastHypot(x, y) {
   return Math.sqrt(x * x + y * y)
 }
 
+const MAX_VERTICES = 1e6
+
 /**
  * Convert a polyline into another polyline, but with dashes.
  * @param vertices {Array} The vertices of the polyline.
@@ -63,9 +65,8 @@ function getDashedPolyline(vertices, pen, box) {
   function generateDashes(x1, y1, x2, y2) {
     let length = fastHypot(x2 - x1, y2 - y1)
     let i = currentIndex
-    let totalLen = 0
-
-    while (true) {
+    let totalLen = 0, _
+    for (_ = 0; _ < MAX_VERTICES; _++) {
       let componentLen = dashPattern[i] - currentLesserOffset
       let endingLen = componentLen + totalLen
 
@@ -95,6 +96,9 @@ function getDashedPolyline(vertices, pen, box) {
 
       totalLen += componentLen
     }
+
+    if (_ === MAX_VERTICES)
+      console.log(x1, y1, x2, y2)
 
     recalculateOffset(length)
   }
@@ -143,6 +147,9 @@ function getDashedPolyline(vertices, pen, box) {
     if (!pt2Contained) {
       recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]))
     }
+
+    if (result.length > MAX_VERTICES)
+      return result
   }
 
   return result

@@ -35,12 +35,13 @@
 
   dplot.pen.color = Grapheme.Colors.BLACK
 
-  fplot.pen.dashPattern = dplot.pen.dashPattern = [20, 10, 10]
+  fplot.pen.dashPattern = dplot.pen.dashPattern = [0, 12]
+
   fplot.pen.endcap = dplot.pen.endcap = "round"
   fplot.pen.thickness = dplot.pen.thickness = 3
 
     function setFunction(value) {
-      let node = Grapheme.parse_string(value)
+      let node = Grapheme.parseString(value)
       let compile = node.compile()
       let index = compile.variableNames.indexOf('x')
 

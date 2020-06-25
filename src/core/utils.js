@@ -68,7 +68,7 @@ function isTypedArray (arr) {
   return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
 }
 
-const isWorker = typeof self !== "undefined"
+const isWorker = typeof window === "undefined"
 
 // https://stackoverflow.com/a/34749873
 function isObject (item) {

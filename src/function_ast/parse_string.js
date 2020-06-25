@@ -417,7 +417,7 @@ function parse_tokens(tokens) {
   return root
 }
 
-function parse_string(string) {
+function parseString(string) {
   check_parens_balanced(string)
 
   let tokens = []
@@ -431,4 +431,4 @@ function parse_string(string) {
   return parse_tokens(tokens)
 }
 
-export {parse_string, tokenizer}
+export {parseString, tokenizer}

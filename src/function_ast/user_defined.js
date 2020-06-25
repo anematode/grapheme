@@ -10,5 +10,5 @@ function variableExists(varName) {
 }
 
 function defineVariable(varName, node) {
-  
+
 }
