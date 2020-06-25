@@ -1,4 +1,4 @@
-import { find_roots } from './function_plot_algorithm'
+import { find_roots } from '../math/function_plot_algorithm'
 import { InspectablePoint } from './inspectable_point'
 import { StandardLabelFunction } from './gridlines'
 import { parse_string } from '../function_ast/parse_string'
@@ -27,6 +27,8 @@ class FunctionPoints extends GraphemeElement {
   }
 
   update() {
+    super.update()
+
     this.points = this.points.filter(point => point.selected === true)
 
     this.removeAllChildren()

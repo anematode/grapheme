@@ -17,6 +17,8 @@ class PointCloud extends GraphemeElement {
   }
 
   update() {
+    super.update()
+
     let path = this.path = new Path2D()
 
     let verts = utils.flattenVectors(this.vertices)

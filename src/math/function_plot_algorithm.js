@@ -1,4 +1,5 @@
-import { angles_between } from '../math/geometry_calculations'
+import { anglesBetween } from './geometry_algorithms'
+import { nextPowerOfTwo } from './polyline_triangulation'
 
 let MAX_DEPTH = 25
 let MAX_POINTS = 1e6
@@ -9,14 +10,44 @@ function adaptively_sample_1d(start, end, func, initialPoints=500,
   angle_threshold=0.1, depth=0,
   includeEndpoints=true, ptCount=0) {
   if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
-    return [NaN, NaN]
+    return new Float64Array([NaN, NaN])
 
   let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints)
 
-  let angles = new Float64Array(angles_between(vertices, angle_threshold, aspectRatio))
+  let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio))
 
-  let final_vertices = []
-  let egg = true
+  let final_vertices = new Float64Array(16)
+  let index = 0
+  let maxSize = final_vertices.length - 2
+
+  function expandArray(size=-1) {
+    let newArr = new Float64Array((size === -1) ? final_vertices.length * 2 : size)
+    newArr.set(final_vertices)
+
+    final_vertices = newArr
+
+    maxSize = final_vertices.length - 2
+  }
+
+  function addVertex(x, y) {
+    if (index > maxSize) {
+      expandArray()
+    }
+
+    final_vertices[index++] = x
+    final_vertices[index++] = y
+  }
+
+  function addVertices(arr) {
+    let totalLen = index + arr.length
+
+    if (totalLen >= final_vertices.length) {
+      expandArray(nextPowerOfTwo(totalLen))
+    }
+
+    final_vertices.set(arr, index)
+    index += arr.length
+  }
 
   for (let i = 0; i < vertices.length; i += 2) {
     let angle_i = i / 2
@@ -24,23 +55,16 @@ function adaptively_sample_1d(start, end, func, initialPoints=500,
     if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
       let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount)
 
-      vs.forEach(a => final_vertices.push(a))
+      addVertices(vs)
 
-      ptCount += vs.length
-
-      if (ptCount > MAX_POINTS)
-        return final_vertices
+      if (index > MAX_POINTS)
+        return final_vertices.subarray(0, index)
     } else {
-      final_vertices.push(vertices[i])
-      final_vertices.push(vertices[i+1])
-    }
-
-    if (egg && vertices[i] >= 0) {
-      egg = false
+      addVertex(vertices[i], vertices[i+1])
     }
   }
 
-  return final_vertices
+  return final_vertices.subarray(0, index)
 }
 
 function sample_1d(start, end, func, points=500, includeEndpoints=true) {

@@ -1,14 +1,10 @@
-import { Element as GraphemeElement } from '../core/grapheme_element'
 import { Pen } from '../styles/pen'
-import { PolylineBase, PolylineElement } from './polyline'
 import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
-import { adaptively_sample_1d, sample_1d } from './function_plot_algorithm'
-import { WebGLPolylineWrapper } from './webgl_polyline_wrapper'
+import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm'
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
-
-let MAX_POINTS = 10000
+import { WebGLPolyline } from './webgl_polyline'
 
 // Allowed plotting modes:
 // rough = linear sample, no refinement
@@ -32,12 +28,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
     this.polyline = null
 
-    this.alwaysUpdate = false
-
-    this.addEventListener("plotcoordschanged", () => this.update())
-    /*this.addEventListener("plotcoordslingered", () => {
-      setTimeout(() => this.update(), 100 * Math.random())
-    })*/
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
 
     this.interactivityEnabled = true
   }
@@ -60,7 +51,9 @@ class FunctionPlot2D extends InteractiveElement {
     adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness)
   }
 
-  update() {
+  update(info) {
+    super.update()
+
     let transform = this.plot.transform
 
     this.previousTransform = transform.clone()
@@ -87,14 +80,14 @@ class FunctionPlot2D extends InteractiveElement {
     this.plot.transform.plotToPixelArr(vertices)
 
     if (!this.polyline) {
-      this.polyline = new WebGLPolylineWrapper({
+      this.polyline = new WebGLPolyline({
         pen: this.pen,
         alwaysUpdate: false
       })
     }
 
     this.polyline.vertices = vertices
-    this.polyline.update()
+    this.polyline.update(info)
   }
 
   render(info) {

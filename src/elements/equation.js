@@ -3,7 +3,7 @@ import {InteractiveElement} from '../core/interactive_element'
 import { Colors } from '../other/color'
 import { Interval} from '../math/interval_arithm'
 import * as utils from "../core/utils"
-import {WebGLPolylineWrapper} from './webgl_polyline_wrapper'
+import {WebGLPolyline} from './webgl_polyline'
 import { generateContours1, generateContours2 } from '../math/contouring'
 import { adaptPolyline } from '../math/adapt_polyline'
 import { ASTNode } from '../function_ast/node'
@@ -19,12 +19,13 @@ class EquationPlot2D extends InteractiveElement {
 
     this.updateFunc()
 
-    const disp = this.displayedElement = new WebGLPolylineWrapper()
+    const disp = this.displayedElement = new WebGLPolyline()
+
     disp.pen.useNative = false
-    disp.pen.endcap = "none"
+    disp.pen.endcap = "butt"
     disp.pen.color = Colors.RED
 
-    this.addEventListener("plotcoordschanged", () => this.update())
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
   setEquation(text) {
@@ -85,7 +86,9 @@ class EquationPlot2D extends InteractiveElement {
     }
   }
 
-  update() {
+  update(info) {
+    super.update()
+
     if (this.plot) {
       let coords = this.plot.transform.coords
       let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2)
@@ -93,7 +96,7 @@ class EquationPlot2D extends InteractiveElement {
       this.plot.transform.plotToPixelArr(vertices)
 
       this.displayedElement.vertices = vertices
-      this.displayedElement.update()
+      this.displayedElement.update(info)
 
       this.previousTransform = this.plot.transform.clone()
     }

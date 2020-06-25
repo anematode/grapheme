@@ -33,7 +33,9 @@ document.body.appendChild(plot.domElement);
 
 let polyline = new Grapheme.PolylineElement()
 
-polyline.pen.thickness = 8
+polyline.pen.thickness = 3
+  polyline.pen.dashPattern = [12, 12, 5]
+  polyline.pen.endcap = "butt"
 plot.add(polyline)
 
 var audio = new Audio('https://freesound.org/data/previews/91/91926_7037-lq.mp3');
@@ -49,6 +51,7 @@ polyline.addEventListener("click", (evt) => {
     audio.play()
   } else {
     polyline.vertices.push(evt.pos.x, evt.pos.y)
+    polyline.needsUpdate = true
   }
 })
 
@@ -57,6 +60,8 @@ function render() {
   ia += 0.1;
 
   plot.render();
+  polyline.pen.dashOffset += 1
+  polyline.needsUpdate = true
   requestAnimationFrame(render);
 }
 

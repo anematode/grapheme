@@ -54,6 +54,8 @@ class InspectablePoint extends InteractiveElement {
   }
 
   update() {
+    super.update()
+
     this.updatePosition()
   }
 

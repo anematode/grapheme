@@ -1,4 +1,4 @@
-import { Functions } from './extra_functions'
+import { ExtraFunctions } from './extra_functions'
 
 function cchain(val1, compare, val2, ...args) {
   if (!val2) {
@@ -60,7 +60,7 @@ function ifelse(val1, cond, val2) {
   return val2
 }
 
-const Operators = {
+const Operators = Object.freeze({
   '+': (x, y) => x + y,
   '-': (x, y) => x - y,
   '*': (x, y) => x * y,
@@ -99,20 +99,24 @@ const Operators = {
   'atanh': Math.atanh,
   'asec': x => Math.acos(1/x),
   'acsc': x => Math.asin(1/x),
-  'acot': Functions.Arccot,
+  'acot': ExtraFunctions.Arccot,
   'acsch': x => Math.asinh(1/x),
   'asech': x => Math.acosh(1/x),
   'acoth': x => Math.atanh(1/x),
-  'logb': Functions.LogB,
-  'gamma': Functions.Gamma,
-  'factorial': Functions.Factorial,
-  'ln_gamma': Functions.LnGamma,
-  'digamma': Functions.Digamma,
-  'trigamma': Functions.Trigamma,
-  'polygamma': Functions.Polygamma,
-  'pow_rational': Functions.PowRational,
+  'logb': ExtraFunctions.LogB,
+  'gamma': ExtraFunctions.Gamma,
+  'factorial': ExtraFunctions.Factorial,
+  'ln_gamma': ExtraFunctions.LnGamma,
+  'digamma': ExtraFunctions.Digamma,
+  'trigamma': ExtraFunctions.Trigamma,
+  'polygamma': ExtraFunctions.Polygamma,
+  'pow_rational': ExtraFunctions.PowRational,
   'max': Math.max,
   'min': Math.min,
+  'mod': ExtraFunctions.Mod,
+  'remainder': (n, m) => {
+    return n % m
+  },
   'floor': Math.floor,
   'ceil': Math.ceil,
   'and': (x, y) => x && y,
@@ -120,6 +124,8 @@ const Operators = {
   'cchain': cchain,
   'ifelse': ifelse,
   'piecewise': piecewise
-}
+})
 
-export { Operators }
+let OperatorList = Object.keys(Operators)
+
+export { Operators, OperatorList }

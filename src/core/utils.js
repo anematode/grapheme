@@ -1,5 +1,5 @@
 import { BoundingBox } from '../math/bounding_box'
-import { Vec2 } from "../math/vec"
+import { Vec2 } from '../math/vec'
 
 // This file defines some common utilities that Grapheme uses!
 
@@ -33,11 +33,12 @@ function checkType (obj, type) {
 // Check if two objects are... deeply equal
 // https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
 function deepEquals (x, y) {
-  const ok = Object.keys; const tx = typeof x; const
-    ty = typeof y
+  const ok = Object.keys
+  const tx = typeof x
+  const ty = typeof y
   return x && y && tx === 'object' && tx === ty ? (
     ok(x).length === ok(y).length &&
-      ok(x).every((key) => deepEquals(x[key], y[key]))
+    ok(x).every((key) => deepEquals(x[key], y[key]))
   ) : (x === y)
 }
 
@@ -63,9 +64,11 @@ function isNegativeInteger (z) {
   return Number.isInteger(z) && z < 0
 }
 
-function isTypedArray(arr) {
+function isTypedArray (arr) {
   return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
 }
+
+const isWorker = typeof self !== "undefined"
 
 // https://stackoverflow.com/a/34749873
 function isObject (item) {
@@ -103,14 +106,18 @@ function mod (n, m) {
   return ((n % m) + m) % m
 }
 
+if (typeof window === "undefined")
+  self.window = self
+
 // device pixel ratio... duh
 let dpr = window.devicePixelRatio
+
 function updateDPR () {
   if (dpr !== window.devicePixelRatio) {
     dpr = window.devicePixelRatio
 
     // Tell the babies that the device pixel ratio has changed
-    Universes.forEach(context => context.triggerEvent("dprchanged"))
+    Universes.forEach(context => context.triggerEvent('dprchanged'))
   }
 }
 
@@ -132,7 +139,8 @@ function importGraphemeCSS () {
   }
 }
 
-importGraphemeCSS()
+if (!isWorker)
+  importGraphemeCSS()
 
 // This function takes in a GL rendering context, a type of shader (fragment/vertex),
 // and the GLSL source code for that shader, then returns the compiled shader
@@ -191,21 +199,23 @@ function createGLProgram (gl, vertShader, fragShader) {
 
 function generateUUID () {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0; const
+    const r = Math.random() * 16 | 0
+    const
       v = c === 'x' ? r : (r & 0x3 | 0x8)
     return v.toString(16)
   })
 }
 
-let empty_canvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement("canvas")
-let empty_canvas_ctx = empty_canvas.getContext("2d")
+let empty_canvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement('canvas')
+let empty_canvas_ctx = empty_canvas.getContext('2d')
 
-function measureText(text, font) {
-  if (empty_canvas_ctx.font !== font)
+function measureText (text, font) {
+  if (empty_canvas_ctx.font !== font) {
     empty_canvas_ctx.font = font
+  }
   let metrics = empty_canvas_ctx.measureText(text)
 
-  return new BoundingBox(new Vec2(0,0), metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
+  return new BoundingBox(new Vec2(0, 0), metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
 }
 
 // Delete buffers with the given name from all Grapheme Universes
@@ -229,11 +239,11 @@ function getRenderID () {
   return x
 }
 
-function roundToCanvasPixel(x) {
+function roundToCanvasPixel (x) {
   return Math.round(x - 0.5) + 0.5
 }
 
-function flattenVectors(arr) {
+function flattenVectors (arr) {
   let flattened = []
 
   for (let i = 0; i < arr.length; ++i) {
@@ -252,15 +262,15 @@ function flattenVectors(arr) {
   return flattened
 }
 
-function zeroFill(number, width) {
-  width -= number.toString().length;
+function zeroFill (number, width) {
+  width -= number.toString().length
   if (width > 0) {
-    return new Array( width + (/\./.test( number ) ? 2 : 1) ).join( '0' ) + number;
+    return new Array(width + (/\./.test(number) ? 2 : 1)).join('0') + number
   }
-  return number + ""; // always return a string
+  return number + '' // always return a string
 }
 
-function removeUniverse(context) {
+function removeUniverse (context) {
   let index = this.Universes.indexOf(context)
 
   if (index !== -1) {
@@ -268,51 +278,84 @@ function removeUniverse(context) {
   }
 }
 
-function beautifyFloat(f, prec=12) {
-  let strf = f.toFixed(prec);
+function beautifyFloat (f, prec = 12) {
+  let strf = f.toFixed(prec)
   if (strf.includes('.')) {
-    return strf.replace(/\.?0+$/g,'');
+    return strf.replace(/\.?0+$/g, '')
   } else {
-    return strf;
+    return strf
   }
 }
 
-function expressQuantityPP(quantity) {
+function expressQuantityPP (quantity) {
   if (quantity > 0.01) {
-    return beautifyFloat(quantity * 100, 6) + "%"
+    return beautifyFloat(quantity * 100, 6) + '%'
   } else if (quantity > 1e-6) {
-    return beautifyFloat(quantity * 1e6, 6) + " ppm"
+    return beautifyFloat(quantity * 1e6, 6) + ' ppm'
   } else if (quantity > 1e-9) {
-    return beautifyFloat(quantity * 1e9, 6) + " ppb"
+    return beautifyFloat(quantity * 1e9, 6) + ' ppb'
   } else if (quantity > 1e-12) {
-    return beautifyFloat(quantity * 1e12, 6) + " ppt"
+    return beautifyFloat(quantity * 1e12, 6) + ' ppt'
   } else if (quantity > 1e-15) {
-    return beautifyFloat(quantity * 1e12, 6) + " ppq"
+    return beautifyFloat(quantity * 1e12, 6) + ' ppq'
   } else {
-    return "0"
+    return '0'
   }
 }
 
-const gcd = function(a, b) {
+const gcd = function (a, b) {
   if (!b) {
-    return a;
+    return a
   }
 
-  return gcd(b, a % b);
+  return gcd(b, a % b)
 }
 
-const benchmark = function(callback, iterations=100, output=console.log) {
+const benchmark = function (callback, iterations = 100, output = console.log) {
   let start = performance.now()
 
-  for (let i = 0; i < iterations; ++i)
+  for (let i = 0; i < iterations; ++i) {
     callback(i)
+  }
 
   let duration = performance.now() - start
 
   output(`Function ${callback.name} took ${duration / iterations} ms per call.`)
 }
 
+function removeDuplicates(arr) {
+  return [... new Set(arr)]
+}
+
 export {
-  benchmark, gcd, expressQuantityPP, zeroFill, measureText, generateUUID, createShaderFromSource, createGLProgram, Universes, removeUniverse, mod, dpr, select, assert, checkType, deepEquals, isInteger, isNonnegativeInteger,
-  isNonpositiveInteger, isNegativeInteger, isPositiveInteger, isTypedArray, mergeDeep, isApproxEqual, deleteBuffersNamed, getRenderID, flattenVectors, roundToCanvasPixel
+  benchmark,
+  gcd,
+  expressQuantityPP,
+  zeroFill,
+  measureText,
+  generateUUID,
+  createShaderFromSource,
+  createGLProgram,
+  Universes,
+  removeUniverse,
+  mod,
+  dpr,
+  select,
+  assert,
+  checkType,
+  deepEquals,
+  isInteger,
+  isNonnegativeInteger,
+  isNonpositiveInteger,
+  isNegativeInteger,
+  isPositiveInteger,
+  isTypedArray,
+  mergeDeep,
+  isApproxEqual,
+  deleteBuffersNamed,
+  getRenderID,
+  flattenVectors,
+  roundToCanvasPixel,
+  removeDuplicates,
+  isWorker
 }

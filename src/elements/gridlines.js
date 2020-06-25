@@ -10,7 +10,7 @@ import { Colors } from '../other/color'
 import { SmartLabel } from './smart_label'
 import { BoundingBox } from '../math/bounding_box'
 
-/* Unicode characters for exponent signs, LOL */
+/* Unicode characters for exponent signs */
 const exponent_reference = {
   '-': String.fromCharCode(8315),
   '0': String.fromCharCode(8304),
@@ -78,7 +78,9 @@ const StandardLabelFunction = x => {
   }
 }
 
-// I'm just gonna hardcode gridlines for now. Eventually it will have a variety of styling options
+/*
+ * @class Gridlines A set of gridlines for a Plot2D
+ */
 class Gridlines extends GraphemeElement {
   constructor(params={}) {
     super(params)
@@ -101,10 +103,13 @@ class Gridlines extends GraphemeElement {
     }
 
     this._polylines = {}
+
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
+  update(info) {
+    super.update()
 
-  update() {
     let transform = this.plot.transform
     let plotCoords = transform.coords
     let plotBox = transform.box
@@ -114,7 +119,7 @@ class Gridlines extends GraphemeElement {
     const markers = this.strategizer(plotCoords.x1, plotCoords.x2, plotBox.width, plotCoords.y1, plotCoords.y2, plotBox.height)
 
     let polylines = this._polylines = {}
-    let computed_label_styles = this.computed_label_styles = {}
+    let computed_label_styles = {}
 
     let label_padding = this.label_padding
 
@@ -270,6 +275,10 @@ class Gridlines extends GraphemeElement {
 
     if (this.pens["box"]) {
       polylines["box"] = new PolylineElement({vertices: plotBox.getBoxVertices(), pen: this.pens["box"]})
+    }
+
+    for (let key in polylines) {
+      polylines[key].update(info)
     }
   }
 

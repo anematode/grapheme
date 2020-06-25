@@ -1,9 +1,14 @@
 import { ConstantNode, OperatorNode, LN2, LN10, ONE_THIRD, isExactlyRepresentableAsFloat, powerExactlyRepresentableAsFloat } from './node'
 
+/**
+ * Calculates the d
+ * @param opNode {OperatorNode}
+ * @param variable {String} Variable to take the derivative relative to
+ * @returns {ASTNode}
+ */
 function operator_derivative (opNode, variable = 'x') {
-  if (opNode.isConstant()) {
+  if (opNode.isConstant())
     return new ConstantNode({value: 0})
-  }
 
   let node
   switch (opNode.operator) {
@@ -930,6 +935,8 @@ function operator_derivative (opNode, variable = 'x') {
           next_level.derivative(variable)
         ]
       })
+    case 'mod':
+      return opNode.children[1].derivative(variable)
     case 'floor':
       return new ConstantNode({ value: 0 })
     case 'ceil':
