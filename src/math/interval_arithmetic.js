@@ -1040,32 +1040,48 @@ function ACOTH(i1) {
   return ATANH(RECIPROCAL(i1))
 }
 
-
-// TODO
 function CCHAIN(i1, compare, i2, ...args) {
-  if (!i2) {
-    return NO.clone()
-  }
+  if (!i2)
+    return YES.clone()
 
+  let res
   switch (compare) {
-    case '<':
+    case "<":
+      res = LESS_THAN(i1, i2)
       break
-    case '>':
+    case ">":
+      res = GREATER_THAN(i1, i2)
       break
-    case '<=':
+    case "<=":
+      res = LESS_EQUAL_THAN(i1, i2)
       break
-    case '>=':
+    case ">=":
+      res = GREATER_EQUAL_THAN(i1, i2)
       break
-    case '==':
+    case "!=":
+      res = NOT_EQUAL(i1, i2)
       break
-    case '!=':
+    case "==":
+      res = EQUAL(i1, i2)
       break
+    default:
+      throw new Error("huh")
   }
 
-  if (args.length > 0)
-    return CCHAIN(val2, ...args)
+  if (!res.max)
+    return NO.clone()
 
-  return true
+  if (args.length > 0) {
+    let ret = CCHAIN(val2, ...args)
+
+    if (ret.min && res.min) {
+      return YES.clone()
+    } else if (!ret.max || !res.max) {
+      return NO.clone()
+    } else {
+      return YESNT.clone()
+    }
+  }
 }
 
 
@@ -1075,7 +1091,7 @@ const IntervalFunctions = Object.freeze({
   'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
   'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
   'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
-  'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH
+  'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE
 })
 
 export {IntervalFunctions, Interval, IntervalSet}

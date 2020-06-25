@@ -1,7 +1,7 @@
 import { parseString } from '../function_ast/parse_string'
 import {InteractiveElement} from '../core/interactive_element'
 import { Colors } from '../other/color'
-import { Interval} from '../math/interval_arithm'
+import { Interval} from '../math/interval_arithmetic'
 import * as utils from "../core/utils"
 import {WebGLPolyline} from './webgl_polyline'
 import { generateContours1, generateContours2 } from '../math/contouring'

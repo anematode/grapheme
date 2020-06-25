@@ -12919,6 +12919,31 @@ void main() {
     return invertBooleanInterval(EQUAL(i1, i2))
   }
 
+  function IFELSE(i1, cond, i2) {
+    if (cond.min === 1) {
+      return i1
+    } else if (cond.min === 0 && cond.max === 1) {
+      return new IntervalSet([i1, i2])
+    } else {
+      return i2
+    }
+  }
+
+  function PIECEWISE(cond, i1, ...args) {
+    if (!i1)
+      return cond
+    if (!cond)
+      return new Interval(0, 0, true, true, true, true)
+    if (cond.min === 1) {
+      return i1
+    } else if (cond.max === 0) {
+      return PIECEWISE(...args)
+    } else {
+      // yesnt
+      return new IntervalSet([i1, ...getIntervals(PIECEWISE(...args))])
+    }
+  }
+
   const GAMMA_MIN_X = 1.4616321449683623412626595423257213284681962040064463512959884085987864403538018102430749927337255;
   const GAMMA_MIN_Y = 0.8856031944108887002788159005825887332079515336699034488712001659;
 
@@ -13159,17 +13184,48 @@ void main() {
     return ATANH(RECIPROCAL(i1))
   }
 
-
-  // TODO
   function CCHAIN(i1, compare, i2, ...args) {
-    if (!i2) {
-      return NO.clone()
+    if (!i2)
+      return YES.clone()
+
+    let res;
+    switch (compare) {
+      case "<":
+        res = LESS_THAN(i1, i2);
+        break
+      case ">":
+        res = GREATER_THAN(i1, i2);
+        break
+      case "<=":
+        res = LESS_EQUAL_THAN(i1, i2);
+        break
+      case ">=":
+        res = GREATER_EQUAL_THAN(i1, i2);
+        break
+      case "!=":
+        res = NOT_EQUAL(i1, i2);
+        break
+      case "==":
+        res = EQUAL(i1, i2);
+        break
+      default:
+        throw new Error("huh")
     }
 
-    if (args.length > 0)
-      return CCHAIN()
+    if (!res.max)
+      return NO.clone()
 
-    return true
+    if (args.length > 0) {
+      let ret = CCHAIN(val2, ...args);
+
+      if (ret.min && res.min) {
+        return YES.clone()
+      } else if (!ret.max || !res.max) {
+        return NO.clone()
+      } else {
+        return YESNT.clone()
+      }
+    }
   }
 
 
@@ -13179,7 +13235,7 @@ void main() {
     'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
     'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
     'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
-    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH
+    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE
   });
 
   function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
