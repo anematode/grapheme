@@ -1,0 +1,19 @@
+const node = parse_string('y-x^2')
+
+defineFunction('f', node, ['x', 'y'])
+defineFunction('f', node, ['x']) // Should throw
+undefineFunction('f')
+defineVariable('pi', node).then(console.log) // Should throw an error, since pi is already defined
+defineVariable('a', node).then(console.log) // Should throw an error, as y and x are reserved non-constant variables
+const newNode = parse_string("a+b")
+
+defineFunction('g', newNode, ['a']) // Should work
+Functions['g'].wellDefined // Should be false
+defineVariable('a', parse_string("3"))
+defineVariable('b', parse_string("4"))
+
+Functions['g'].wellDefined // Should be true
+Functions['g'].evaluateNormal(1) // Should evaluate to 4 (not 7)
+
+undefineVariable('b')
+Functions['g'].wellDefined // Should be false
