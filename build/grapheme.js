@@ -5347,7 +5347,7 @@ var Grapheme = (function (exports) {
     7.257415615307994e+306
   ];
 
-  function gamma (z) {
+  function gamma$1 (z) {
 
     // Define gamma specially for integral values
     if (z % 1 === 0) {
@@ -5364,7 +5364,7 @@ var Grapheme = (function (exports) {
     }
 
     if (z < 0.5) {
-      return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z))
+      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
     } else {
       z -= 1;
 
@@ -5429,7 +5429,7 @@ var Grapheme = (function (exports) {
       // Recurrence relation
       // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
 
-      return polygamma(m, z+1) + sign * gamma(m + 1) / Math.pow(z, m+1)
+      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
     }
 
     // Series representation
@@ -5439,7 +5439,7 @@ var Grapheme = (function (exports) {
       sum += 1 / Math.pow(z + i, m + 1);
     }
 
-    return sign * gamma(m + 1) * sum
+    return sign * gamma$1(m + 1) * sum
 
   }
 
@@ -5529,7 +5529,7 @@ var Grapheme = (function (exports) {
       return Functions.Gamma(a + 1)
     },
     Gamma: (a) => {
-      return gamma(a)
+      return gamma$1(a)
     },
     LnGamma: (a) => {
       return ln_gamma(a)
@@ -12224,8 +12224,6 @@ void main() {
   const RealFunctions = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS};
 
   // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
-  // See more information at this (very readable) paper by Jeff Tupper:
-
 
   class Interval {
     constructor(min, max, defMin=true, defMax=true, contMin=true, contMax=true) {
@@ -12462,6 +12460,10 @@ void main() {
         return new IntervalSet([interval1, interval2])
       }
     }
+  }
+
+  function CONST(a) {
+    return new Interval(a, a)
   }
 
   function int_pow(b, n) {
@@ -12917,33 +12919,246 @@ void main() {
     return invertBooleanInterval(EQUAL(i1, i2))
   }
 
-  function GAMMA(i1) {
+  const GAMMA_MIN_X = 1.4616321449683623412626595423257213284681962040064463512959884085987864403538018102430749927337255;
+  const GAMMA_MIN_Y = 0.8856031944108887002788159005825887332079515336699034488712001659;
 
+  function GAMMA(i1) {
+    if (i1.min < 0) {
+      return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
+    }
+
+    let y1 = gamma(i1.min), y2 = gamma(i1.max);
+    let min = Math.min(y1, y2);
+    let max = Math.max(y1, y2);
+
+    if (i1.max < GAMMA_MIN_X) {
+
+      return new Interval(min, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    } else if (i1.min < GAMMA_MIN_X && GAMMA_MIN_X < i1.max) {
+      return new Interval(GAMMA_MIN_Y, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    } else {
+      return new Interval(min, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
   }
 
   function DIGAMMA(i1) {
+    let min = i1.min, max = i1.max;
 
+    if (min > 0) {
+      let minVal = digamma(min);
+      let maxVal = digamma(max);
+
+      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
+
+    let minInt = Math.floor(min), maxInt = Math.ceil(max);
+    let intDiff = maxInt - minInt;
+
+    if (intDiff === 0) {
+      // Then min === max
+
+      return new Interval(0, 0, false, false, i1.contMin, i1.contMax)
+    }
+
+    let minVal = digamma(min);
+    let maxVal = digamma(max);
+
+    if (intDiff === 1) {
+      // Monotonically increasing
+      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
+
+    return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
   }
 
   function TRIGAMMA(i1) {
+    let min = i1.min, max = i1.max;
 
+    if (max < 0)
+      return new Interval(8.8, Infinity, false, i1.defMax, false, i1.contMax)
+    if (min < 0) {
+      return new Interval(0, Infinity, false, i1.defMax, false, i1.contMax)
+    } else {
+      let minVal = trigamma(max), maxVal = trigamma(min);
+      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
   }
 
   function POLYGAMMA(n, i1) {
-
+    return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
   }
 
+  // Frankly, I don't know how this code works. I wrote it a long time ago
   function SIN(i1) {
+    let min = i1.min, max = i1.max;
 
+    if (max - min >= 2 * Math.PI) { // If the length is more than a full period, return [-1, 1]
+      return new Interval(-1, 1, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
+
+    let a_rem_2p = mod(i1.min, 2 * Math.PI);
+    let b_rem_2p = mod(i1.max, 2 * Math.PI);
+
+    let min_rem = Math.min(a_rem_2p, b_rem_2p);
+    let max_rem = Math.max(a_rem_2p, b_rem_2p);
+
+    let contains_1 = (min_rem < Math.PI / 2) && (max_rem > Math.PI / 2);
+    let contains_n1 = (min_rem < 3 * Math.PI / 2 && max_rem > 3 * Math.PI / 2);
+
+    if (b_rem_2p < a_rem_2p) {
+      contains_1 = !contains_1;
+      contains_n1 = !contains_n1;
+    }
+
+    if (contains_1 && contains_n1)
+      return new Interval(-1, 1, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+
+    let sa = Math.sin(a_rem_2p), sb = Math.sin(b_rem_2p);
+    return new Interval(contains_n1 ? -1 : Math.min(sa, sb), contains_1 ? 1 : Math.max(sa, sb),
+      i1.defMin, i1.defMax, i1.contMin, i1.contMax);
   }
+
+  const PI_OVER_TWO = CONST(Math.PI / 2);
+  const ONE = CONST(1);
 
   function COS(i1) {
-
+    return SIN(ADD(i1, PI_OVER_TWO))
   }
 
   function TAN(i1) {
-
+    return DIVIDE(SIN(i1), COS(i1))
   }
+
+  function SEC(i1) {
+    return DIVIDE(ONE, COS(i1))
+  }
+
+  function CSC(i1) {
+    return DIVIDE(ONE, SIN(i1))
+  }
+
+  function COT(i1) {
+    return DIVIDE(COS(i1), SIN(i1))
+  }
+
+  function ASIN(i1) {
+    if (i1.max < -1 || i1.min > 1) {
+      return new Interval(0, 0, false, false, true, true)
+    }
+
+    if (i1.max <= 1 && i1.min >= -1) { // Defined everywhere
+      return new Interval(Math.asin(i1.min), Math.asin(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
+
+    let tmp = i1.clone();
+    tmp.max = Math.min(1, tmp.max);
+    tmp.min = Math.max(-1, tmp.min);
+
+    let res = ASIN(tmp);
+    res.defMin = false;
+
+    return res
+  }
+
+  const NEGATIVE_ONE = CONST(-1);
+
+  function ACOS(i1) {
+    return ADD(ASIN(MULTIPLY(i1, NEGATIVE_ONE)), PI_OVER_TWO)
+  }
+
+  function ASEC(i1) {
+    return ACOS(RECIPROCAL(i1))
+  }
+
+  function ACSC(i1) {
+    return ASIN(RECIPROCAL(i1))
+  }
+
+  function ACOT(i1) {
+    // Monotonically decreasing everywhere
+    return new Interval(ExtraFunctions.Arccot(i1.max), ExtraFunctions.Arccot(i1.min), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function SINH(i1) {
+    // Monotonically increasing everywhere
+    return new Interval(Math.sinh(i1.min), Math.sinh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function COSH(i1) {
+    // Flips direction at (x, y) = (0, 1)
+    let val1 = Math.cosh(i1.min), val2 = Math.cosh(i1.max);
+
+    if (i1.min <= 0 && 0 <= i1.max) {
+      // if 0 is contained
+      return new Interval(1, Math.max(val1, val2), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+    }
+
+    return new Interval(Math.min(val1, val2), Math.max(val1, val2), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function TANH(i1) {
+    // Monotonically increasing everywhere
+    return new Interval(Math.tanh(i1.min), Math.tanh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function SECH(i1) {
+    return RECIPROCAL(COSH(i1))
+  }
+
+  function CSCH(i1) {
+    return RECIPROCAL(SINH(i1))
+  }
+
+  function COTH(i1) {
+    return RECIPROCAL(TANH(i1))
+  }
+
+  function ASINH(i1) {
+    // Monotonically increasing
+    return new Interval(Math.asinh(i1.min), Math.asinh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function ACOSH(i1) {
+    // Monotonically increasing, undefined for x < 1
+
+    if (i1.max < 1) {
+      return new Interval(0, 0, false, false, true, true)
+    }
+
+    let defMin = i1.min >= 1;
+
+    let min = i1.min;
+    if (!defMin)
+      min = 1;
+
+    return new Interval(Math.acosh(min), Math.acosh(i1.max), i1.defMin && defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function ATANH(i1) {
+    // Monotonically increasing
+
+    let max = Math.min(i1.max, 1);
+    let min = Math.max(i1.min, -1);
+
+    let defMin = i1.max === max && i1.min === min;
+
+    return new Interval(Math.atanh(min), Math.atanh(max), i1.defMin && defMin, i1.defMax, i1.contMin, i1.contMax)
+  }
+
+  function ASECH(i1) {
+    // Monotonically decreasing
+
+    return ACOSH(RECIPROCAL(i1))
+  }
+
+  function ACSCH(i1) {
+    return ASINH(RECIPROCAL(i1))
+  }
+
+  function ACOTH(i1) {
+    return ATANH(RECIPROCAL(i1))
+  }
+
 
   // TODO
   function CCHAIN(i1, compare, i2, ...args) {
@@ -12962,7 +13177,9 @@ void main() {
     '+': ADD, '*': MULTIPLY, '/': DIVIDE, '-': SUBTRACT, '^': POW, 'pow_rational': POW_RATIONAL, 'sqrt': SQRT, 'cbrt': CBRT,
     '<': LESS_THAN, '>': GREATER_THAN, '<=': LESS_EQUAL_THAN, '>=': GREATER_EQUAL_THAN, '==': EQUAL, '!=': NOT_EQUAL,
     'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
-    'cchain': CCHAIN
+    'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
+    'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
+    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH
   });
 
   function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
@@ -13455,7 +13672,7 @@ void main() {
   exports.digamma = digamma;
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
-  exports.gamma = gamma;
+  exports.gamma = gamma$1;
   exports.getDashedPolyline = getDashedPolyline;
   exports.getLineIntersection = getLineIntersection;
   exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
