@@ -60,7 +60,7 @@ function ifelse(val1, cond, val2) {
   return val2
 }
 
-const Operators = {
+const Operators = Object.freeze({
   '+': (x, y) => x + y,
   '-': (x, y) => x - y,
   '*': (x, y) => x * y,
@@ -124,8 +124,8 @@ const Operators = {
   'cchain': cchain,
   'ifelse': ifelse,
   'piecewise': piecewise
-}
+})
 
+let OperatorList = Object.keys(Operators)
 
-
-export { Operators }
+export { Operators, OperatorList }

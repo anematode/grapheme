@@ -43,10 +43,22 @@ class ASTNode {
   }
 
   getDependencies() {
+    let dependencies = this._getDependencies()
 
+    return {funcs: utils.removeDuplicates(dependencies.funcs), vars: utils.removeDuplicates(dependencies.vars)}
   }
 
-  _getRealCompileText (defineRealVariable) {
+  _getDependencies() {
+    let funcs = [], vars = []
+
+    this.children.forEach(child => {
+      let childDependencies = child._getDependencies()
+
+      funcs.push(...childDependencies.funcs)
+      vars.push(...childDependencies.vars)
+    })
+
+    return {funcs, vars}
   }
 
   applyAll (func, depth = 0) {
@@ -215,8 +227,8 @@ class VariableNode extends ASTNode {
     return false
   }
 
-  isConstant () {
-    return false
+  _getDependencies() {
+    return {funcs: [], vars: [this.name]}
   }
 
   latex () {
@@ -310,6 +322,13 @@ class OperatorNode extends ASTNode {
     return this.operator
   }
 
+  _getDependencies() {
+    let childDependencies = super._getDependencies()
+    childDependencies.funcs.push(this.operator)
+
+    return childDependencies
+  }
+
   latex () {
     return getLatex(this)
   }
@@ -368,6 +387,10 @@ class ConstantNode extends ASTNode {
 
   latex () {
     return this.getText()
+  }
+
+  _getDependencies() {
+    return {vars: [], funcs: []}
   }
 
   toJSON () {

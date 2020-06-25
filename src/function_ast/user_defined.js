@@ -1,32 +1,14 @@
 import { ConstantNode, PI, E } from './node'
-
-/**
- * Space for user defined variables and functions
- */
-
-const RESERVED_FUNCTIONS = []
-const RESERVED_VARIABLES = ["pi", "e"]
+import { OperatorList } from './operators'
+import * as utils from "../core/utils"
 
 const Variables = {}
 const Functions = {}
 
-function defineVariable(varName, node, force=false) {
-
+function variableExists(varName) {
+  return !!Variables[varName]
 }
 
-function undefineVariable(varName, force=false) {
-
+function defineVariable(varName, node) {
+  
 }
-
-function defineFunction(functionName, node, exportedVariables=['x'], force=false) {
-
-}
-
-function undefineFunction(functionName, force=false) {
-
-}
-
-defineVariable('pi', PI)
-defineVariable('e', E)
-
-export { Variables, Functions }

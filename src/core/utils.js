@@ -323,6 +323,10 @@ const benchmark = function (callback, iterations = 100, output = console.log) {
   output(`Function ${callback.name} took ${duration / iterations} ms per call.`)
 }
 
+function removeDuplicates(arr) {
+  return [... new Set(arr)]
+}
+
 export {
   benchmark,
   gcd,
@@ -352,5 +356,6 @@ export {
   getRenderID,
   flattenVectors,
   roundToCanvasPixel,
+  removeDuplicates,
   isWorker
 }

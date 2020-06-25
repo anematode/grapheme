@@ -691,6 +691,10 @@ var Grapheme = (function (exports) {
     output(`Function ${callback.name} took ${duration / iterations} ms per call.`);
   };
 
+  function removeDuplicates(arr) {
+    return [... new Set(arr)]
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -720,6 +724,7 @@ var Grapheme = (function (exports) {
     getRenderID: getRenderID,
     flattenVectors: flattenVectors,
     roundToCanvasPixel: roundToCanvasPixel,
+    removeDuplicates: removeDuplicates,
     isWorker: isWorker
   });
 
@@ -5622,7 +5627,7 @@ var Grapheme = (function (exports) {
     return val2
   }
 
-  const Operators = {
+  const Operators = Object.freeze({
     '+': (x, y) => x + y,
     '-': (x, y) => x - y,
     '*': (x, y) => x * y,
@@ -5686,7 +5691,7 @@ var Grapheme = (function (exports) {
     'cchain': cchain,
     'ifelse': ifelse,
     'piecewise': piecewise
-  };
+  });
 
   let canNotParenthesize = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sec', 'csc', 'cot', 'asec', 'acsc', 'acot', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'sech', 'csch', 'coth', 'asech', 'acsch', 'acoth'];
 
@@ -6194,10 +6199,22 @@ var Grapheme = (function (exports) {
     }
 
     getDependencies() {
+      let dependencies = this._getDependencies();
 
+      return {funcs: removeDuplicates(dependencies.funcs), vars: removeDuplicates(dependencies.vars)}
     }
 
-    _getRealCompileText (defineRealVariable) {
+    _getDependencies() {
+      let funcs = [], vars = [];
+
+      this.children.forEach(child => {
+        let childDependencies = child._getDependencies();
+
+        funcs.push(...childDependencies.funcs);
+        vars.push(...childDependencies.vars);
+      });
+
+      return {funcs, vars}
     }
 
     applyAll (func, depth = 0) {
@@ -6366,8 +6383,8 @@ var Grapheme = (function (exports) {
       return false
     }
 
-    isConstant () {
-      return false
+    _getDependencies() {
+      return {funcs: [], vars: [this.name]}
     }
 
     latex () {
@@ -6461,6 +6478,13 @@ var Grapheme = (function (exports) {
       return this.operator
     }
 
+    _getDependencies() {
+      let childDependencies = super._getDependencies();
+      childDependencies.funcs.push(this.operator);
+
+      return childDependencies
+    }
+
     latex () {
       return getLatex(this)
     }
@@ -6519,6 +6543,10 @@ var Grapheme = (function (exports) {
 
     latex () {
       return this.getText()
+    }
+
+    _getDependencies() {
+      return {vars: [], funcs: []}
     }
 
     toJSON () {
