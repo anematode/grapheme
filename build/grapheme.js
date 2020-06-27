@@ -5559,11 +5559,11 @@ var Grapheme = (function (exports) {
         return 1
       }
 
-      let gcd = gcd(p, q);
+      let GCD = gcd(p, q);
 
-      if (gcd !== 1) {
-        p /= gcd;
-        q /= gcd;
+      if (GCD !== 1) {
+        p /= GCD;
+        q /= GCD;
       }
 
       if (x >= 0) {
@@ -8807,11 +8807,6 @@ void main() {
           this.inspPt.markUpdate();
 
           return true
-        };
-
-        this.inspListeners['mouseup'] = (evt) => {
-          if (!this.inspectionPointLingers)
-            this.removeInspectionPoint();
         };
 
         this.inspListeners["click"] = (evt) => {
@@ -12243,7 +12238,7 @@ void main() {
       return false
     }
 
-    prettyPrint() {
+    pretty() {
       return `(${this.min}, ${this.max}), <${this.defMin}, ${this.defMax}>, <${this.contMin}, ${this.contMax}>`
     }
 
@@ -12446,7 +12441,10 @@ void main() {
       let defMin = i1.defMin, defMax = i1.defMax, contMin = i1.contMin, contMax = i1.contMax;
 
       if (0 < min || max < 0) {
-        return new Interval(1 / max, max, defMin, defMax, contMin, contMax)
+        let valMin = 1 / min;
+        let valMax = 1 / max;
+
+        return new Interval(Math.min(valMin, valMax), Math.max(valMin, valMax), defMin, defMax, contMin, contMax)
       } else if (max === 0) {
         return new Interval(-Infinity, 1 / min, defMin, defMax, contMin, contMax)
       } else if (min === 0) {
@@ -12830,6 +12828,36 @@ void main() {
         return new IntervalSet([int1, int2])
       }
     }
+  }
+
+  function MAX(i1, i2, ...args) {
+    if (args.length > 0) {
+      return MAX(i1, MAX(i2, ...args))
+    }
+
+    let min = Math.max(i1.min, i2.min);
+    let max = Math.max(i1.max, i2.max);
+    let defMin = i1.defMin && i2.defMin;
+    let defMax = i1.defMax && i2.defMax;
+    let contMin = i1.contMin && i2.contMin;
+    let contMax = i1.contMax || i2.contMax;
+
+    return new Interval(min, max, defMin, defMax, contMin, contMax)
+  }
+
+  function MIN(i1, i2, ...args) {
+    if (args.length > 0) {
+      return MIN(i1, MIN(i2, ...args))
+    }
+
+    let min = Math.min(i1.min, i2.min);
+    let max = Math.min(i1.max, i2.max);
+    let defMin = i1.defMin && i2.defMin;
+    let defMax = i1.defMax && i2.defMax;
+    let contMin = i1.contMin && i2.contMin;
+    let contMax = i1.contMax || i2.contMax;
+
+    return new Interval(min, max, defMin, defMax, contMin, contMax)
   }
 
   const YES = new Interval(1, 1);
@@ -13235,7 +13263,8 @@ void main() {
     'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
     'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
     'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
-    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE
+    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE,
+    'max': MAX, 'min': MIN
   });
 
   function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {

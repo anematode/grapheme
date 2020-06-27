@@ -39,11 +39,11 @@ const ExtraFunctions = {
       return 1
     }
 
-    let gcd = gcd(p, q)
+    let GCD = gcd(p, q)
 
-    if (gcd !== 1) {
-      p /= gcd
-      q /= gcd
+    if (GCD !== 1) {
+      p /= GCD
+      q /= GCD
     }
 
     if (x >= 0) {

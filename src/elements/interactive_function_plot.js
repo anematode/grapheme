@@ -103,11 +103,6 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
         return true
       }
 
-      this.inspListeners['mouseup'] = (evt) => {
-        if (!this.inspectionPointLingers)
-          this.removeInspectionPoint()
-      }
-
       this.inspListeners["click"] = (evt) => {
         if (this.inspectionPointLingers && inspLeo > 0)
           this.removeInspectionPoint()

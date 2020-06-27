@@ -24,7 +24,7 @@ class Interval {
     return false
   }
 
-  prettyPrint() {
+  pretty() {
     return `(${this.min}, ${this.max}), <${this.defMin}, ${this.defMax}>, <${this.contMin}, ${this.contMax}>`
   }
 
@@ -227,7 +227,10 @@ function RECIPROCAL(i1) {
     let defMin = i1.defMin, defMax = i1.defMax, contMin = i1.contMin, contMax = i1.contMax
 
     if (0 < min || max < 0) {
-      return new Interval(1 / max, max, defMin, defMax, contMin, contMax)
+      let valMin = 1 / min
+      let valMax = 1 / max
+
+      return new Interval(Math.min(valMin, valMax), Math.max(valMin, valMax), defMin, defMax, contMin, contMax)
     } else if (max === 0) {
       return new Interval(-Infinity, 1 / min, defMin, defMax, contMin, contMax)
     } else if (min === 0) {
@@ -1091,7 +1094,8 @@ const IntervalFunctions = Object.freeze({
   'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
   'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
   'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
-  'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE
+  'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE,
+  'max': MAX, 'min': MIN
 })
 
 export {IntervalFunctions, Interval, IntervalSet}
