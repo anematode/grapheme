@@ -7812,7 +7812,7 @@ var Grapheme = (function (exports) {
     }
   }
 
-  let MAX_DEPTH = 25;
+  let MAX_DEPTH = 10;
   let MAX_POINTS = 1e6;
 
   // TODO: Stop this function from making too many points
