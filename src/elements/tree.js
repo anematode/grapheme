@@ -1,5 +1,5 @@
 import { Element as GraphemeElement } from "../core/grapheme_element"
-import { PolylineElement } from './polyline'
+import { WebGLPolyline } from "./webgl_polyline"
 import { Pen } from "../styles/pen"
 import { Label2DStyle } from '../styles/label_style'
 import { Label2D } from './label'
@@ -13,6 +13,9 @@ class TreeElement extends GraphemeElement {
     this.root = null
 
     this.pen = new Pen()
+
+    this.polyline = new WebGLPolyline({pen: this.pen})
+
     this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE})
     this.getTextOfNode = (node) => {
       return node.getText()
@@ -22,7 +25,7 @@ class TreeElement extends GraphemeElement {
     this.labels = []
   }
 
-  update() {
+  update(info) {
     super.update()
 
     this.vertices = []
@@ -81,17 +84,20 @@ class TreeElement extends GraphemeElement {
       })
     }
 
+    const polyline = this.polyline
+
+    polyline.vertices = this.vertices
+
+    this.plot.transform.plotToPixelArr(polyline.vertices)
+
+    polyline.update(info)
+
   }
 
   render(info) {
     super.render(info)
 
-    let polyline = new PolylineElement({pen: this.pen})
-    polyline.vertices = this.vertices.slice()
-
-    this.plot.transform.plotToPixelArr(polyline.vertices)
-
-    polyline.render(info)
+    this.polyline.render(info)
 
     this.labels.forEach(label => label.render(info))
   }

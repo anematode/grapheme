@@ -3993,2216 +3993,12 @@ var Grapheme = (function (exports) {
     }
   }
 
-  /**
-   * Calculates the d
-   * @param opNode {OperatorNode}
-   * @param variable {String} Variable to take the derivative relative to
-   * @returns {ASTNode}
-   */
-  function operator_derivative (opNode, variable = 'x') {
-    if (opNode.isConstant())
-      return new ConstantNode({value: 0})
-
-    let node;
-    switch (opNode.operator) {
-      case '>':
-      case '>=':
-      case '<':
-      case '<=':
-      case '!=':
-      case '==':
-        return new ConstantNode({ value: 0 })
-      case 'ifelse':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [
-            opNode.children[0].derivative(variable),
-            opNode.children[1],
-            opNode.children[2].derivative(variable)
-          ]
-        })
-      case 'piecewise':
-        node = opNode.clone();
-
-        for (let i = 1; i < node.children.length; ++i) {
-          node.children[i] = node.children[i].derivative(variable);
-        }
-
-        if (node.children.length % 2 === 1) {
-          let i = node.children.length - 1;
-          node.children[i] = node.children[i].derivative(variable);
-        }
-
-        return node
-      case 'cchain':
-        return opNode.clone()
-      case '+':
-        node = new OperatorNode$1({ operator: '+' });
-        node.children = opNode.children.map(child => child.derivative(variable));
-        return node
-      case '*':
-        let firstChild = opNode.children[0], secondChild = opNode.children[1];
-
-        if (firstChild.isConstant()) {
-          node = new OperatorNode$1({operator: '*', children: [
-            firstChild,
-              secondChild.derivative(variable)
-            ]});
-        } else if (secondChild.isConstant()) {
-          node = new OperatorNode$1({operator: '*', children: [
-              secondChild,
-              firstChild.derivative(variable)
-            ]});
-        } else {
-          node = new OperatorNode$1({ operator: '+' });
-
-          // product rule
-          let first = new OperatorNode$1({ operator: '*' });
-          let second = new OperatorNode$1({ operator: '*' });
-
-          first.children = [opNode.children[0].clone(), opNode.children[1].derivative(variable)];
-          second.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
-
-          node.children = [first, second];
-        }
-        return node
-      case '/':
-        // Division rules
-        if (opNode.children[1] instanceof ConstantNode) {
-          return new OperatorNode$1({
-            operator: '/',
-            children: [opNode.children[0].derivative(variable), opNode.children[1]]
-          })
-        } else {
-          node = new OperatorNode$1({ operator: '/' });
-
-          let top = new OperatorNode$1({ operator: '-' });
-          let topFirst = new OperatorNode$1({ operator: '*' });
-          topFirst.children = [opNode.children[0].derivative(variable), opNode.children[1].clone()];
-          let topSecond = new OperatorNode$1({ operator: '*' });
-          topSecond.children = [opNode.children[0], opNode.children[1].derivative(variable)];
-
-          top.children = [topFirst, topSecond];
-          let bottom = new OperatorNode$1({ operator: '^' });
-          bottom.children = [opNode.children[1].clone(), new ConstantNode({ value: 2 })];
-
-          node.children = [top, bottom];
-        }
-
-        return node
-      case '-':
-        node = new OperatorNode$1({ operator: '-' });
-        node.children = opNode.children.map(child => child.derivative(variable));
-        return node
-      case '^':
-        let child1 = opNode.children[1];
-
-        if (child1.isConstant()) {
-          let power = child1.evaluateConstant();
-
-          if (power === 0) {
-            return new ConstantNode({ value: 0 })
-          }
-
-          // power rule
-          let node = new OperatorNode$1({ operator: '*' });
-          let node2 = new OperatorNode$1({ operator: '*' });
-          let pow = new OperatorNode$1({ operator: '^' });
-
-          let newPower;
-
-          if (child1 instanceof ConstantNode && powerExactlyRepresentableAsFloat(child1.text)) {
-            newPower = new ConstantNode({value: power - 1});
-          } else {
-            newPower = new OperatorNode$1({operator: '-', children: [
-                opNode.children[1],
-                new ConstantNode({ value: 1 })]});
-          }
-
-          pow.children = [opNode.children[0].clone(), newPower];
-
-          node2.children = [opNode.children[0].derivative(variable), pow];
-          node.children = [child1.clone(), node2];
-
-          return node
-        } else if (opNode.children[0].isConstant()) {
-          return new OperatorNode$1({
-            operator: '*',
-            children: [
-              new OperatorNode$1({
-                operator: 'ln',
-                children: [
-                  opNode.children[0].clone()
-                ]
-              }),
-              new OperatorNode$1({
-                operator: '*',
-                children: [
-                  opNode.clone(),
-                  opNode.children[1].derivative(variable)
-                ]
-              })
-            ]
-          })
-        } else {
-          return new OperatorNode$1({
-            operator: '*',
-            children: [
-              opNode.clone(),
-              new OperatorNode$1({
-                operator: '+',
-                children: [
-                  new OperatorNode$1({
-                    operator: '*',
-                    children: [
-                      opNode.children[1].derivative(variable),
-                      new OperatorNode$1({
-                        operator: 'ln',
-                        children: [
-                          opNode.children[0].clone()
-                        ]
-                      })
-                    ]
-                  }),
-                  new OperatorNode$1({
-                    operator: '*',
-                    children: [
-                      new OperatorNode$1({
-                        operator: '/',
-                        children: [
-                          opNode.children[1].clone(),
-                          opNode.children[0].clone()
-                        ]
-                      }),
-                      opNode.children[0].derivative(variable)
-                    ]
-                  })
-                ]
-              })
-            ]
-          })
-        }
-      case 'sin':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: 'cos',
-              children: [opNode.children[0].clone()]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'cos':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new ConstantNode({ value: -1 }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'sin',
-                  children: [opNode.children[0].clone()]
-                }),
-                opNode.children[0].derivative(variable)
-              ]
-            })
-          ]
-        })
-      case 'tan':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: '^',
-              children: [
-                new OperatorNode$1({
-                  operator: 'sec',
-                  children: [opNode.children[0].clone()]
-                }),
-                new ConstantNode({ value: 2 })
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'csc':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new ConstantNode({ value: -1 }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: '*',
-                  children: [
-                    new OperatorNode$1({
-                      operator: 'csc',
-                      children: [
-                        opNode.children[0].clone()
-                      ]
-                    }),
-                    new OperatorNode$1({
-                      operator: 'cot',
-                      children: [
-                        opNode.children[0].clone()
-                      ]
-                    })
-                  ]
-                }),
-                opNode.children[0].derivative(variable)
-              ]
-            })
-          ]
-        })
-      case 'sec':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'sec',
-                  children: [
-                    opNode.children[0].clone()
-                  ]
-                }),
-                new OperatorNode$1({
-                  operator: 'tan',
-                  children: [
-                    opNode.children[0].clone()
-                  ]
-                })
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'cot':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
-            operator: '*',
-            children: [
-              new OperatorNode$1({
-                operator: '^',
-                children: [
-                  new OperatorNode$1({
-                    operator: 'csc',
-                    children: [opNode.children[0].clone()]
-                  }),
-                  new ConstantNode({ value: 2 })
-                ]
-              }),
-              opNode.children[0].derivative(variable)
-            ]
-          })]
-        })
-      case 'sqrt':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new ConstantNode({ value: 0.5 }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: '^',
-                  children: [
-                    opNode.children[0].clone(),
-                    new ConstantNode({ value: -0.5 })
-                  ]
-                }),
-                opNode.children[0].derivative(variable)
-              ]
-            })
-          ]
-        })
-      case 'cbrt':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            ONE_THIRD.clone(),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'pow_rational',
-                  children: [
-                    opNode.children[0].clone(),
-                    new ConstantNode({ value: -2 }),
-                    new ConstantNode({ value: 3 })
-                  ]
-                }),
-                opNode.children[0].derivative(variable)
-              ]
-            })
-          ]
-        })
-      case 'asin':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: 'sqrt',
-              children: [
-                new OperatorNode$1({
-                  operator: '-',
-                  children: [
-                    new ConstantNode({ value: 1 }),
-                    new OperatorNode$1({
-                      operator: '^',
-                      children: [
-                        opNode.children[0].clone(),
-                        new ConstantNode({ value: 2 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'acos':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              new OperatorNode$1({
-                operator: 'sqrt',
-                children: [
-                  new OperatorNode$1({
-                    operator: '-',
-                    children: [
-                      new ConstantNode({ value: 1 }),
-                      new OperatorNode$1({
-                        operator: '^',
-                        children: [
-                          opNode.children[0].clone(),
-                          new ConstantNode({ value: 2 })
-                        ]
-                      })
-                    ]
-                  })
-                ]
-              })
-            ]
-          })]
-        })
-      case 'atan':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: '+',
-              children: [
-                new ConstantNode({ value: 1 }),
-                new OperatorNode$1({
-                  operator: '^',
-                  children: [
-                    opNode.children[0].clone(),
-                    new ConstantNode({ value: 2 })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'acot':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
-            }),
-            new OperatorNode$1({
-              operator: '+',
-              children: [
-                new ConstantNode({ value: 1 }),
-                new OperatorNode$1({
-                  operator: '^',
-                  children: [
-                    opNode.children[0].clone(),
-                    new ConstantNode({ value: 2 })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'asec':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'abs',
-                  children: [
-                    opNode.children[0].clone()
-                  ]
-                }),
-                new OperatorNode$1({
-                  operator: 'sqrt',
-                  children: [
-                    new OperatorNode$1({
-                      operator: '-',
-                      children: [
-                        new OperatorNode$1({
-                          operator: '^',
-                          children: [
-                            opNode.children[0].clone(),
-                            new ConstantNode({ value: 2 })
-                          ]
-                        }),
-                        new ConstantNode({ value: 1 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'acsc':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
-            }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'abs',
-                  children: [
-                    opNode.children[0].clone()
-                  ]
-                }),
-                new OperatorNode$1({
-                  operator: 'sqrt',
-                  children: [
-                    new OperatorNode$1({
-                      operator: '-',
-                      children: [
-                        new OperatorNode$1({
-                          operator: '^',
-                          children: [
-                            opNode.children[0].clone(),
-                            new ConstantNode({ value: 2 })
-                          ]
-                        }),
-                        new ConstantNode({ value: 1 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'sinh':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            opNode.children[0].derivative(),
-            new OperatorNode$1({
-              operator: 'cosh',
-              children: [
-                opNode.children[0].clone()
-              ]
-            })
-          ]
-        })
-      case 'cosh':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            opNode.children[0].derivative(),
-            new OperatorNode$1({
-              operator: 'sinh',
-              children: [
-                opNode.children[0].clone()
-              ]
-            })
-          ]
-        })
-      case 'tanh':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: '^',
-              children: [
-                new OperatorNode$1({
-                  operator: 'sech',
-                  children: [ opNode.children[0].clone() ]
-                }),
-                new ConstantNode({ value: 2 })
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'csch':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new ConstantNode({ value: -1 }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: '*',
-                  children: [
-                    new OperatorNode$1({
-                      operator: 'csch',
-                      children: [
-                        opNode.children[0].clone()
-                      ]
-                    }),
-                    new OperatorNode$1({
-                      operator: 'coth',
-                      children: [
-                        opNode.children[0].clone()
-                      ]
-                    })
-                  ]
-                }),
-                opNode.children[0].derivative(variable)
-              ]
-            })
-          ]
-        })
-      case 'sech':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
-            operator: '*',
-            children: [
-              new OperatorNode$1({
-                operator: '*',
-                children: [
-                  new OperatorNode$1({
-                    operator: 'sech',
-                    children: [
-                      opNode.children[0].clone()
-                    ]
-                  }),
-                  new OperatorNode$1({
-                    operator: 'tanh',
-                    children: [
-                      opNode.children[0].clone()
-                    ]
-                  })
-                ]
-              }),
-              opNode.children[0].derivative(variable)
-            ]
-          })]
-        })
-      case 'coth':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
-            operator: '*',
-            children: [
-              new OperatorNode$1({
-                operator: '^',
-                children: [
-                  new OperatorNode$1({
-                    operator: 'csch',
-                    children: [opNode.children[0].clone()]
-                  }),
-                  new ConstantNode({ value: 2 })
-                ]
-              }),
-              opNode.children[0].derivative(variable)
-            ]
-          })]
-        })
-      case 'asinh':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: 'sqrt',
-              children: [
-                new OperatorNode$1({
-                  operator: '+',
-                  children: [
-                    new ConstantNode({ value: 1 }),
-                    new OperatorNode$1({
-                      operator: '^',
-                      children: [
-                        opNode.children[0].clone(),
-                        new ConstantNode({ value: 2 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'acosh':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '*',
-            children: [new ConstantNode({ value: -1 }), new OperatorNode$1({
-              operator: '/',
-              children: [
-                opNode.children[0].derivative(variable),
-                new OperatorNode$1({
-                  operator: 'sqrt',
-                  children: [
-                    new OperatorNode$1({
-                      operator: '-',
-                      children: [
-                        new OperatorNode$1({
-                          operator: '^',
-                          children: [
-                            opNode.children[0].clone(),
-                            new ConstantNode({ value: 2 })
-                          ]
-                        }),
-                        new ConstantNode({ value: 1 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })]
-          }), new OperatorNode$1({
-            operator: '>=',
-            children: [opNode.children[0], new ConstantNode({ value: 1 })]
-          }),
-            new ConstantNode({ value: NaN })]
-        })
-      case 'atanh':
-        var isAtanh = true;
-      case 'acoth':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              new OperatorNode$1({
-                operator: '-',
-                children: [
-                  new ConstantNode({ value: 1 }),
-                  new OperatorNode$1({
-                    operator: '^',
-                    children: [
-                      opNode.children[0].clone(),
-                      new ConstantNode({ value: 2 })
-                    ]
-                  })
-                ]
-              })
-            ]
-          }), new OperatorNode$1({
-            operator: isAtanh ? '<=' : '>=',
-            children: [new OperatorNode$1({
-              operator: 'abs',
-              children: [opNode.children[0].clone()]
-            }), new ConstantNode({ value: 1 })]
-          }),
-            new ConstantNode({ value: NaN })]
-        })
-      case 'asech':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [
-              new OperatorNode$1({
-                operator: '*',
-                children: [
-                  new ConstantNode({ value: -1 }),
-                  opNode.children[0].derivative(variable)
-                ]
-              }),
-              new OperatorNode$1({
-                operator: '*',
-                children: [
-                  opNode.children[0].clone(),
-                  new OperatorNode$1({
-                    operator: 'sqrt',
-                    children: [
-                      new OperatorNode$1({
-                        operator: '-',
-                        children: [
-                          new ConstantNode({ value: 1 }),
-                          new OperatorNode$1({
-                            operator: '^',
-                            children: [
-                              opNode.children[0].clone(),
-                              new ConstantNode({ value: 2 })
-                            ]
-                          })
-                        ]
-                      })
-                    ]
-                  })
-                ]
-              })
-            ]
-          }), new OperatorNode$1({
-            operator: '>',
-            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
-          }), new ConstantNode({ value: NaN })]
-        })
-      case 'acsch':
-        return new OperatorNode$1({
-          operator: '/',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [new ConstantNode({ value: -1 }), opNode.children[0].derivative(variable)]
-            }),
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'abs',
-                  children: [
-                    opNode.children[0].clone()
-                  ]
-                }),
-                new OperatorNode$1({
-                  operator: 'sqrt',
-                  children: [
-                    new OperatorNode$1({
-                      operator: '+',
-                      children: [
-                        new OperatorNode$1({
-                          operator: '^',
-                          children: [
-                            opNode.children[0].clone(),
-                            new ConstantNode({ value: 2 })
-                          ]
-                        }),
-                        new ConstantNode({ value: 1 })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ]
-        })
-      case 'gamma':
-        // Derivative of gamma is polygamma(0, z) * gamma(z) * z'
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new OperatorNode$1({
-                  operator: 'polygamma',
-                  children: [
-                    new ConstantNode({ value: 0 }),
-                    opNode.children[0]
-                  ]
-                }),
-                opNode.clone()
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'factorial':
-        return new OperatorNode$1({
-          operator: 'gamma',
-          children: [
-            new OperatorNode$1({
-              operator: '+',
-              children: [
-                new ConstantNode({ value: 1 }),
-                opNode.children[0]
-              ]
-            })
-          ]
-        }).derivative(variable)
-      case 'abs':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [
-            new OperatorNode$1({
-              operator: '*',
-              children: [
-                new ConstantNode({ value: -1 }),
-                opNode.children[0].derivative(variable)
-              ]
-            }),
-            new OperatorNode$1({
-              operator: '<',
-              children: [
-                opNode.children[0].clone(),
-                new ConstantNode({ value: 0 })
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'min':
-        if (opNode.children.length === 0) {
-          return new ConstantNode({ value: 0 })
-        } else if (opNode.children.length === 1) {
-          return opNode.children[0].derivative(variable)
-        }
-
-        // Translate to ifelse statement, then take derivative
-        var next_level = opNode.children.slice(1);
-
-        if (next_level.length === 1) {
-          next_level = next_level[0].clone();
-        } else {
-          next_level = new OperatorNode$1({
-            operator: 'min',
-            children: next_level.clone()
-          });
-        }
-
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: '<',
-              children: [
-                opNode.children[0],
-                next_level
-              ]
-            }),
-            next_level.derivative(variable)
-          ]
-        })
-      case 'max':
-        if (opNode.children.length === 0) {
-          return new ConstantNode({ value: 0 })
-        } else if (opNode.children.length === 1) {
-          return opNode.children[0].derivative(variable)
-        }
-
-        // Translate to ifelse statement, then take derivative
-        var next_level = opNode.children.slice(1);
-
-        if (next_level.length === 1) {
-          next_level = next_level[0].clone();
-        } else {
-          next_level = new OperatorNode$1({
-            operator: 'max',
-            children: next_level.map(cow => cow.clone())
-          });
-        }
-
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [
-            opNode.children[0].derivative(variable),
-            new OperatorNode$1({
-              operator: '>',
-              children: [
-                opNode.children[0],
-                next_level
-              ]
-            }),
-            next_level.derivative(variable)
-          ]
-        })
-      case 'mod':
-        return opNode.children[1].derivative(variable)
-      case 'floor':
-        return new ConstantNode({ value: 0 })
-      case 'ceil':
-        return new ConstantNode({ value: 0 })
-      case 'digamma':
-        // digamma = polygamma(0, x)
-        return new OperatorNode$1({
-          operator: 'polygamma',
-          children: [
-            new ConstantNode({ value: 0 }),
-            opNode.children[0]
-          ]
-        }).derivative(variable)
-      case 'trigamma':
-        // trigamma = polygamma(1, x)
-        return new OperatorNode$1({
-          operator: 'polygamma',
-          children: [
-            new ConstantNode({ value: 1 }),
-            opNode.children[0]
-          ]
-        }).derivative(variable)
-      case 'ln_gamma':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [
-            new OperatorNode$1({
-              operator: 'digamma',
-              children: [
-                opNode.children[0]
-              ]
-            }),
-            opNode.children[0].derivative(variable)
-          ]
-        })
-      case 'polygamma':
-        return new OperatorNode$1({
-          operator: '*',
-          children: [new OperatorNode$1({
-            operator: 'polygamma',
-            children: [
-              new ConstantNode({ value: opNode.children[0].value + 1 }),
-              opNode.children[1]
-            ]
-          }),
-            opNode.children[1].derivative(variable)
-          ]
-        })
-      case 'ln':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              opNode.children[0].clone()
-            ]
-          }), new OperatorNode$1({
-            operator: '>',
-            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
-          }), new ConstantNode({ value: NaN })]
-        })
-      case 'log10':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              new OperatorNode$1({
-                operator: '*',
-                children: [opNode.children[0].clone(), LN10.clone()]
-              })
-            ]
-          }), new OperatorNode$1({
-            operator: '>',
-            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
-          }), new ConstantNode({ value: NaN })]
-        })
-      case 'log2':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [
-              opNode.children[0].derivative(variable),
-              new OperatorNode$1({
-                operator: '*',
-                children: [opNode.children[0], LN2.clone()]
-              })
-            ]
-          }), new OperatorNode$1({
-            operator: '>',
-            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
-          }), new ConstantNode({ value: NaN })]
-        })
-      case 'logb':
-        return new OperatorNode$1({
-          operator: 'ifelse',
-          children: [new OperatorNode$1({
-            operator: '/',
-            children: [new OperatorNode$1({
-              operator: 'ln',
-              children: [opNode.children[1]]
-            }).derivative(), new OperatorNode$1({
-              operator: 'ln',
-              children: [
-                opNode.children[0]
-              ]
-            })]
-          }), new OperatorNode$1({
-            operator: '>',
-            children: [opNode.children[0].clone(), new ConstantNode({ value: 0 })]
-          }), new ConstantNode({ value: NaN })]
-        })
-      default:
-        // No symbolic derivative, oof
-        throw new Error('unimplemented')
-    }
-  }
-
-  function multiplyPolynomials(coeffs1, coeffs2, degree) {
-    let ret = [];
-    for (let i = 0; i <= degree; ++i) {
-      ret.push(0);
-    }
-
-    for (let i = 0; i < coeffs1.length; ++i) {
-      for (let j = 0; j < coeffs2.length; ++j) {
-        ret[i + j] += coeffs1[i] * coeffs2[j];
-      }
-    }
-
-    return ret
-  }
-
-  class SingleVariablePolynomial {
-    constructor(coeffs=[0]) {
-      // Order: first is constant, second is linear, etc.
-      this.coeffs = coeffs;
-    }
-
-    _evaluateFloat(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        sum += coeffs[i] * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    evaluate(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        // TODO
-        if (isNaN(coeff))
-          coeff = coeff.approximate_as_float();
-
-        sum += coeff * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    degree() {
-      return this.coeffs.length - 1
-    }
-
-    derivative() {
-      let newCoeffs = [];
-      const coeffs = this.coeffs;
-
-      for (let i = 1; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        newCoeffs.push(i * coeff);
-      }
-
-      return new SingleVariablePolynomial(newCoeffs)
-    }
-
-    clone() {
-      return new SingleVariablePolynomial(this.coeffs.slice())
-    }
-
-    add(poly) {
-      let coeffs = this.coeffs;
-      let otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    subtract(poly) {
-      const coeffs = this.coeffs;
-      const otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    multiplyScalar(s) {
-      const coeffs = this.coeffs;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        coeffs[i] *= s;
-      }
-
-      return this
-    }
-
-    multiply(poly) {
-      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
-      return this
-    }
-
-    integral() {
-      // TODO
-    }
-  }
-
-  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
-
-  var g = 7;
-  var C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-  var integer_factorials = [
-    1,
-    1,
-    2,
-    6,
-    24,
-    120,
-    720,
-    5040,
-    40320,
-    362880,
-    3628800,
-    39916800,
-    479001600,
-    6227020800,
-    87178291200,
-    1307674368000,
-    20922789888000,
-    355687428096000,
-    6402373705728000,
-    121645100408832000,
-    2432902008176640000,
-    51090942171709440000,
-    1.1240007277776077e+21,
-    2.585201673888498e+22,
-    6.204484017332394e+23,
-    1.5511210043330986e+25,
-    4.0329146112660565e+26,
-    1.0888869450418352e+28,
-    3.0488834461171384e+29,
-    8.841761993739701e+30,
-    2.6525285981219103e+32,
-    8.222838654177922e+33,
-    2.631308369336935e+35,
-    8.683317618811886e+36,
-    2.9523279903960412e+38,
-    1.0333147966386144e+40,
-    3.719933267899012e+41,
-    1.3763753091226343e+43,
-    5.23022617466601e+44,
-    2.0397882081197442e+46,
-    8.159152832478977e+47,
-    3.3452526613163803e+49,
-    1.4050061177528798e+51,
-    6.041526306337383e+52,
-    2.6582715747884485e+54,
-    1.1962222086548019e+56,
-    5.5026221598120885e+57,
-    2.5862324151116818e+59,
-    1.2413915592536073e+61,
-    6.082818640342675e+62,
-    3.0414093201713376e+64,
-    1.5511187532873822e+66,
-    8.065817517094388e+67,
-    4.2748832840600255e+69,
-    2.308436973392414e+71,
-    1.2696403353658276e+73,
-    7.109985878048635e+74,
-    4.052691950487722e+76,
-    2.350561331282879e+78,
-    1.3868311854568986e+80,
-    8.320987112741392e+81,
-    5.075802138772248e+83,
-    3.146997326038794e+85,
-    1.98260831540444e+87,
-    1.2688693218588417e+89,
-    8.247650592082472e+90,
-    5.443449390774431e+92,
-    3.647111091818868e+94,
-    2.4800355424368305e+96,
-    1.711224524281413e+98,
-    1.197857166996989e+100,
-    8.504785885678622e+101,
-    6.123445837688608e+103,
-    4.4701154615126834e+105,
-    3.3078854415193856e+107,
-    2.480914081139539e+109,
-    1.8854947016660498e+111,
-    1.4518309202828584e+113,
-    1.1324281178206295e+115,
-    8.946182130782973e+116,
-    7.156945704626378e+118,
-    5.797126020747366e+120,
-    4.75364333701284e+122,
-    3.945523969720657e+124,
-    3.314240134565352e+126,
-    2.8171041143805494e+128,
-    2.4227095383672724e+130,
-    2.107757298379527e+132,
-    1.8548264225739836e+134,
-    1.6507955160908452e+136,
-    1.4857159644817607e+138,
-    1.3520015276784023e+140,
-    1.24384140546413e+142,
-    1.1567725070816409e+144,
-    1.0873661566567424e+146,
-    1.0329978488239052e+148,
-    9.916779348709491e+149,
-    9.619275968248206e+151,
-    9.426890448883242e+153,
-    9.33262154439441e+155,
-    9.33262154439441e+157,
-    9.425947759838354e+159,
-    9.614466715035121e+161,
-    9.902900716486175e+163,
-    1.0299016745145622e+166,
-    1.0813967582402903e+168,
-    1.1462805637347078e+170,
-    1.2265202031961373e+172,
-    1.3246418194518284e+174,
-    1.4438595832024928e+176,
-    1.5882455415227421e+178,
-    1.7629525510902437e+180,
-    1.9745068572210728e+182,
-    2.2311927486598123e+184,
-    2.543559733472186e+186,
-    2.925093693493014e+188,
-    3.3931086844518965e+190,
-    3.969937160808719e+192,
-    4.6845258497542883e+194,
-    5.574585761207603e+196,
-    6.689502913449124e+198,
-    8.09429852527344e+200,
-    9.875044200833598e+202,
-    1.2146304367025325e+205,
-    1.5061417415111404e+207,
-    1.8826771768889254e+209,
-    2.372173242880046e+211,
-    3.012660018457658e+213,
-    3.8562048236258025e+215,
-    4.9745042224772855e+217,
-    6.466855489220472e+219,
-    8.471580690878817e+221,
-    1.118248651196004e+224,
-    1.4872707060906852e+226,
-    1.992942746161518e+228,
-    2.6904727073180495e+230,
-    3.659042881952547e+232,
-    5.01288874827499e+234,
-    6.917786472619486e+236,
-    9.615723196941086e+238,
-    1.346201247571752e+241,
-    1.89814375907617e+243,
-    2.6953641378881614e+245,
-    3.8543707171800706e+247,
-    5.550293832739301e+249,
-    8.047926057471987e+251,
-    1.17499720439091e+254,
-    1.7272458904546376e+256,
-    2.5563239178728637e+258,
-    3.808922637630567e+260,
-    5.7133839564458505e+262,
-    8.627209774233235e+264,
-    1.3113358856834518e+267,
-    2.006343905095681e+269,
-    3.089769613847349e+271,
-    4.789142901463391e+273,
-    7.47106292628289e+275,
-    1.1729568794264138e+278,
-    1.8532718694937338e+280,
-    2.946702272495037e+282,
-    4.714723635992059e+284,
-    7.590705053947215e+286,
-    1.2296942187394488e+289,
-    2.0044015765453015e+291,
-    3.2872185855342945e+293,
-    5.423910666131586e+295,
-    9.003691705778433e+297,
-    1.5036165148649983e+300,
-    2.526075744973197e+302,
-    4.2690680090047027e+304,
-    7.257415615307994e+306
-  ];
-
-  function gamma$1 (z) {
-
-    // Define gamma specially for integral values
-    if (z % 1 === 0) {
-      if (z <= 0) {
-        return Infinity
-      }
-
-      let res = integer_factorials[Math.round(z - 1)];
-
-      if (!res) {
-        return Infinity
-      }
-      return res
-    }
-
-    if (z < 0.5) {
-      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
-    } else {
-      z -= 1;
-
-      var x = C[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += C[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
-    }
-  }
-
-  function ln_gamma (z) {
-    if (z < 0.5) {
-      // Compute via reflection formula
-      let reflected = ln_gamma(1 - z);
-
-      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
-    } else {
-      z -= 1;
-
-      var x = C[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += C[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-
-      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
-    }
-  }
-
-
-
-  function polygamma (m, z) {
-    if (m % 1 !== 0) {
-      return NaN
-    }
-
-    if (m === 0) {
-      return digamma(z)
-    }
-
-    if (m === 1) {
-      return trigamma(z)
-    }
-
-    let sign = (m % 2 === 0) ? -1 : 1;
-    let numPoly = getPolygammaNumeratorPolynomial(m);
-
-    if (z < 0.5) {
-      if (z % 1 === 0)
-        return Infinity
-
-      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
-      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
-
-      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
-        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
-    } else if (z < 8) {
-      // Recurrence relation
-      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
-
-      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
-    }
-
-    // Series representation
-
-    let sum = 0;
-    for (let i = 0; i < 200; ++i) {
-      sum += 1 / Math.pow(z + i, m + 1);
-    }
-
-    return sign * gamma$1(m + 1) * sum
-
-  }
-
-  const GREGORY_COEFFICIENTS = [
-    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
-  ];
-
-  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
-
-  let POLY1 = new SingleVariablePolynomial([0, 1]);
-  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
-
-  function getPolygammaNumeratorPolynomial(n) {
-    let poly = PolygammaNumeratorPolynomials[n];
-    if (poly)
-      return poly
-
-    if (n > 10000)
-      return new SingleVariablePolynomial([0])
-
-    if (n > 20) {
-      // to prevent stack overflow issues
-      for (let i = 0; i < n; ++i) {
-        getPolygammaNumeratorPolynomial(i);
-      }
-    }
-
-    return PolygammaNumeratorPolynomials[n] =
-      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
-        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
-      )
-  }
-
-  function digamma (z) {
-    if (z < 0.5) {
-      // psi(1-x) - psi(x) = pi cot(pi x)
-      // psi(x) = psi(1-x) - pi cot (pi x)
-
-      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
-    } else if (z < 5) {
-      // psi(x+1) = psi(x) + 1/x
-      // psi(x) = psi(x+1) - 1/x
-
-      return digamma(z + 1) - 1 / z
-    }
-
-    let egg = 1;
-    let sum = Math.log(z);
-
-    for (let n = 1; n < 100; ++n) {
-      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
-
-      egg *= ((n-1) ? (n-1) : 1);
-      egg /= z + n - 1;
-
-      sum -= coeff * egg;
-    }
-
-    return sum
-  }
-
-  function trigamma(z) {
-    if (z < 0.5) {
-      if (z % 1 === 0) {
-        return Infinity
-      }
-
-      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
-      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
-
-      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
-    } else if (z < 8) {
-      // psi_1(z+1) = psi_1(z) - 1/z^2
-      // psi_1(z) = psi_1(z+1) + 1/z^2
-
-      return trigamma(z+1) + 1 / (z*z)
-    }
-
-    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
-  }
-
-  const ExtraFunctions = {
-    LogB: (b, v) => {
-      return Math.log(v) / Math.log(b)
-    },
-    Factorial: (a) => {
-      return Functions.Gamma(a + 1)
-    },
-    Gamma: (a) => {
-      return gamma$1(a)
-    },
-    LnGamma: (a) => {
-      return ln_gamma(a)
-    },
-    Digamma: (a) => {
-      return digamma(a)
-    },
-    Trigamma: (a) => {
-      return trigamma(a)
-    },
-    Polygamma: (n, a) => {
-      return polygamma(n, a)
-    },
-    Arccot: (z) => {
-      let t = Math.atan(1 / z);
-
-      if (t < 0) {
-        t += Math.PI;
-      }
-
-      return t
-    },
-    PowRational: (x, p, q) => {
-      // Calculates x ^ (p / q), where p and q are integers
-
-      if (p === 0) {
-        return 1
-      }
-
-      let GCD = gcd(p, q);
-
-      if (GCD !== 1) {
-        p /= GCD;
-        q /= GCD;
-      }
-
-      if (x >= 0) {
-        return Math.pow(x, p / q)
-      } else {
-        if (mod(q, 2) === 0)
-          return NaN
-
-        let ret = Math.pow(-x, p / q);
-        if (mod(p, 2) === 0) {
-          return ret
-        } else {
-          return -ret
-        }
-      }
-    },
-    Mod: (n, m) => {
-      return ((n % m) + m) % m
-    }
-  };
-
-  function cchain(val1, compare, val2, ...args) {
-    if (!val2) {
-      return false
-    }
-
-    switch (compare) {
-      case '<':
-        if (val1 >= val2)
-          return false
-        break
-      case '>':
-        if (val1 <= val2)
-          return false
-        break
-      case '<=':
-        if (val1 > val2)
-          return false
-        break
-      case '>=':
-        if (val1 < val2)
-          return false
-        break
-      case '==':
-        if (val1 !== val2)
-          return false
-        break
-      case '!=':
-        if (val1 === val2)
-          return false
-        break
-    }
-
-    if (args.length > 0)
-      return cchain(val2, ...args)
-
-    return true
-  }
-  function piecewise(cond, val, ...args) {
-    if (!val) {
-      return cond
-    }
-
-    if (cond) {
-      return val
-    }
-
-    if (args.length === 0) {
-      // This is a fail
-      return val
-    } else {
-      return piecewise(...args)
-    }
-  }
-
-  function ifelse(val1, cond, val2) {
-    if (cond)
-      return val1
-    return val2
-  }
-
-  const Operators = Object.freeze({
-    '+': (x, y) => x + y,
-    '-': (x, y) => x - y,
-    '*': (x, y) => x * y,
-    '/': (x, y) => x / y,
-    '^': (x, y) => Math.pow(x, y),
-    '<': (x, y) => x < y,
-    '<=': (x, y) => x <= y,
-    '>': (x, y) => x > y,
-    '>=': (x, y) => x >= y,
-    '==': (x, y) => x === y,
-    '!=': (x, y) => x !== y,
-    'sin': Math.sin,
-    'tan': Math.tan,
-    'cos': Math.cos,
-    'csc': x => 1/Math.sin(x),
-    'sec': x => 1/Math.cos(x),
-    'cot': x => 1/Math.tan(x),
-    'asin': x => Math.asin(x),
-    'acos': x => Math.acos(x),
-    'atan': x => Math.atan(x),
-    'abs': x => Math.abs(x),
-    'sqrt': x => Math.sqrt(x),
-    'cbrt': x => Math.cbrt(x),
-    'ln': x => Math.log(x),
-    'log': x => Math.log(x),
-    'log10': x => Math.log10(x),
-    'log2': x => Math.log2(x),
-    'sinh': Math.sinh,
-    'cosh': Math.cosh,
-    'tanh': Math.tanh,
-    'csch': x => 1/Math.sinh(x),
-    'sech': x => 1/Math.cosh(x),
-    'coth': x => 1/Math.tanh(x),
-    'asinh': Math.asinh,
-    'acosh': Math.acosh,
-    'atanh': Math.atanh,
-    'asec': x => Math.acos(1/x),
-    'acsc': x => Math.asin(1/x),
-    'acot': ExtraFunctions.Arccot,
-    'acsch': x => Math.asinh(1/x),
-    'asech': x => Math.acosh(1/x),
-    'acoth': x => Math.atanh(1/x),
-    'logb': ExtraFunctions.LogB,
-    'gamma': ExtraFunctions.Gamma,
-    'factorial': ExtraFunctions.Factorial,
-    'ln_gamma': ExtraFunctions.LnGamma,
-    'digamma': ExtraFunctions.Digamma,
-    'trigamma': ExtraFunctions.Trigamma,
-    'polygamma': ExtraFunctions.Polygamma,
-    'pow_rational': ExtraFunctions.PowRational,
-    'max': Math.max,
-    'min': Math.min,
-    'mod': ExtraFunctions.Mod,
-    'remainder': (n, m) => {
-      return n % m
-    },
-    'floor': Math.floor,
-    'ceil': Math.ceil,
-    'and': (x, y) => x && y,
-    'or': (x, y) => x || y,
-    'cchain': cchain,
-    'ifelse': ifelse,
-    'piecewise': piecewise
-  });
-
-  let canNotParenthesize = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sec', 'csc', 'cot', 'asec', 'acsc', 'acot', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'sech', 'csch', 'coth', 'asech', 'acsch', 'acoth'];
-
-  function getOperatorName (op) {
-    let special = OperatorNames[op];
-    if (special) {
-      return special
-    }
-
-    return '\\operatorname{' + op + '}'
-  }
-
-  function alwaysParenthesize (op) {
-    return !(canNotParenthesize.includes(op))
-  }
-
-  const OperatorNames = {
-    'asin': '\\operatorname{sin}^{-1}',
-    'acos': '\\operatorname{cos}^{-1}',
-    'atan': '\\operatorname{tan}^{-1}',
-    'asec': '\\operatorname{sec}^{-1}',
-    'acsc': '\\operatorname{csc}^{-1}',
-    'acot': '\\operatorname{cot}^{-1}',
-    'asinh': '\\operatorname{sinh}^{-1}',
-    'acosh': '\\operatorname{cosh}^{-1}',
-    'atanh': '\\operatorname{tanh}^{-1}',
-    'asech': '\\operatorname{sech}^{-1}',
-    'acsch': '\\operatorname{csch}^{-1}',
-    'acoth': '\\operatorname{coth}^{-1}',
-    'gamma': '\\Gamma',
-    'digamma': '\\psi',
-    'trigamma': '\\psi_1',
-    'ln_gamma': '\\operatorname{ln} \\Gamma',
-    'log10': '\\operatorname{log}_{10}',
-    'log2': '\\operatorname{log}_{2}'
-  };
-
-  function getLatex(opNode) {
-    switch (opNode.operator) {
-      case "^":
-        let exponent = opNode.children[1];
-
-        let exponent_latex;
-        if (exponent.type() === "node") {
-          exponent_latex = exponent.latex(false);
-        } else {
-          exponent_latex = exponent.latex();
-        }
-        return `${opNode.children[0].latex()}^{${exponent_latex}}`
-      case "*":
-        return `${opNode.children[0].latex()}\\cdot ${opNode.children[1].latex()}`
-      case "+":
-        return `${opNode.children[0].latex()}+${opNode.children[1].latex()}`
-      case "-":
-        return `${opNode.children[0].latex()}-${opNode.children[1].latex()}`
-      case "/":
-        return `\\frac{${opNode.children[0].latex()}}{${opNode.children[1].latex()}}`
-      case "<":
-        return `${opNode.children[0].latex()} < ${opNode.children[1].latex()}`
-      case "<=":
-        return `${opNode.children[0].latex()} \\leq ${opNode.children[1].latex()}`
-      case "==":
-        return `${opNode.children[0].latex()} = ${opNode.children[1].latex()}`
-      case "!=":
-        return `${opNode.children[0].latex()} \\neq ${opNode.children[1].latex()}`
-      case ">":
-        return `${opNode.children[0].latex()} > ${opNode.children[1].latex()}`
-      case ">=":
-        return `${opNode.children[0].latex()} \\geq ${opNode.children[1].latex()}`
-      case "pow_rational":
-        // Normally unused third child stores what the user actually inputted
-        return `${opNode.children[0].latex()}^{${opNode.children[3].latex()}}`
-      case "factorial":
-        let needs_parens = opNode.needsParentheses();
-        let latex_n = opNode.children[0].latex();
-
-        if (needs_parens)
-          return `\\left(${latex_n}\\right)!`
-        else
-          return latex_n + '!'
-      case "logb":
-        let log_needs_parens = opNode.children[1].needsParentheses();
-        let base_needs_parens = opNode.children[0].needsParentheses();
-
-        let base = `${base_needs_parens ? '\\left(' : ''}${opNode.children[0].latex()}${base_needs_parens ? '\\right)' : ''}`;
-        let log = `${log_needs_parens ? '\\left(' : ''}${opNode.children[1].latex()}${log_needs_parens ? '\\right)' : ''}`;
-
-        return `\\operatorname{log}_{${base}}{${log}}`
-      case "ifelse":
-        return `\\begin{cases} ${opNode.children[0].latex()} & ${opNode.children[1].latex()} \\\\ ${opNode.children[2].latex()} & \\text{otherwise} \\end{cases}`
-      case "cchain":
-        return opNode.children.map(child => child.latex()).join('')
-      case "polygamma":
-        return `\\psi^{(${opNode.children[0].latex()})}\\left(${opNode.children[1].latex()}\\right)`
-      case "piecewise":
-        let pre = `\\begin{cases} `;
-
-        let post;
-        if (opNode.children.length % 2 === 0) {
-
-          post = `0 & \\text{otherwise} \\end{cases}`;
-        } else {
-          post = ` \\text{otherwise} \\end{cases}`;
-        }
-
-        let latex = pre;
-
-        for (let i = 0; i < opNode.children.length; i += 2) {
-          let k = 0;
-          for (let j = 1; j >= 0; --j) {
-            let child = opNode.children[i+j];
-
-            if (!child)
-              continue
-
-            latex += child.latex();
-
-            if (k === 0) {
-              latex += " & ";
-            } else {
-              latex += " \\\\ ";
-            }
-
-            k++;
-          }
-        }
-
-        latex += post;
-
-        return latex
-      case "not":
-        return "\\neg(" + opNode.children.map(child => child.latex()).join('+') + ')'
-      case "and":
-        return opNode.children.map(child => child.latex()).join("\\land ")
-      case "or":
-        return opNode.children.map(child => child.latex()).join("\\lor ")
-      case "abs":
-        return '\\left|' + opNode.children.map(child => child.latex()).join(",") + '\\right|'
-      default:
-        let needs_parens2 = opNode.needsParentheses();
-
-        let operatorName = getOperatorName(opNode.operator);
-        if (!needs_parens2 && alwaysParenthesize(opNode.operator)) {
-          needs_parens2 = true;
-        }
-
-        return `${operatorName}${needs_parens2 ? '\\left(' : ''}${opNode.children.map(child => child.latex()).join(',\\,')}${needs_parens2 ? '\\right)' : ''}`
-    }
-  }
-
-  const OperatorPatterns = {
-    'sin': ['Math.sin'],
-    '+': ['', '+'],
-    '-': ['', '-'],
-    '*': ['', '*'],
-    '/': ['', '/'],
-    '^': ['', '**'],
-    '<': ['', '<'],
-    '<=': ['', '<='],
-    '>': ['', '>'],
-    '>=': ['', '>='],
-    '==': ['', '==='],
-    '!=': ['', '!=='],
-    'tan': ['Math.tan'],
-    'cos': ['Math.cos'],
-    'csc': ['1/Math.sin'],
-    'sec': ['1/Math.cos'],
-    'cot': ['1/Math.tan'],
-    'asin': ['Math.asin'],
-    'acos': ['Math.acos'],
-    'atan': ['Math.atan'],
-    'abs': ['Math.abs'],
-    'sqrt': ['Math.sqrt'],
-    'cbrt': ['Math.cbrt'],
-    'ln': ['Math.log'],
-    'log': ['Math.log'],
-    'log10': ['Math.log10'],
-    'log2': ['Math.log2'],
-    'sinh': ['Math.sinh'],
-    'cosh': ['Math.cosh'],
-    'tanh': ['Math.tanh'],
-    'csch': ['1/Math.sinh'],
-    'sech': ['1/Math.cosh'],
-    'coth': ['1/Math.tanh'],
-    'asinh': ['Math.asinh'],
-    'acosh': ['Math.acosh'],
-    'atanh': ['Math.atanh'],
-    'asec': ['Math.acos(1/', '+', ')'],
-    'acsc': ['Math.asin(1/', '+', ')'],
-    'acot': [isWorker ? 'ExtraFunctions.Arccot' : 'Grapheme.ExtraFunctions.Arccot', ','],
-    'acsch': ['Math.asinh(1/', '+', ')'],
-    'asech': ['Math.acosh(1/', '+', ')'],
-    'acoth': ['Math.atanh(1/', '+', ')'],
-    'logb': [isWorker ? 'ExtraFunctions.LogB' : 'Grapheme.ExtraFunctions.LogB', ','],
-    'gamma': [isWorker ? 'ExtraFunctions.Gamma' : 'Grapheme.ExtraFunctions.Gamma', ','],
-    'factorial': [isWorker ? 'ExtraFunctions.Factorial' : 'Grapheme.ExtraFunctions.Factorial', ','],
-    'ln_gamma': [isWorker ? 'ExtraFunctions.LnGamma' : 'Grapheme.ExtraFunctions.LnGamma', ','],
-    'digamma': [isWorker ? 'ExtraFunctions.Digamma' : 'Grapheme.ExtraFunctions.Digamma', ','],
-    'trigamma': [isWorker ? 'ExtraFunctions.Trigamma' : 'Grapheme.ExtraFunctions.Trigamma', ','],
-    'polygamma': [isWorker ? 'ExtraFunctions.Polygamma' : 'Grapheme.ExtraFunctions.Polygamma', ','],
-    'pow_rational': [isWorker ? 'ExtraFunctions.PowRational' : 'Grapheme.ExtraFunctions.PowRational', ','],
-    'max': ['Math.max', ','],
-    'min': ['Math.min', ','],
-    'floor': ['Math.floor', ','],
-    'ceil': ['Math.ceil', ','],
-    'remainder': ['', '%']
-  };
-
-  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
-
-  function getOperatorCompileText(node, defineVariable) {
-    switch (node.operator) {
-      case 'cchain':
-        let components = node.children;
-        let ids = [];
-        for (let i = 0; i < components.length; i += 2) {
-          let variableId = '$' + getRenderID();
-
-          defineVariable(variableId, getCompileText(components[i], defineVariable));
-
-          ids.push(variableId);
-        }
-
-        let comparisons = [];
-
-        for (let i = 1; i < components.length; i += 2) {
-          let comparison = components[i];
-          let lhs = ids[(i - 1) / 2];
-          let rhs = ids[(i + 1) / 2];
-
-          // comparisons in cchains are variables
-          comparisons.push('(' + lhs + comparison.name + rhs + ')');
-        }
-
-        return comparisons.join('&&')
-      case 'ifelse':
-        const res = node.children.map(child => getCompileText(child, defineVariable));
-
-        return `((${res[1]})?(${res[0]}):(${res[2]}))`
-      case 'piecewise':
-        if (node.children.length === 0) {
-          return '(0)'
-        }
-
-        if (node.children.length === 1) {
-          return getCompileText(node.children[0], defineVariable)
-        }
-
-        if (node.children.length === 3) {
-          return getCompileText(OperatorNode({
-            operator: 'ifelse',
-            children: [node.children[1], node.children[0], node.children[2]]
-          }), defineVariable)
-        } else if (node.children.length === 2) {
-          return getCompileText(new OperatorNode({
-            operator: 'ifelse',
-            children: [node.children[1], node.children[0], new ConstantNode({ value: 0 })]
-          }), defineVariable)
-        } else {
-          let remainder = getCompileText(OperatorNode({
-            operator: 'piecewise',
-            children: node.children.slice(2)
-          }), defineVariable);
-
-          let condition = getCompileText(node.children[0], defineVariable);
-          let value = getCompileText(node.children[1], defineVariable);
-
-          return `((${condition})?(${value}):(${remainder}))`
-        }
-      case 'and':
-        return node.children.map(child => getCompileText(child, defineVariable)).join('&&')
-      case 'or':
-        return node.children.map(child => getCompileText(child, defineVariable)).join('||')
-    }
-
-    let pattern = OperatorPatterns[node.operator];
-
-    if (!pattern) {
-      throw new Error('Unrecognized operation')
-    }
-
-    return pattern[0] + '(' + node.children.map(child => '(' + getCompileText(child, defineVariable) + ')').join(pattern[1] ? pattern[1] : '+') + ')' + (pattern[2] ? pattern[2] : '')
-  }
-
-  function getCompileText(node, defineVariable) {
-    switch (node.type()) {
-      case "node":
-        return node.children.map(child => '(' + getCompileText(child, defineVariable) + ')').join('+')
-      case "operator":
-        return getOperatorCompileText(node, defineVariable)
-      case "constant":
-        return node.value + ''
-      case "variable":
-        if (comparisonOperators.includes(node.name)) {
-          return '"' + node.name + '"'
-        }
-        return node.name
-    }
-  }
-
-  function compileNode(node, exportedVariables=['x']) {
-    let preamble = '';
-
-    const defineVariable = (variable, expression) => {
-      preamble += `let ${variable}=${expression};`;
-    };
-
-    let returnVal = getCompileText(node, defineVariable);
-
-    return {
-      func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
-      variableNames: exportedVariables
-    }
-  }
-
-
-  function getIntervalCompileText(node, defineVariable) {
-    switch (node.type()) {
-      case "node":
-        return node.children.map(child => getIntervalCompileText(child, defineVariable)).join(',')
-      case "operator":
-        const children_text = node.children.map(child => getIntervalCompileText(child, defineVariable)).join(',');
-
-        return `${isWorker ? "IntervalFunctions" : "Grapheme.IntervalFunctions"}['${node.operator}'](${children_text})`
-      case "constant":
-        let varName = '$' + getRenderID();
-        if (isNaN(node.value)) {
-          defineVariable(varName, `new ${isWorker ? "Interval" : "Grapheme.Interval"}(NaN, NaN, false, false, true, true)`);
-          return varName
-        }
-
-        defineVariable(varName, `new ${isWorker ? "Interval" : "Grapheme.Interval"}(${node.value}, ${node.value}, true, true, true, true)`);
-        return varName
-      case "variable":
-        if (comparisonOperators.includes(node.name)) {
-          return '"' + node.name + '"'
-        }
-        return node.name
-    }
-  }
-
-  function compileNodeInterval(node, exportedVariables=['x']) {
-    let preamble = '';
-
-    const defineVariable = (variable, expression) => {
-      preamble += `let ${variable}=${expression};`;
-    };
-
-    let returnVal = getIntervalCompileText(node, defineVariable);
-
-    return {
-      func: new Function(...exportedVariables, preamble + 'return ' + returnVal),
-      variableNames: exportedVariables
-    }
-  }
-
-  function getRealCompileText(node, defineRealVariable) {
-    switch (node.type()) {
-      case "node":
-        return node.children.map(child => '(' + getRealCompileText(child, defineRealVariable) + ')').join(',')
-      case "operator":
-        let children = node.children;
-        if (node.operator === 'piecewise') {
-          if (children.length % 2 === 0) {
-            // add default value of 0
-            children = children.slice();
-            children.push(new ConstantNode({
-              value: 0,
-              text: '0'
-            }));
-          }
-        }
-
-        if (node.operator === 'ifelse') {
-          if (children.length === 2) {
-            // add default value of 0
-            children = children.slice();
-            children.push(new ConstantNode({
-              value: 0,
-              text: '0'
-            }));
-            return
-          }
-        }
-
-        const children_text = children.map(child => getRealCompileText(child, defineRealVariable)).join(',');
-
-        return `${isWorker ? "RealFunctions" : "Grapheme.RealFunctions"}S['${node.operator}'](${children_text})`
-      case "constant":
-        let varName = '$' + getRenderID();
-        defineRealVariable(varName, node.text);
-        return varName
-      case "variable":
-        if (comparisonOperators.includes(node.name)) {
-          return `'${node.name}'`
-        }
-        let name = '$' + getRenderID();
-
-        defineRealVariable(name, null, node.name);
-
-        return name
-
-    }
-  }
-
-  function compileNodeReal(node, exportedVariables=['x']) {
-    let Variables = {};
-    let preamble = '';
-
-    const defineRealVariable = (name, value, variable) => {
-      Variables[name] = new Grapheme.Real(precision);
-      if (value) {
-        if (value === 'pi') {
-          preamble += `${name}.set_pi()`;
-        } else if (value === 'e') {
-          preamble += `${name}.set_e()`;
-        } else if (isExactlyRepresentableAsFloat(value)) {
-          preamble += `${name}.value = ${value.toString()}; `;
-        } else {
-          preamble += `${name}.value = "${value}"; `;
-        }
-
-      } else {
-        preamble += `${name}.value = ${variable};`;
-      }
-    };
-
-    let text = getRealCompileText(node, defineRealVariable);
-
-    let realVarNames = Object.keys(Variables);
-    let realVars = realVarNames.map(name => Variables[name]);
-
-    let func = new Function(...realVarNames, ...exportedVariables, `${preamble}
-      return ${text};`);
-    let isValid = true;
-
-    return {
-      isValid () {
-        return isValid
-      },
-      set_precision: (prec) => {
-        if (!isValid) {
-          throw new Error('Already freed compiled real function!')
-        }
-        realVars.forEach(variable => variable.set_precision(prec));
-      },
-      evaluate: (...args) => {
-        if (!isValid) {
-          throw new Error('Already freed compiled real function!')
-        }
-        return func(...realVars, ...args)
-      },
-      variableNames: exportedVariables,
-      free () {
-        if (!isValid) {
-          throw new Error('Already freed compiled real function!')
-        }
-        isValid = false;
-
-        realVars.forEach(variable => variable.__destroy__());
-      },
-      _get_func () {
-        if (!isValid) {
-          throw new Error('Already freed compiled real function!')
-        }
-        return func
-      }
-    }
-  }
-
   // const fs = require( ...
 
   // List of operators (currently)
   // +, -, *, /, ^,
 
-  const comparisonOperators$1 = ['<', '>', '<=', '>=', '!=', '=='];
-
-  let floatRepresentabilityTester;
-  const matchIntegralComponent = /[0-9]*\./;
-  const trailingZeroes = /0+$/;
-
-  function isExactlyRepresentableAsFloat (f) {
-    if (typeof f === 'number') {
-      return true
-    }
-    if (!floatRepresentabilityTester) {
-      floatRepresentabilityTester = new Grapheme.Real(0, 53);
-    }
-    floatRepresentabilityTester.value = f;
-
-    return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
-      f.replace(matchIntegralComponent, '')
-  }
+  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
 
   class ASTNode {
     constructor (params = {}) {
@@ -6214,25 +4010,6 @@ var Grapheme = (function (exports) {
 
       this.children = children;
       this.parent = parent;
-    }
-
-    getDependencies() {
-      let dependencies = this._getDependencies();
-
-      return {funcs: removeDuplicates(dependencies.funcs), vars: removeDuplicates(dependencies.vars)}
-    }
-
-    _getDependencies() {
-      let funcs = [], vars = [];
-
-      this.children.forEach(child => {
-        let childDependencies = child._getDependencies();
-
-        funcs.push(...childDependencies.funcs);
-        vars.push(...childDependencies.vars);
-      });
-
-      return {funcs, vars}
     }
 
     applyAll (func, depth = 0) {
@@ -6253,66 +4030,12 @@ var Grapheme = (function (exports) {
       return node
     }
 
-    compile (exportedVariables) {
-      if (!exportedVariables) {
-        exportedVariables = this.getVariableNames();
-      }
-
-      return compileNode(this, exportedVariables)
-    }
-
-    compileInterval (exportedVariables) {
-      if (!exportedVariables) {
-        exportedVariables = this.getVariableNames();
-      }
-
-      return compileNodeInterval(this, exportedVariables)
-    }
-
-    compileReal (exportedVariables, precision = 53) {
-      if (!exportedVariables) {
-        exportedVariables = this.getVariableNames();
-      }
-
-      return compileNodeReal(this, exportedVariables)
-    }
-
-    derivative (variable) {
-      let node = new ASTNode();
-
-      node.children = this.children.map(child => child.derivative(variable));
-
-      node.applyAll(child => {
-        if (child.children) {
-          child.children.forEach(subchild => subchild.parent = child);
-        }
-      });
-
-      return node
-    }
-
     evaluateConstant () {
       return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
     }
 
     getText () {
       return '(node)'
-    }
-
-    getVariableNames () {
-      let variableNames = [];
-
-      this.applyAll(child => {
-        if (child instanceof VariableNode) {
-          let name = child.name;
-
-          if (variableNames.indexOf(name) === -1 && comparisonOperators$1.indexOf(name) === -1) {
-            variableNames.push(name);
-          }
-        }
-      });
-
-      return variableNames
     }
 
     hasChildren () {
@@ -6329,6 +4052,7 @@ var Grapheme = (function (exports) {
       if (parens) {
         return String.raw`\left(${latex}\right)`
       }
+
       return latex
     }
 
@@ -6381,14 +4105,6 @@ var Grapheme = (function (exports) {
       return new VariableNode({ name: this.name })
     }
 
-    derivative (variable) {
-      if (variable === this.name) {
-        return new ConstantNode({ value: 1 })
-      } else {
-        return new ConstantNode({ value: 0 })
-      }
-    }
-
     evaluateConstant () {
       return NaN
     }
@@ -6401,12 +4117,8 @@ var Grapheme = (function (exports) {
       return false
     }
 
-    _getDependencies() {
-      return {funcs: [], vars: [this.name]}
-    }
-
     latex () {
-      if (comparisonOperators$1.includes(this.name)) {
+      if (comparisonOperators.includes(this.name)) {
         switch (this.name) {
           case '>':
           case '<':
@@ -6465,7 +4177,7 @@ var Grapheme = (function (exports) {
     'log': 'ln'
   };
 
-  class OperatorNode$1 extends ASTNode {
+  class OperatorNode extends ASTNode {
     constructor (params = {}) {
       super(params);
 
@@ -6477,15 +4189,11 @@ var Grapheme = (function (exports) {
     }
 
     clone () {
-      let node = new OperatorNode$1({ operator: this.operator });
+      let node = new OperatorNode({ operator: this.operator });
 
       node.children = this.children.map(child => child.clone());
 
       return node
-    }
-
-    derivative (variable) {
-      return operator_derivative(this, variable)
     }
 
     evaluateConstant () {
@@ -6494,13 +4202,6 @@ var Grapheme = (function (exports) {
 
     getText () {
       return this.operator
-    }
-
-    _getDependencies() {
-      let childDependencies = super._getDependencies();
-      childDependencies.funcs.push(this.operator);
-
-      return childDependencies
     }
 
     latex () {
@@ -6543,10 +4244,6 @@ var Grapheme = (function (exports) {
       })
     }
 
-    derivative () {
-      return new ConstantNode({ value: 0 })
-    }
-
     evaluateConstant () {
       return this.value
     }
@@ -6563,10 +4260,6 @@ var Grapheme = (function (exports) {
       return this.getText()
     }
 
-    _getDependencies() {
-      return {vars: [], funcs: []}
-    }
-
     toJSON () {
       return {
         value: this.value,
@@ -6581,24 +4274,15 @@ var Grapheme = (function (exports) {
     }
   }
 
-  function powerExactlyRepresentableAsFloat (power) {
-    if (typeof power === 'number') return true
-
-    // todo, make more precise
-    if (Number.isInteger(parseFloat(power))) {
-      return true
-    }
-  }
-
-  const LN2 = new OperatorNode$1({
+  const LN2 = new OperatorNode({
     operator: 'ln',
     children: [new ConstantNode({ value: 10 })]
   });
-  const LN10 = new OperatorNode$1({
+  const LN10 = new OperatorNode({
     operator: 'ln',
     children: [new ConstantNode({ value: 10 })]
   });
-  const ONE_THIRD = new OperatorNode$1({
+  const ONE_THIRD = new OperatorNode({
     operator: '/',
     children: [
       new ConstantNode({ value: 1 }),
@@ -6891,7 +4575,7 @@ var Grapheme = (function (exports) {
             if (child_test.type === "function") {
               let synonym = OperatorSynonyms[child_test.name];
 
-              let function_node = new OperatorNode$1({ operator: synonym ? synonym : child_test.name });
+              let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name });
 
               children[i] = function_node;
 
@@ -6920,7 +4604,7 @@ var Grapheme = (function (exports) {
           let child2 = children[i + 1];
 
           if (child1.op && (child2.op === '-' || child2.op === '+')) {
-            const egg = new OperatorNode$1({
+            const egg = new OperatorNode({
               operator: "*",
               children: [
                 new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
@@ -6950,7 +4634,7 @@ var Grapheme = (function (exports) {
             let child_test = children[i];
 
             if (operators.includes(child_test.op)) {
-              let new_node = new OperatorNode$1({operator: child_test.op});
+              let new_node = new OperatorNode({operator: child_test.op});
 
               new_node.children = [children[i-1],children[i+1]];
 
@@ -6991,7 +4675,7 @@ var Grapheme = (function (exports) {
             }
 
             if (cchain_found) {
-              child.children = children.slice(0, i-1).concat(new OperatorNode$1({
+              child.children = children.slice(0, i-1).concat(new OperatorNode({
                 operator: "cchain",
                 children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
               })).concat(children.slice(j));
@@ -7130,247 +4814,35 @@ var Grapheme = (function (exports) {
     }
   }
 
-  class TreeElement extends GraphemeElement {
-    constructor(params={}) {
-      super(params);
-
-      this.root = null;
-
-      this.pen = new Pen();
-      this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE});
-      this.getTextOfNode = (node) => {
-        return node.getText()
-      };
-
-      this.vertices = [];
-      this.labels = [];
-    }
-
-    update() {
-      super.update();
-
-      this.vertices = [];
-      this.labels = [];
-
-      let flattened_nodes = [];
-      let node_positions = [];
-
-      this.root.applyAll((child, depth) => {
-        if (!flattened_nodes[depth]) {
-          flattened_nodes[depth] = [];
-        }
-
-        let flat_array = flattened_nodes[depth];
-        flat_array.push(child);
-      });
-
-      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
-        let nodes = flattened_nodes[depth];
-
-        node_positions[depth] = nodes.map((node, i) => {
-          let x = (i - nodes.length / 2);
-          let y = -depth;
-
-          return new Vec2(x, y)
-        });
-      }
-
-      function getNodePosition(node) {
-        for (let depth = 0; depth < flattened_nodes.length; ++depth) {
-          let nodes = flattened_nodes[depth];
-
-          for (let i = 0; i < nodes.length; ++i) {
-            if (nodes[i] === node) {
-              return node_positions[depth][i]
-            }
-          }
-        }
-      }
-
-      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
-        let nodes = flattened_nodes[depth];
-        let positions = node_positions[depth];
-
-        nodes.forEach((node, i) => {
-          let parentPos = getNodePosition(node.parent);
-
-          if (parentPos)
-            this.vertices.push(positions[i].x, positions[i].y, parentPos.x, parentPos.y, NaN, NaN);
-
-          this.labels.push(new Label2D({
-            style: this.label_style,
-            text: this.getTextOfNode(node),
-            position: this.plot.transform.plotToPixel(positions[i])
-          }));
-        });
-      }
-
-    }
-
-    render(info) {
-      super.render(info);
-
-      let polyline = new PolylineElement({pen: this.pen});
-      polyline.vertices = this.vertices.slice();
-
-      this.plot.transform.plotToPixelArr(polyline.vertices);
-
-      polyline.render(info);
-
-      this.labels.forEach(label => label.render(info));
-    }
-  }
-
-  // Interactive event names
-  const listenerKeys = ['click', 'mousemove', 'mousedown', 'mouseup', 'wheel'];
-
-  /** @class InteractiveElement An element which takes up space in a plot and supports an "isClick" function.
-   * Used exclusively for 2D plots (3D plots will have a raycasting system).
+  /**
+   * @class WebGLElement An element that supports WebGL rendering.
    */
-  class InteractiveElement extends GraphemeElement {
+  class WebGLElement extends GraphemeElement {
     /**
-     * Construct an InteractiveElement
-     * @param params {Object}
-     * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
-     * @param params.precedence See base class.
-     * @param params.alwaysUpdate See base class.
+     * Construct a new WebGLElement
+     * @param params Parameters
      */
     constructor (params = {}) {
       super(params);
 
-      const {
-        interactivityEnabled = false
-      } = params;
-
-      this.interactivityEnabled = interactivityEnabled;
-      this.interactivityListeners = {};
+      // id used for things like WebGL buffers
+      /** @protected */ this.id = generateUUID();
     }
 
     /**
-     * Get whether interactivity is enabled
-     * @returns {boolean} Whether interactivity is enabled
+     *
+     * @param info {Object} The render info
+     * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
      */
-    get interactivityEnabled () {
-      return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
-    }
+    render (info) {
+      // Call beforeWebGLRender()
+      info.beforeWebGLRender();
 
-    /**
-     * Set whether interactivity is enabled.
-     * @param value {boolean}
-     */
-    set interactivityEnabled (value) {
-      if (this.interactivityEnabled === value) {
-        return
-      }
+      // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
+      this.sortChildren();
 
-      let listeners = this.interactivityListeners;
-
-      if (value) {
-        // Enable interactivity
-
-        // Warn if the element is added to a non-interactive canvas
-        if (this.plot && !(this.plot instanceof InteractiveCanvas)) {
-          console.warn('Interactive element in a non-interactive canvas');
-        }
-
-        // The position on the canvas of where the mouse was pressed. null if the mouse is not currently pressed.
-        let mouseDownPos = null;
-
-        // Whether the previous mousemove was on the element
-        let prevIsClick = false;
-
-        listenerKeys.forEach(key => {
-          let callback = (evt) => {
-            // Elide mouse moves
-            if (key === 'mousemove' && !this._hasMouseMoveInteractivityListeners() && !mouseDownPos) {
-              return
-            }
-
-            let eventPos = evt.pos;
-
-            // Whether the event occurred on this element
-            let isClick = this.isClick(eventPos);
-
-            // Whether to stop propagation
-            let stopPropagation = false;
-
-            // Trigger mouse on and mouse off events
-            if (isClick && !prevIsClick) {
-              if (this.triggerEvent('interactive-mouseon', evt)) {
-                stopPropagation = true;
-              }
-            } else if (!isClick && prevIsClick) {
-              if (this.triggerEvent('interactive-mouseoff', evt)) {
-                stopPropagation = true;
-              }
-            }
-
-            // Set whether the previous mouse move is on the element
-            if (key === 'mousemove' && isClick) {
-              prevIsClick = true;
-            } else if (key === 'mousemove' && !isClick) {
-              prevIsClick = false;
-            }
-
-            if (isClick) {
-              if (this.triggerEvent('interactive-' + key, evt)) {
-                stopPropagation = true;
-              }
-            }
-
-            // Trigger drag events
-            if (key === 'mousemove') {
-              if (mouseDownPos) {
-                // return to allow the prevention of propagation
-                if (this.triggerEvent('interactive-drag', { start: mouseDownPos, ...evt })) {
-                  stopPropagation = true;
-                }
-              }
-            } else if (key === 'mousedown' && isClick) {
-              // Set the position of the mouse
-              mouseDownPos = eventPos;
-            } else if (key === 'mouseup') {
-              // Prevent the mouse from
-              mouseDownPos = null;
-            }
-
-            return stopPropagation
-          };
-
-          this.addEventListener(key, callback);
-          listeners[key] = callback;
-        });
-
-      } else {
-        // Disable interactivity
-        for (let key in this.interactivityListeners) {
-          if (this.interactivityListeners.hasOwnProperty(key)) {
-            this.removeEventListener(key, listeners[key]);
-          }
-        }
-
-        this.interactivityListeners = {};
-      }
-    }
-
-    /**
-     * Whether this element has interactivity listeners to fire when the mouse moves and is not pressed down. Used
-     * internally to elide calls to isClick when the element would do nothing even if it returned true.
-     * @returns {boolean}
-     * @private
-     */
-    _hasMouseMoveInteractivityListeners () {
-      const listeners = this.interactivityListeners;
-
-      return !!(listeners['interactive-mouseon'] || listeners['interactive-mouseoff'] || listeners['interactivity-mousemove'])
-    }
-
-    /**
-     * Derived classes need to define this function
-     * @param position
-     */
-    isClick (position) {
-      throw new Error("isClick unimplemented for InteractiveElement")
+      // Render all children
+      this.children.forEach(child => child.render(info));
     }
   }
 
@@ -7546,7 +5018,7 @@ var Grapheme = (function (exports) {
 
   const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
   const B = 4 / Math.PI;
-  const C$1 = -4 / (Math.PI ** 2);
+  const C = -4 / (Math.PI ** 2);
 
   function fastSin(x) { // crude, but good enough for this
 
@@ -7559,7 +5031,7 @@ var Grapheme = (function (exports) {
       x -= 6.28318530717;
 
 
-    return B * x + C$1 * x * ((x < 0) ? -x : x)
+    return B * x + C * x * ((x < 0) ? -x : x)
   }
 
   function fastCos(x) {
@@ -7612,7 +5084,7 @@ var Grapheme = (function (exports) {
 
     let origVertexCount = vertices.length / 2;
 
-    let th = pen.thickness;
+    let th = pen.thickness / 2;
     let maxMiterLength = th / fastCos(pen.joinRes / 2);
 
     let endcap = ENDCAP_TYPES[pen.endcap];
@@ -7812,6 +5284,425 @@ var Grapheme = (function (exports) {
     }
   }
 
+  // this vertex shader is used for the polylines
+  const vertexShaderSource = `// set the float precision of the shader to medium precision
+precision mediump float;
+// a vector containing the 2D position of the vertex
+attribute vec2 v_position;
+uniform vec2 xy_scale;
+vec2 displace = vec2(-1, 1);
+void main() {
+  // set the vertex's resultant position
+  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
+}`;
+  // this frag shader is used for the polylines
+  const fragmentShaderSource = `// set the float precision of the shader to medium precision
+precision mediump float;
+// vec4 containing the color of the line to be drawn
+uniform vec4 line_color;
+void main() {
+  gl_FragColor = line_color;
+}
+`;
+
+  // polyline primitive in Cartesian coordinates
+  // has thickness, vertex information, and color stuff
+  class WebGLPolyline extends WebGLElement {
+    constructor (params = {}) {
+      super(params);
+
+      this.vertices = params.vertices ? params.vertices : []; // x,y values in pixel space
+      this.pen = params.pen ? params.pen : new Pen();
+
+      this.glVertices = null;
+      this.glVertexCount = 0;
+
+      this.alwaysUpdate = false;
+    }
+
+    _calculateTriangles (box) {
+      let result = calculatePolylineVertices(this.vertices, this.pen, box);
+      this.glVertices = result.glVertices;
+      this.glVertexCount = result.vertexCount;
+    }
+
+    _calculateNativeLines (box) {
+      let vertices = this.vertices;
+
+      if (this.pen.dashPattern.length !== 0) {
+        vertices = getDashedPolyline(vertices, this.pen, box);
+      }
+
+      if (vertices.length <= 3) {
+        this.glVertexCount = 0;
+        return
+      }
+
+      let glVertices = new Float32Array(vertices.length);
+
+      if (Array.isArray(vertices)) {
+        for (let i = 0; i < vertices.length; ++i) {
+          glVertices[i] = vertices[i];
+        }
+      } else {
+        glVertices.set(vertices);
+      }
+
+      this.glVertexCount = Math.ceil(vertices.length / 2);
+      this.glVertices = glVertices;
+    }
+
+    update (info) {
+      super.update();
+
+      let box, thickness = this.pen.thickness;
+
+      if (info) {
+        box = info.plot.getCanvasBox().pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        });
+      } else {
+        // ANNOYING! This should never be the case these days
+        box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
+          left: -thickness,
+          right: -thickness,
+          top: -thickness,
+          bottom: -thickness
+        });
+      }
+
+      if (this.pen.useNative) {
+        // use native LINE_STRIP for extreme speed
+        this._calculateNativeLines(box);
+      } else {
+
+        this._calculateTriangles(box);
+      }
+
+      this.needsBufferCopy = true;
+    }
+
+    isClick (point) {
+      return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
+    }
+
+    distanceFrom (point) {
+      return pointLineSegmentMinDistance(point.x, point.y, this.vertices)
+    }
+
+    closestTo (point) {
+      return pointLineSegmentClosest(point.x, point.y, this.vertices)
+    }
+
+    render (info) {
+      if (!this.visible) {
+        return
+      }
+
+      super.render(info);
+
+      const glManager = info.universe.glManager;
+      const gl = info.universe.gl;
+      const useNative = this.pen.useNative;
+
+      let program = glManager.getProgram('webgl-polyline');
+
+      if (!program) {
+        glManager.compileProgram('webgl-polyline', vertexShaderSource, fragmentShaderSource, ['v_position'], ['line_color', 'xy_scale']);
+        program = glManager.getProgram('webgl-polyline');
+      }
+
+      let buffer = glManager.getBuffer(this.id);
+      let vertexCount = this.glVertexCount;
+
+      if ((useNative && vertexCount < 2) || (!useNative && vertexCount < 3)) return
+      // tell webgl to start using the gridline program
+      gl.useProgram(program.program);
+      // bind our webgl buffer to gl.ARRAY_BUFFER access point
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+      let color = this.pen.color;
+      // set the vec4 at colorLocation to (r, g, b, a)
+      // divided by 255 because webgl likes [0.0, 1.0]
+      gl.uniform4f(program.uniforms.line_color, color.r / 255, color.g / 255, color.b / 255, color.a / 255);
+      gl.uniform2f(program.uniforms.xy_scale,
+        2 / info.plot.width,
+        -2 / info.plot.height);
+
+      // copy our vertex data to the GPU
+      if (this.needsBufferCopy) {
+        gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
+
+        this.needsBufferCopy = false;
+      }
+
+      // enable the vertices location attribute to be used in the program
+      gl.enableVertexAttribArray(program.attribs.v_position);
+      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
+      // that it shouldn't normalize floats, and something i don't understand
+      gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
+      // draw the vertices as triangle strip
+      gl.drawArrays(useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
+    }
+
+    destroy () {
+      deleteBuffersNamed(this.id);
+    }
+  }
+
+  class TreeElement extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.root = null;
+
+      this.pen = new Pen();
+
+      this.polyline = new WebGLPolyline({pen: this.pen});
+
+      this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE});
+      this.getTextOfNode = (node) => {
+        return node.getText()
+      };
+
+      this.vertices = [];
+      this.labels = [];
+    }
+
+    update(info) {
+      super.update();
+
+      this.vertices = [];
+      this.labels = [];
+
+      let flattened_nodes = [];
+      let node_positions = [];
+
+      this.root.applyAll((child, depth) => {
+        if (!flattened_nodes[depth]) {
+          flattened_nodes[depth] = [];
+        }
+
+        let flat_array = flattened_nodes[depth];
+        flat_array.push(child);
+      });
+
+      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+        let nodes = flattened_nodes[depth];
+
+        node_positions[depth] = nodes.map((node, i) => {
+          let x = (i - nodes.length / 2);
+          let y = -depth;
+
+          return new Vec2(x, y)
+        });
+      }
+
+      function getNodePosition(node) {
+        for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+          let nodes = flattened_nodes[depth];
+
+          for (let i = 0; i < nodes.length; ++i) {
+            if (nodes[i] === node) {
+              return node_positions[depth][i]
+            }
+          }
+        }
+      }
+
+      for (let depth = 0; depth < flattened_nodes.length; ++depth) {
+        let nodes = flattened_nodes[depth];
+        let positions = node_positions[depth];
+
+        nodes.forEach((node, i) => {
+          let parentPos = getNodePosition(node.parent);
+
+          if (parentPos)
+            this.vertices.push(positions[i].x, positions[i].y, parentPos.x, parentPos.y, NaN, NaN);
+
+          this.labels.push(new Label2D({
+            style: this.label_style,
+            text: this.getTextOfNode(node),
+            position: this.plot.transform.plotToPixel(positions[i])
+          }));
+        });
+      }
+
+      const polyline = this.polyline;
+
+      polyline.vertices = this.vertices;
+
+      this.plot.transform.plotToPixelArr(polyline.vertices);
+
+      polyline.update(info);
+
+    }
+
+    render(info) {
+      super.render(info);
+
+      this.polyline.render(info);
+
+      this.labels.forEach(label => label.render(info));
+    }
+  }
+
+  // Interactive event names
+  const listenerKeys = ['click', 'mousemove', 'mousedown', 'mouseup', 'wheel'];
+
+  /** @class InteractiveElement An element which takes up space in a plot and supports an "isClick" function.
+   * Used exclusively for 2D plots (3D plots will have a raycasting system).
+   */
+  class InteractiveElement extends GraphemeElement {
+    /**
+     * Construct an InteractiveElement
+     * @param params {Object}
+     * @param params.interactivityEnabled {boolean} Whether interactivity is enabled
+     * @param params.precedence See base class.
+     * @param params.alwaysUpdate See base class.
+     */
+    constructor (params = {}) {
+      super(params);
+
+      const {
+        interactivityEnabled = false
+      } = params;
+
+      this.interactivityEnabled = interactivityEnabled;
+      this.interactivityListeners = {};
+    }
+
+    /**
+     * Get whether interactivity is enabled
+     * @returns {boolean} Whether interactivity is enabled
+     */
+    get interactivityEnabled () {
+      return this.interactivityListeners && Object.keys(this.interactivityListeners).length !== 0
+    }
+
+    /**
+     * Set whether interactivity is enabled.
+     * @param value {boolean}
+     */
+    set interactivityEnabled (value) {
+      if (this.interactivityEnabled === value) {
+        return
+      }
+
+      let listeners = this.interactivityListeners;
+
+      if (value) {
+        // Enable interactivity
+
+        // Warn if the element is added to a non-interactive canvas
+        if (this.plot && !(this.plot instanceof InteractiveCanvas)) {
+          console.warn('Interactive element in a non-interactive canvas');
+        }
+
+        // The position on the canvas of where the mouse was pressed. null if the mouse is not currently pressed.
+        let mouseDownPos = null;
+
+        // Whether the previous mousemove was on the element
+        let prevIsClick = false;
+
+        listenerKeys.forEach(key => {
+          let callback = (evt) => {
+            // Elide mouse moves
+            if (key === 'mousemove' && !this._hasMouseMoveInteractivityListeners() && !mouseDownPos) {
+              return
+            }
+
+            let eventPos = evt.pos;
+
+            // Whether the event occurred on this element
+            let isClick = this.isClick(eventPos);
+
+            // Whether to stop propagation
+            let stopPropagation = false;
+
+            // Trigger mouse on and mouse off events
+            if (isClick && !prevIsClick) {
+              if (this.triggerEvent('interactive-mouseon', evt)) {
+                stopPropagation = true;
+              }
+            } else if (!isClick && prevIsClick) {
+              if (this.triggerEvent('interactive-mouseoff', evt)) {
+                stopPropagation = true;
+              }
+            }
+
+            // Set whether the previous mouse move is on the element
+            if (key === 'mousemove' && isClick) {
+              prevIsClick = true;
+            } else if (key === 'mousemove' && !isClick) {
+              prevIsClick = false;
+            }
+
+            if (isClick) {
+              if (this.triggerEvent('interactive-' + key, evt)) {
+                stopPropagation = true;
+              }
+            }
+
+            // Trigger drag events
+            if (key === 'mousemove') {
+              if (mouseDownPos) {
+                // return to allow the prevention of propagation
+                if (this.triggerEvent('interactive-drag', { start: mouseDownPos, ...evt })) {
+                  stopPropagation = true;
+                }
+              }
+            } else if (key === 'mousedown' && isClick) {
+              // Set the position of the mouse
+              mouseDownPos = eventPos;
+            } else if (key === 'mouseup') {
+              // Prevent the mouse from
+              mouseDownPos = null;
+            }
+
+            return stopPropagation
+          };
+
+          this.addEventListener(key, callback);
+          listeners[key] = callback;
+        });
+
+      } else {
+        // Disable interactivity
+        for (let key in this.interactivityListeners) {
+          if (this.interactivityListeners.hasOwnProperty(key)) {
+            this.removeEventListener(key, listeners[key]);
+          }
+        }
+
+        this.interactivityListeners = {};
+      }
+    }
+
+    /**
+     * Whether this element has interactivity listeners to fire when the mouse moves and is not pressed down. Used
+     * internally to elide calls to isClick when the element would do nothing even if it returned true.
+     * @returns {boolean}
+     * @private
+     */
+    _hasMouseMoveInteractivityListeners () {
+      const listeners = this.interactivityListeners;
+
+      return !!(listeners['interactive-mouseon'] || listeners['interactive-mouseoff'] || listeners['interactivity-mousemove'])
+    }
+
+    /**
+     * Derived classes need to define this function
+     * @param position
+     */
+    isClick (position) {
+      throw new Error("isClick unimplemented for InteractiveElement")
+    }
+  }
+
   let MAX_DEPTH = 10;
   let MAX_POINTS = 1e6;
 
@@ -8001,207 +5892,6 @@ var Grapheme = (function (exports) {
     }
 
     polyline._internal_polyline.needsBufferCopy = true;
-  }
-
-  /**
-   * @class WebGLElement An element that supports WebGL rendering.
-   */
-  class WebGLElement extends GraphemeElement {
-    /**
-     * Construct a new WebGLElement
-     * @param params Parameters
-     */
-    constructor (params = {}) {
-      super(params);
-
-      // id used for things like WebGL buffers
-      /** @protected */ this.id = generateUUID();
-    }
-
-    /**
-     *
-     * @param info {Object} The render info
-     * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
-     */
-    render (info) {
-      // Call beforeWebGLRender()
-      info.beforeWebGLRender();
-
-      // Sort this element's children. We don't want to call super.render() because that will run beforeNormalRender
-      this.sortChildren();
-
-      // Render all children
-      this.children.forEach(child => child.render(info));
-    }
-  }
-
-  // this vertex shader is used for the polylines
-  const vertexShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// a vector containing the 2D position of the vertex
-attribute vec2 v_position;
-uniform vec2 xy_scale;
-vec2 displace = vec2(-1, 1);
-void main() {
-  // set the vertex's resultant position
-  gl_Position = vec4(v_position * xy_scale + displace, 0, 1);
-}`;
-  // this frag shader is used for the polylines
-  const fragmentShaderSource = `// set the float precision of the shader to medium precision
-precision mediump float;
-// vec4 containing the color of the line to be drawn
-uniform vec4 line_color;
-void main() {
-  gl_FragColor = line_color;
-}
-`;
-
-  // polyline primitive in Cartesian coordinates
-  // has thickness, vertex information, and color stuff
-  class WebGLPolyline extends WebGLElement {
-    constructor (params = {}) {
-      super(params);
-
-      this.vertices = params.vertices ? params.vertices : []; // x,y values in pixel space
-      this.pen = params.pen ? params.pen : new Pen();
-
-      this.glVertices = null;
-      this.glVertexCount = 0;
-
-      this.alwaysUpdate = false;
-    }
-
-    _calculateTriangles (box) {
-      let result = calculatePolylineVertices(this.vertices, this.pen, box);
-      this.glVertices = result.glVertices;
-      this.glVertexCount = result.vertexCount;
-    }
-
-    _calculateNativeLines (box) {
-      let vertices = this.vertices;
-
-      if (this.pen.dashPattern.length !== 0) {
-        vertices = getDashedPolyline(vertices, this.pen, box);
-      }
-
-      if (vertices.length <= 3) {
-        this.glVertexCount = 0;
-        return
-      }
-
-      let glVertices = new Float32Array(vertices.length);
-
-      if (Array.isArray(vertices)) {
-        for (let i = 0; i < vertices.length; ++i) {
-          glVertices[i] = vertices[i];
-        }
-      } else {
-        glVertices.set(vertices);
-      }
-
-      this.glVertexCount = Math.ceil(vertices.length / 2);
-      this.glVertices = glVertices;
-    }
-
-    update (info) {
-      super.update();
-
-      let box, thickness = this.pen.thickness;
-
-      if (info) {
-        box = info.plot.getCanvasBox().pad({
-          left: -thickness,
-          right: -thickness,
-          top: -thickness,
-          bottom: -thickness
-        });
-      } else {
-        // ANNOYING! This should never be the case these days
-        box = new BoundingBox(new Vec2(0, 0), 8192, 8192).pad({
-          left: -thickness,
-          right: -thickness,
-          top: -thickness,
-          bottom: -thickness
-        });
-      }
-
-      if (this.pen.useNative) {
-        // use native LINE_STRIP for extreme speed
-        this._calculateNativeLines(box);
-      } else {
-
-        this._calculateTriangles(box);
-      }
-
-      this.needsBufferCopy = true;
-    }
-
-    isClick (point) {
-      return this.distanceFrom(point) < Math.max(this.pen.thickness / 2, 2)
-    }
-
-    distanceFrom (point) {
-      return pointLineSegmentMinDistance(point.x, point.y, this.vertices)
-    }
-
-    closestTo (point) {
-      return pointLineSegmentClosest(point.x, point.y, this.vertices)
-    }
-
-    render (info) {
-      if (!this.visible) {
-        return
-      }
-
-      super.render(info);
-
-      const glManager = info.universe.glManager;
-      const gl = info.universe.gl;
-      const useNative = this.pen.useNative;
-
-      let program = glManager.getProgram('webgl-polyline');
-
-      if (!program) {
-        glManager.compileProgram('webgl-polyline', vertexShaderSource, fragmentShaderSource, ['v_position'], ['line_color', 'xy_scale']);
-        program = glManager.getProgram('webgl-polyline');
-      }
-
-      let buffer = glManager.getBuffer(this.id);
-      let vertexCount = this.glVertexCount;
-
-      if ((useNative && vertexCount < 2) || (!useNative && vertexCount < 3)) return
-      // tell webgl to start using the gridline program
-      gl.useProgram(program.program);
-      // bind our webgl buffer to gl.ARRAY_BUFFER access point
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-      let color = this.pen.color;
-      // set the vec4 at colorLocation to (r, g, b, a)
-      // divided by 255 because webgl likes [0.0, 1.0]
-      gl.uniform4f(program.uniforms.line_color, color.r / 255, color.g / 255, color.b / 255, color.a / 255);
-      gl.uniform2f(program.uniforms.xy_scale,
-        2 / info.plot.width,
-        -2 / info.plot.height);
-
-      // copy our vertex data to the GPU
-      if (this.needsBufferCopy) {
-        gl.bufferData(gl.ARRAY_BUFFER, this.glVertices, gl.DYNAMIC_DRAW /* means we will rewrite the data often */);
-
-        this.needsBufferCopy = false;
-      }
-
-      // enable the vertices location attribute to be used in the program
-      gl.enableVertexAttribArray(program.attribs.v_position);
-      // tell it that the width of vertices is 2 (since it's x,y), that it's floats,
-      // that it shouldn't normalize floats, and something i don't understand
-      gl.vertexAttribPointer(program.attribs.v_position, 2, gl.FLOAT, false, 0, 0);
-      // draw the vertices as triangle strip
-      gl.drawArrays(useNative ? gl.LINE_STRIP : gl.TRIANGLE_STRIP, 0, vertexCount);
-    }
-
-    destroy () {
-      deleteBuffersNamed(this.id);
-    }
   }
 
   // Allowed plotting modes:
@@ -8897,6 +6587,539 @@ void main() {
     }
   }
 
+  function multiplyPolynomials(coeffs1, coeffs2, degree) {
+    let ret = [];
+    for (let i = 0; i <= degree; ++i) {
+      ret.push(0);
+    }
+
+    for (let i = 0; i < coeffs1.length; ++i) {
+      for (let j = 0; j < coeffs2.length; ++j) {
+        ret[i + j] += coeffs1[i] * coeffs2[j];
+      }
+    }
+
+    return ret
+  }
+
+  class SingleVariablePolynomial {
+    constructor(coeffs=[0]) {
+      // Order: first is constant, second is linear, etc.
+      this.coeffs = coeffs;
+    }
+
+    _evaluateFloat(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        sum += coeffs[i] * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    evaluate(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        // TODO
+        if (isNaN(coeff))
+          coeff = coeff.approximate_as_float();
+
+        sum += coeff * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    degree() {
+      return this.coeffs.length - 1
+    }
+
+    derivative() {
+      let newCoeffs = [];
+      const coeffs = this.coeffs;
+
+      for (let i = 1; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        newCoeffs.push(i * coeff);
+      }
+
+      return new SingleVariablePolynomial(newCoeffs)
+    }
+
+    clone() {
+      return new SingleVariablePolynomial(this.coeffs.slice())
+    }
+
+    add(poly) {
+      let coeffs = this.coeffs;
+      let otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    subtract(poly) {
+      const coeffs = this.coeffs;
+      const otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    multiplyScalar(s) {
+      const coeffs = this.coeffs;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        coeffs[i] *= s;
+      }
+
+      return this
+    }
+
+    multiply(poly) {
+      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
+      return this
+    }
+
+    integral() {
+      // TODO
+    }
+  }
+
+  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
+
+  var g = 7;
+  var C$1 = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  var integer_factorials = [
+    1,
+    1,
+    2,
+    6,
+    24,
+    120,
+    720,
+    5040,
+    40320,
+    362880,
+    3628800,
+    39916800,
+    479001600,
+    6227020800,
+    87178291200,
+    1307674368000,
+    20922789888000,
+    355687428096000,
+    6402373705728000,
+    121645100408832000,
+    2432902008176640000,
+    51090942171709440000,
+    1.1240007277776077e+21,
+    2.585201673888498e+22,
+    6.204484017332394e+23,
+    1.5511210043330986e+25,
+    4.0329146112660565e+26,
+    1.0888869450418352e+28,
+    3.0488834461171384e+29,
+    8.841761993739701e+30,
+    2.6525285981219103e+32,
+    8.222838654177922e+33,
+    2.631308369336935e+35,
+    8.683317618811886e+36,
+    2.9523279903960412e+38,
+    1.0333147966386144e+40,
+    3.719933267899012e+41,
+    1.3763753091226343e+43,
+    5.23022617466601e+44,
+    2.0397882081197442e+46,
+    8.159152832478977e+47,
+    3.3452526613163803e+49,
+    1.4050061177528798e+51,
+    6.041526306337383e+52,
+    2.6582715747884485e+54,
+    1.1962222086548019e+56,
+    5.5026221598120885e+57,
+    2.5862324151116818e+59,
+    1.2413915592536073e+61,
+    6.082818640342675e+62,
+    3.0414093201713376e+64,
+    1.5511187532873822e+66,
+    8.065817517094388e+67,
+    4.2748832840600255e+69,
+    2.308436973392414e+71,
+    1.2696403353658276e+73,
+    7.109985878048635e+74,
+    4.052691950487722e+76,
+    2.350561331282879e+78,
+    1.3868311854568986e+80,
+    8.320987112741392e+81,
+    5.075802138772248e+83,
+    3.146997326038794e+85,
+    1.98260831540444e+87,
+    1.2688693218588417e+89,
+    8.247650592082472e+90,
+    5.443449390774431e+92,
+    3.647111091818868e+94,
+    2.4800355424368305e+96,
+    1.711224524281413e+98,
+    1.197857166996989e+100,
+    8.504785885678622e+101,
+    6.123445837688608e+103,
+    4.4701154615126834e+105,
+    3.3078854415193856e+107,
+    2.480914081139539e+109,
+    1.8854947016660498e+111,
+    1.4518309202828584e+113,
+    1.1324281178206295e+115,
+    8.946182130782973e+116,
+    7.156945704626378e+118,
+    5.797126020747366e+120,
+    4.75364333701284e+122,
+    3.945523969720657e+124,
+    3.314240134565352e+126,
+    2.8171041143805494e+128,
+    2.4227095383672724e+130,
+    2.107757298379527e+132,
+    1.8548264225739836e+134,
+    1.6507955160908452e+136,
+    1.4857159644817607e+138,
+    1.3520015276784023e+140,
+    1.24384140546413e+142,
+    1.1567725070816409e+144,
+    1.0873661566567424e+146,
+    1.0329978488239052e+148,
+    9.916779348709491e+149,
+    9.619275968248206e+151,
+    9.426890448883242e+153,
+    9.33262154439441e+155,
+    9.33262154439441e+157,
+    9.425947759838354e+159,
+    9.614466715035121e+161,
+    9.902900716486175e+163,
+    1.0299016745145622e+166,
+    1.0813967582402903e+168,
+    1.1462805637347078e+170,
+    1.2265202031961373e+172,
+    1.3246418194518284e+174,
+    1.4438595832024928e+176,
+    1.5882455415227421e+178,
+    1.7629525510902437e+180,
+    1.9745068572210728e+182,
+    2.2311927486598123e+184,
+    2.543559733472186e+186,
+    2.925093693493014e+188,
+    3.3931086844518965e+190,
+    3.969937160808719e+192,
+    4.6845258497542883e+194,
+    5.574585761207603e+196,
+    6.689502913449124e+198,
+    8.09429852527344e+200,
+    9.875044200833598e+202,
+    1.2146304367025325e+205,
+    1.5061417415111404e+207,
+    1.8826771768889254e+209,
+    2.372173242880046e+211,
+    3.012660018457658e+213,
+    3.8562048236258025e+215,
+    4.9745042224772855e+217,
+    6.466855489220472e+219,
+    8.471580690878817e+221,
+    1.118248651196004e+224,
+    1.4872707060906852e+226,
+    1.992942746161518e+228,
+    2.6904727073180495e+230,
+    3.659042881952547e+232,
+    5.01288874827499e+234,
+    6.917786472619486e+236,
+    9.615723196941086e+238,
+    1.346201247571752e+241,
+    1.89814375907617e+243,
+    2.6953641378881614e+245,
+    3.8543707171800706e+247,
+    5.550293832739301e+249,
+    8.047926057471987e+251,
+    1.17499720439091e+254,
+    1.7272458904546376e+256,
+    2.5563239178728637e+258,
+    3.808922637630567e+260,
+    5.7133839564458505e+262,
+    8.627209774233235e+264,
+    1.3113358856834518e+267,
+    2.006343905095681e+269,
+    3.089769613847349e+271,
+    4.789142901463391e+273,
+    7.47106292628289e+275,
+    1.1729568794264138e+278,
+    1.8532718694937338e+280,
+    2.946702272495037e+282,
+    4.714723635992059e+284,
+    7.590705053947215e+286,
+    1.2296942187394488e+289,
+    2.0044015765453015e+291,
+    3.2872185855342945e+293,
+    5.423910666131586e+295,
+    9.003691705778433e+297,
+    1.5036165148649983e+300,
+    2.526075744973197e+302,
+    4.2690680090047027e+304,
+    7.257415615307994e+306
+  ];
+
+  function gamma$1 (z) {
+
+    // Define gamma specially for integral values
+    if (z % 1 === 0) {
+      if (z <= 0) {
+        return Infinity
+      }
+
+      let res = integer_factorials[Math.round(z - 1)];
+
+      if (!res) {
+        return Infinity
+      }
+
+      return res
+    }
+
+    if (z < 0.5) {
+      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
+    } else {
+      z -= 1;
+
+      var x = C$1[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += C$1[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
+    }
+  }
+
+  function ln_gamma (z) {
+    if (z < 0.5) {
+      // Compute via reflection formula
+      let reflected = ln_gamma(1 - z);
+
+      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
+    } else {
+      z -= 1;
+
+      var x = C$1[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += C$1[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+
+      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
+    }
+  }
+
+  function polygamma (m, z) {
+    if (m % 1 !== 0) {
+      return NaN
+    }
+
+    if (m === 0) {
+      return digamma(z)
+    }
+
+    if (m === 1) {
+      return trigamma(z)
+    }
+
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return Infinity
+
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
+        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
+    }
+
+    // Series representation
+
+    let sum = 0;
+    for (let i = 0; i < 200; ++i) {
+      sum += 1 / Math.pow(z + i, m + 1);
+    }
+
+    return sign * gamma$1(m + 1) * sum
+
+  }
+
+  const GREGORY_COEFFICIENTS = [
+    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
+  ];
+
+  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
+
+  let POLY1 = new SingleVariablePolynomial([0, 1]);
+  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
+
+  function getPolygammaNumeratorPolynomial(n) {
+    let poly = PolygammaNumeratorPolynomials[n];
+    if (poly)
+      return poly
+
+    if (n > 10000)
+      return new SingleVariablePolynomial([0])
+
+    if (n > 20) {
+      // to prevent stack overflow issues
+      for (let i = 0; i < n; ++i) {
+        getPolygammaNumeratorPolynomial(i);
+      }
+    }
+
+    return PolygammaNumeratorPolynomials[n] =
+      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
+        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
+      )
+  }
+
+  function digamma (z) {
+    if (z < 0.5) {
+      // psi(1-x) - psi(x) = pi cot(pi x)
+      // psi(x) = psi(1-x) - pi cot (pi x)
+
+      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
+    } else if (z < 5) {
+      // psi(x+1) = psi(x) + 1/x
+      // psi(x) = psi(x+1) - 1/x
+
+      return digamma(z + 1) - 1 / z
+    }
+
+    let egg = 1;
+    let sum = Math.log(z);
+
+    for (let n = 1; n < 100; ++n) {
+      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
+
+      egg *= ((n-1) ? (n-1) : 1);
+      egg /= z + n - 1;
+
+      sum -= coeff * egg;
+    }
+
+    return sum
+  }
+
+  function trigamma(z) {
+    if (z < 0.5) {
+      if (z % 1 === 0) {
+        return Infinity
+      }
+
+      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
+      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
+
+      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
+    } else if (z < 8) {
+      // psi_1(z+1) = psi_1(z) - 1/z^2
+      // psi_1(z) = psi_1(z+1) + 1/z^2
+
+      return trigamma(z+1) + 1 / (z*z)
+    }
+
+    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
+  }
+
+  const ExtraFunctions = {
+    LogB: (b, v) => {
+      return Math.log(v) / Math.log(b)
+    },
+    Factorial: (a) => {
+      return Functions.Gamma(a + 1)
+    },
+    Gamma: (a) => {
+      return gamma$1(a)
+    },
+    LnGamma: (a) => {
+      return ln_gamma(a)
+    },
+    Digamma: (a) => {
+      return digamma(a)
+    },
+    Trigamma: (a) => {
+      return trigamma(a)
+    },
+    Polygamma: (n, a) => {
+      return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
+    },
+    PowRational: (x, p, q) => {
+      // Calculates x ^ (p / q), where p and q are integers
+
+      if (p === 0) {
+        return 1
+      }
+
+      let GCD = gcd(p, q);
+
+      if (GCD !== 1) {
+        p /= GCD;
+        q /= GCD;
+      }
+
+      if (x >= 0) {
+        return Math.pow(x, p / q)
+      } else {
+        if (mod(q, 2) === 0)
+          return NaN
+
+        let ret = Math.pow(-x, p / q);
+        if (mod(p, 2) === 0) {
+          return ret
+        } else {
+          return -ret
+        }
+      }
+    },
+    Mod: (n, m) => {
+      return ((n % m) + m) % m
+    }
+  };
+
   const REPRESENTATION_LENGTH = 20;
   const MAX_DENOM = 1e7;
 
@@ -8970,3253 +7193,6 @@ void main() {
 
     return [n, d]
   }
-
-  // Copyright 2010 The Emscripten Authors.  All rights reserved.
-  // Emscripten is available under two separate licenses, the MIT license and the
-  // University of Illinois/NCSA Open Source License.  Both these licenses can be
-  // found in the LICENSE file.
-
-  // The Module object: Our interface to the outside world. We import
-  // and export values on it. There are various ways Module can be used:
-  // 1. Not defined. We create it here
-  // 2. A function parameter, function(Module) { ..generated code.. }
-  // 3. pre-run appended it, var Module = {}; ..generated code..
-  // 4. External script tag defines var Module.
-  // We need to check if Module already exists (e.g. case 3 above).
-  // Substitution will be replaced with actual code on later stage of the build,
-  // this way Closure Compiler will not mangle it (e.g. case 4. above).
-  // Note that if you want to run closure, and also to use Module
-  // after the generated code, you will need to define   var Module = {};
-  // before the code. Then that object will be used in the code, and you
-  // can continue to use Module afterwards as well.
-  var Module = typeof Module !== 'undefined' ? Module : {};
-
-  // --pre-jses are emitted after the Module integration code, so that they can
-  // refer to Module (if they choose; they can also define Module)
-
-
-  // Sometimes an existing Module object exists with properties
-  // meant to overwrite the default module functionality. Here
-  // we collect those properties and reapply _after_ we configure
-  // the current environment's defaults to avoid having to be so
-  // defensive during initialization.
-  var moduleOverrides = {};
-  var key;
-  for (key in Module) {
-    if (Module.hasOwnProperty(key)) {
-      moduleOverrides[key] = Module[key];
-    }
-  }
-
-  var arguments_ = [];
-  var thisProgram = './this.program';
-
-  // Determine the runtime environment we are in. You can customize this by
-  // setting the ENVIRONMENT setting at compile time (see settings.js).
-
-  var ENVIRONMENT_IS_WEB = false;
-  var ENVIRONMENT_IS_WORKER = false;
-  var ENVIRONMENT_IS_NODE = false;
-  var ENVIRONMENT_HAS_NODE = false;
-  var ENVIRONMENT_IS_SHELL = false;
-  ENVIRONMENT_IS_WEB = typeof window === 'object';
-  ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-  // A web environment like Electron.js can have Node enabled, so we must
-  // distinguish between Node-enabled environments and Node environments per se.
-  // This will allow the former to do things like mount NODEFS.
-  // Extended check using process.versions fixes issue #8816.
-  // (Also makes redundant the original check that 'require' is a function.)
-  ENVIRONMENT_HAS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
-  ENVIRONMENT_IS_NODE = ENVIRONMENT_HAS_NODE && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
-  ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
-
-  if (Module['ENVIRONMENT']) {
-    throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -s ENVIRONMENT=web or -s ENVIRONMENT=node)');
-  }
-
-
-
-  // `/` should be present at the end if `scriptDirectory` is not empty
-  var scriptDirectory = '';
-  function locateFile(path) {
-    if (Module['locateFile']) {
-      return Module['locateFile'](path, scriptDirectory);
-    }
-    return scriptDirectory + path;
-  }
-
-  // Hooks that are implemented differently in different runtime environments.
-  var read_,
-      readBinary;
-
-  if (ENVIRONMENT_IS_NODE) {
-    scriptDirectory = __dirname + '/';
-
-    // Expose functionality in the same simple way that the shells work
-    // Note that we pollute the global namespace here, otherwise we break in node
-    var nodeFS;
-    var nodePath;
-
-    read_ = function shell_read(filename, binary) {
-      var ret;
-        if (!nodeFS) nodeFS = require('fs');
-        if (!nodePath) nodePath = require('path');
-        filename = nodePath['normalize'](filename);
-        ret = nodeFS['readFileSync'](filename);
-      return binary ? ret : ret.toString();
-    };
-
-    readBinary = function readBinary(filename) {
-      var ret = read_(filename, true);
-      if (!ret.buffer) {
-        ret = new Uint8Array(ret);
-      }
-      assert$1(ret.buffer);
-      return ret;
-    };
-
-    if (process['argv'].length > 1) {
-      thisProgram = process['argv'][1].replace(/\\/g, '/');
-    }
-
-    arguments_ = process['argv'].slice(2);
-
-    if (typeof module !== 'undefined') {
-      module['exports'] = Module;
-    }
-
-    process['on']('uncaughtException', function(ex) {
-      // suppress ExitStatus exceptions from showing an error
-      if (!(ex instanceof ExitStatus)) {
-        throw ex;
-      }
-    });
-
-    process['on']('unhandledRejection', abort);
-
-    Module['inspect'] = function () { return '[Emscripten Module object]'; };
-  } else
-  if (ENVIRONMENT_IS_SHELL) {
-
-
-    if (typeof read != 'undefined') {
-      read_ = function shell_read(f) {
-        return read(f);
-      };
-    }
-
-    readBinary = function readBinary(f) {
-      var data;
-      if (typeof readbuffer === 'function') {
-        return new Uint8Array(readbuffer(f));
-      }
-      data = read(f, 'binary');
-      assert$1(typeof data === 'object');
-      return data;
-    };
-
-    if (typeof scriptArgs != 'undefined') {
-      arguments_ = scriptArgs;
-    } else if (typeof arguments != 'undefined') {
-      arguments_ = arguments;
-    }
-
-    if (typeof print !== 'undefined') {
-      // Prefer to use print/printErr where they exist, as they usually work better.
-      if (typeof console === 'undefined') console = {};
-      console.log = print;
-      console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
-    }
-  } else
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-    if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-      scriptDirectory = self.location.href;
-    } else if (document.currentScript) { // web
-      scriptDirectory = document.currentScript.src;
-    }
-    // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
-    // otherwise, slice off the final part of the url to find the script directory.
-    // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
-    // and scriptDirectory will correctly be replaced with an empty string.
-    if (scriptDirectory.indexOf('blob:') !== 0) {
-      scriptDirectory = scriptDirectory.substr(0, scriptDirectory.lastIndexOf('/')+1);
-    } else {
-      scriptDirectory = '';
-    }
-
-
-    read_ = function shell_read(url) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
-        xhr.send(null);
-        return xhr.responseText;
-    };
-
-    if (ENVIRONMENT_IS_WORKER) {
-      readBinary = function readBinary(url) {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, false);
-          xhr.responseType = 'arraybuffer';
-          xhr.send(null);
-          return new Uint8Array(xhr.response);
-      };
-    }
-  } else
-  {
-    throw new Error('environment detection error');
-  }
-
-  // Set up the out() and err() hooks, which are how we can print to stdout or
-  // stderr, respectively.
-  var out = Module['print'] || console.log.bind(console);
-  var err = Module['printErr'] || console.warn.bind(console);
-
-  // Merge back in the overrides
-  for (key in moduleOverrides) {
-    if (moduleOverrides.hasOwnProperty(key)) {
-      Module[key] = moduleOverrides[key];
-    }
-  }
-  // Free the object hierarchy contained in the overrides, this lets the GC
-  // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
-  moduleOverrides = null;
-
-  // Emit code to handle expected values on the Module object. This applies Module.x
-  // to the proper local x. This has two benefits: first, we only emit it if it is
-  // expected to arrive, and second, by using a local everywhere else that can be
-  // minified.
-  if (Module['arguments']) arguments_ = Module['arguments'];if (!Object.getOwnPropertyDescriptor(Module, 'arguments')) Object.defineProperty(Module, 'arguments', { configurable: true, get: function() { abort('Module.arguments has been replaced with plain arguments_'); } });
-  if (Module['thisProgram']) thisProgram = Module['thisProgram'];if (!Object.getOwnPropertyDescriptor(Module, 'thisProgram')) Object.defineProperty(Module, 'thisProgram', { configurable: true, get: function() { abort('Module.thisProgram has been replaced with plain thisProgram'); } });
-  if (!Object.getOwnPropertyDescriptor(Module, 'quit')) Object.defineProperty(Module, 'quit', { configurable: true, get: function() { abort('Module.quit has been replaced with plain quit_'); } });
-
-  // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
-  // Assertions on removed incoming Module JS APIs.
-  assert$1(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
-  assert$1(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
-  assert$1(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
-  assert$1(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-  assert$1(typeof Module['read'] === 'undefined', 'Module.read option was removed (modify read_ in JS)');
-  assert$1(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
-  assert$1(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-  assert$1(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
-  if (!Object.getOwnPropertyDescriptor(Module, 'read')) Object.defineProperty(Module, 'read', { configurable: true, get: function() { abort('Module.read has been replaced with plain read_'); } });
-  if (!Object.getOwnPropertyDescriptor(Module, 'readAsync')) Object.defineProperty(Module, 'readAsync', { configurable: true, get: function() { abort('Module.readAsync has been replaced with plain readAsync'); } });
-  if (!Object.getOwnPropertyDescriptor(Module, 'readBinary')) Object.defineProperty(Module, 'readBinary', { configurable: true, get: function() { abort('Module.readBinary has been replaced with plain readBinary'); } });
-
-  // stack management, and other functionality that is provided by the compiled code,
-  // should not be used before it is ready
-  stackSave = stackRestore = stackAlloc = function() {
-    abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
-  };
-
-  function warnOnce(text) {
-    if (!warnOnce.shown) warnOnce.shown = {};
-    if (!warnOnce.shown[text]) {
-      warnOnce.shown[text] = 1;
-      err(text);
-    }
-  }
-
-
-
-
-  // === Preamble library stuff ===
-
-  // Documentation for the public APIs defined in this file must be updated in:
-  //    site/source/docs/api_reference/preamble.js.rst
-  // A prebuilt local version of the documentation is available at:
-  //    site/build/text/docs/api_reference/preamble.js.txt
-  // You can also build docs locally as HTML or other formats in site/
-  // An online HTML version (which may be of a different version of Emscripten)
-  //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
-
-
-  var wasmBinary;if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];if (!Object.getOwnPropertyDescriptor(Module, 'wasmBinary')) Object.defineProperty(Module, 'wasmBinary', { configurable: true, get: function() { abort('Module.wasmBinary has been replaced with plain wasmBinary'); } });
-  if (!Object.getOwnPropertyDescriptor(Module, 'noExitRuntime')) Object.defineProperty(Module, 'noExitRuntime', { configurable: true, get: function() { abort('Module.noExitRuntime has been replaced with plain noExitRuntime'); } });
-
-
-  if (typeof WebAssembly !== 'object') {
-    abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-  }
-
-
-
-
-
-  // Wasm globals
-
-  var wasmMemory;
-
-  // In fastcomp asm.js, we don't need a wasm Table at all.
-  // In the wasm backend, we polyfill the WebAssembly object,
-  // so this creates a (non-native-wasm) table for us.
-  var wasmTable = new WebAssembly.Table({
-    'initial': 17,
-    'maximum': 17 + 0,
-    'element': 'anyfunc'
-  });
-
-
-  //========================================
-  // Runtime essentials
-  //========================================
-
-  // whether we are quitting the application. no code should run after this.
-  // set in exit() and abort()
-  var ABORT = false;
-
-  /** @type {function(*, string=)} */
-  function assert$1(condition, text) {
-    if (!condition) {
-      abort('Assertion failed: ' + text);
-    }
-  }
-
-  // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-  function getCFunc(ident) {
-    var func = Module['_' + ident]; // closure exported function
-    assert$1(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
-    return func;
-  }
-
-  // C calling interface.
-  function ccall(ident, returnType, argTypes, args, opts) {
-    // For fast lookup of conversion functions
-    var toC = {
-      'string': function(str) {
-        var ret = 0;
-        if (str !== null && str !== undefined && str !== 0) { // null string
-          // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-          var len = (str.length << 2) + 1;
-          ret = stackAlloc(len);
-          stringToUTF8(str, ret, len);
-        }
-        return ret;
-      },
-      'array': function(arr) {
-        var ret = stackAlloc(arr.length);
-        writeArrayToMemory(arr, ret);
-        return ret;
-      }
-    };
-
-    function convertReturnValue(ret) {
-      if (returnType === 'string') return UTF8ToString(ret);
-      if (returnType === 'boolean') return Boolean(ret);
-      return ret;
-    }
-
-    var func = getCFunc(ident);
-    var cArgs = [];
-    var stack = 0;
-    assert$1(returnType !== 'array', 'Return type should not be "array".');
-    if (args) {
-      for (var i = 0; i < args.length; i++) {
-        var converter = toC[argTypes[i]];
-        if (converter) {
-          if (stack === 0) stack = stackSave();
-          cArgs[i] = converter(args[i]);
-        } else {
-          cArgs[i] = args[i];
-        }
-      }
-    }
-    var ret = func.apply(null, cArgs);
-
-    ret = convertReturnValue(ret);
-    if (stack !== 0) stackRestore(stack);
-    return ret;
-  }
-
-  function cwrap(ident, returnType, argTypes, opts) {
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments);
-    }
-  }
-
-
-  // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
-  // a copy of that string as a Javascript String object.
-
-  var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
-
-  /**
-   * @param {number} idx
-   * @param {number=} maxBytesToRead
-   * @return {string}
-   */
-  function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
-    var endIdx = idx + maxBytesToRead;
-    var endPtr = idx;
-    // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
-    // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-    // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
-    while (u8Array[endPtr] && !(endPtr >= endIdx)) ++endPtr;
-
-    if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
-      return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
-    } else {
-      var str = '';
-      // If building with TextDecoder, we have already computed the string length above, so test loop end condition against that
-      while (idx < endPtr) {
-        // For UTF8 byte structure, see:
-        // http://en.wikipedia.org/wiki/UTF-8#Description
-        // https://www.ietf.org/rfc/rfc2279.txt
-        // https://tools.ietf.org/html/rfc3629
-        var u0 = u8Array[idx++];
-        if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-        var u1 = u8Array[idx++] & 63;
-        if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-        var u2 = u8Array[idx++] & 63;
-        if ((u0 & 0xF0) == 0xE0) {
-          u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
-        } else {
-          if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string on the asm.js/wasm heap to a JS string!');
-          u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (u8Array[idx++] & 63);
-        }
-
-        if (u0 < 0x10000) {
-          str += String.fromCharCode(u0);
-        } else {
-          var ch = u0 - 0x10000;
-          str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
-        }
-      }
-    }
-    return str;
-  }
-
-  // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns a
-  // copy of that string as a Javascript String object.
-  // maxBytesToRead: an optional length that specifies the maximum number of bytes to read. You can omit
-  //                 this parameter to scan the string until the first \0 byte. If maxBytesToRead is
-  //                 passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the
-  //                 middle, then the string will cut short at that byte index (i.e. maxBytesToRead will
-  //                 not produce a string of exact length [ptr, ptr+maxBytesToRead[)
-  //                 N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may
-  //                 throw JS JIT optimizations off, so it is worth to consider consistently using one
-  //                 style or the other.
-  /**
-   * @param {number} ptr
-   * @param {number=} maxBytesToRead
-   * @return {string}
-   */
-  function UTF8ToString(ptr, maxBytesToRead) {
-    return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
-  }
-
-  // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
-  // encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-  // Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
-  // Parameters:
-  //   str: the Javascript string to copy.
-  //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
-  //   outIdx: The starting offset in the array to begin the copying.
-  //   maxBytesToWrite: The maximum number of bytes this function can write to the array.
-  //                    This count should include the null terminator,
-  //                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
-  //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
-  // Returns the number of bytes written, EXCLUDING the null terminator.
-
-  function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
-    if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
-      return 0;
-
-    var startIdx = outIdx;
-    var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
-    for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
-      var u = str.charCodeAt(i); // possibly a lead surrogate
-      if (u >= 0xD800 && u <= 0xDFFF) {
-        var u1 = str.charCodeAt(++i);
-        u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
-      }
-      if (u <= 0x7F) {
-        if (outIdx >= endIdx) break;
-        outU8Array[outIdx++] = u;
-      } else if (u <= 0x7FF) {
-        if (outIdx + 1 >= endIdx) break;
-        outU8Array[outIdx++] = 0xC0 | (u >> 6);
-        outU8Array[outIdx++] = 0x80 | (u & 63);
-      } else if (u <= 0xFFFF) {
-        if (outIdx + 2 >= endIdx) break;
-        outU8Array[outIdx++] = 0xE0 | (u >> 12);
-        outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-        outU8Array[outIdx++] = 0x80 | (u & 63);
-      } else {
-        if (outIdx + 3 >= endIdx) break;
-        if (u >= 0x200000) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to an UTF-8 string on the asm.js/wasm heap! (Valid unicode code points should be in range 0-0x1FFFFF).');
-        outU8Array[outIdx++] = 0xF0 | (u >> 18);
-        outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
-        outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
-        outU8Array[outIdx++] = 0x80 | (u & 63);
-      }
-    }
-    // Null-terminate the pointer to the buffer.
-    outU8Array[outIdx] = 0;
-    return outIdx - startIdx;
-  }
-
-  // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
-  // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-  // Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
-  // Returns the number of bytes written, EXCLUDING the null terminator.
-
-  function stringToUTF8(str, outPtr, maxBytesToWrite) {
-    assert$1(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
-    return stringToUTF8Array(str, HEAPU8,outPtr, maxBytesToWrite);
-  }
-
-  // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
-  function lengthBytesUTF8(str) {
-    var len = 0;
-    for (var i = 0; i < str.length; ++i) {
-      // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
-      // See http://unicode.org/faq/utf_bom.html#utf16-3
-      var u = str.charCodeAt(i); // possibly a lead surrogate
-      if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
-      if (u <= 0x7F) ++len;
-      else if (u <= 0x7FF) len += 2;
-      else if (u <= 0xFFFF) len += 3;
-      else len += 4;
-    }
-    return len;
-  }
-
-
-  // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
-  // a copy of that string as a Javascript String object.
-
-  var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
-
-  function writeArrayToMemory(array, buffer) {
-    assert$1(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)');
-    HEAP8.set(array, buffer);
-  }
-  var WASM_PAGE_SIZE = 65536;
-
-  var /** @type {ArrayBuffer} */
-    buffer,
-  /** @type {Int8Array} */
-    HEAP8,
-  /** @type {Uint8Array} */
-    HEAPU8,
-  /** @type {Int16Array} */
-    HEAP16,
-  /** @type {Uint16Array} */
-    HEAPU16,
-  /** @type {Int32Array} */
-    HEAP32,
-  /** @type {Uint32Array} */
-    HEAPU32,
-  /** @type {Float32Array} */
-    HEAPF32,
-  /** @type {Float64Array} */
-    HEAPF64;
-
-  function updateGlobalBufferAndViews(buf) {
-    buffer = buf;
-    Module['HEAP8'] = HEAP8 = new Int8Array(buf);
-    Module['HEAP16'] = HEAP16 = new Int16Array(buf);
-    Module['HEAP32'] = HEAP32 = new Int32Array(buf);
-    Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
-    Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
-    Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
-    Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
-    Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
-  }
-
-  var STACK_BASE = 5265104,
-      STACK_MAX = 22224,
-      DYNAMIC_BASE = 5265104,
-      DYNAMICTOP_PTR = 22064;
-
-  assert$1(STACK_BASE % 16 === 0, 'stack must start aligned');
-  assert$1(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
-
-
-
-  var TOTAL_STACK = 5242880;
-  if (Module['TOTAL_STACK']) assert$1(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime');
-
-  var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 16777216;if (!Object.getOwnPropertyDescriptor(Module, 'TOTAL_MEMORY')) Object.defineProperty(Module, 'TOTAL_MEMORY', { configurable: true, get: function() { abort('Module.TOTAL_MEMORY has been replaced with plain INITIAL_TOTAL_MEMORY'); } });
-
-  assert$1(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
-
-  // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-  assert$1(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
-         'JS engine does not provide full typed array support');
-
-
-
-
-
-
-  // In standalone mode, the wasm creates the memory, and the user can't provide it.
-  // In non-standalone/normal mode, we create the memory here.
-
-  // Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
-  // memory is created in the wasm, not in JS.)
-
-    if (Module['wasmMemory']) {
-      wasmMemory = Module['wasmMemory'];
-    } else
-    {
-      wasmMemory = new WebAssembly.Memory({
-        'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-        ,
-        'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-      });
-    }
-
-
-  if (wasmMemory) {
-    buffer = wasmMemory.buffer;
-  }
-
-  // If the user provides an incorrect length, just use that length instead rather than providing the user to
-  // specifically provide the memory length with Module['TOTAL_MEMORY'].
-  INITIAL_TOTAL_MEMORY = buffer.byteLength;
-  assert$1(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-  updateGlobalBufferAndViews(buffer);
-
-  HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
-
-
-
-
-  // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
-  function writeStackCookie() {
-    assert$1((STACK_MAX & 3) == 0);
-    // The stack grows downwards
-    HEAPU32[(STACK_MAX >> 2)+1] = 0x02135467;
-    HEAPU32[(STACK_MAX >> 2)+2] = 0x89BACDFE;
-    // Also test the global address 0 for integrity.
-    // We don't do this with ASan because ASan does its own checks for this.
-    HEAP32[0] = 0x63736d65; /* 'emsc' */
-  }
-
-  function checkStackCookie() {
-    var cookie1 = HEAPU32[(STACK_MAX >> 2)+1];
-    var cookie2 = HEAPU32[(STACK_MAX >> 2)+2];
-    if (cookie1 != 0x02135467 || cookie2 != 0x89BACDFE) {
-      abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + cookie2.toString(16) + ' ' + cookie1.toString(16));
-    }
-    // Also test the global address 0 for integrity.
-    // We don't do this with ASan because ASan does its own checks for this.
-    if (HEAP32[0] !== 0x63736d65 /* 'emsc' */) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
-  }
-
-  function abortStackOverflow(allocSize) {
-    abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
-  }
-
-
-
-
-  // Endianness check (note: assumes compiler arch was little-endian)
-  (function() {
-    var h16 = new Int16Array(1);
-    var h8 = new Int8Array(h16.buffer);
-    h16[0] = 0x6373;
-    if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-  })();
-
-
-
-  function callRuntimeCallbacks(callbacks) {
-    while(callbacks.length > 0) {
-      var callback = callbacks.shift();
-      if (typeof callback == 'function') {
-        callback();
-        continue;
-      }
-      var func = callback.func;
-      if (typeof func === 'number') {
-        if (callback.arg === undefined) {
-          Module['dynCall_v'](func);
-        } else {
-          Module['dynCall_vi'](func, callback.arg);
-        }
-      } else {
-        func(callback.arg === undefined ? null : callback.arg);
-      }
-    }
-  }
-
-  var __ATPRERUN__  = []; // functions called before the runtime is initialized
-  var __ATINIT__    = []; // functions called during startup
-  var __ATMAIN__    = []; // functions called when main() is to be run
-  var __ATPOSTRUN__ = []; // functions called after the main() is called
-
-  var runtimeInitialized = false;
-  var runtimeExited = false;
-
-
-  function preRun() {
-
-    if (Module['preRun']) {
-      if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-      while (Module['preRun'].length) {
-        addOnPreRun(Module['preRun'].shift());
-      }
-    }
-
-    callRuntimeCallbacks(__ATPRERUN__);
-  }
-
-  function initRuntime() {
-    checkStackCookie();
-    assert$1(!runtimeInitialized);
-    runtimeInitialized = true;
-    
-    callRuntimeCallbacks(__ATINIT__);
-  }
-
-  function preMain() {
-    checkStackCookie();
-    
-    callRuntimeCallbacks(__ATMAIN__);
-  }
-
-  function postRun() {
-    checkStackCookie();
-
-    if (Module['postRun']) {
-      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-      while (Module['postRun'].length) {
-        addOnPostRun(Module['postRun'].shift());
-      }
-    }
-
-    callRuntimeCallbacks(__ATPOSTRUN__);
-  }
-
-  function addOnPreRun(cb) {
-    __ATPRERUN__.unshift(cb);
-  }
-
-  function addOnPreMain(cb) {
-    __ATMAIN__.unshift(cb);
-  }
-
-  function addOnPostRun(cb) {
-    __ATPOSTRUN__.unshift(cb);
-  }
-
-
-  assert$1(Math.imul, 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-  assert$1(Math.fround, 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-  assert$1(Math.clz32, 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-  assert$1(Math.trunc, 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-
-
-
-  // A counter of dependencies for calling run(). If we need to
-  // do asynchronous work before running, increment this and
-  // decrement it. Incrementing must happen in a place like
-  // Module.preRun (used by emcc to add file preloading).
-  // Note that you can add dependencies in preRun, even though
-  // it happens right before run - run will be postponed until
-  // the dependencies are met.
-  var runDependencies = 0;
-  var runDependencyWatcher = null;
-  var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-  var runDependencyTracking = {};
-
-  function addRunDependency(id) {
-    runDependencies++;
-
-    if (Module['monitorRunDependencies']) {
-      Module['monitorRunDependencies'](runDependencies);
-    }
-
-    if (id) {
-      assert$1(!runDependencyTracking[id]);
-      runDependencyTracking[id] = 1;
-      if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
-        // Check for missing dependencies every few seconds
-        runDependencyWatcher = setInterval(function() {
-          if (ABORT) {
-            clearInterval(runDependencyWatcher);
-            runDependencyWatcher = null;
-            return;
-          }
-          var shown = false;
-          for (var dep in runDependencyTracking) {
-            if (!shown) {
-              shown = true;
-              err('still waiting on run dependencies:');
-            }
-            err('dependency: ' + dep);
-          }
-          if (shown) {
-            err('(end of list)');
-          }
-        }, 10000);
-      }
-    } else {
-      err('warning: run dependency added without ID');
-    }
-  }
-
-  function removeRunDependency(id) {
-    runDependencies--;
-
-    if (Module['monitorRunDependencies']) {
-      Module['monitorRunDependencies'](runDependencies);
-    }
-
-    if (id) {
-      assert$1(runDependencyTracking[id]);
-      delete runDependencyTracking[id];
-    } else {
-      err('warning: run dependency removed without ID');
-    }
-    if (runDependencies == 0) {
-      if (runDependencyWatcher !== null) {
-        clearInterval(runDependencyWatcher);
-        runDependencyWatcher = null;
-      }
-      if (dependenciesFulfilled) {
-        var callback = dependenciesFulfilled;
-        dependenciesFulfilled = null;
-        callback(); // can add another dependenciesFulfilled
-      }
-    }
-  }
-
-  Module["preloadedImages"] = {}; // maps url to image data
-  Module["preloadedAudios"] = {}; // maps url to audio data
-
-
-  function abort(what) {
-    if (Module['onAbort']) {
-      Module['onAbort'](what);
-    }
-
-    what += '';
-    out(what);
-    err(what);
-
-    ABORT = true;
-
-    var output = 'abort(' + what + ') at ' + stackTrace();
-    what = output;
-
-    // Throw a wasm runtime error, because a JS error might be seen as a foreign
-    // exception, which means we'd run destructors on it. We need the error to
-    // simply make the program stop.
-    throw new WebAssembly.RuntimeError(what);
-  }
-
-
-
-
-  // show errors on likely calls to FS when it was not included
-  var FS = {
-    error: function() {
-      abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
-    },
-    init: function() { FS.error(); },
-    createDataFile: function() { FS.error(); },
-    createPreloadedFile: function() { FS.error(); },
-    createLazyFile: function() { FS.error(); },
-    open: function() { FS.error(); },
-    mkdev: function() { FS.error(); },
-    registerDevice: function() { FS.error(); },
-    analyzePath: function() { FS.error(); },
-    loadFilesFromDB: function() { FS.error(); },
-
-    ErrnoError: function ErrnoError() { FS.error(); },
-  };
-  Module['FS_createDataFile'] = FS.createDataFile;
-  Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
-
-
-
-  // Copyright 2017 The Emscripten Authors.  All rights reserved.
-  // Emscripten is available under two separate licenses, the MIT license and the
-  // University of Illinois/NCSA Open Source License.  Both these licenses can be
-  // found in the LICENSE file.
-
-  // Prefix of data URIs emitted by SINGLE_FILE and related options.
-  var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-  // Indicates whether filename is a base64 data URI.
-  function isDataURI(filename) {
-    return String.prototype.startsWith ?
-        filename.startsWith(dataURIPrefix) :
-        filename.indexOf(dataURIPrefix) === 0;
-  }
-
-
-
-
-  var wasmBinaryFile = 'grapheme_wasm.wasm';
-  if (!isDataURI(wasmBinaryFile)) {
-    wasmBinaryFile = locateFile(wasmBinaryFile);
-  }
-
-  function getBinary() {
-    try {
-      if (wasmBinary) {
-        return new Uint8Array(wasmBinary);
-      }
-
-      if (readBinary) {
-        return readBinary(wasmBinaryFile);
-      } else {
-        throw "both async and sync fetching of the wasm failed";
-      }
-    }
-    catch (err) {
-      abort(err);
-    }
-  }
-
-  function getBinaryPromise() {
-    // if we don't have the binary yet, and have the Fetch api, use that
-    // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-    if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
-      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
-        if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
-        }
-        return response['arrayBuffer']();
-      }).catch(function () {
-        return getBinary();
-      });
-    }
-    // Otherwise, getBinary should be able to get it synchronously
-    return new Promise(function(resolve, reject) {
-      resolve(getBinary());
-    });
-  }
-
-
-
-  // Create the wasm instance.
-  // Receives the wasm imports, returns the exports.
-  function createWasm() {
-    // prepare imports
-    var info = {
-      'env': asmLibraryArg,
-      'wasi_unstable': asmLibraryArg
-    };
-    // Load the wasm module and create an instance of using native support in the JS engine.
-    // handle a generated wasm instance, receiving its exports and
-    // performing other necessary setup
-    function receiveInstance(instance, module) {
-      var exports = instance.exports;
-      Module['asm'] = exports;
-      removeRunDependency('wasm-instantiate');
-    }
-     // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-    addRunDependency('wasm-instantiate');
-
-
-    // Async compilation can be confusing when an error on the page overwrites Module
-    // (for example, if the order of elements is wrong, and the one defining Module is
-    // later), so we save Module and check it later.
-    var trueModule = Module;
-    function receiveInstantiatedSource(output) {
-      // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
-      // receiveInstance() will swap in the exports (to Module.asm) so they can be called
-      assert$1(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
-      trueModule = null;
-        // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
-        // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
-      receiveInstance(output['instance']);
-    }
-
-
-    function instantiateArrayBuffer(receiver) {
-      return getBinaryPromise().then(function(binary) {
-        return WebAssembly.instantiate(binary, info);
-      }).then(receiver, function(reason) {
-        err('failed to asynchronously prepare wasm: ' + reason);
-        abort(reason);
-      });
-    }
-
-    // Prefer streaming instantiation if available.
-    function instantiateAsync() {
-      if (!wasmBinary &&
-          typeof WebAssembly.instantiateStreaming === 'function' &&
-          !isDataURI(wasmBinaryFile) &&
-          typeof fetch === 'function') {
-        fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
-          var result = WebAssembly.instantiateStreaming(response, info);
-          return result.then(receiveInstantiatedSource, function(reason) {
-              // We expect the most common failure cause to be a bad MIME type for the binary,
-              // in which case falling back to ArrayBuffer instantiation should work.
-              err('wasm streaming compile failed: ' + reason);
-              err('falling back to ArrayBuffer instantiation');
-              instantiateArrayBuffer(receiveInstantiatedSource);
-            });
-        });
-      } else {
-        return instantiateArrayBuffer(receiveInstantiatedSource);
-      }
-    }
-    // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
-    // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
-    // to any other async startup actions they are performing.
-    if (Module['instantiateWasm']) {
-      try {
-        var exports = Module['instantiateWasm'](info, receiveInstance);
-        return exports;
-      } catch(e) {
-        err('Module.instantiateWasm callback failed with error: ' + e);
-        return false;
-      }
-    }
-
-    instantiateAsync();
-    return {}; // no exports yet; we'll fill them in later
-  }
-
-
-
-
-  // STATICTOP = STATIC_BASE + 21200;
-  /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors(); } });
-
-
-
-  /* no memory initializer */
-  // {{PRE_LIBRARY}}
-
-
-    function demangle(func) {
-        warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
-        return func;
-      }
-
-    function demangleAll(text) {
-        var regex =
-          /\b_Z[\w\d_]+/g;
-        return text.replace(regex,
-          function(x) {
-            var y = demangle(x);
-            return x === y ? x : (y + ' [' + x + ']');
-          });
-      }
-
-    function jsStackTrace() {
-        var err = new Error();
-        if (!err.stack) {
-          // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
-          // so try that as a special-case.
-          try {
-            throw new Error(0);
-          } catch(e) {
-            err = e;
-          }
-          if (!err.stack) {
-            return '(no stack trace available)';
-          }
-        }
-        return err.stack.toString();
-      }
-
-    function stackTrace() {
-        var js = jsStackTrace();
-        if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
-        return demangleAll(js);
-      }
-
-    
-    function _atexit(func, arg) {
-        warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
-      }function ___cxa_atexit(
-    ) {
-    return _atexit.apply(null, arguments)
-    }
-
-    function ___lock() {}
-
-    function ___unlock() {}
-
-    function _abort() {
-        abort();
-      }
-
-    function _emscripten_get_sbrk_ptr() {
-        return 22064;
-      }
-
-    function _emscripten_memcpy_big(dest, src, num) {
-        HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
-      }
-
-    
-    function abortOnCannotGrowMemory(requestedSize) {
-        abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-      }function _emscripten_resize_heap(requestedSize) {
-        abortOnCannotGrowMemory(requestedSize);
-      }
-  var SYSCALLS={buffers:[null,[],[]],printChar:function(stream, curr) {
-          var buffer = SYSCALLS.buffers[stream];
-          assert$1(buffer);
-          if (curr === 0 || curr === 10) {
-            (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
-            buffer.length = 0;
-          } else {
-            buffer.push(curr);
-          }
-        },varargs:0,get:function(varargs) {
-          SYSCALLS.varargs += 4;
-          var ret = HEAP32[(((SYSCALLS.varargs)-(4))>>2)];
-          return ret;
-        },getStr:function() {
-          var ret = UTF8ToString(SYSCALLS.get());
-          return ret;
-        },get64:function() {
-          var low = SYSCALLS.get(), high = SYSCALLS.get();
-          if (low >= 0) assert$1(high === 0);
-          else assert$1(high === -1);
-          return low;
-        },getZero:function() {
-          assert$1(SYSCALLS.get() === 0);
-        }};function _fd_close(fd) {try {
-    
-        abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-        return 0;
-      } catch (e) {
-      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
-      return e.errno;
-    }
-    }
-
-    function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {try {
-    
-        abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-        return 0;
-      } catch (e) {
-      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
-      return e.errno;
-    }
-    }
-  function _fd_write(fd, iov, iovcnt, pnum) {try {
-    
-        // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-        var num = 0;
-        for (var i = 0; i < iovcnt; i++) {
-          var ptr = HEAP32[(((iov)+(i*8))>>2)];
-          var len = HEAP32[(((iov)+(i*8 + 4))>>2)];
-          for (var j = 0; j < len; j++) {
-            SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
-          }
-          num += len;
-        }
-        HEAP32[((pnum)>>2)]=num;
-        return 0;
-      } catch (e) {
-      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
-      return e.errno;
-    }
-    }
-
-    function _setTempRet0($i) {
-      }
-
-  // Copyright 2017 The Emscripten Authors.  All rights reserved.
-  // Emscripten is available under two separate licenses, the MIT license and the
-  // University of Illinois/NCSA Open Source License.  Both these licenses can be
-  // found in the LICENSE file.
-
-  /** @type {function(string, boolean=, number=)} */
-  function intArrayFromString(stringy, dontAddNull, length) {
-    var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
-    var u8array = new Array(len);
-    var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
-    if (dontAddNull) u8array.length = numBytesWritten;
-    return u8array;
-  }
-  var asmLibraryArg = { "__cxa_atexit": ___cxa_atexit, "__lock": ___lock, "__unlock": ___unlock, "abort": _abort, "emscripten_get_sbrk_ptr": _emscripten_get_sbrk_ptr, "emscripten_memcpy_big": _emscripten_memcpy_big, "emscripten_resize_heap": _emscripten_resize_heap, "fd_close": _fd_close, "fd_seek": _fd_seek, "fd_write": _fd_write, "memory": wasmMemory, "setTempRet0": _setTempRet0, "table": wasmTable };
-  var asm = createWasm();
-  var real____wasm_call_ctors = asm["__wasm_call_ctors"];
-  asm["__wasm_call_ctors"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real____wasm_call_ctors.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_Real_1 = asm["emscripten_bind_Real_Real_1"];
-  asm["emscripten_bind_Real_Real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_Real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_precision_1 = asm["emscripten_bind_Real_set_precision_1"];
-  asm["emscripten_bind_Real_set_precision_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_precision_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_get_precision_0 = asm["emscripten_bind_Real_get_precision_0"];
-  asm["emscripten_bind_Real_get_precision_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_get_precision_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_value_from_float_1 = asm["emscripten_bind_Real_set_value_from_float_1"];
-  asm["emscripten_bind_Real_set_value_from_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_value_from_float_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_value_from_string_1 = asm["emscripten_bind_Real_set_value_from_string_1"];
-  asm["emscripten_bind_Real_set_value_from_string_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_value_from_string_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_get_value_1 = asm["emscripten_bind_Real_get_value_1"];
-  asm["emscripten_bind_Real_get_value_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_get_value_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_get_value_no_point_1 = asm["emscripten_bind_Real_get_value_no_point_1"];
-  asm["emscripten_bind_Real_get_value_no_point_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_get_value_no_point_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_value_from_real_1 = asm["emscripten_bind_Real_set_value_from_real_1"];
-  asm["emscripten_bind_Real_set_value_from_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_value_from_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_nan_0 = asm["emscripten_bind_Real_set_nan_0"];
-  asm["emscripten_bind_Real_set_nan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_nan_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_inf_1 = asm["emscripten_bind_Real_set_inf_1"];
-  asm["emscripten_bind_Real_set_inf_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_inf_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_zero_1 = asm["emscripten_bind_Real_set_zero_1"];
-  asm["emscripten_bind_Real_set_zero_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_zero_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_approximate_as_float_0 = asm["emscripten_bind_Real_approximate_as_float_0"];
-  asm["emscripten_bind_Real_approximate_as_float_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_approximate_as_float_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_add_float_1 = asm["emscripten_bind_Real_add_float_1"];
-  asm["emscripten_bind_Real_add_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_add_float_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_add_real_1 = asm["emscripten_bind_Real_add_real_1"];
-  asm["emscripten_bind_Real_add_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_add_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_subtract_float_1 = asm["emscripten_bind_Real_subtract_float_1"];
-  asm["emscripten_bind_Real_subtract_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_subtract_float_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_subtract_real_1 = asm["emscripten_bind_Real_subtract_real_1"];
-  asm["emscripten_bind_Real_subtract_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_subtract_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_multiply_float_1 = asm["emscripten_bind_Real_multiply_float_1"];
-  asm["emscripten_bind_Real_multiply_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_multiply_float_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_multiply_real_1 = asm["emscripten_bind_Real_multiply_real_1"];
-  asm["emscripten_bind_Real_multiply_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_multiply_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_square_0 = asm["emscripten_bind_Real_square_0"];
-  asm["emscripten_bind_Real_square_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_square_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_divide_float_1 = asm["emscripten_bind_Real_divide_float_1"];
-  asm["emscripten_bind_Real_divide_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_divide_float_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_divide_real_1 = asm["emscripten_bind_Real_divide_real_1"];
-  asm["emscripten_bind_Real_divide_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_divide_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_pow_real_1 = asm["emscripten_bind_Real_pow_real_1"];
-  asm["emscripten_bind_Real_pow_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_pow_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_pow_rational_2 = asm["emscripten_bind_Real_pow_rational_2"];
-  asm["emscripten_bind_Real_pow_rational_2"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_pow_rational_2.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_pow_int_1 = asm["emscripten_bind_Real_pow_int_1"];
-  asm["emscripten_bind_Real_pow_int_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_pow_int_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_sqrt_0 = asm["emscripten_bind_Real_sqrt_0"];
-  asm["emscripten_bind_Real_sqrt_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_sqrt_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_cbrt_0 = asm["emscripten_bind_Real_cbrt_0"];
-  asm["emscripten_bind_Real_cbrt_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_cbrt_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_rootn_1 = asm["emscripten_bind_Real_rootn_1"];
-  asm["emscripten_bind_Real_rootn_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_rootn_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_ln_0 = asm["emscripten_bind_Real_ln_0"];
-  asm["emscripten_bind_Real_ln_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_ln_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_log10_0 = asm["emscripten_bind_Real_log10_0"];
-  asm["emscripten_bind_Real_log10_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_log10_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_log2_0 = asm["emscripten_bind_Real_log2_0"];
-  asm["emscripten_bind_Real_log2_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_log2_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_exp_0 = asm["emscripten_bind_Real_exp_0"];
-  asm["emscripten_bind_Real_exp_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_exp_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_exp2_0 = asm["emscripten_bind_Real_exp2_0"];
-  asm["emscripten_bind_Real_exp2_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_exp2_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_exp10_0 = asm["emscripten_bind_Real_exp10_0"];
-  asm["emscripten_bind_Real_exp10_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_exp10_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_sin_0 = asm["emscripten_bind_Real_sin_0"];
-  asm["emscripten_bind_Real_sin_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_sin_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_cos_0 = asm["emscripten_bind_Real_cos_0"];
-  asm["emscripten_bind_Real_cos_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_cos_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_tan_0 = asm["emscripten_bind_Real_tan_0"];
-  asm["emscripten_bind_Real_tan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_tan_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_sec_0 = asm["emscripten_bind_Real_sec_0"];
-  asm["emscripten_bind_Real_sec_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_sec_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_csc_0 = asm["emscripten_bind_Real_csc_0"];
-  asm["emscripten_bind_Real_csc_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_csc_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_cot_0 = asm["emscripten_bind_Real_cot_0"];
-  asm["emscripten_bind_Real_cot_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_cot_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_acos_0 = asm["emscripten_bind_Real_acos_0"];
-  asm["emscripten_bind_Real_acos_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_acos_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_asin_0 = asm["emscripten_bind_Real_asin_0"];
-  asm["emscripten_bind_Real_asin_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_asin_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_atan_0 = asm["emscripten_bind_Real_atan_0"];
-  asm["emscripten_bind_Real_atan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_atan_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_sinh_0 = asm["emscripten_bind_Real_sinh_0"];
-  asm["emscripten_bind_Real_sinh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_sinh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_cosh_0 = asm["emscripten_bind_Real_cosh_0"];
-  asm["emscripten_bind_Real_cosh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_cosh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_tanh_0 = asm["emscripten_bind_Real_tanh_0"];
-  asm["emscripten_bind_Real_tanh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_tanh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_sech_0 = asm["emscripten_bind_Real_sech_0"];
-  asm["emscripten_bind_Real_sech_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_sech_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_csch_0 = asm["emscripten_bind_Real_csch_0"];
-  asm["emscripten_bind_Real_csch_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_csch_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_coth_0 = asm["emscripten_bind_Real_coth_0"];
-  asm["emscripten_bind_Real_coth_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_coth_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_acosh_0 = asm["emscripten_bind_Real_acosh_0"];
-  asm["emscripten_bind_Real_acosh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_acosh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_asinh_0 = asm["emscripten_bind_Real_asinh_0"];
-  asm["emscripten_bind_Real_asinh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_asinh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_atanh_0 = asm["emscripten_bind_Real_atanh_0"];
-  asm["emscripten_bind_Real_atanh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_atanh_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_asech_0 = asm["emscripten_bind_Real_asech_0"];
-  asm["emscripten_bind_Real_asech_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_asech_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_acsch_0 = asm["emscripten_bind_Real_acsch_0"];
-  asm["emscripten_bind_Real_acsch_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_acsch_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_acoth_0 = asm["emscripten_bind_Real_acoth_0"];
-  asm["emscripten_bind_Real_acoth_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_acoth_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_gamma_0 = asm["emscripten_bind_Real_gamma_0"];
-  asm["emscripten_bind_Real_gamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_gamma_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_factorial_0 = asm["emscripten_bind_Real_factorial_0"];
-  asm["emscripten_bind_Real_factorial_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_factorial_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_ln_gamma_0 = asm["emscripten_bind_Real_ln_gamma_0"];
-  asm["emscripten_bind_Real_ln_gamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_ln_gamma_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_digamma_0 = asm["emscripten_bind_Real_digamma_0"];
-  asm["emscripten_bind_Real_digamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_digamma_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_set_pi_0 = asm["emscripten_bind_Real_set_pi_0"];
-  asm["emscripten_bind_Real_set_pi_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_set_pi_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_is_nan_0 = asm["emscripten_bind_Real_is_nan_0"];
-  asm["emscripten_bind_Real_is_nan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_is_nan_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_is_inf_0 = asm["emscripten_bind_Real_is_inf_0"];
-  asm["emscripten_bind_Real_is_inf_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_is_inf_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_abs_0 = asm["emscripten_bind_Real_abs_0"];
-  asm["emscripten_bind_Real_abs_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_abs_0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_equals_1 = asm["emscripten_bind_Real_equals_1"];
-  asm["emscripten_bind_Real_equals_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_equals_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_greater_than_1 = asm["emscripten_bind_Real_greater_than_1"];
-  asm["emscripten_bind_Real_greater_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_greater_than_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_greater_equal_than_1 = asm["emscripten_bind_Real_greater_equal_than_1"];
-  asm["emscripten_bind_Real_greater_equal_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_greater_equal_than_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_less_than_1 = asm["emscripten_bind_Real_less_than_1"];
-  asm["emscripten_bind_Real_less_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_less_than_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_less_equal_than_1 = asm["emscripten_bind_Real_less_equal_than_1"];
-  asm["emscripten_bind_Real_less_equal_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_less_equal_than_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real_logb_real_1 = asm["emscripten_bind_Real_logb_real_1"];
-  asm["emscripten_bind_Real_logb_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real_logb_real_1.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_Real___destroy___0 = asm["emscripten_bind_Real___destroy___0"];
-  asm["emscripten_bind_Real___destroy___0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_Real___destroy___0.apply(null, arguments);
-  };
-
-  var real__emscripten_bind_VoidPtr___destroy___0 = asm["emscripten_bind_VoidPtr___destroy___0"];
-  asm["emscripten_bind_VoidPtr___destroy___0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__emscripten_bind_VoidPtr___destroy___0.apply(null, arguments);
-  };
-
-  var real__malloc = asm["malloc"];
-  asm["malloc"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__malloc.apply(null, arguments);
-  };
-
-  var real__free = asm["free"];
-  asm["free"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__free.apply(null, arguments);
-  };
-
-  var real____errno_location = asm["__errno_location"];
-  asm["__errno_location"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real____errno_location.apply(null, arguments);
-  };
-
-  var real__fflush = asm["fflush"];
-  asm["fflush"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__fflush.apply(null, arguments);
-  };
-
-  var real__setThrew = asm["setThrew"];
-  asm["setThrew"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real__setThrew.apply(null, arguments);
-  };
-
-  var real_stackSave = asm["stackSave"];
-  asm["stackSave"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_stackSave.apply(null, arguments);
-  };
-
-  var real_stackAlloc = asm["stackAlloc"];
-  asm["stackAlloc"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_stackAlloc.apply(null, arguments);
-  };
-
-  var real_stackRestore = asm["stackRestore"];
-  asm["stackRestore"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_stackRestore.apply(null, arguments);
-  };
-
-  var real___growWasmMemory = asm["__growWasmMemory"];
-  asm["__growWasmMemory"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real___growWasmMemory.apply(null, arguments);
-  };
-
-  var real_dynCall_vi = asm["dynCall_vi"];
-  asm["dynCall_vi"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_vi.apply(null, arguments);
-  };
-
-  var real_dynCall_iii = asm["dynCall_iii"];
-  asm["dynCall_iii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_iii.apply(null, arguments);
-  };
-
-  var real_dynCall_ii = asm["dynCall_ii"];
-  asm["dynCall_ii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_ii.apply(null, arguments);
-  };
-
-  var real_dynCall_iiiii = asm["dynCall_iiiii"];
-  asm["dynCall_iiiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_iiiii.apply(null, arguments);
-  };
-
-  var real_dynCall_iiii = asm["dynCall_iiii"];
-  asm["dynCall_iiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_iiii.apply(null, arguments);
-  };
-
-  var real_dynCall_vii = asm["dynCall_vii"];
-  asm["dynCall_vii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_vii.apply(null, arguments);
-  };
-
-  var real_dynCall_viiiiii = asm["dynCall_viiiiii"];
-  asm["dynCall_viiiiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_viiiiii.apply(null, arguments);
-  };
-
-  var real_dynCall_jiji = asm["dynCall_jiji"];
-  asm["dynCall_jiji"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return real_dynCall_jiji.apply(null, arguments);
-  };
-
-  Module["asm"] = asm;
-  var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["__wasm_call_ctors"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_Real_1 = Module["_emscripten_bind_Real_Real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_Real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_precision_1 = Module["_emscripten_bind_Real_set_precision_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_precision_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_get_precision_0 = Module["_emscripten_bind_Real_get_precision_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_get_precision_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_value_from_float_1 = Module["_emscripten_bind_Real_set_value_from_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_value_from_float_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_value_from_string_1 = Module["_emscripten_bind_Real_set_value_from_string_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_value_from_string_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_get_value_1 = Module["_emscripten_bind_Real_get_value_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_get_value_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_get_value_no_point_1 = Module["_emscripten_bind_Real_get_value_no_point_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_get_value_no_point_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_value_from_real_1 = Module["_emscripten_bind_Real_set_value_from_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_value_from_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_nan_0 = Module["_emscripten_bind_Real_set_nan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_nan_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_inf_1 = Module["_emscripten_bind_Real_set_inf_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_inf_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_zero_1 = Module["_emscripten_bind_Real_set_zero_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_zero_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_approximate_as_float_0 = Module["_emscripten_bind_Real_approximate_as_float_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_approximate_as_float_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_add_float_1 = Module["_emscripten_bind_Real_add_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_add_float_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_add_real_1 = Module["_emscripten_bind_Real_add_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_add_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_subtract_float_1 = Module["_emscripten_bind_Real_subtract_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_subtract_float_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_subtract_real_1 = Module["_emscripten_bind_Real_subtract_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_subtract_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_multiply_float_1 = Module["_emscripten_bind_Real_multiply_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_multiply_float_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_multiply_real_1 = Module["_emscripten_bind_Real_multiply_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_multiply_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_square_0 = Module["_emscripten_bind_Real_square_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_square_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_divide_float_1 = Module["_emscripten_bind_Real_divide_float_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_divide_float_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_divide_real_1 = Module["_emscripten_bind_Real_divide_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_divide_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_pow_real_1 = Module["_emscripten_bind_Real_pow_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_pow_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_pow_rational_2 = Module["_emscripten_bind_Real_pow_rational_2"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_pow_rational_2"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_pow_int_1 = Module["_emscripten_bind_Real_pow_int_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_pow_int_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_sqrt_0 = Module["_emscripten_bind_Real_sqrt_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_sqrt_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_cbrt_0 = Module["_emscripten_bind_Real_cbrt_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_cbrt_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_rootn_1 = Module["_emscripten_bind_Real_rootn_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_rootn_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_ln_0 = Module["_emscripten_bind_Real_ln_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_ln_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_log10_0 = Module["_emscripten_bind_Real_log10_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_log10_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_log2_0 = Module["_emscripten_bind_Real_log2_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_log2_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_exp_0 = Module["_emscripten_bind_Real_exp_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_exp_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_exp2_0 = Module["_emscripten_bind_Real_exp2_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_exp2_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_exp10_0 = Module["_emscripten_bind_Real_exp10_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_exp10_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_sin_0 = Module["_emscripten_bind_Real_sin_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_sin_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_cos_0 = Module["_emscripten_bind_Real_cos_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_cos_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_tan_0 = Module["_emscripten_bind_Real_tan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_tan_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_sec_0 = Module["_emscripten_bind_Real_sec_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_sec_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_csc_0 = Module["_emscripten_bind_Real_csc_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_csc_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_cot_0 = Module["_emscripten_bind_Real_cot_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_cot_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_acos_0 = Module["_emscripten_bind_Real_acos_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_acos_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_asin_0 = Module["_emscripten_bind_Real_asin_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_asin_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_atan_0 = Module["_emscripten_bind_Real_atan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_atan_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_sinh_0 = Module["_emscripten_bind_Real_sinh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_sinh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_cosh_0 = Module["_emscripten_bind_Real_cosh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_cosh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_tanh_0 = Module["_emscripten_bind_Real_tanh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_tanh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_sech_0 = Module["_emscripten_bind_Real_sech_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_sech_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_csch_0 = Module["_emscripten_bind_Real_csch_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_csch_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_coth_0 = Module["_emscripten_bind_Real_coth_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_coth_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_acosh_0 = Module["_emscripten_bind_Real_acosh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_acosh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_asinh_0 = Module["_emscripten_bind_Real_asinh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_asinh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_atanh_0 = Module["_emscripten_bind_Real_atanh_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_atanh_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_asech_0 = Module["_emscripten_bind_Real_asech_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_asech_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_acsch_0 = Module["_emscripten_bind_Real_acsch_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_acsch_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_acoth_0 = Module["_emscripten_bind_Real_acoth_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_acoth_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_gamma_0 = Module["_emscripten_bind_Real_gamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_gamma_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_factorial_0 = Module["_emscripten_bind_Real_factorial_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_factorial_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_ln_gamma_0 = Module["_emscripten_bind_Real_ln_gamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_ln_gamma_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_digamma_0 = Module["_emscripten_bind_Real_digamma_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_digamma_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_set_pi_0 = Module["_emscripten_bind_Real_set_pi_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_set_pi_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_is_nan_0 = Module["_emscripten_bind_Real_is_nan_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_is_nan_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_is_inf_0 = Module["_emscripten_bind_Real_is_inf_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_is_inf_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_abs_0 = Module["_emscripten_bind_Real_abs_0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_abs_0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_equals_1 = Module["_emscripten_bind_Real_equals_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_equals_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_greater_than_1 = Module["_emscripten_bind_Real_greater_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_greater_than_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_greater_equal_than_1 = Module["_emscripten_bind_Real_greater_equal_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_greater_equal_than_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_less_than_1 = Module["_emscripten_bind_Real_less_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_less_than_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_less_equal_than_1 = Module["_emscripten_bind_Real_less_equal_than_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_less_equal_than_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real_logb_real_1 = Module["_emscripten_bind_Real_logb_real_1"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real_logb_real_1"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_Real___destroy___0 = Module["_emscripten_bind_Real___destroy___0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_Real___destroy___0"].apply(null, arguments)
-  };
-
-  var _emscripten_bind_VoidPtr___destroy___0 = Module["_emscripten_bind_VoidPtr___destroy___0"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["emscripten_bind_VoidPtr___destroy___0"].apply(null, arguments)
-  };
-
-  var _malloc = Module["_malloc"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["malloc"].apply(null, arguments)
-  };
-
-  var _free = Module["_free"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["free"].apply(null, arguments)
-  };
-
-  var ___errno_location = Module["___errno_location"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["__errno_location"].apply(null, arguments)
-  };
-
-  var _fflush = Module["_fflush"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["fflush"].apply(null, arguments)
-  };
-
-  var _setThrew = Module["_setThrew"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["setThrew"].apply(null, arguments)
-  };
-
-  var stackSave = Module["stackSave"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["stackSave"].apply(null, arguments)
-  };
-
-  var stackAlloc = Module["stackAlloc"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["stackAlloc"].apply(null, arguments)
-  };
-
-  var stackRestore = Module["stackRestore"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["stackRestore"].apply(null, arguments)
-  };
-
-  var __growWasmMemory = Module["__growWasmMemory"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["__growWasmMemory"].apply(null, arguments)
-  };
-
-  var dynCall_vi = Module["dynCall_vi"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_vi"].apply(null, arguments)
-  };
-
-  var dynCall_iii = Module["dynCall_iii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_iii"].apply(null, arguments)
-  };
-
-  var dynCall_ii = Module["dynCall_ii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_ii"].apply(null, arguments)
-  };
-
-  var dynCall_iiiii = Module["dynCall_iiiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_iiiii"].apply(null, arguments)
-  };
-
-  var dynCall_iiii = Module["dynCall_iiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_iiii"].apply(null, arguments)
-  };
-
-  var dynCall_vii = Module["dynCall_vii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_vii"].apply(null, arguments)
-  };
-
-  var dynCall_viiiiii = Module["dynCall_viiiiii"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_viiiiii"].apply(null, arguments)
-  };
-
-  var dynCall_jiji = Module["dynCall_jiji"] = function() {
-    assert$1(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-    assert$1(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-    return Module["asm"]["dynCall_jiji"].apply(null, arguments)
-  };
-
-
-
-
-  // === Auto-generated postamble setup entry stuff ===
-
-  Module['asm'] = asm;
-
-  if (!Object.getOwnPropertyDescriptor(Module, "intArrayFromString")) Module["intArrayFromString"] = function() { abort("'intArrayFromString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "intArrayToString")) Module["intArrayToString"] = function() { abort("'intArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  Module["ccall"] = ccall;
-  Module["cwrap"] = cwrap;
-  if (!Object.getOwnPropertyDescriptor(Module, "setValue")) Module["setValue"] = function() { abort("'setValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getValue")) Module["getValue"] = function() { abort("'getValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "allocate")) Module["allocate"] = function() { abort("'allocate' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getMemory")) Module["getMemory"] = function() { abort("'getMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "AsciiToString")) Module["AsciiToString"] = function() { abort("'AsciiToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stringToAscii")) Module["stringToAscii"] = function() { abort("'stringToAscii' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "UTF8ArrayToString")) Module["UTF8ArrayToString"] = function() { abort("'UTF8ArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "UTF8ToString")) Module["UTF8ToString"] = function() { abort("'UTF8ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stringToUTF8Array")) Module["stringToUTF8Array"] = function() { abort("'stringToUTF8Array' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stringToUTF8")) Module["stringToUTF8"] = function() { abort("'stringToUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "lengthBytesUTF8")) Module["lengthBytesUTF8"] = function() { abort("'lengthBytesUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "UTF16ToString")) Module["UTF16ToString"] = function() { abort("'UTF16ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stringToUTF16")) Module["stringToUTF16"] = function() { abort("'stringToUTF16' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "lengthBytesUTF16")) Module["lengthBytesUTF16"] = function() { abort("'lengthBytesUTF16' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "UTF32ToString")) Module["UTF32ToString"] = function() { abort("'UTF32ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stringToUTF32")) Module["stringToUTF32"] = function() { abort("'stringToUTF32' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "lengthBytesUTF32")) Module["lengthBytesUTF32"] = function() { abort("'lengthBytesUTF32' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "allocateUTF8")) Module["allocateUTF8"] = function() { abort("'allocateUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stackTrace")) Module["stackTrace"] = function() { abort("'stackTrace' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addOnPreRun")) Module["addOnPreRun"] = function() { abort("'addOnPreRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addOnInit")) Module["addOnInit"] = function() { abort("'addOnInit' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addOnPreMain")) Module["addOnPreMain"] = function() { abort("'addOnPreMain' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addOnExit")) Module["addOnExit"] = function() { abort("'addOnExit' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addOnPostRun")) Module["addOnPostRun"] = function() { abort("'addOnPostRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "writeStringToMemory")) Module["writeStringToMemory"] = function() { abort("'writeStringToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "writeArrayToMemory")) Module["writeArrayToMemory"] = function() { abort("'writeArrayToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "writeAsciiToMemory")) Module["writeAsciiToMemory"] = function() { abort("'writeAsciiToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addRunDependency")) Module["addRunDependency"] = function() { abort("'addRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "removeRunDependency")) Module["removeRunDependency"] = function() { abort("'removeRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "ENV")) Module["ENV"] = function() { abort("'ENV' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS")) Module["FS"] = function() { abort("'FS' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createFolder")) Module["FS_createFolder"] = function() { abort("'FS_createFolder' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createPath")) Module["FS_createPath"] = function() { abort("'FS_createPath' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createDataFile")) Module["FS_createDataFile"] = function() { abort("'FS_createDataFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createPreloadedFile")) Module["FS_createPreloadedFile"] = function() { abort("'FS_createPreloadedFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createLazyFile")) Module["FS_createLazyFile"] = function() { abort("'FS_createLazyFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createLink")) Module["FS_createLink"] = function() { abort("'FS_createLink' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_createDevice")) Module["FS_createDevice"] = function() { abort("'FS_createDevice' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "FS_unlink")) Module["FS_unlink"] = function() { abort("'FS_unlink' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "GL")) Module["GL"] = function() { abort("'GL' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "dynamicAlloc")) Module["dynamicAlloc"] = function() { abort("'dynamicAlloc' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "loadDynamicLibrary")) Module["loadDynamicLibrary"] = function() { abort("'loadDynamicLibrary' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "loadWebAssemblyModule")) Module["loadWebAssemblyModule"] = function() { abort("'loadWebAssemblyModule' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getLEB")) Module["getLEB"] = function() { abort("'getLEB' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getFunctionTables")) Module["getFunctionTables"] = function() { abort("'getFunctionTables' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "alignFunctionTables")) Module["alignFunctionTables"] = function() { abort("'alignFunctionTables' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "registerFunctions")) Module["registerFunctions"] = function() { abort("'registerFunctions' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "addFunction")) Module["addFunction"] = function() { abort("'addFunction' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "removeFunction")) Module["removeFunction"] = function() { abort("'removeFunction' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getFuncWrapper")) Module["getFuncWrapper"] = function() { abort("'getFuncWrapper' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "prettyPrint")) Module["prettyPrint"] = function() { abort("'prettyPrint' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "makeBigInt")) Module["makeBigInt"] = function() { abort("'makeBigInt' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "dynCall")) Module["dynCall"] = function() { abort("'dynCall' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getCompilerSetting")) Module["getCompilerSetting"] = function() { abort("'getCompilerSetting' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stackSave")) Module["stackSave"] = function() { abort("'stackSave' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stackRestore")) Module["stackRestore"] = function() { abort("'stackRestore' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "stackAlloc")) Module["stackAlloc"] = function() { abort("'stackAlloc' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "establishStackSpace")) Module["establishStackSpace"] = function() { abort("'establishStackSpace' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "print")) Module["print"] = function() { abort("'print' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "printErr")) Module["printErr"] = function() { abort("'printErr' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "getTempRet0")) Module["getTempRet0"] = function() { abort("'getTempRet0' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "setTempRet0")) Module["setTempRet0"] = function() { abort("'setTempRet0' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "callMain")) Module["callMain"] = function() { abort("'callMain' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "abort")) Module["abort"] = function() { abort("'abort' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "Pointer_stringify")) Module["Pointer_stringify"] = function() { abort("'Pointer_stringify' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  if (!Object.getOwnPropertyDescriptor(Module, "warnOnce")) Module["warnOnce"] = function() { abort("'warnOnce' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); };
-  Module["writeStackCookie"] = writeStackCookie;
-  Module["checkStackCookie"] = checkStackCookie;
-  Module["abortStackOverflow"] = abortStackOverflow;if (!Object.getOwnPropertyDescriptor(Module, "ALLOC_NORMAL")) Object.defineProperty(Module, "ALLOC_NORMAL", { configurable: true, get: function() { abort("'ALLOC_NORMAL' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); } });
-  if (!Object.getOwnPropertyDescriptor(Module, "ALLOC_STACK")) Object.defineProperty(Module, "ALLOC_STACK", { configurable: true, get: function() { abort("'ALLOC_STACK' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); } });
-  if (!Object.getOwnPropertyDescriptor(Module, "ALLOC_DYNAMIC")) Object.defineProperty(Module, "ALLOC_DYNAMIC", { configurable: true, get: function() { abort("'ALLOC_DYNAMIC' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); } });
-  if (!Object.getOwnPropertyDescriptor(Module, "ALLOC_NONE")) Object.defineProperty(Module, "ALLOC_NONE", { configurable: true, get: function() { abort("'ALLOC_NONE' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)"); } });
-  if (!Object.getOwnPropertyDescriptor(Module, "calledRun")) Object.defineProperty(Module, "calledRun", { configurable: true, get: function() { abort("'calledRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you"); } });
-
-
-
-  var calledRun;
-
-
-  /**
-   * @constructor
-   * @this {ExitStatus}
-   */
-  function ExitStatus(status) {
-    this.name = "ExitStatus";
-    this.message = "Program terminated with exit(" + status + ")";
-    this.status = status;
-  }
-
-
-  dependenciesFulfilled = function runCaller() {
-    // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-    if (!calledRun) run();
-    if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-  };
-
-
-
-
-
-  /** @type {function(Array=)} */
-  function run(args) {
-
-    if (runDependencies > 0) {
-      return;
-    }
-
-    writeStackCookie();
-
-    preRun();
-
-    if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-
-    function doRun() {
-      // run may have just been called through dependencies being fulfilled just in this very frame,
-      // or while the async setStatus time below was happening
-      if (calledRun) return;
-      calledRun = true;
-
-      if (ABORT) return;
-
-      initRuntime();
-
-      preMain();
-
-      if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
-
-      assert$1(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
-
-      postRun();
-    }
-
-    if (Module['setStatus']) {
-      Module['setStatus']('Running...');
-      setTimeout(function() {
-        setTimeout(function() {
-          Module['setStatus']('');
-        }, 1);
-        doRun();
-      }, 1);
-    } else
-    {
-      doRun();
-    }
-    checkStackCookie();
-  }
-  Module['run'] = run;
-
-  if (Module['preInit']) {
-    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-    while (Module['preInit'].length > 0) {
-      Module['preInit'].pop()();
-    }
-  }
-
-  run();
-
-
-
-
-
-  // {{MODULE_ADDITIONS}}
-
-
-
-
-  // Bindings utilities
-
-  function WrapperObject() {
-  }
-  WrapperObject.prototype = Object.create(WrapperObject.prototype);
-  WrapperObject.prototype.constructor = WrapperObject;
-  WrapperObject.prototype.__class__ = WrapperObject;
-  WrapperObject.__cache__ = {};
-  Module['WrapperObject'] = WrapperObject;
-
-  function getCache(__class__) {
-    return (__class__ || WrapperObject).__cache__;
-  }
-  Module['getCache'] = getCache;
-
-  function wrapPointer(ptr, __class__) {
-    var cache = getCache(__class__);
-    var ret = cache[ptr];
-    if (ret) return ret;
-    ret = Object.create((__class__ || WrapperObject).prototype);
-    ret.ptr = ptr;
-    return cache[ptr] = ret;
-  }
-  Module['wrapPointer'] = wrapPointer;
-
-  function castObject(obj, __class__) {
-    return wrapPointer(obj.ptr, __class__);
-  }
-  Module['castObject'] = castObject;
-
-  Module['NULL'] = wrapPointer(0);
-
-  function destroy(obj) {
-    if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
-    obj['__destroy__']();
-    // Remove from cache, so the object can be GC'd and refs added onto it released
-    delete getCache(obj.__class__)[obj.ptr];
-  }
-  Module['destroy'] = destroy;
-
-  function compare(obj1, obj2) {
-    return obj1.ptr === obj2.ptr;
-  }
-  Module['compare'] = compare;
-
-  function getPointer(obj) {
-    return obj.ptr;
-  }
-  Module['getPointer'] = getPointer;
-
-  function getClass(obj) {
-    return obj.__class__;
-  }
-  Module['getClass'] = getClass;
-
-  // Converts big (string or array) values into a C-style storage, in temporary space
-
-  var ensureCache = {
-    buffer: 0,  // the main buffer of temporary storage
-    size: 0,   // the size of buffer
-    pos: 0,    // the next free offset in buffer
-    temps: [], // extra allocations
-    needed: 0, // the total size we need next time
-
-    prepare: function() {
-      if (ensureCache.needed) {
-        // clear the temps
-        for (var i = 0; i < ensureCache.temps.length; i++) {
-          Module['_free'](ensureCache.temps[i]);
-        }
-        ensureCache.temps.length = 0;
-        // prepare to allocate a bigger buffer
-        Module['_free'](ensureCache.buffer);
-        ensureCache.buffer = 0;
-        ensureCache.size += ensureCache.needed;
-        // clean up
-        ensureCache.needed = 0;
-      }
-      if (!ensureCache.buffer) { // happens first time, or when we need to grow
-        ensureCache.size += 128; // heuristic, avoid many small grow events
-        ensureCache.buffer = Module['_malloc'](ensureCache.size);
-        assert$1(ensureCache.buffer);
-      }
-      ensureCache.pos = 0;
-    },
-    alloc: function(array, view) {
-      assert$1(ensureCache.buffer);
-      var bytes = view.BYTES_PER_ELEMENT;
-      var len = array.length * bytes;
-      len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
-      var ret;
-      if (ensureCache.pos + len >= ensureCache.size) {
-        // we failed to allocate in the buffer, ensureCache time around :(
-        assert$1(len > 0); // null terminator, at least
-        ensureCache.needed += len;
-        ret = Module['_malloc'](len);
-        ensureCache.temps.push(ret);
-      } else {
-        // we can allocate in the buffer
-        ret = ensureCache.buffer + ensureCache.pos;
-        ensureCache.pos += len;
-      }
-      return ret;
-    },
-    copy: function(array, view, offset) {
-      var offsetShifted = offset;
-      var bytes = view.BYTES_PER_ELEMENT;
-      switch (bytes) {
-        case 2: offsetShifted >>= 1; break;
-        case 4: offsetShifted >>= 2; break;
-        case 8: offsetShifted >>= 3; break;
-      }
-      for (var i = 0; i < array.length; i++) {
-        view[offsetShifted + i] = array[i];
-      }
-    },
-  };
-
-  function ensureString(value) {
-    if (typeof value === 'string') {
-      var intArray = intArrayFromString(value);
-      var offset = ensureCache.alloc(intArray, HEAP8);
-      ensureCache.copy(intArray, HEAP8, offset);
-      return offset;
-    }
-    return value;
-  }
-
-
-  // Real
-  /** @suppress {undefinedVars, duplicate} */function Real(precision) {
-    if (precision && typeof precision === 'object') precision = precision.ptr;
-    this.ptr = _emscripten_bind_Real_Real_1(precision);
-    getCache(Real)[this.ptr] = this;
-  }Real.prototype = Object.create(WrapperObject.prototype);
-  Real.prototype.constructor = Real;
-  Real.prototype.__class__ = Real;
-  Real.__cache__ = {};
-  Module['Real'] = Real;
-
-  Real.prototype['set_precision'] = Real.prototype.set_precision = /** @suppress {undefinedVars, duplicate} */function(precision) {
-    var self = this.ptr;
-    if (precision && typeof precision === 'object') precision = precision.ptr;
-    _emscripten_bind_Real_set_precision_1(self, precision);
-  };
-  Real.prototype['get_precision'] = Real.prototype.get_precision = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    return _emscripten_bind_Real_get_precision_0(self);
-  };
-  Real.prototype['set_value_from_float'] = Real.prototype.set_value_from_float = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    if (value && typeof value === 'object') value = value.ptr;
-    _emscripten_bind_Real_set_value_from_float_1(self, value);
-  };
-  Real.prototype['set_value_from_string'] = Real.prototype.set_value_from_string = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    ensureCache.prepare();
-    if (value && typeof value === 'object') value = value.ptr;
-    else value = ensureString(value);
-    _emscripten_bind_Real_set_value_from_string_1(self, value);
-  };
-  Real.prototype['get_value'] = Real.prototype.get_value = /** @suppress {undefinedVars, duplicate} */function(precision) {
-    var self = this.ptr;
-    if (precision && typeof precision === 'object') precision = precision.ptr;
-    return UTF8ToString(_emscripten_bind_Real_get_value_1(self, precision));
-  };
-  Real.prototype['get_value_no_point'] = Real.prototype.get_value_no_point = /** @suppress {undefinedVars, duplicate} */function(precision) {
-    var self = this.ptr;
-    if (precision && typeof precision === 'object') precision = precision.ptr;
-    return UTF8ToString(_emscripten_bind_Real_get_value_no_point_1(self, precision));
-  };
-  Real.prototype['set_value_from_real'] = Real.prototype.set_value_from_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_set_value_from_real_1(self, r);
-  };
-  Real.prototype['set_nan'] = Real.prototype.set_nan = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_set_nan_0(self);
-  };
-  Real.prototype['set_inf'] = Real.prototype.set_inf = /** @suppress {undefinedVars, duplicate} */function(sign) {
-    var self = this.ptr;
-    if (sign && typeof sign === 'object') sign = sign.ptr;
-    _emscripten_bind_Real_set_inf_1(self, sign);
-  };
-  Real.prototype['set_zero'] = Real.prototype.set_zero = /** @suppress {undefinedVars, duplicate} */function(sign) {
-    var self = this.ptr;
-    if (sign && typeof sign === 'object') sign = sign.ptr;
-    _emscripten_bind_Real_set_zero_1(self, sign);
-  };
-  Real.prototype['approximate_as_float'] = Real.prototype.approximate_as_float = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    return _emscripten_bind_Real_approximate_as_float_0(self);
-  };
-  Real.prototype['add_float'] = Real.prototype.add_float = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    if (value && typeof value === 'object') value = value.ptr;
-    _emscripten_bind_Real_add_float_1(self, value);
-  };
-  Real.prototype['add_real'] = Real.prototype.add_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_add_real_1(self, r);
-  };
-  Real.prototype['subtract_float'] = Real.prototype.subtract_float = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    if (value && typeof value === 'object') value = value.ptr;
-    _emscripten_bind_Real_subtract_float_1(self, value);
-  };
-  Real.prototype['subtract_real'] = Real.prototype.subtract_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_subtract_real_1(self, r);
-  };
-  Real.prototype['multiply_float'] = Real.prototype.multiply_float = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    if (value && typeof value === 'object') value = value.ptr;
-    _emscripten_bind_Real_multiply_float_1(self, value);
-  };
-  Real.prototype['multiply_real'] = Real.prototype.multiply_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_multiply_real_1(self, r);
-  };
-  Real.prototype['square'] = Real.prototype.square = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_square_0(self);
-  };
-  Real.prototype['divide_float'] = Real.prototype.divide_float = /** @suppress {undefinedVars, duplicate} */function(value) {
-    var self = this.ptr;
-    if (value && typeof value === 'object') value = value.ptr;
-    _emscripten_bind_Real_divide_float_1(self, value);
-  };
-  Real.prototype['divide_real'] = Real.prototype.divide_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_divide_real_1(self, r);
-  };
-  Real.prototype['pow_real'] = Real.prototype.pow_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_pow_real_1(self, r);
-  };
-  Real.prototype['pow_rational'] = Real.prototype.pow_rational = /** @suppress {undefinedVars, duplicate} */function(p, q) {
-    var self = this.ptr;
-    if (p && typeof p === 'object') p = p.ptr;
-    if (q && typeof q === 'object') q = q.ptr;
-    _emscripten_bind_Real_pow_rational_2(self, p, q);
-  };
-  Real.prototype['pow_int'] = Real.prototype.pow_int = /** @suppress {undefinedVars, duplicate} */function(p) {
-    var self = this.ptr;
-    if (p && typeof p === 'object') p = p.ptr;
-    _emscripten_bind_Real_pow_int_1(self, p);
-  };
-  Real.prototype['sqrt'] = Real.prototype.sqrt = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_sqrt_0(self);
-  };
-  Real.prototype['cbrt'] = Real.prototype.cbrt = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_cbrt_0(self);
-  };
-  Real.prototype['rootn'] = Real.prototype.rootn = /** @suppress {undefinedVars, duplicate} */function(n) {
-    var self = this.ptr;
-    if (n && typeof n === 'object') n = n.ptr;
-    _emscripten_bind_Real_rootn_1(self, n);
-  };
-  Real.prototype['ln'] = Real.prototype.ln = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_ln_0(self);
-  };
-  Real.prototype['log10'] = Real.prototype.log10 = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_log10_0(self);
-  };
-  Real.prototype['log2'] = Real.prototype.log2 = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_log2_0(self);
-  };
-  Real.prototype['exp'] = Real.prototype.exp = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_exp_0(self);
-  };
-  Real.prototype['exp2'] = Real.prototype.exp2 = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_exp2_0(self);
-  };
-  Real.prototype['exp10'] = Real.prototype.exp10 = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_exp10_0(self);
-  };
-  Real.prototype['sin'] = Real.prototype.sin = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_sin_0(self);
-  };
-  Real.prototype['cos'] = Real.prototype.cos = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_cos_0(self);
-  };
-  Real.prototype['tan'] = Real.prototype.tan = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_tan_0(self);
-  };
-  Real.prototype['sec'] = Real.prototype.sec = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_sec_0(self);
-  };
-  Real.prototype['csc'] = Real.prototype.csc = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_csc_0(self);
-  };
-  Real.prototype['cot'] = Real.prototype.cot = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_cot_0(self);
-  };
-  Real.prototype['acos'] = Real.prototype.acos = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_acos_0(self);
-  };
-  Real.prototype['asin'] = Real.prototype.asin = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_asin_0(self);
-  };
-  Real.prototype['atan'] = Real.prototype.atan = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_atan_0(self);
-  };
-  Real.prototype['sinh'] = Real.prototype.sinh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_sinh_0(self);
-  };
-  Real.prototype['cosh'] = Real.prototype.cosh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_cosh_0(self);
-  };
-  Real.prototype['tanh'] = Real.prototype.tanh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_tanh_0(self);
-  };
-  Real.prototype['sech'] = Real.prototype.sech = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_sech_0(self);
-  };
-  Real.prototype['csch'] = Real.prototype.csch = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_csch_0(self);
-  };
-  Real.prototype['coth'] = Real.prototype.coth = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_coth_0(self);
-  };
-  Real.prototype['acosh'] = Real.prototype.acosh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_acosh_0(self);
-  };
-  Real.prototype['asinh'] = Real.prototype.asinh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_asinh_0(self);
-  };
-  Real.prototype['atanh'] = Real.prototype.atanh = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_atanh_0(self);
-  };
-  Real.prototype['asech'] = Real.prototype.asech = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_asech_0(self);
-  };
-  Real.prototype['acsch'] = Real.prototype.acsch = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_acsch_0(self);
-  };
-  Real.prototype['acoth'] = Real.prototype.acoth = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_acoth_0(self);
-  };
-  Real.prototype['gamma'] = Real.prototype.gamma = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_gamma_0(self);
-  };
-  Real.prototype['factorial'] = Real.prototype.factorial = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_factorial_0(self);
-  };
-  Real.prototype['ln_gamma'] = Real.prototype.ln_gamma = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_ln_gamma_0(self);
-  };
-  Real.prototype['digamma'] = Real.prototype.digamma = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_digamma_0(self);
-  };
-  Real.prototype['set_pi'] = Real.prototype.set_pi = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_set_pi_0(self);
-  };
-  Real.prototype['is_nan'] = Real.prototype.is_nan = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    return _emscripten_bind_Real_is_nan_0(self);
-  };
-  Real.prototype['is_inf'] = Real.prototype.is_inf = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    return _emscripten_bind_Real_is_inf_0(self);
-  };
-  Real.prototype['abs'] = Real.prototype.abs = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real_abs_0(self);
-  };
-  Real.prototype['equals'] = Real.prototype.equals = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    return !!(_emscripten_bind_Real_equals_1(self, r));
-  };
-  Real.prototype['greater_than'] = Real.prototype.greater_than = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    return !!(_emscripten_bind_Real_greater_than_1(self, r));
-  };
-  Real.prototype['greater_equal_than'] = Real.prototype.greater_equal_than = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    return !!(_emscripten_bind_Real_greater_equal_than_1(self, r));
-  };
-  Real.prototype['less_than'] = Real.prototype.less_than = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    return !!(_emscripten_bind_Real_less_than_1(self, r));
-  };
-  Real.prototype['less_equal_than'] = Real.prototype.less_equal_than = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    return !!(_emscripten_bind_Real_less_equal_than_1(self, r));
-  };
-  Real.prototype['logb_real'] = Real.prototype.logb_real = /** @suppress {undefinedVars, duplicate} */function(r) {
-    var self = this.ptr;
-    if (r && typeof r === 'object') r = r.ptr;
-    _emscripten_bind_Real_logb_real_1(self, r);
-  };
-    Real.prototype['__destroy__'] = Real.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_Real___destroy___0(self);
-  };
-  // VoidPtr
-  /** @suppress {undefinedVars, duplicate} */function VoidPtr() { throw "cannot construct a VoidPtr, no constructor in IDL" }
-  VoidPtr.prototype = Object.create(WrapperObject.prototype);
-  VoidPtr.prototype.constructor = VoidPtr;
-  VoidPtr.prototype.__class__ = VoidPtr;
-  VoidPtr.__cache__ = {};
-  Module['VoidPtr'] = VoidPtr;
-
-    VoidPtr.prototype['__destroy__'] = VoidPtr.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} */function() {
-    var self = this.ptr;
-    _emscripten_bind_VoidPtr___destroy___0(self);
-  };
-  (function() {
-    function setupEnums() {
-      
-    }
-    if (runtimeInitialized) ;
-    else addOnPreMain(setupEnums);
-  })();
-
-  const Real$1 = Module.Real;
-
-  class OvinusReal extends Real$1 {
-    constructor(value="0", precision=53) {
-      super(precision);
-
-      this.set_value(value);
-    }
-
-    get value() {
-      return this.get_value();
-    }
-
-    set value(v) {
-      this.set_value(v);
-    }
-
-    set_value(v) {
-      if (typeof v === "string") {
-        this.set_value_from_string(v);
-      } else if (v instanceof Real$1) {
-        this.set_value_from_real(v);
-      } else {
-        this.set_value_from_float(v);
-      }
-    }
-  }
-
-  function cchain$1(val1, compare, val2, ...args) {
-    if (!val2) {
-      return false
-    }
-
-    switch (compare) {
-      case '<':
-        if (!val1.less_than(val2))
-          return false
-        break
-      case '>':
-        if (!val1.greater_than(val2))
-          return false
-        break
-      case '<=':
-        if (!val1.less_equal_than(val2))
-          return false
-        break
-      case '>=':
-        if (!val1.greater_equal_than(val2))
-          return false
-        break
-      case '==':
-        if (!val1.equals(val2))
-          return false
-        break
-      case '!=':
-        if (val1.equals(val2))
-          return false
-        break
-    }
-
-    if (args.length > 0)
-      return cchain$1(val2, ...args)
-
-    return true
-  }
-
-  function piecewise$1(cond, val, ...args) {
-    if (!val) {
-      return cond
-    }
-
-    if (cond) {
-      return val
-    }
-
-    if (args.length === 0) {
-      // This is a fail
-      return val
-    } else {
-      return piecewise$1(...args)
-    }
-  }
-
-  const PRECISE_REAL_FUNCTIONS = {
-    '*': (r1, r2) => {
-      r1.multiply_real(r2);
-      return r1
-    },
-    '+': (r1, r2) => {
-      r1.add_real(r2);
-      return r1
-    },
-    '-': (r1, r2) => {
-      r1.subtract_real(r2);
-      return r1
-    },
-    '/': (r1, r2) => {
-      r1.divide_real(r2);
-      return r1
-    },
-    '^': (r1, r2) => {
-      r1.pow_real(r2);
-      return r1
-    },
-    '<': (r1, r2) => {
-      return r1.less_than(r2)
-    },
-    '>': (r1, r2) => {
-      return r1.greater_than(r2)
-    },
-    '<=': (r1, r2) => {
-      return r1.less_equal_than(r2)
-    },
-    '>=': (r1, r2) => {
-      return r1.greater_equal_than(r2)
-    },
-    '==': (r1, r2) => {
-      return r1.equals(r2)
-    },
-    '!=': (r1, r2) => {
-      return !(r1.equals(r2))
-    },
-    'sin': (r1) => {
-      r1.sin();
-      return r1
-    },
-    'cos': (r1) => {
-      r1.cos();
-      return r1
-    },
-    'tan': (r1) => {
-      r1.tan();
-      return r1
-    },
-    'sinh': (r1) => {
-      r1.sinh();
-      return r1
-    },
-    'cosh': (r1) => {
-      r1.cosh();
-      return r1
-    },
-    'tanh': (r1) => {
-      r1.tanh();
-      return r1
-    },
-    'asin': (r1) => {
-      r1.asin();
-      return r1
-    },
-    'acos': (r1) => {
-      r1.acos();
-      return r1
-    },
-    'atan': (r1) => {
-      r1.atan();
-      return r1
-    },
-    'asinh': (r1) => {
-      r1.asinh();
-      return r1
-    },
-    'acosh': (r1) => {
-      r1.acosh();
-      return r1
-    },
-    'atanh': (r1) => {
-      r1.atanh();
-      return r1
-    },
-    'csc': (r1) => {
-      r1.csc();
-      return r1
-    },
-    'sec': (r1) => {
-      r1.sec();
-      return r1
-    },
-    'cot': (r1) => {
-      r1.cot();
-      return r1
-    },
-    'csch': (r1) => {
-      r1.csch();
-      return r1
-    },
-    'sech': (r1) => {
-      r1.sech();
-      return r1
-    },
-    'coth': (r1) => {
-      r1.coth();
-      return r1
-    },
-    'acsc': (r1) => {
-      r1.acsc();
-      return r1
-    },
-    'asec': (r1) => {
-      r1.asec();
-      return r1
-    },
-    'acot': (r1) => {
-      r1.acot();
-      return r1
-    },
-    'acsch': (r1) => {
-      r1.acsch();
-      return r1
-    },
-    'asech': (r1) => {
-      r1.asech();
-      return r1
-    },
-    'acoth': (r1) => {
-      r1.acoth();
-      return r1
-    },
-    'abs': (r1) => {
-      r1.abs();
-      return r1
-    },
-    'sqrt': (r1) => {
-      r1.sqrt();
-      return r1
-    },
-    'cbrt': (r1) => {
-      r1.cbrt();
-      return r1
-    },
-    'pow_rational': (r1, p, q) => {
-      r1.pow_rational(p, q);
-      return r1
-    },
-    'ln': (r1) => {
-      r1.ln();
-      return r1
-    },
-    'log10': (r1) => {
-      r1.log10();
-      return r1
-    },
-    'log2': (r1) => {
-      r1.log2();
-      return r1
-    },
-    'logb': (b, r1) => {
-      r1.logb_real(b);
-      return r1
-    },
-    'gamma': (r1) => {
-      r1.gamma();
-      return r1
-    },
-    'ln_gamma': (r1) => {
-      r1.ln_gamma();
-      return r1
-    },
-    'factorial': (r1) => {
-      r1.factorial();
-      return r1
-    },
-    'digamma': (r1) => {
-      r1.digamma();
-      return r1
-    },
-    'cchain': cchain$1,
-    'ifelse': function (val1, cond, val2) {
-      if (cond) {
-        return val1
-      } else {
-        return val2
-      }
-    },
-    'piecewise': piecewise$1
-  };
-
-  const APPROXIMATE_REAL_FUNCTIONS = {
-    "polygamma": (m, r1) => {
-      let f = r1.approximate_as_float();
-
-      r1.set_value(polygamma(m, f));
-
-      return r1
-    },
-    "trigamma": (r1) => {
-      let f = r1.approximate_as_float();
-
-      r1.set_value(trigamma(f));
-
-      return r1
-    }
-  };
-
-  const RealFunctions = {...PRECISE_REAL_FUNCTIONS, ...APPROXIMATE_REAL_FUNCTIONS};
 
   // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
 
@@ -13519,7 +8495,7 @@ void main() {
     // Return corresponding node type
     switch (json.type) {
       case "operator":
-        return new OperatorNode$1({operator: json.operator, children})
+        return new OperatorNode({operator: json.operator, children})
       case "variable":
         return new VariableNode({name: json.name, children})
       case "node":
@@ -13824,7 +8800,7 @@ void main() {
   exports.LN2 = LN2;
   exports.Label2D = Label2D;
   exports.ONE_THIRD = ONE_THIRD;
-  exports.OperatorNode = OperatorNode$1;
+  exports.OperatorNode = OperatorNode;
   exports.OperatorSynonyms = OperatorSynonyms;
   exports.PI = PI;
   exports.Pen = Pen;
@@ -13832,8 +8808,6 @@ void main() {
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;
   exports.PolylineElement = PolylineElement;
-  exports.Real = OvinusReal;
-  exports.RealFunctions = RealFunctions;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
   exports.Universe = GraphemeUniverse;
@@ -13857,7 +8831,6 @@ void main() {
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.intervalEqFindBoxes = intervalEqFindBoxes;
-  exports.isExactlyRepresentableAsFloat = isExactlyRepresentableAsFloat;
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
@@ -13867,7 +8840,6 @@ void main() {
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
   exports.polygamma = polygamma;
-  exports.powerExactlyRepresentableAsFloat = powerExactlyRepresentableAsFloat;
   exports.rgb = rgb;
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;

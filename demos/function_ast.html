@@ -27,7 +27,7 @@
   let tree = new Grapheme.TreeElement()
   plot.add(tree)
 
-  tree.root = Grapheme.parse_string("x^2")
+  tree.root = Grapheme.parseString("x^2")
 
   let ia = 0;
   function render() {
@@ -45,7 +45,7 @@
 
 </script>
 
-<input style="position:absolute; top: 10px; left: 10px" type="text" value="sin(4*3)^cow" oninput="tree.root=Grapheme.parse_string(this.value).derivative('x')"/>
+<input style="position:absolute; top: 10px; left: 10px" type="text" value="sin(4*3)^cow" oninput="tree.root=Grapheme.parseString(this.value); tree.markUpdate()"/>
 
 </body>
 

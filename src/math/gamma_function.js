@@ -191,6 +191,7 @@ function gamma (z) {
     if (!res) {
       return Infinity
     }
+
     return res
   }
 
@@ -230,8 +231,6 @@ function ln_gamma (z) {
 }
 
 let euler_mascheroni = 0.57721566490153286060651209008240243104215933593992
-
-
 
 function polygamma (m, z) {
   if (m % 1 !== 0) {
