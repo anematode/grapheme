@@ -9121,6 +9121,8 @@ void main() {
       arguments_ = arguments;
     }
 
+    if (typeof quit === 'function') ;
+
     if (typeof print !== 'undefined') {
       // Prefer to use print/printErr where they exist, as they usually work better.
       if (typeof console === 'undefined') console = {};
