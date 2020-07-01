@@ -1,34 +1,13 @@
 // const fs = require( ...
 // No, this is not node.js the language.
 
-import { operator_derivative } from './derivative'
 import * as utils from '../core/utils'
 import { StandardLabelFunction } from '../elements/gridlines'
-import { Operators } from './operators'
-import { getLatex } from './latex'
-import { compileNode, compileNodeInterval, compileNodeReal } from './compile_node'
 
 // List of operators (currently)
 // +, -, *, /, ^,
 
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
-
-let floatRepresentabilityTester
-const matchIntegralComponent = /[0-9]*\./
-const trailingZeroes = /0+$/
-
-function isExactlyRepresentableAsFloat (f) {
-  if (typeof f === 'number') {
-    return true
-  }
-  if (!floatRepresentabilityTester) {
-    floatRepresentabilityTester = new Grapheme.Real(0, 53)
-  }
-  floatRepresentabilityTester.value = f
-
-  return floatRepresentabilityTester.value.replace(trailingZeroes, '').replace(matchIntegralComponent, '') ===
-    f.replace(matchIntegralComponent, '')
-}
 
 class ASTNode {
   constructor (params = {}) {
@@ -40,25 +19,6 @@ class ASTNode {
 
     this.children = children
     this.parent = parent
-  }
-
-  getDependencies() {
-    let dependencies = this._getDependencies()
-
-    return {funcs: utils.removeDuplicates(dependencies.funcs), vars: utils.removeDuplicates(dependencies.vars)}
-  }
-
-  _getDependencies() {
-    let funcs = [], vars = []
-
-    this.children.forEach(child => {
-      let childDependencies = child._getDependencies()
-
-      funcs.push(...childDependencies.funcs)
-      vars.push(...childDependencies.vars)
-    })
-
-    return {funcs, vars}
   }
 
   applyAll (func, depth = 0) {
@@ -79,66 +39,12 @@ class ASTNode {
     return node
   }
 
-  compile (exportedVariables) {
-    if (!exportedVariables) {
-      exportedVariables = this.getVariableNames()
-    }
-
-    return compileNode(this, exportedVariables)
-  }
-
-  compileInterval (exportedVariables) {
-    if (!exportedVariables) {
-      exportedVariables = this.getVariableNames()
-    }
-
-    return compileNodeInterval(this, exportedVariables)
-  }
-
-  compileReal (exportedVariables, precision = 53) {
-    if (!exportedVariables) {
-      exportedVariables = this.getVariableNames()
-    }
-
-    return compileNodeReal(this, exportedVariables)
-  }
-
-  derivative (variable) {
-    let node = new ASTNode()
-
-    node.children = this.children.map(child => child.derivative(variable))
-
-    node.applyAll(child => {
-      if (child.children) {
-        child.children.forEach(subchild => subchild.parent = child)
-      }
-    })
-
-    return node
-  }
-
   evaluateConstant () {
     return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
   }
 
   getText () {
     return '(node)'
-  }
-
-  getVariableNames () {
-    let variableNames = []
-
-    this.applyAll(child => {
-      if (child instanceof VariableNode) {
-        let name = child.name
-
-        if (variableNames.indexOf(name) === -1 && comparisonOperators.indexOf(name) === -1) {
-          variableNames.push(name)
-        }
-      }
-    })
-
-    return variableNames
   }
 
   hasChildren () {
@@ -155,6 +61,7 @@ class ASTNode {
     if (parens) {
       return String.raw`\left(${latex}\right)`
     }
+
     return latex
   }
 
@@ -207,14 +114,6 @@ class VariableNode extends ASTNode {
     return new VariableNode({ name: this.name })
   }
 
-  derivative (variable) {
-    if (variable === this.name) {
-      return new ConstantNode({ value: 1 })
-    } else {
-      return new ConstantNode({ value: 0 })
-    }
-  }
-
   evaluateConstant () {
     return NaN
   }
@@ -225,10 +124,6 @@ class VariableNode extends ASTNode {
 
   isConstant () {
     return false
-  }
-
-  _getDependencies() {
-    return {funcs: [], vars: [this.name]}
   }
 
   latex () {
@@ -310,23 +205,12 @@ class OperatorNode extends ASTNode {
     return node
   }
 
-  derivative (variable) {
-    return operator_derivative(this, variable)
-  }
-
   evaluateConstant () {
     return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
   }
 
   getText () {
     return this.operator
-  }
-
-  _getDependencies() {
-    let childDependencies = super._getDependencies()
-    childDependencies.funcs.push(this.operator)
-
-    return childDependencies
   }
 
   latex () {
@@ -369,10 +253,6 @@ class ConstantNode extends ASTNode {
     })
   }
 
-  derivative () {
-    return new ConstantNode({ value: 0 })
-  }
-
   evaluateConstant () {
     return this.value
   }
@@ -389,10 +269,6 @@ class ConstantNode extends ASTNode {
     return this.getText()
   }
 
-  _getDependencies() {
-    return {vars: [], funcs: []}
-  }
-
   toJSON () {
     return {
       value: this.value,
@@ -404,15 +280,6 @@ class ConstantNode extends ASTNode {
 
   type () {
     return 'constant'
-  }
-}
-
-function powerExactlyRepresentableAsFloat (power) {
-  if (typeof power === 'number') return true
-
-  // todo, make more precise
-  if (Number.isInteger(parseFloat(power))) {
-    return true
   }
 }
 
@@ -444,7 +311,5 @@ export {
   LN2,
   LN10,
   PI,
-  E,
-  isExactlyRepresentableAsFloat,
-  powerExactlyRepresentableAsFloat
+  E
 }

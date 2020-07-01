@@ -87,7 +87,7 @@ function convertTriangleStrip(vertices, pen) {
 
   let origVertexCount = vertices.length / 2
 
-  let th = pen.thickness
+  let th = pen.thickness / 2
   let maxMiterLength = th / fastCos(pen.joinRes / 2)
 
   let endcap = ENDCAP_TYPES[pen.endcap]
