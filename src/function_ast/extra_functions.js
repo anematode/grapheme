@@ -32,6 +32,9 @@ const ExtraFunctions = {
 
     return t
   },
+  Pow: (x, r) => {
+
+  },
   PowRational: (x, p, q) => {
     // Calculates x ^ (p / q), where p and q are integers
 

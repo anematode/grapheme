@@ -3,8 +3,8 @@ import { SingleVariablePolynomial } from './polynomial'
 // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
 
 var g = 7
-var C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7]
-var integer_factorials = [
+var LANCZOS_COEFFICIENTS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7]
+var INTEGER_FACTORIALS = [
   1,
   1,
   2,
@@ -186,7 +186,7 @@ function gamma (z) {
       return Infinity
     }
 
-    let res = integer_factorials[Math.round(z - 1)]
+    let res = INTEGER_FACTORIALS[Math.round(z - 1)]
 
     if (!res) {
       return Infinity
@@ -200,9 +200,9 @@ function gamma (z) {
   } else {
     z -= 1
 
-    var x = C[0]
+    var x = LANCZOS_COEFFICIENTS[0]
     for (var i = 1; i < g + 2; i++) {
-      x += C[i] / (z + i)
+      x += LANCZOS_COEFFICIENTS[i] / (z + i)
     }
 
     var t = z + g + 0.5
@@ -219,9 +219,9 @@ function ln_gamma (z) {
   } else {
     z -= 1
 
-    var x = C[0]
+    var x = LANCZOS_COEFFICIENTS[0]
     for (var i = 1; i < g + 2; i++) {
-      x += C[i] / (z + i)
+      x += LANCZOS_COEFFICIENTS[i] / (z + i)
     }
 
     var t = z + g + 0.5
@@ -229,8 +229,6 @@ function ln_gamma (z) {
     return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
   }
 }
-
-let euler_mascheroni = 0.57721566490153286060651209008240243104215933593992
 
 function polygamma (m, z) {
   if (m % 1 !== 0) {
@@ -353,4 +351,4 @@ function trigamma(z) {
   return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
 }
 
-export { gamma, polygamma, ln_gamma, digamma, trigamma, getPolygammaNumeratorPolynomial }
+export { gamma, polygamma, ln_gamma, digamma, trigamma, getPolygammaNumeratorPolynomial, GREGORY_COEFFICIENTS, LANCZOS_COEFFICIENTS, INTEGER_FACTORIALS }

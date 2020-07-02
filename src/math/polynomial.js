@@ -1,3 +1,6 @@
+import { Complex } from './complex/complex'
+import { Multiply } from './complex/functions/basic_arithmetic'
+
 function multiplyPolynomials(coeffs1, coeffs2, degree) {
   let ret = []
   for (let i = 0; i <= degree; ++i) {
@@ -33,6 +36,22 @@ class SingleVariablePolynomial {
     return sum
   }
 
+  evaluateComplex(z) {
+    let coeffs = this.coeffs
+    let prod = Complex.One
+    let sum = new Complex(0)
+
+    for (let i = 0; i < coeffs.length; ++i) {
+      let coeff = coeffs[i]
+
+      let component = Multiply(new Complex(coeff), prod)
+
+      prod = Multiply(prod, z)
+    }
+
+    return sum
+  }
+
   evaluate(x) {
     let coeffs = this.coeffs
     let prod = 1
@@ -40,10 +59,6 @@ class SingleVariablePolynomial {
 
     for (let i = 0; i < coeffs.length; ++i) {
       let coeff = coeffs[i]
-
-      // TODO
-      if (isNaN(coeff))
-        coeff = coeff.approximate_as_float()
 
       sum += coeff * prod
 
