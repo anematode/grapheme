@@ -5894,6 +5894,557 @@ void main() {
     polyline._internal_polyline.needsBufferCopy = true;
   }
 
+  /**
+   * Represents a complex number, with a real part and an imaginary part both represented by floats.
+   */
+
+  class Complex {
+    /**
+     * Construct a new complex number.
+     * @param re The real part of the complex number.
+     * @param im The imaginary part of the complex number.
+     */
+    constructor(re, im=0) {
+      this.re = re;
+      this.im = im;
+    }
+
+    /**
+     * Get i.
+     * @returns {Complex} i.
+     * @constructor
+     */
+    static get I() {
+      return new Complex(0, 1)
+    }
+
+    /**
+     * Get 1.
+     * @returns {Complex} 1.
+     * @constructor
+     */
+    static get One() {
+      return new Complex(1, 0)
+    }
+
+    /**
+     * Return the complex argument (principal value) corresponding to the complex number.
+     * @returns {number} The complex argument Arg(z).
+     */
+    arg() {
+      return Math.atan2(this.im, this.re)
+    }
+
+    /**
+     * Returns |z|.
+     * @returns {number} The complex magnitude |z|.
+     */
+    magnitude() {
+      return Math.hypot(this.re, this.im)
+    }
+
+    /**
+     * Returns |z|^2.
+     * @returns {number} The square of the complex magnitude |z|^2.
+     */
+    magnitudeSquared() {
+      return this.re * this.re + this.im * this.im
+    }
+
+    /**
+     * Returns z bar.
+     * @returns {Complex} The conjugate of z.
+     */
+    conj() {
+      return new Complex(this.re, -this.im)
+    }
+
+    /**
+     * Clone this complex number.
+     * @returns {Complex} Clone of z.
+     */
+    clone() {
+      return new Complex(this.re, this.im)
+    }
+
+    /**
+     * Scale this complex number by the real factor r.
+     * @param r {number} The scaling factor.
+     */
+    scale(r) {
+      return new Complex(this.re * r, this.im * r)
+    }
+
+    /**
+     * Check whether this complex number is equal to another.
+     * @param z {Complex} Complex number to compare with.
+     */
+    equals(z) {
+      return (this.re === z.re) && (this.im === z.im)
+    }
+
+    /**
+     * Return a complex number pointing in the same direction, with magnitude 1.
+     * @returns {Complex}
+     */
+    normalize() {
+      let mag = this.magnitude();
+
+      return this.scale(1 / mag)
+    }
+  }
+
+  /**
+   * Returns a + b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Add = (a, b) => {
+    return new Complex(a.re + b.re, a.im + b.im)
+  };
+
+  /**
+   * Returns a * b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Multiply = (a, b) => {
+    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
+  };
+
+  /**
+   * Returns a / b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Divide = (a, b) => {
+    let div = b.magnitudeSquared();
+
+    return Multiply(a, b.conj()).scale(1 / div)
+  };
+
+  /**
+   * Returns a - b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Subtract = (a, b) => {
+    return new Complex(a.re - b.re, a.im - b.im)
+  };
+
+  /**
+   * Returns Re(z).
+   * @param z
+   * @returns {number}
+   */
+  const Re = (z) => {
+    return z.re
+  };
+
+  /**
+   * Returns Im(z)
+   * @param z
+   * @returns {number}
+   */
+  const Im = (z) => {
+    return z.im
+  };
+
+  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
+    Add: Add,
+    Multiply: Multiply,
+    Divide: Divide,
+    Subtract: Subtract,
+    Re: Re,
+    Im: Im
+  });
+
+  /**
+   * Returns e^(i theta) for real theta.
+   * @param theta {number}
+   * @returns {Complex} cis(theta)
+   */
+  const Cis = (theta) => {
+    // For real theta
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+
+    return new Complex(c, s)
+  };
+
+  /**
+   * Returns e^z for complex z.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Exp = (z) => {
+    let magnitude = Math.exp(z.re);
+
+    let angle = z.im;
+
+    return Cis(angle).scale(magnitude)
+  };
+
+  /**
+   * Return the principal value of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @returns {Complex}
+   */
+  const Pow = (z, w) => {
+    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())))
+  };
+
+  /**
+   * Multivalued version of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowBranched = (z, w, branch=0) => {
+    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
+  };
+
+  /**
+   * z^r, where r is a real number.
+   * @param z {Complex}
+   * @param r {number}
+   * @returns {Complex}
+   */
+  const PowR = (z, r) => {
+    return Pow(z, new Complex(r))
+  };
+
+  /**
+   * z^r, where r is a real number, branched.
+   * @param z {Complex}
+   * @param r {number}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowRBranched = (z, r, branch=0) => {
+    return PowBranched(z, new Complex(r), branch)
+  };
+
+  /**
+   * Returns z^n, where n is a positive integer
+   * @param z {Complex} The base of the exponentiation.
+   * @param n {number} Positive integer, exponent.
+   * @returns {Complex}
+   */
+  const PowN = (z, n) => {
+    if (n === 0) {
+      return new Complex(1, 0)
+    } else if (n === 1) {
+      return z.clone()
+    } else if (n === -1) {
+      return z.conj().scale(1 / z.magnitudeSquared())
+    } else if (n === 2) {
+      return Multiply(z, z)
+    }
+
+    let mag = z.magnitude();
+    let angle = z.arg();
+
+    let newMag = Math.pow(mag, n);
+    let newAngle = angle * n;
+
+    return Cis(newAngle).scale(newMag)
+  };
+
+  /**
+   * Returns the principal value of sqrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sqrt = (z) => {
+    // Handle real z specially
+    if (Math.abs(z.im) < 1e-17) {
+      let r = z.re;
+
+      if (r >= 0) {
+        return new Complex(Math.sqrt(r))
+      } else {
+        return new Complex(0, Math.sqrt(-r))
+      }
+    }
+
+    let r = z.magnitude();
+
+    let zR = Add(z, new Complex(r)).normalize();
+
+    return zR.scale(Math.sqrt(r))
+  };
+
+  /**
+   * Branched version of Sqrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const SqrtBranched = (z, branch=0) => {
+    if (branch % 2 === 0) {
+      return Sqrt(z)
+    } else {
+      return Multiply(new Complex(-1, 0), Sqrt(z))
+    }
+  };
+
+  /**
+   * Principal value of cbrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Cbrt = (z) => {
+    return PowR(z, 1/3)
+  };
+
+  /**
+   * Multivalued version of Cbrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const CbrtBranched = (z, branch=0) => {
+    return PowRBranched(z, 1/3, branch)
+  };
+
+  var PowFunctions = /*#__PURE__*/Object.freeze({
+    Pow: Pow,
+    PowBranched: PowBranched,
+    PowR: PowR,
+    PowRBranched: PowRBranched,
+    PowN: PowN,
+    Sqrt: Sqrt,
+    SqrtBranched: SqrtBranched,
+    Cbrt: Cbrt,
+    CbrtBranched: CbrtBranched
+  });
+
+  /**
+   * Returns ln(z), where ln is the natural logarithm.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Ln = (z) => {
+    let mag = Math.log(z.magnitude());
+    let theta = z.arg();
+
+    return new Complex(mag, theta)
+  };
+
+  /**
+   * The multivalued version of ln(z). In other words, if ln(z) is the principal value of ln(z), it returns
+   * ln(z) + 2 * pi * i * branch, where branch is an integer.
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const LnBranched = (z, branch=0) => {
+    return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
+  };
+
+  /* Alias for Ln */
+  const Log = Ln;
+
+  /* Alias for LnBranched */
+  const LogBranched = LnBranched;
+
+  // Constants
+  const LN10$1 = Math.log(10);
+  const LN2$1 = Math.log(2);
+
+  /**
+   * log10(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10 = (z) => {
+    return Ln(z).scale(1 / LN10$1)
+  };
+
+  /**
+   * log10(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN10$1)
+  };
+
+  /**
+   * log2(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2 = (z) => {
+    return Ln(z).scale(1 / LN2$1)
+  };
+
+  /**
+   * log2(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN2$1)
+  };
+
+  /**
+   * Log base b of z
+   * @param b {Complex}
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const LogB = (b, z) => {
+    if (b.equals(z))
+      return Complex.One
+
+    return Divide(Ln(z), Ln(b))
+  };
+
+  /**
+   * Log base b of z, multivalued
+   * @param b {Complex}
+   * @param z {Complex}
+   * @param branch {number} Integer, which branch to evaluate
+   * @returns {Complex}
+   */
+  const LogBBranched = (b, z, branch=0) => {
+    if (branch === 0 && b.equals(z))
+      return Complex.One
+
+    return Divide(LnBranched(z, branch), LnBranched(b, branch))
+  };
+
+  var LnFunctions = /*#__PURE__*/Object.freeze({
+    Ln: Ln,
+    LnBranched: LnBranched,
+    Log: Log,
+    LogBranched: LogBranched,
+    Log10: Log10,
+    Log10Branched: Log10Branched,
+    Log2: Log2,
+    Log2Branched: Log2Branched,
+    LogB: LogB,
+    LogBBranched: LogBBranched
+  });
+
+  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
+  const Arcsin = (z) => Multiply(Complex.I.scale(-1), // -i
+    Ln(Add(Multiply(Complex.I, z),                              // i * z
+      Sqrt(Subtract(Complex.One, Multiply(z, z))))));            // sqrt(1 - z^2
+
+  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
+  const Arccos = (z) => Add(new Complex(Math.PI / 2), // pi / 2
+    Multiply(Complex.I, Ln(Add(Multiply(Complex.I, z),           // i * ln(iz
+      Sqrt(Subtract(Complex.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
+
+  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
+  const Arctan = (z) => Multiply(Complex.I.scale(1/2),  // i / 2
+    Ln(Divide(Add(Complex.I, z), Subtract(Complex.I, z))));      // ln( (i+z) / (1-z) )
+
+  // arcsec(z) = arccos(1 / z)
+  const Arcsec = (z) => Arccos(Divide(Complex.One, z));
+
+  // arccsc(z) = arcsin(1 / z)
+  const Arccsc = (z) => Arcsin(Divide(Complex.One, z));
+
+  // arccot(z) = pi / 2 - arctan(z)
+  const Arccot = (z) => Subtract(new Complex(Math.PI / 2), Arctan(z));
+
+  // Branched variants of the inverse trig functions
+  const ArcsinBranched = (z, branch=0) => {
+    return Add(Arcsin(z), new Complex(2 * Math.PI * branch))
+  };
+
+  const ArccosBranched = (z, branch=0) => {
+    return Add(Arccos(z), new Complex(2 * Math.PI * branch))
+  };
+
+  const ArctanBranched = (z, branch=0) =>
+    Add(Arctan(z), new Complex(Math.PI * branch));
+
+  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex.One, z), branch);
+
+  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex.One, z), branch);
+
+  const ArccotBranched = (z, branch=0) =>
+    Subtract(new Complex(Math.PI / 2), ArctanBranched(z, -branch));
+
+  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
+    Arcsin: Arcsin,
+    Arccos: Arccos,
+    Arctan: Arctan,
+    Arcsec: Arcsec,
+    Arccsc: Arccsc,
+    Arccot: Arccot,
+    ArcsinBranched: ArcsinBranched,
+    ArccosBranched: ArccosBranched,
+    ArctanBranched: ArctanBranched,
+    ArcsecBranched: ArcsecBranched,
+    ArccscBranched: ArccscBranched,
+    ArccotBranched: ArccotBranched
+  });
+
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))));
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))));
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const Arctanh = (z) => Ln(Divide(Add(Complex.One, z), Subtract(Complex.One, z))).scale(1/2);
+
+  const Arcsech = (z) => Arccosh(Divide(Complex.One, z));
+
+  // arccsch(z) = arcsinh(1/z)
+  const Arccsch = (z) => Arcsinh(Divide(Complex.One, z));
+
+  // arccoth(z) = arctanh(1/z)
+  const Arccoth = (z) => Arctanh(Divide(Complex.One, z));
+
+  // Branched variants of the normal functions
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const ArcsinhBranched = (z, branch=0) =>
+    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch);
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const ArccoshBranched = (z, branch=0) =>
+    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))), branch);
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const ArctanhBranched = (z, branch=0) =>
+    LnBranched(Divide(Add(Complex.One, z), Subtract(Complex.One, z)), branch).scale(1/2);
+
+  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex.One, z), branch);
+
+  // arccsch(z) = arcsinh(1/z)
+  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex.One, z), branch);
+
+  // arccoth(z) = arctanh(1/z)
+  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex.One, z), branch);
+
+  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
+    Arcsinh: Arcsinh,
+    Arccosh: Arccosh,
+    Arctanh: Arctanh,
+    Arcsech: Arcsech,
+    Arccsch: Arccsch,
+    Arccoth: Arccoth,
+    ArcsinhBranched: ArcsinhBranched,
+    ArccoshBranched: ArccoshBranched,
+    ArctanhBranched: ArctanhBranched,
+    ArcsechBranched: ArcsechBranched,
+    ArccschBranched: ArccschBranched,
+    ArccothBranched: ArccothBranched
+  });
+
   // Allowed plotting modes:
   // rough = linear sample, no refinement
   // fine = linear sample with refinement
@@ -5909,9 +6460,9 @@ void main() {
 
       this.plotPoints = plotPoints;
       this.plottingMode = plottingMode;
-      this.quality = 0.2;
+      this.quality = 1;
 
-      this.function = (x) => Math.atan(x);
+      this.function = (x) => Re(Sin(new Complex(x)));
 
       this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2});
       this.polyline = null;
@@ -6587,696 +7138,6 @@ void main() {
     }
   }
 
-  const Add = (a, b) => {
-    return new Complex(a.re + b.re, a.im + b.im)
-  };
-
-  const Multiply = (a, b) => {
-    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
-  };
-
-  /**
-   *
-   * @param a
-   * @param b
-   * @returns {Complex}
-   * @constructor
-   */
-  const Divide = (a, b) => {
-    let div = b.magnitudeSquared();
-
-    return Multiply(a, b.conj()).scale(1 / div)
-  };
-
-  const Subtract = (a, b) => {
-    return new Complex(a.re - b.re, a.im - b.im)
-  };
-
-  const Re = (z) => {
-    return z.re
-  };
-
-  const Im = (z) => {
-    return z.im
-  };
-
-  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
-    Add: Add,
-    Multiply: Multiply,
-    Divide: Divide,
-    Subtract: Subtract,
-    Re: Re,
-    Im: Im
-  });
-
-  const Cis = (theta) => {
-    // For real theta
-    let c = Math.cos(theta);
-    let s = Math.sin(theta);
-
-    return new Complex(c, s)
-  };
-
-  const Exp = (z) => {
-    let magnitude = Math.exp(z.re);
-
-    let angle = z.im;
-
-    return Cis(angle).scale(magnitude)
-  };
-
-  const Pow = (z, w) => {
-    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())))
-  };
-
-  const PowBranched = (z, w, branch=0) => {
-    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
-  };
-
-  const PowR = (z, r) => {
-    return Pow(z, new Complex(r))
-  };
-
-  const PowRBranched = (z, r, branch=0) => {
-    return PowBranched(z, new Complex(r), branch)
-  };
-
-  const PowN = (z, n) => {
-    if (n === 0) {
-      return new Complex(1, 0)
-    } else if (n === 1) {
-      return z.clone()
-    } else if (n === -1) {
-      return z.conj().scale(1 / z.magnitudeSquared())
-    } else if (n === 2) {
-      return Multiply(z, z)
-    }
-
-    let mag = z.magnitude();
-    let angle = z.arg();
-
-    let newMag = Math.pow(mag, n);
-    let newAngle = angle * n;
-
-    return Cis(newAngle).scale(newMag)
-  };
-
-  const Sqrt = (z) => {
-    // Handle real z specially
-    if (Math.abs(z.im) < 1e-17) {
-      let r = z.re;
-
-      if (r >= 0) {
-        return new Complex(Math.sqrt(r))
-      } else {
-        return new Complex(0, Math.sqrt(-r))
-      }
-    }
-
-    let r = z.magnitude();
-
-    let zR = Add(z, new Complex(r)).normalize();
-
-    return zR.scale(Math.sqrt(r))
-  };
-
-  const SqrtBranched = (z, branch=0) => {
-    if (branch % 2 === 0) {
-      return Sqrt(z)
-    } else {
-      return Multiply(new Complex(-1, 0), Sqrt(z))
-    }
-  };
-
-  const Cbrt = (z) => {
-    return PowR(z, 1/3)
-  };
-
-  const CbrtBranched = (z, branch=0) => {
-    return PowRBranched(z, 1/3, branch)
-  };
-
-  var PowFunctions = /*#__PURE__*/Object.freeze({
-    Pow: Pow,
-    PowBranched: PowBranched,
-    PowR: PowR,
-    PowRBranched: PowRBranched,
-    PowN: PowN,
-    Sqrt: Sqrt,
-    SqrtBranched: SqrtBranched,
-    Cbrt: Cbrt,
-    CbrtBranched: CbrtBranched
-  });
-
-  // sin(a+bi) = sin a cosh b + i cos a sinh b
-  const Sin = (z) => {
-    let a = z.re, b = z.im;
-    let sinA = Math.sin(a);
-    let cosA = Math.cos(a);
-
-    let sinhB = Math.sinh(b);
-    let coshB = Math.sqrt(1 + sinhB * sinhB);
-
-    return new Complex(sinA * coshB, cosA * sinhB)
-  };
-
-  // cos(a+bi) = cos a cosh b - i sin a sinh b
-  const Cos = (z) => {
-    let a = z.re, b = z.im;
-    let sinA = Math.sin(a);
-    let cosA = Math.cos(a);
-
-    let sinhB = Math.sinh(b);
-    let coshB = Math.sqrt(1 + sinhB * sinhB);
-
-    return new Complex(cosA * coshB, -sinA * sinhB)
-  };
-
-  // tan(a+bi) = 1/(cos 2a + cosh 2b) * (sin 2a + i sinh 2b)
-  const Tan = (z) => {
-    let a = 2 * z.re, b = 2 * z.im;
-
-    let sinA = Math.sin(a);
-    let cosA = Math.cos(a);
-
-    let sinhB = Math.sinh(b);
-    let coshB = Math.sqrt(1 + sinhB * sinhB);
-
-    return new Complex(sinA, sinhB).scale(1 / (cosA + coshB))
-  };
-
-  // sec(a+bi) = 1 / cos(a+bi)
-  const Sec = (z) => {
-    return Divide(Complex.One, Cos(z))
-  };
-
-  // csc(a+bi) = 1 / sin(a+bi)
-  const Csc = (z) => {
-    return Divide(Complex.One, Sin(z))
-  };
-
-  // sec(a+bi) = 1 / cos(a+bi)
-  const Cot = (z) => {
-    return Divide(Complex.One, Tan(z))
-  };
-
-  var TrigFunctions = /*#__PURE__*/Object.freeze({
-    Sin: Sin,
-    Cos: Cos,
-    Tan: Tan,
-    Sec: Sec,
-    Csc: Csc,
-    Cot: Cot
-  });
-
-  const Ln = (z) => {
-    let mag = Math.log(z.magnitude());
-    let theta = z.arg();
-
-    return new Complex(mag, theta)
-  };
-
-  const LnBranched = (z, branch=0) => {
-    return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
-  };
-
-  const Log = Ln;
-
-  const LogBranched = LnBranched;
-
-  const LN10$1 = Math.log(10);
-  const LN2$1 = Math.log(2);
-
-  const Log10 = (z) => {
-    return Ln(z).scale(1 / LN10$1)
-  };
-
-  const Log10Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN10$1)
-  };
-
-  const Log2 = (z) => {
-    return Ln(z).scale(1 / LN2$1)
-  };
-
-  const Log2Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN2$1)
-  };
-
-  const LogB = (b, z) => {
-    if (b.equals(z))
-      return Complex.One
-
-    return Divide(Ln(z), Ln(b))
-  };
-
-  const LogBBranched = (b, z, branch=0) => {
-    if (branch === 0 && b.equals(z))
-      return Complex.One
-    
-    return Divide(LnBranched(z, branch), LnBranched(b, branch))
-  };
-
-  var LnFunctions = /*#__PURE__*/Object.freeze({
-    Ln: Ln,
-    LnBranched: LnBranched,
-    Log: Log,
-    LogBranched: LogBranched,
-    Log10: Log10,
-    Log10Branched: Log10Branched,
-    Log2: Log2,
-    Log2Branched: Log2Branched,
-    LogB: LogB,
-    LogBBranched: LogBBranched
-  });
-
-  const Sinh = (z) => {
-    let a = z.re, b = z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex(sinhA * cosB, coshA * sinB)
-  };
-
-  const Cosh = (z) => {
-    let a = z.re, b = z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex(coshA * cosB, sinhA * sinB)
-  };
-
-  const Tanh = (z) => {
-    let a = 2 * z.re, b = 2 * z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex(sinhA, sinB).scale(1 / (coshA + cosB))
-  };
-
-  const Sech = (z) => {
-    return Divide(Complex.One, Cosh(z))
-  };
-
-  const Csch = (z) => {
-    return Divide(Complex.One, Sinh(z))
-  };
-
-  const Coth = (z) => {
-    return Divide(Complex.One, Tanh(z))
-  };
-
-  var HyperbolicTrigFunctions = /*#__PURE__*/Object.freeze({
-    Sinh: Sinh,
-    Cosh: Cosh,
-    Tanh: Tanh,
-    Sech: Sech,
-    Csch: Csch,
-    Coth: Coth
-  });
-
-  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
-  const Arcsin = (z) => Multiply(Complex.I.scale(-1), // -i
-    Ln(Add(Multiply(Complex.I, z),                              // i * z
-      Sqrt(Subtract(Complex.One, Multiply(z, z))))));            // sqrt(1 - z^2
-
-  const ArcsinBranched = (z, branch=0) => {
-    return Add(Arcsin(z), Complex.One.scale(2 * Math.PI * branch))
-  };
-
-  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
-  const Arccos = (z) => Add(new Complex(Math.PI / 2), // pi / 2
-    Multiply(Complex.I, Ln(Add(Multiply(Complex.I, z),           // i * ln(iz
-      Sqrt(Subtract(Complex.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
-
-  const ArccosBranched = (z, branch=0) => {
-    return Add(Arccos(z), Complex.One.scale(2 * Math.PI * branch))
-  };
-
-  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
-  const Arctan = (z) => Multiply(Complex.I.scale(1/2),  // i / 2
-    Ln(Divide(Add(Complex.I, z), Subtract(Complex.I, z))));      // ln( (i+z) / (1-z) )
-
-  const ArctanBranched = (z, branch=0) =>
-    Add(Arctan(z), Complex.One.scale(Math.PI * branch));
-
-  // arcsec(z) = arccos(1 / z)
-  const Arcsec = (z) => Arccos(Divide(Complex.One, z));
-
-  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex.One, z), branch);
-
-  // arccsc(z) = arcsin(1 / z)
-  const Arccsc = (z) => Arcsin(Divide(Complex.One, z));
-
-  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex.One, z), branch);
-
-  // arccot(z) = pi / 2 - arctan(z)
-  const Arccot = (z) => Subtract(Complex.One.scale(Math.PI / 2), Arctan(z));
-
-  const ArccotBranched = (z, branch=0) =>
-    Subtract(Complex.One.scale(Math.PI / 2), ArctanBranched(z, -branch));
-
-  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
-    Arcsin: Arcsin,
-    ArcsinBranched: ArcsinBranched,
-    Arccos: Arccos,
-    ArccosBranched: ArccosBranched,
-    Arctan: Arctan,
-    ArctanBranched: ArctanBranched,
-    Arcsec: Arcsec,
-    ArcsecBranched: ArcsecBranched,
-    Arccsc: Arccsc,
-    ArccscBranched: ArccscBranched,
-    Arccot: Arccot,
-    ArccotBranched: ArccotBranched
-  });
-
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))));
-
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))));
-
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const Arctanh = (z) => Ln(Divide(Add(Complex.One, z), Subtract(Complex.One, z))).scale(1/2);
-
-  const Arcsech = (z) => Arccosh(Divide(Complex.One, z));
-
-  // arccsch(z) = arcsinh(1/z)
-  const Arccsch = (z) => Arcsinh(Divide(Complex.One, z));
-
-  // arccoth(z) = arctanh(1/z)
-  const Arccoth = (z) => Arctanh(Divide(Complex.One, z));
-
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const ArcsinhBranched = (z, branch=0) =>
-    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch);
-
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const ArccoshBranched = (z, branch=0) =>
-    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))), branch);
-
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const ArctanhBranched = (z, branch=0) =>
-    LnBranched(Divide(Add(Complex.One, z), Subtract(Complex.One, z)), branch).scale(1/2);
-
-  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex.One, z), branch);
-
-  // arccsch(z) = arcsinh(1/z)
-  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex.One, z), branch);
-
-  // arccoth(z) = arctanh(1/z)
-  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex.One, z), branch);
-
-  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
-    Arcsinh: Arcsinh,
-    Arccosh: Arccosh,
-    Arctanh: Arctanh,
-    Arcsech: Arcsech,
-    Arccsch: Arccsch,
-    Arccoth: Arccoth,
-    ArcsinhBranched: ArcsinhBranched,
-    ArccoshBranched: ArccoshBranched,
-    ArctanhBranched: ArctanhBranched,
-    ArcsechBranched: ArcsechBranched,
-    ArccschBranched: ArccschBranched,
-    ArccothBranched: ArccothBranched
-  });
-
-  function Gamma(z) {
-    if (z.re < 1/2) {
-      // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
-      // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
-
-      return Divide(new Complex(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
-    }
-
-    if (Math.abs(z.im) < 1e-17) {
-      return new Complex(gamma$1(z.re))
-    }
-
-    // We use the Lanczos approximation for the factorial function.
-    z.re -= 1;
-    let x = new Complex(LANCZOS_COEFFICIENTS[0]);
-
-    let newZ = z.clone();
-    let re, im, mag2;
-
-    for (let i = 1; i < LANCZOS_COEFFICIENTS.length; ++i) {
-      let coeff = LANCZOS_COEFFICIENTS[i];
-
-      newZ.re += 1;
-
-      re = newZ.re * coeff;
-      im = -newZ.im * coeff;
-
-      mag2 = newZ.magnitudeSquared();
-
-      re /= mag2;
-      im /= mag2;
-
-      x.re += re;
-      x.im += im;
-    }
-
-    let t = z.clone();
-    t.re += LANCZOS_COEFFICIENTS.length - 1.5;
-
-    return Multiply(new Complex(Math.sqrt(2 * Math.PI)),
-      Multiply(x, Multiply(
-        Pow(t, Add(z, new Complex(0.5))),
-        Exp(t.scale(-1)))))
-  }
-
-  /**
-   * Evaluates the digamma function of z.
-   * @return {Complex}
-   */
-  function Digamma(z) {
-    if (z.re < 0.5) {
-      // psi(1-x) - psi(x) = pi cot(pi x)
-      // psi(x) = psi(1-x) - pi cot (pi x)
-
-      return Subtract(Digamma(Subtract(Complex.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
-    } else if (z.re < 5) {
-      // psi(x+1) = psi(x) + 1/x
-      // psi(x) = psi(x+1) - 1/x
-
-      return Subtract(Digamma(Add(z, Complex.One)), Divide(Complex.One, z))
-    }
-
-    let egg = new Complex(1);
-    let sum = Ln(z);
-
-    for (let n = 1; n < 15; ++n) {
-      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
-
-      egg = Divide(Multiply(egg, new Complex(((n-1) ? (n-1) : 1))), Add(z, new Complex(n - 1)));
-
-      sum.re -= coeff * egg.re;
-      sum.im -= coeff * egg.im;
-    }
-
-    return sum
-  }
-
-  let coeffs = [[1, 1], [2, 1 / 2], [3, 1 / 6], [5, 1 / 30], [7, 1 / 42], [9, 1 / 30], [11, 5 / 66], [13, 691 / 2730], [15, 7 / 6]];
-
-  /**
-   *
-   * @param z
-   * @returns {Complex}
-   */
-  function Trigamma(z) {
-    if (Math.abs(z.im) < 1e-17)
-      return new Complex(trigamma(z.re))
-
-    if (z.re < 0.5) {
-      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
-      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
-
-      return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
-    } else if (z.re < 8) {
-      // psi_1(z+1) = psi_1(z) - 1/z^2
-      // psi_1(z) = psi_1(z+1) + 1/z^2
-
-      return Add(Trigamma(Add(Complex.One, z)), PowN(z, -2))
-    }
-
-    let sum = new Complex(0);
-
-    for (let coeffPair of coeffs) {
-      let pow = coeffPair[0];
-      let coeff = coeffPair[1];
-
-      let part = Multiply(new Complex(coeff), PowN(z, -pow));
-
-      sum.re += part.re;
-      sum.im += part.im;
-    }
-
-    return sum
-  }
-
-  function Polygamma(m, z) {
-    if (m % 1 !== 0)
-      return new Complex(NaN, NaN)
-
-    if (m === 0)
-      return Digamma(z)
-    else if (m === 1)
-      return Trigamma(z)
-
-    let sign = (m % 2 === 0) ? -1 : 1;
-    let numPoly = getPolygammaNumeratorPolynomial(m);
-
-    if (z < 0.5) {
-      if (z % 1 === 0)
-        return new Complex(Infinity)
-
-      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
-      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
-
-      return Multiply(new Complex(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
-        (PowN(Sin(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex.One, z))))
-    } else if (z < 8) {
-      // Recurrence relation
-      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
-
-      return Add(Polygamma(m, z+1), Divide(new Complex(sign * gamma$1(m + 1)), PowN(z, m+1)))
-    }
-
-    // Series representation
-
-    let sum = new Complex(0);
-
-    for (let i = 0; i < 200; ++i) {
-      let component = Divide(Complex.One, PowN(Add(z, new Complex(i)), m + 1));
-      sum.re += component.re;
-      sum.im += component.im;
-    }
-
-    return Multiply(new Complex(sign * gamma$1(m + 1)), sum)
-  }
-
-  const ComplexFunctions = Object.freeze({
-    ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
-    ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-    Gamma, Digamma, Trigamma, Polygamma
-  });
-
-  /**
-   * Represents a complex number, with a real part and an imaginary part both represented by floats.
-   */
-
-  class Complex {
-    /**
-     * Construct a new complex number.
-     * @param re The real part of the complex number.
-     * @param im The imaginary part of the complex number.
-     */
-    constructor(re, im=0) {
-      this.re = re;
-      this.im = im;
-    }
-
-    /**
-     * Return the complex argument (principal value) corresponding to the complex number.
-     * @returns {number} The complex argument Arg(z).
-     */
-    arg() {
-      return Math.atan2(this.im, this.re)
-    }
-
-    /**
-     * Returns |z|.
-     * @returns {number} The complex magnitude |z|.
-     */
-    magnitude() {
-      return Math.hypot(this.re, this.im)
-    }
-
-    /**
-     * Returns |z|^2.
-     * @returns {number} The square of the complex magnitude |z|^2.
-     */
-    magnitudeSquared() {
-      return this.re * this.re + this.im * this.im
-    }
-
-    /**
-     * Returns z bar.
-     * @returns {Complex} The conjugate of z.
-     */
-    conj() {
-      return new Complex(this.re, -this.im)
-    }
-
-    /**
-     * Clone this complex number.
-     * @returns {Complex} Clone of z.
-     */
-    clone() {
-      return new Complex(this.re, this.im)
-    }
-
-    /**
-     * Scale this complex number by the real factor r.
-     * @param r {number} The scaling factor.
-     */
-    scale(r) {
-      return new Complex(this.re * r, this.im * r)
-    }
-
-    /**
-     * Get i.
-     * @returns {Complex} i.
-     * @constructor
-     */
-    static get I() {
-      return new Complex(0, 1)
-    }
-
-    /**
-     * Get 1.
-     * @returns {Complex} 1.
-     * @constructor
-     */
-    static get One() {
-      return new Complex(1, 0)
-    }
-
-    /**
-     * Check whether this complex number is equal to another.
-     * @param z {Complex} Complex number to compare with.
-     */
-    equals(z) {
-      return (this.re === z.re) && (this.im === z.im)
-    }
-
-    /**
-     * Return a complex number pointing in the same direction, with magnitude 1.
-     * @returns {Complex}
-     */
-    normalize() {
-      let mag = this.magnitude();
-
-      return this.scale(1 / mag)
-    }
-  }
-
   function multiplyPolynomials(coeffs1, coeffs2, degree) {
     let ret = [];
     for (let i = 0; i <= degree; ++i) {
@@ -7410,7 +7271,17 @@ void main() {
   // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
 
   var g = 7;
-  var LANCZOS_COEFFICIENTS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  var LANCZOS_COEFFICIENTS = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ];
   var INTEGER_FACTORIALS = [
     1,
     1,
@@ -7681,7 +7552,11 @@ void main() {
   }
 
   const GREGORY_COEFFICIENTS = [
-    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
+    1.0,
+    0.5,
+    -0.08333333333333333,
+    0.041666666666666664,
+    -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
   ];
 
   let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
@@ -7716,17 +7591,25 @@ void main() {
       // psi(x) = psi(1-x) - pi cot (pi x)
 
       return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
-    } else if (z < 5) {
+    } else if (z < 15) {
       // psi(x+1) = psi(x) + 1/x
       // psi(x) = psi(x+1) - 1/x
 
-      return digamma(z + 1) - 1 / z
+      let sum = 0;
+
+      while (z < 15) {
+        sum += 1 / z;
+
+        z += 1;
+      }
+
+      return digamma(z) - sum
     }
 
     let egg = 1;
     let sum = Math.log(z);
 
-    for (let n = 1; n < 100; ++n) {
+    for (let n = 1; n < 15; ++n) {
       let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
 
       egg *= ((n-1) ? (n-1) : 1);
@@ -7748,11 +7631,19 @@ void main() {
       // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
       return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
-    } else if (z < 8) {
+    } else if (z < 20) {
       // psi_1(z+1) = psi_1(z) - 1/z^2
       // psi_1(z) = psi_1(z+1) + 1/z^2
 
-      return trigamma(z+1) + 1 / (z*z)
+      let sum = 0;
+
+      while (z < 20) {
+        sum += 1 / (z * z);
+
+        z += 1;
+      }
+
+      return trigamma(z) + sum
     }
 
     return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
@@ -9478,6 +9369,379 @@ void main() {
 
     return rectangles
   }
+
+  // sin(a+bi) = sin a cosh b + i cos a sinh b
+  const Sin$1 = (z) => {
+    let a = z.re, b = z.im;
+    let sinA = Math.sin(a);
+    let cosA = Math.cos(a);
+
+    let sinhB = Math.sinh(b);
+    let coshB = Math.sqrt(1 + sinhB * sinhB);
+
+    return new Complex(sinA * coshB, cosA * sinhB)
+  };
+
+  // cos(a+bi) = cos a cosh b - i sin a sinh b
+  const Cos = (z) => {
+    let a = z.re, b = z.im;
+    let sinA = Math.sin(a);
+    let cosA = Math.cos(a);
+
+    let sinhB = Math.sinh(b);
+    let coshB = Math.sqrt(1 + sinhB * sinhB);
+
+    return new Complex(cosA * coshB, -sinA * sinhB)
+  };
+
+  // tan(a+bi) = (tan a + i tanh b) / (1 - i tan a tanh b)
+  const Tan = (z) => {
+    let a = z.re, b = z.im;
+
+    let tanA = Math.tan(a);
+    let tanhB = Math.tanh(b);
+
+    return Divide(new Complex(tanA, tanhB), new Complex(1, -tanA * tanhB))
+  };
+
+  // sec(a+bi) = 1 / cos(a+bi)
+  const Sec = (z) => {
+    return Divide(Complex.One, Cos(z))
+  };
+
+  // csc(a+bi) = 1 / sin(a+bi)
+  const Csc = (z) => {
+    return Divide(Complex.One, Sin$1(z))
+  };
+
+  // sec(a+bi) = 1 / cos(a+bi)
+  const Cot = (z) => {
+    return Divide(Complex.One, Tan(z))
+  };
+
+  var TrigFunctions = /*#__PURE__*/Object.freeze({
+    Sin: Sin$1,
+    Cos: Cos,
+    Tan: Tan,
+    Sec: Sec,
+    Csc: Csc,
+    Cot: Cot
+  });
+
+  /**
+   * Returns sinh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sinh = (z) => {
+    let a = z.re, b = z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex(sinhA * cosB, coshA * sinB)
+  };
+
+  /**
+   * Returns cosh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Cosh = (z) => {
+    let a = z.re, b = z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex(coshA * cosB, sinhA * sinB)
+  };
+
+  /**
+   * Returns tanh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Tanh = (z) => {
+    let a = 2 * z.re, b = 2 * z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex(sinhA, sinB).scale(1 / (coshA + cosB))
+  };
+
+  /**
+   * Returns sech(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sech = (z) => {
+    return Divide(Complex.One, Cosh(z))
+  };
+
+  /**
+   * Returns csch(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Csch = (z) => {
+    return Divide(Complex.One, Sinh(z))
+  };
+
+  /**
+   * Returns coth(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Coth = (z) => {
+    return Divide(Complex.One, Tanh(z))
+  };
+
+  var HyperbolicTrigFunctions = /*#__PURE__*/Object.freeze({
+    Sinh: Sinh,
+    Cosh: Cosh,
+    Tanh: Tanh,
+    Sech: Sech,
+    Csch: Csch,
+    Coth: Coth
+  });
+
+  function Gamma(z) {
+    if (z.re < 1/2) {
+      // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
+      // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
+
+      return Divide(new Complex(Math.PI), Multiply(Sin$1(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
+    }
+
+    if (Math.abs(z.im) < 1e-17) {
+      return new Complex(gamma$1(z.re))
+    }
+
+    // We use the Lanczos approximation for the factorial function.
+    z.re -= 1;
+    let x = new Complex(LANCZOS_COEFFICIENTS[0]);
+
+    let newZ = z.clone();
+    let re, im, mag2;
+
+    for (let i = 1; i < LANCZOS_COEFFICIENTS.length; ++i) {
+      let coeff = LANCZOS_COEFFICIENTS[i];
+
+      newZ.re += 1;
+
+      re = newZ.re * coeff;
+      im = -newZ.im * coeff;
+
+      mag2 = newZ.magnitudeSquared();
+
+      re /= mag2;
+      im /= mag2;
+
+      x.re += re;
+      x.im += im;
+    }
+
+    let t = z.clone();
+    t.re += LANCZOS_COEFFICIENTS.length - 1.5;
+
+    return Multiply(new Complex(Math.sqrt(2 * Math.PI)),
+      Multiply(x, Multiply(
+        Pow(t, Add(z, new Complex(0.5))),
+        Exp(t.scale(-1)))))
+  }
+
+  /**
+   * Evaluates the digamma function of z.
+   * @param z {Complex}
+   * @return {Complex}
+   */
+  function Digamma(z) {
+    if (z.re < 0.5) {
+      // psi(1-x) - psi(x) = pi cot(pi x)
+      // psi(x) = psi(1-x) - pi cot (pi x)
+
+      return Subtract(Digamma(Subtract(Complex.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
+    } else if (z.re < 15) {
+      // psi(x+1) = psi(x) + 1/x
+      // psi(x) = psi(x+1) - 1/x
+
+      let sum = new Complex(0);
+      let one = Complex.One;
+
+      while (z.re < 15) {
+        let component = Divide(one, z);
+
+        z.re += 1;
+
+        sum.re += component.re;
+        sum.im += component.im;
+      }
+
+      return Subtract(Digamma(z), sum)
+    }
+
+    let egg = new Complex(1);
+    let sum = Ln(z);
+
+    for (let n = 1; n < 15; ++n) {
+      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
+
+      egg = Divide(Multiply(egg, new Complex(((n-1) ? (n-1) : 1))), Add(z, new Complex(n - 1)));
+
+      sum.re -= coeff * egg.re;
+      sum.im -= coeff * egg.im;
+    }
+
+    return sum
+  }
+
+  let coeffs = [[1, 1], [2, 1 / 2], [3, 1 / 6], [5, 1 / 30], [7, 1 / 42], [9, 1 / 30], [11, 5 / 66], [13, 691 / 2730], [15, 7 / 6]];
+
+  /**
+   *
+   * @param z
+   * @returns {Complex}
+   */
+  function Trigamma(z) {
+    if (Math.abs(z.im) < 1e-17)
+      return new Complex(trigamma(z.re))
+
+    if (z.re < 0.5) {
+      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
+      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
+
+      return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin$1(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
+    } else if (z.re < 20) {
+      // psi_1(z+1) = psi_1(z) - 1/z^2
+      // psi_1(z) = psi_1(z+1) + 1/z^2
+
+      let sum = new Complex(0);
+
+      while (z.re < 20) {
+        let component = PowN(z, -2);
+
+        z.re += 1;
+
+        sum.re += component.re;
+        sum.im += component.im;
+      }
+
+      return Add(Trigamma(z), sum)
+    }
+
+    let sum = new Complex(0);
+
+    for (let coeffPair of coeffs) {
+      let pow = coeffPair[0];
+      let coeff = coeffPair[1];
+
+      let part = Multiply(new Complex(coeff), PowN(z, -pow));
+
+      sum.re += part.re;
+      sum.im += part.im;
+    }
+
+    return sum
+  }
+
+  /**
+   * Returns polygamma(m, z), where polygamma is the mth logarithmic derivative of the gamma function.
+   * @param m {number}
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  function Polygamma(m, z) {
+    if (m % 1 !== 0)
+      return new Complex(NaN, NaN)
+
+    if (m === 0)
+      return Digamma(z)
+    else if (m === 1)
+      return Trigamma(z)
+
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return new Complex(Infinity)
+
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return Multiply(new Complex(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
+        (PowN(Sin$1(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex.One, z))))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return Add(Polygamma(m, z+1), Divide(new Complex(sign * gamma$1(m + 1)), PowN(z, m+1)))
+    }
+
+    // Series representation
+
+    let sum = new Complex(0);
+
+    for (let i = 0; i < 200; ++i) {
+      let component = Divide(Complex.One, PowN(Add(z, new Complex(i)), m + 1));
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Multiply(new Complex(sign * gamma$1(m + 1)), sum)
+  }
+
+  const logPi = Math.log(Math.PI);
+  const logSqrt2Pi = Math.log(2 * Math.PI) / 2;
+
+  function LnGamma (z) {
+    if (Math.abs(z.im) < 1e-17) {
+      return new Complex(ln_gamma(z.re))
+    }
+
+    if (z.re < 0.5) {
+      // Compute via reflection formula
+      let reflected = LnGamma(Subtract(Complex.One, z));
+
+      return Subtract(Subtract(new Complex(logPi), Ln(Sin$1(Multiply(new Complex(Math.PI), z)))), reflected)
+    } else {
+      z.re -= 1;
+
+      const g = 7;
+
+      var x = new Complex(LANCZOS_COEFFICIENTS[0]);
+
+      for (var i = 1; i < g + 2; i++) {
+        let component = Divide(new Complex(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex(i)));
+
+        x.re += component.re;
+        x.im += component.im;
+      }
+
+      var t = Add(z, new Complex(g + 0.5));
+
+      return Add(new Complex(logSqrt2Pi), Add(Subtract(Multiply(Ln(t), Add(z, new Complex(0.5))), t), Ln(x)))
+    }
+  }
+
+  /**
+   * Complex functions!
+   */
+  const ComplexFunctions = Object.freeze({
+    ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
+    ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
+    Gamma, Digamma, Trigamma, Polygamma, LnGamma
+  });
 
   exports.ASTNode = ASTNode;
   exports.BEAST_POOL = BEAST_POOL;

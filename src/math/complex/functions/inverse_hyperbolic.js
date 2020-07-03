@@ -20,6 +20,7 @@ export const Arccsch = (z) => Arcsinh(Divide(Complex.One, z))
 // arccoth(z) = arctanh(1/z)
 export const Arccoth = (z) => Arctanh(Divide(Complex.One, z))
 
+// Branched variants of the normal functions
 // arcsinh(z) = ln(z + sqrt(z^2 + 1))
 export const ArcsinhBranched = (z, branch=0) =>
   LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch)

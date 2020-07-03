@@ -20,11 +20,22 @@ function Trigamma(z) {
     // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
     return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
-  } else if (z.re < 8) {
+  } else if (z.re < 20) {
     // psi_1(z+1) = psi_1(z) - 1/z^2
     // psi_1(z) = psi_1(z+1) + 1/z^2
 
-    return Add(Trigamma(Add(Complex.One, z)), PowN(z, -2))
+    let sum = new Complex(0)
+
+    while (z.re < 20) {
+      let component = PowN(z, -2)
+
+      z.re += 1
+
+      sum.re += component.re
+      sum.im += component.im
+    }
+
+    return Add(Trigamma(z), sum)
   }
 
   let sum = new Complex(0)

@@ -5,6 +5,11 @@ import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
+import { Sqrt } from '../math/complex/functions/pow'
+import { Complex } from '../math/complex/complex'
+import { Add, Re } from '../math/complex/functions/basic_arithmetic'
+import { Arccos } from '../math/complex/functions/inverse_trig'
+import { Arctanh } from '../math/complex/functions/inverse_hyperbolic'
 
 // Allowed plotting modes:
 // rough = linear sample, no refinement
@@ -21,9 +26,9 @@ class FunctionPlot2D extends InteractiveElement {
 
     this.plotPoints = plotPoints
     this.plottingMode = plottingMode
-    this.quality = 0.2
+    this.quality = 1
 
-    this.function = (x) => Math.atan(x)
+    this.function = (x) => Re(Sin(new Complex(x)))
 
     this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
     this.polyline = null

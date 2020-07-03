@@ -6,6 +6,7 @@ import { Ln } from './log'
 
 /**
  * Evaluates the digamma function of z.
+ * @param z {Complex}
  * @return {Complex}
  */
 function Digamma(z) {
@@ -14,11 +15,23 @@ function Digamma(z) {
     // psi(x) = psi(1-x) - pi cot (pi x)
 
     return Subtract(Digamma(Subtract(Complex.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
-  } else if (z.re < 5) {
+  } else if (z.re < 15) {
     // psi(x+1) = psi(x) + 1/x
     // psi(x) = psi(x+1) - 1/x
 
-    return Subtract(Digamma(Add(z, Complex.One)), Divide(Complex.One, z))
+    let sum = new Complex(0)
+    let one = Complex.One
+
+    while (z.re < 15) {
+      let component = Divide(one, z)
+
+      z.re += 1
+
+      sum.re += component.re
+      sum.im += component.im
+    }
+
+    return Subtract(Digamma(z), sum)
   }
 
   let egg = new Complex(1)

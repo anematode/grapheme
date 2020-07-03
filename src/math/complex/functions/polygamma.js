@@ -6,6 +6,12 @@ import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
 import { Cos, Sin } from './trig_functions'
 import { PowN } from './pow'
 
+/**
+ * Returns polygamma(m, z), where polygamma is the mth logarithmic derivative of the gamma function.
+ * @param m {number}
+ * @param z {Complex}
+ * @returns {Complex}
+ */
 function Polygamma(m, z) {
   if (m % 1 !== 0)
     return new Complex(NaN, NaN)

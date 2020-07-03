@@ -14,6 +14,24 @@ class Complex {
   }
 
   /**
+   * Get i.
+   * @returns {Complex} i.
+   * @constructor
+   */
+  static get I() {
+    return new Complex(0, 1)
+  }
+
+  /**
+   * Get 1.
+   * @returns {Complex} 1.
+   * @constructor
+   */
+  static get One() {
+    return new Complex(1, 0)
+  }
+
+  /**
    * Return the complex argument (principal value) corresponding to the complex number.
    * @returns {number} The complex argument Arg(z).
    */
@@ -62,24 +80,6 @@ class Complex {
   }
 
   /**
-   * Get i.
-   * @returns {Complex} i.
-   * @constructor
-   */
-  static get I() {
-    return new Complex(0, 1)
-  }
-
-  /**
-   * Get 1.
-   * @returns {Complex} 1.
-   * @constructor
-   */
-  static get One() {
-    return new Complex(1, 0)
-  }
-
-  /**
    * Check whether this complex number is equal to another.
    * @param z {Complex} Complex number to compare with.
    */
@@ -99,7 +99,3 @@ class Complex {
 }
 
 export { Complex }
-
-import { ComplexFunctions } from './functions/functions'
-
-export { ComplexFunctions }

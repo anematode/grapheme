@@ -33,39 +33,16 @@
   let dplot = new Grapheme.InteractiveFunctionPlot2D()
   plot.add(dplot)
 
+  let d = new Grapheme.Complex(0)
+
+  fplot.setFunction((x) => Grapheme.ComplexFunctions.Re(
+    Grapheme.ComplexFunctions.Digamma(
+      Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
+  dplot.setFunction((x) => Grapheme.ComplexFunctions.Im(
+    Grapheme.ComplexFunctions.Digamma(
+      Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
+
   dplot.pen.color = Grapheme.Colors.BLACK
-
-  fplot.pen.dashPattern = dplot.pen.dashPattern = [0.001, 12]
-
-  fplot.pen.endcap = dplot.pen.endcap = "round"
-  fplot.pen.thickness = dplot.pen.thickness = 3
-
-    function setFunction(value) {
-      let node = Grapheme.parseString(value)
-      let compile = node.compile()
-      let index = compile.variableNames.indexOf('x')
-
-      let func
-
-      if (index === -1) {
-        func = (x) => compile.func()
-      } else {
-        // as you can see, highly WIP
-        func = (x) => compile.func(x)
-      }
-
-      fplot.setFunction(func)
-      fplot.update()
-
-      let egg = node.derivative('x')
-
-      window.node = node
-
-      dplot.setFunction(egg.compile().func)
-      dplot.update()
-
-      katex.render(node.latex(false), document.getElementById("katex-stuff"), {throwOnError:false})
-    }
 
   let ia = 0;
   function render() {
