@@ -36,10 +36,10 @@
   let d = new Grapheme.Complex(0)
 
   fplot.setFunction((x) => Grapheme.ComplexFunctions.Re(
-    Grapheme.ComplexFunctions.Digamma(
+    Grapheme.ComplexFunctions.Trigamma(
       Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
   dplot.setFunction((x) => Grapheme.ComplexFunctions.Im(
-    Grapheme.ComplexFunctions.Digamma(
+    Grapheme.ComplexFunctions.Trigamma(
       Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
 
   dplot.pen.color = Grapheme.Colors.BLACK
