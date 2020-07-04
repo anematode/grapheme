@@ -1,5 +1,5 @@
-import { trigamma } from '../../gamma_function'
-import { Complex } from '../complex'
+import { trigamma } from '../gamma_function'
+import { Complex } from './complex'
 import { Sin } from './trig_functions'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
 import { PowN } from './pow'

@@ -5,11 +5,11 @@ import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
-import { Sqrt } from '../math/complex/functions/pow'
+import { Sqrt } from '../math/complex/pow'
 import { Complex } from '../math/complex/complex'
-import { Add, Re } from '../math/complex/functions/basic_arithmetic'
-import { Arccos } from '../math/complex/functions/inverse_trig'
-import { Arctanh } from '../math/complex/functions/inverse_hyperbolic'
+import { Add, Re } from '../math/complex/basic_arithmetic'
+import { Arccos } from '../math/complex/inverse_trig'
+import { Arctanh } from '../math/complex/inverse_hyperbolic'
 
 // Allowed plotting modes:
 // rough = linear sample, no refinement

@@ -1,12 +1,12 @@
-import { mod, gcd } from "../core/utils"
-import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../math/gamma_function'
+import { mod, gcd } from "../../core/utils"
+import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function'
 
 const ExtraFunctions = {
   LogB: (b, v) => {
     return Math.log(v) / Math.log(b)
   },
   Factorial: (a) => {
-    return Functions.Gamma(a + 1)
+    return ExtraFunctions.Gamma(a + 1)
   },
   Gamma: (a) => {
     return gamma(a)
@@ -31,9 +31,6 @@ const ExtraFunctions = {
     }
 
     return t
-  },
-  Pow: (x, r) => {
-
   },
   PowRational: (x, p, q) => {
     // Calculates x ^ (p / q), where p and q are integers
@@ -63,9 +60,12 @@ const ExtraFunctions = {
       }
     }
   },
+  Pow: (x, r) => { // Tries to find a ratio close to r, then do PowRational, otherwise just do normal pow
+
+  },
   Mod: (n, m) => {
     return ((n % m) + m) % m
   }
 }
 
-export { ExtraFunctions }
+export default ExtraFunctions

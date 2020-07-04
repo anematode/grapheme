@@ -1,4 +1,4 @@
-import { Complex } from '../complex'
+import { Complex } from './complex'
 
 /**
  * Returns a + b.

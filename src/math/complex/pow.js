@@ -1,4 +1,4 @@
-import { Complex } from '../complex'
+import { Complex } from './complex'
 import { Add, Multiply } from './basic_arithmetic'
 import Cis from './cis'
 import Exp from './exp'

@@ -1,5 +1,5 @@
 import { Complex } from './complex/complex'
-import { Multiply } from './complex/functions/basic_arithmetic'
+import { Multiply } from './complex/basic_arithmetic'
 
 function multiplyPolynomials(coeffs1, coeffs2, degree) {
   let ret = []

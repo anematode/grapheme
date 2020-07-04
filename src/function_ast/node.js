@@ -19,16 +19,21 @@ class ASTNode {
 
     this.children = children
     this.parent = parent
+    this.type = null
   }
 
-  applyAll (func, depth = 0) {
-    func(this, depth)
+  applyAll (func, depth = 0, childrenFirst=false) {
+    if (!childrenFirst)
+      func(this, depth)
 
     this.children.forEach(child => {
       if (child.applyAll) {
-        child.applyAll(func, depth + 1)
+        child.applyAll(func, depth + 1, childrenFirst)
       }
     })
+
+    if (childrenFirst)
+      func(this, depth)
   }
 
   clone () {
@@ -41,6 +46,19 @@ class ASTNode {
 
   evaluateConstant () {
     return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
+  }
+
+  getDependencies() {
+    let varDependencies = new Set()
+    let funcDependencies = new Set()
+
+    this.applyAll(child => {
+      if (child instanceof VariableNode) {
+        varDependencies.add(child.name)
+      } else if (child instanceof OperatorNode) {
+        funcDependencies.add()
+      }
+    })
   }
 
   getText () {
@@ -56,7 +74,7 @@ class ASTNode {
   }
 
   latex (parens = true) {
-    let latex = this.children.map(child => child.latex()).join('+')
+    let latex = this.children.map(child => child.latex()).join('')
 
     if (parens) {
       return String.raw`\left(${latex}\right)`
@@ -74,6 +92,70 @@ class ASTNode {
       if (child.children) {
         child.children.forEach(subchild => subchild.parent = child)
       }
+    })
+  }
+
+  substitute (replacement, criterion) {
+    let substituted = []
+
+    this.applyAll((child) => {
+      if (substituted.includes(child)) {
+        return
+      }
+
+      const children = child.children
+
+      for (let i = 0; i < children.length; ++i) {
+        let subchild = children[i]
+
+        let res = criterion(subchild)
+
+        if (res) {
+          children[i] = replacement.clone()
+          substituted.push(children[i])
+        }
+      }
+    })
+  }
+
+  substituteByFunction (substitutionFunc) {
+    let substituted = []
+
+    this.applyAll((child) => {
+      if (substituted.includes(child)) {
+        return
+      }
+
+      const children = child.children
+
+      for (let i = 0; i < children.length; ++i) {
+        let subchild = children[i]
+
+        let res = substitutionFunc(subchild)
+
+        if (res) {
+          children[i] = res
+          substituted.push(children[i])
+        }
+      }
+    })
+  }
+
+  substituteVariable (variable, replacement) {
+    this.substitute(replacement, node => node instanceof VariableNode && node.name === variable)
+  }
+
+  substituteVariables (dict) {
+    this.substituteByFunction((node) => {
+      if (node instanceof VariableNode) {
+        let potentialReplacement = dict[node.name]
+
+        if (potentialReplacement) {
+          return potentialReplacement
+        }
+      }
+
+      return false
     })
   }
 
@@ -298,8 +380,14 @@ const ONE_THIRD = new OperatorNode({
     new ConstantNode({ value: 3 })
   ]
 })
-const PI = new ConstantNode({text: "pi", value: Math.PI})
-const E = new ConstantNode({text: "e", value: 2.71828182845904523})
+const PI = new ConstantNode({
+  text: 'pi',
+  value: Math.PI
+})
+const E = new ConstantNode({
+  text: 'e',
+  value: 2.71828182845904523
+})
 
 export {
   ONE_THIRD,

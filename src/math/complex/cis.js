@@ -1,4 +1,4 @@
-import { Complex } from '../complex'
+import { Complex } from './complex'
 
 /**
  * Returns e^(i theta) for real theta.

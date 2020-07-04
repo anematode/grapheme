@@ -1,6 +1,6 @@
-import { GREGORY_COEFFICIENTS } from '../../gamma_function'
+import { GREGORY_COEFFICIENTS } from '../gamma_function'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
-import { Complex } from '../complex'
+import { Complex } from './complex'
 import { Cot } from './trig_functions'
 import { Ln } from './log'
 

@@ -2,10 +2,10 @@
 // Ah, the gamma function.
 import { Sin } from './trig_functions'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
-import { Complex } from '../complex'
+import { Complex } from './complex'
 import { Pow } from './pow'
 import Exp from './exp'
-import { LANCZOS_COEFFICIENTS, gamma } from '../../gamma_function'
+import { LANCZOS_COEFFICIENTS, gamma } from '../gamma_function'
 
 function Gamma(z) {
   if (z.re < 1/2) {

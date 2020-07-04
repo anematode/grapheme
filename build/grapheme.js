@@ -695,6 +695,111 @@ var Grapheme = (function (exports) {
     return [... new Set(arr)]
   }
 
+  // Credit to https://github.com/gustf/js-levenshtein/blob/master/index.js
+  const levenshtein = (function()
+  {
+    function _min(d0, d1, d2, bx, ay)
+    {
+      return d0 < d1 || d2 < d1
+        ? d0 > d2
+          ? d2 + 1
+          : d0 + 1
+        : bx === ay
+          ? d1
+          : d1 + 1;
+    }
+
+    return function(a, b)
+    {
+      if (a === b) {
+        return 0;
+      }
+
+      if (a.length > b.length) {
+        var tmp = a;
+        a = b;
+        b = tmp;
+      }
+
+      var la = a.length;
+      var lb = b.length;
+
+      while (la > 0 && (a.charCodeAt(la - 1) === b.charCodeAt(lb - 1))) {
+        la--;
+        lb--;
+      }
+
+      var offset = 0;
+
+      while (offset < la && (a.charCodeAt(offset) === b.charCodeAt(offset))) {
+        offset++;
+      }
+
+      la -= offset;
+      lb -= offset;
+
+      if (la === 0 || lb < 3) {
+        return lb;
+      }
+
+      var x = 0;
+      var y;
+      var d0;
+      var d1;
+      var d2;
+      var d3;
+      var dd;
+      var dy;
+      var ay;
+      var bx0;
+      var bx1;
+      var bx2;
+      var bx3;
+
+      var vector = [];
+
+      for (y = 0; y < la; y++) {
+        vector.push(y + 1);
+        vector.push(a.charCodeAt(offset + y));
+      }
+
+      var len = vector.length - 1;
+
+      for (; x < lb - 3;) {
+        bx0 = b.charCodeAt(offset + (d0 = x));
+        bx1 = b.charCodeAt(offset + (d1 = x + 1));
+        bx2 = b.charCodeAt(offset + (d2 = x + 2));
+        bx3 = b.charCodeAt(offset + (d3 = x + 3));
+        dd = (x += 4);
+        for (y = 0; y < len; y += 2) {
+          dy = vector[y];
+          ay = vector[y + 1];
+          d0 = _min(dy, d0, d1, bx0, ay);
+          d1 = _min(d0, d1, d2, bx1, ay);
+          d2 = _min(d1, d2, d3, bx2, ay);
+          dd = _min(d2, d3, dd, bx3, ay);
+          vector[y] = dd;
+          d3 = d2;
+          d2 = d1;
+          d1 = d0;
+          d0 = dy;
+        }
+      }
+
+      for (; x < lb;) {
+        bx0 = b.charCodeAt(offset + (d0 = x));
+        dd = ++x;
+        for (y = 0; y < len; y += 2) {
+          dy = vector[y];
+          vector[y] = dd = _min(dy, d0, dd, bx0, vector[y + 1]);
+          d0 = dy;
+        }
+      }
+
+      return dd;
+    };
+  })();
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -725,7 +830,8 @@ var Grapheme = (function (exports) {
     flattenVectors: flattenVectors,
     roundToCanvasPixel: roundToCanvasPixel,
     removeDuplicates: removeDuplicates,
-    isWorker: isWorker
+    isWorker: isWorker,
+    levenshtein: levenshtein
   });
 
   /**
@@ -4010,16 +4116,21 @@ var Grapheme = (function (exports) {
 
       this.children = children;
       this.parent = parent;
+      this.type = null;
     }
 
-    applyAll (func, depth = 0) {
-      func(this, depth);
+    applyAll (func, depth = 0, childrenFirst=false) {
+      if (!childrenFirst)
+        func(this, depth);
 
       this.children.forEach(child => {
         if (child.applyAll) {
-          child.applyAll(func, depth + 1);
+          child.applyAll(func, depth + 1, childrenFirst);
         }
       });
+
+      if (childrenFirst)
+        func(this, depth);
     }
 
     clone () {
@@ -4032,6 +4143,19 @@ var Grapheme = (function (exports) {
 
     evaluateConstant () {
       return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
+    }
+
+    getDependencies() {
+      let varDependencies = new Set();
+      let funcDependencies = new Set();
+
+      this.applyAll(child => {
+        if (child instanceof VariableNode) {
+          varDependencies.add(child.name);
+        } else if (child instanceof OperatorNode) {
+          funcDependencies.add();
+        }
+      });
     }
 
     getText () {
@@ -4047,7 +4171,7 @@ var Grapheme = (function (exports) {
     }
 
     latex (parens = true) {
-      let latex = this.children.map(child => child.latex()).join('+');
+      let latex = this.children.map(child => child.latex()).join('');
 
       if (parens) {
         return String.raw`\left(${latex}\right)`
@@ -4065,6 +4189,70 @@ var Grapheme = (function (exports) {
         if (child.children) {
           child.children.forEach(subchild => subchild.parent = child);
         }
+      });
+    }
+
+    substitute (replacement, criterion) {
+      let substituted = [];
+
+      this.applyAll((child) => {
+        if (substituted.includes(child)) {
+          return
+        }
+
+        const children = child.children;
+
+        for (let i = 0; i < children.length; ++i) {
+          let subchild = children[i];
+
+          let res = criterion(subchild);
+
+          if (res) {
+            children[i] = replacement.clone();
+            substituted.push(children[i]);
+          }
+        }
+      });
+    }
+
+    substituteByFunction (substitutionFunc) {
+      let substituted = [];
+
+      this.applyAll((child) => {
+        if (substituted.includes(child)) {
+          return
+        }
+
+        const children = child.children;
+
+        for (let i = 0; i < children.length; ++i) {
+          let subchild = children[i];
+
+          let res = substitutionFunc(subchild);
+
+          if (res) {
+            children[i] = res;
+            substituted.push(children[i]);
+          }
+        }
+      });
+    }
+
+    substituteVariable (variable, replacement) {
+      this.substitute(replacement, node => node instanceof VariableNode && node.name === variable);
+    }
+
+    substituteVariables (dict) {
+      this.substituteByFunction((node) => {
+        if (node instanceof VariableNode) {
+          let potentialReplacement = dict[node.name];
+
+          if (potentialReplacement) {
+            return potentialReplacement
+          }
+        }
+
+        return false
       });
     }
 
@@ -4289,8 +4477,14 @@ var Grapheme = (function (exports) {
       new ConstantNode({ value: 3 })
     ]
   });
-  const PI = new ConstantNode({text: "pi", value: Math.PI});
-  const E = new ConstantNode({text: "e", value: 2.71828182845904523});
+  const PI = new ConstantNode({
+    text: 'pi',
+    value: Math.PI
+  });
+  const E = new ConstantNode({
+    text: 'e',
+    value: 2.71828182845904523
+  });
 
   // a * b - c * d ^ g
 
@@ -7138,6 +7332,80 @@ void main() {
     }
   }
 
+  const REPRESENTATION_LENGTH = 20;
+  const MAX_DENOM = 1e7;
+
+  function get_continued_fraction(f) {
+    let representation = [];
+
+    let k = Math.floor(f);
+
+    representation.push(k);
+
+    f -= k;
+
+    let reprs = 0;
+
+    while (++reprs < REPRESENTATION_LENGTH) {
+      let cont = Math.floor(1 / f);
+
+      if (cont === Infinity) {
+        return representation
+      }
+
+      if (cont < 0) {
+        return representation
+      }
+
+      representation.push(cont);
+
+      f = 1 / f - cont;
+    }
+
+
+    return representation
+  }
+
+  function get_rational(x) {
+    if (x === 0) {
+      return 0
+    }
+
+    let repr = get_continued_fraction(x);
+
+    let lastIndx = -1;
+
+    for (let i = 1; i < repr.length; ++i) {
+      if (repr[i] > MAX_DENOM) {
+        lastIndx = i;
+      }
+    }
+
+    if (lastIndx !== -1) {
+      repr.length = lastIndx;
+    }
+
+    if (repr.length === REPRESENTATION_LENGTH) {
+      // "irrational number"
+      return [NaN, NaN]
+    }
+
+    // evaluate the continued fraction
+
+    let n = 1, d = 0;
+    for (let i = repr.length - 1; i >= 0; --i) {
+      let val = repr[i];
+
+      let tmp = d;
+      d = n;
+      n = tmp;
+
+      n += val * d;
+    }
+
+    return [n, d]
+  }
+
   function multiplyPolynomials(coeffs1, coeffs2, degree) {
     let ret = [];
     for (let i = 0; i <= degree; ++i) {
@@ -7647,147 +7915,6 @@ void main() {
     }
 
     return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
-  }
-
-  const ExtraFunctions = {
-    LogB: (b, v) => {
-      return Math.log(v) / Math.log(b)
-    },
-    Factorial: (a) => {
-      return Functions.Gamma(a + 1)
-    },
-    Gamma: (a) => {
-      return gamma$1(a)
-    },
-    LnGamma: (a) => {
-      return ln_gamma(a)
-    },
-    Digamma: (a) => {
-      return digamma(a)
-    },
-    Trigamma: (a) => {
-      return trigamma(a)
-    },
-    Polygamma: (n, a) => {
-      return polygamma(n, a)
-    },
-    Arccot: (z) => {
-      let t = Math.atan(1 / z);
-
-      if (t < 0) {
-        t += Math.PI;
-      }
-
-      return t
-    },
-    Pow: (x, r) => {
-
-    },
-    PowRational: (x, p, q) => {
-      // Calculates x ^ (p / q), where p and q are integers
-
-      if (p === 0) {
-        return 1
-      }
-
-      let GCD = gcd(p, q);
-
-      if (GCD !== 1) {
-        p /= GCD;
-        q /= GCD;
-      }
-
-      if (x >= 0) {
-        return Math.pow(x, p / q)
-      } else {
-        if (mod(q, 2) === 0)
-          return NaN
-
-        let ret = Math.pow(-x, p / q);
-        if (mod(p, 2) === 0) {
-          return ret
-        } else {
-          return -ret
-        }
-      }
-    },
-    Mod: (n, m) => {
-      return ((n % m) + m) % m
-    }
-  };
-
-  const REPRESENTATION_LENGTH = 20;
-  const MAX_DENOM = 1e7;
-
-  function get_continued_fraction(f) {
-    let representation = [];
-
-    let k = Math.floor(f);
-
-    representation.push(k);
-
-    f -= k;
-
-    let reprs = 0;
-
-    while (++reprs < REPRESENTATION_LENGTH) {
-      let cont = Math.floor(1 / f);
-
-      if (cont === Infinity) {
-        return representation
-      }
-
-      if (cont < 0) {
-        return representation
-      }
-
-      representation.push(cont);
-
-      f = 1 / f - cont;
-    }
-
-
-    return representation
-  }
-
-  function get_rational(x) {
-    if (x === 0) {
-      return 0
-    }
-
-    let repr = get_continued_fraction(x);
-
-    let lastIndx = -1;
-
-    for (let i = 1; i < repr.length; ++i) {
-      if (repr[i] > MAX_DENOM) {
-        lastIndx = i;
-      }
-    }
-
-    if (lastIndx !== -1) {
-      repr.length = lastIndx;
-    }
-
-    if (repr.length === REPRESENTATION_LENGTH) {
-      // "irrational number"
-      return [NaN, NaN]
-    }
-
-    // evaluate the continued fraction
-
-    let n = 1, d = 0;
-    for (let i = repr.length - 1; i >= 0; --i) {
-      let val = repr[i];
-
-      let tmp = d;
-      d = n;
-      n = tmp;
-
-      n += val * d;
-    }
-
-    return [n, d]
   }
 
   // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
@@ -9743,6 +9870,423 @@ void main() {
     Gamma, Digamma, Trigamma, Polygamma, LnGamma
   });
 
+  const Multiply$1 = (a, b) => a * b;
+
+  const Add$1 = (a, b) => a + b;
+
+  const Subtract$1 = (a, b) => a - b;
+
+  const Divide$1 = (a, b) => a / b;
+
+  const Ln$1 = Math.log;
+
+  const Log$1 = Ln$1;
+
+  const Log2$1 = Math.log2;
+
+  const Log10$1 = Math.log10;
+
+  const Sin$2 = Math.sin;
+
+  const Cos$1 = Math.cos;
+
+  const Tan$1 = Math.tan;
+
+  const Sec$1 = x => 1 / Math.cos(x);
+
+  const Csc$1 = x => 1 / Math.sin(x);
+
+  const Cot$1 = x => 1 / Math.tan(x);
+
+  const Arcsin$1 = Math.asin;
+
+  const Arccos$1 = Math.acos;
+
+  const Arctan$1 = Math.atan;
+
+  const Arcsec$1 = x => Math.acos(1 / x);
+
+  const Arccsc$1 = x => Math.asin(1 / x);
+
+  const Sinh$1 = Math.sinh;
+
+  const Cosh$1 = Math.cosh;
+
+  const Tanh$1 = Math.tanh;
+
+  const Sech$1 = x => 1 / Math.cosh(x);
+
+  const Csch$1 = x => 1 / Math.sinh(x);
+
+  const Coth$1 = x => 1 / Math.tanh(x);
+
+  const Arcsinh$1 = Math.asinh;
+
+  const Arccosh$1 = Math.acosh;
+
+  const Arctanh$1 = Math.atanh;
+
+  const Arcsech$1 = x => Math.acosh( 1 / x);
+
+  const Arccsch$1 = x => Math.asinh(1 / x);
+
+  const Arccoth$1 = x => Math.atanh(1 / x);
+
+  var BasicFunctions = /*#__PURE__*/Object.freeze({
+    Multiply: Multiply$1,
+    Add: Add$1,
+    Subtract: Subtract$1,
+    Divide: Divide$1,
+    Ln: Ln$1,
+    Log: Log$1,
+    Log2: Log2$1,
+    Log10: Log10$1,
+    Sin: Sin$2,
+    Cos: Cos$1,
+    Tan: Tan$1,
+    Sec: Sec$1,
+    Csc: Csc$1,
+    Cot: Cot$1,
+    Arcsin: Arcsin$1,
+    Arccos: Arccos$1,
+    Arctan: Arctan$1,
+    Arcsec: Arcsec$1,
+    Arccsc: Arccsc$1,
+    Sinh: Sinh$1,
+    Cosh: Cosh$1,
+    Tanh: Tanh$1,
+    Sech: Sech$1,
+    Csch: Csch$1,
+    Coth: Coth$1,
+    Arcsinh: Arcsinh$1,
+    Arccosh: Arccosh$1,
+    Arctanh: Arctanh$1,
+    Arcsech: Arcsech$1,
+    Arccsch: Arccsch$1,
+    Arccoth: Arccoth$1
+  });
+
+  const ExtraFunctions$1 = {
+    LogB: (b, v) => {
+      return Math.log(v) / Math.log(b)
+    },
+    Factorial: (a) => {
+      return ExtraFunctions$1.Gamma(a + 1)
+    },
+    Gamma: (a) => {
+      return gamma$1(a)
+    },
+    LnGamma: (a) => {
+      return ln_gamma(a)
+    },
+    Digamma: (a) => {
+      return digamma(a)
+    },
+    Trigamma: (a) => {
+      return trigamma(a)
+    },
+    Polygamma: (n, a) => {
+      return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
+    },
+    PowRational: (x, p, q) => {
+      // Calculates x ^ (p / q), where p and q are integers
+
+      if (p === 0) {
+        return 1
+      }
+
+      let GCD = gcd(p, q);
+
+      if (GCD !== 1) {
+        p /= GCD;
+        q /= GCD;
+      }
+
+      if (x >= 0) {
+        return Math.pow(x, p / q)
+      } else {
+        if (mod(q, 2) === 0)
+          return NaN
+
+        let ret = Math.pow(-x, p / q);
+        if (mod(p, 2) === 0) {
+          return ret
+        } else {
+          return -ret
+        }
+      }
+    },
+    Pow: (x, r) => { // Tries to find a ratio close to r, then do PowRational, otherwise just do normal pow
+
+    },
+    Mod: (n, m) => {
+      return ((n % m) + m) % m
+    }
+  };
+
+  const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
+
+  // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
+
+  const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
+
+  function isValidType(typename) {
+    return TYPES.includes(typename)
+  }
+
+  function throwInvalidType(typename) {
+    if (!isValidType(typename)) {
+
+      let didYouMean = "";
+
+      let distances = TYPES.map(type => levenshtein(typename, type));
+      let minDistance = Math.min(...distances);
+
+      if (minDistance < 2) {
+        didYouMean = "Did you mean " + TYPES[distances.indexOf(minDistance)] + "?";
+      }
+
+      throw new Error(`Unrecognized type ${typename}; valid types are ${TYPES.join(', ')}. ${didYouMean}`)
+    }
+  }
+
+  class OperatorDefinition {
+    constructor(params={}) {
+      this.returns = params.returns || "real";
+
+      throwInvalidType(this.returns);
+
+      this.evaluate = (isWorker ? "" : "Grapheme") + params.evaluate;
+    }
+  }
+
+  class NormalDefinition extends OperatorDefinition {
+    constructor(params={}) {
+      super(params);
+
+      this.signature = params.signature;
+      if (!Array.isArray(this.signature))
+        throw new Error("Given signature is not an array")
+
+      this.signature.forEach(throwInvalidType);
+
+    }
+  }
+
+  class TypecastDefinition extends OperatorDefinition {
+    constructor(params={}) {
+      super(params);
+    }
+  }
+
+  const Typecasts = {
+    'int': [
+      new TypecastDefinition({
+        returns: 'real',
+        evaluate: "Typecasts.Identity"
+      }),
+      new TypecastDefinition({
+        returns: 'complex',
+        evaluate: "Typecasts.RealToComplex"
+      })
+    ],
+    'real': [
+      new TypecastDefinition({
+        returns: 'complex',
+        evaluate: "Typecasts.RealToComplex"
+      })
+    ],
+    'real_interval': [
+      new TypecastDefinition({
+        returns: 'complex_interval',
+        evaluate: "Typecasts.RealIntervalToComplexInterval"
+      })
+    ]
+  };
+
+  const Operators$1 = {
+    '*': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Multiply",
+        desc: "Returns the product of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Multiply",
+        desc: "Returns the product of two complex numbers."
+      })
+    ],
+    '+': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Add",
+        desc: "Returns the sum of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Add",
+        desc: "Returns the sum of two complex numbers."
+      })
+    ],
+    '-': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Subtract"
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Subtract"
+      })
+    ],
+    '/': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Divide"
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Divide"
+      })
+    ]
+  };
+
+  class ComplexInterval {
+    constructor(reMin, reMax, imMin, imMax) {
+      this.reMin = reMin;
+      this.reMax = reMax;
+      this.imMin = imMin;
+      this.imMax = imMax;
+    }
+  }
+
+  const Typecasts$1 = {
+    RealToComplex: (r) => new Complex(r),
+    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex(elem)),
+    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
+    Identity: (r) => r
+  };
+
+  const Variables = {};
+  const Functions = {};
+
+  const RESERVED_VARIABLES = [];
+  const RESERVED_FUNCTIONS = Object.keys(Operators$1);
+
+  class UserDefinedBase {
+    constructor(params={}) {
+      this.node = params.node;
+      this.name = params.name;
+
+      this.type = null;
+
+      this.usable = false;
+      this.canTakeDerivative = false;
+      this.canEvaluateInterval = false;
+
+      this.varDependencies = [];
+      this.funcDependencies = [];
+
+      let deps = this.node.getDependencies();
+
+      this.unusableBecause = "";
+    }
+
+    checkDependencies() {
+      for (let i = 0; i < varDependencies.length; ++i) {
+
+      }
+    }
+
+    update() {
+      this.usable = false;
+
+
+      this.usable = true;
+    }
+
+    onUsableChanged(callback) {
+
+    }
+  }
+
+  class UserDefinedVariable extends UserDefinedBase {
+
+  }
+
+  class UserDefinedFunction extends UserDefinedBase {
+    constructor(params={}) {
+      super(params);
+    }
+  }
+
+  function defineVariable(variableName, node) {
+    if (Variables[variableName])
+      throw new Error("There is already a variable named " + variableName + ". Remove that definition or choose a different name.")
+    if (RESERVED_VARIABLES.includes(variableName))
+      throw new Error("The variable " + variableName + " is reserved by Grapheme. Please choose a different name.")
+
+    if (typeof node === 'string')
+      node = parseString(node);
+
+    return Variables[variableName] = new UserDefinedVariable({name: variableName, node})
+  }
+
+  function defineFunction(funcName, node, exportedVariables={'x': "real"}) {
+    if (Functions[funcName])
+      throw new Error("There is already a function named " + funcName + ". Remove that definition or choose a different name.")
+    if (RESERVED_FUNCTIONS.includes(funcName))
+      throw new Error("The function " + funcName + " is reserved by Grapheme. Please choose a different name.")
+
+    if (typeof node === 'string')
+      node = parseString(node);
+
+    return Functions[funcName] = new UserDefinedFunction({name: funcName, node})
+  }
+
+  function undefineVariable(variableName) {
+    if (RESERVED_VARIABLES.includes(variableName))
+      throw new Error("The variable " + variableName + " is reserved by Grapheme, and cannot be undefined.")
+    delete Variables[variableName];
+  }
+
+  function undefineFunction(funcName) {
+    if (RESERVED_FUNCTIONS.includes(variableName))
+      throw new Error("The function " + funcName + " is reserved by Grapheme, and cannot be undefined.")
+    delete Functions[funcName];
+  }
+
+  function getFunction(funcName) {
+    return Functions[funcName]
+  }
+
+  function getVariable(varName) {
+    return Variables[varName]
+  }
+
+  defineVariable('i', parseString("complex(0, 1)"));
+  defineVariable('pi', parseString("3.141592653589793238"));
+  defineVariable('e', parseString("2.71828182845904523536"));
+
+  RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e');
+
   exports.ASTNode = ASTNode;
   exports.BEAST_POOL = BEAST_POOL;
   exports.BasicLabel = BasicLabel;
@@ -9756,8 +10300,8 @@ void main() {
   exports.DefaultUniverse = DefaultUniverse;
   exports.E = E;
   exports.EquationPlot2D = EquationPlot2D;
-  exports.ExtraFunctions = ExtraFunctions;
   exports.FunctionPlot2D = FunctionPlot2D;
+  exports.Functions = Functions;
   exports.GREGORY_COEFFICIENTS = GREGORY_COEFFICIENTS;
   exports.GridlineStrategizers = GridlineStrategizers;
   exports.Gridlines = Gridlines;
@@ -9782,10 +10326,13 @@ void main() {
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;
   exports.PolylineElement = PolylineElement;
+  exports.RealFunctions = RealFunctions;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
+  exports.Typecasts = Typecasts$1;
   exports.Universe = GraphemeUniverse;
   exports.VariableNode = VariableNode;
+  exports.Variables = Variables;
   exports.Vec2 = Vec2;
   exports.WebGLPolyline = WebGLPolyline;
   exports._interpolationsEnabled = _interpolationsEnabled;
@@ -9793,13 +10340,17 @@ void main() {
   exports.anglesBetween = anglesBetween;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
+  exports.defineFunction = defineFunction;
+  exports.defineVariable = defineVariable;
   exports.digamma = digamma;
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
   exports.gamma = gamma$1;
   exports.getDashedPolyline = getDashedPolyline;
+  exports.getFunction = getFunction;
   exports.getLineIntersection = getLineIntersection;
   exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
+  exports.getVariable = getVariable;
   exports.get_continued_fraction = get_continued_fraction;
   exports.get_rational = get_rational;
   exports.interpolate = interpolate;
@@ -9819,6 +10370,8 @@ void main() {
   exports.sample_1d = sample_1d;
   exports.tokenizer = tokenizer;
   exports.trigamma = trigamma;
+  exports.undefineFunction = undefineFunction;
+  exports.undefineVariable = undefineVariable;
   exports.utils = utils;
 
   return exports;

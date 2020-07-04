@@ -4,7 +4,6 @@
 
 import { digamma, trigamma } from './gamma_function'
 import * as utils from "../core/utils"
-import { ExtraFunctions } from '../function_ast/extra_functions'
 
 class Interval {
   constructor(min, max, defMin=true, defMax=true, contMin=true, contMax=true) {

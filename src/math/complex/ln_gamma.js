@@ -1,5 +1,5 @@
-import { LANCZOS_COEFFICIENTS, ln_gamma } from '../../gamma_function'
-import { Complex } from '../complex'
+import { LANCZOS_COEFFICIENTS, ln_gamma } from '../gamma_function'
+import { Complex } from './complex'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
 import { Ln } from './log'
 import { Sin } from './trig_functions'

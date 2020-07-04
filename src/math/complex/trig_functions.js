@@ -1,6 +1,6 @@
 
-import { Complex } from '../complex'
-import { mod } from '../../../core/utils'
+import { Complex } from './complex'
+import { mod } from '../../core/utils'
 import { Divide } from './basic_arithmetic'
 
 // sin(a+bi) = sin a cosh b + i cos a sinh b

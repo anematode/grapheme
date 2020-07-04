@@ -1,4 +1,4 @@
-import { Complex } from '../complex'
+import { Complex } from './complex'
 import { Multiply, Add, Subtract, Divide } from './basic_arithmetic'
 import { Ln } from './log'
 import { Sqrt } from './pow'

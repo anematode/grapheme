@@ -1,7 +1,7 @@
 import { Ln, LnBranched } from './log'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
 import { Sqrt } from './pow'
-import { Complex } from '../complex'
+import { Complex } from './complex'
 
 // arcsinh(z) = ln(z + sqrt(z^2 + 1))
 export const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))))
