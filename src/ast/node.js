@@ -1,8 +1,12 @@
+
 // const fs = require( ...
 // No, this is not node.js the language.
 
 import * as utils from '../core/utils'
 import { StandardLabelFunction } from '../elements/gridlines'
+import { Functions, getVariable } from './user_defined'
+import { castableInto, castableIntoMultiple, getCastingFunction, Operators } from './operators'
+import { isWorker } from '../core/utils'
 
 // List of operators (currently)
 // +, -, *, /, ^,
@@ -11,15 +15,19 @@ const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
 class ASTNode {
   constructor (params = {}) {
-
     const {
       parent = null,
-      children = []
+      children = [],
+      returnType = null
     } = params
 
     this.children = children
     this.parent = parent
-    this.type = null
+    this.returnType = returnType
+  }
+
+  _getCompileText(exportedVariables=['x']) {
+    return this.children[0]._getCompileText(exportedVariables)
   }
 
   applyAll (func, depth = 0, childrenFirst=false) {
@@ -36,16 +44,41 @@ class ASTNode {
       func(this, depth)
   }
 
-  clone () {
-    let node = new ASTNode()
+  compile(exportedVariables) {
+    if (!this.returnType) {
+      throw new Error("Need to call resolveTypes before compiling node.")
+    }
 
-    node.children = this.children.map(child => child.clone())
+    let compileText = this._getCompileText(exportedVariables)
 
-    return node
+    return new Function(...exportedVariables, "return " + compileText)
   }
 
-  evaluateConstant () {
-    return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
+  compileInterval(exportedVariables) {
+    if (!this.returnType) {
+      throw new Error("Need to call resolveTypes before compiling node.")
+    }
+
+    this.applyAll(child => {
+      if (child.definition && !child.definition.evaluateInterval) {
+        throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly.")
+      }
+    })
+
+    let compileText = this._getIntervalCompileText(exportedVariables)
+
+    return new Function(...exportedVariables, "return " + compileText)
+  }
+
+  derivative(variable) {
+    return this.children[0].derivative(variable)
+  }
+
+  clone () {
+    return new ASTNode({
+      children: this.children.map(child => child.clone()),
+      returnType: this.returnType
+    })
   }
 
   getDependencies() {
@@ -87,6 +120,12 @@ class ASTNode {
     return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
   }
 
+  resolveTypes(givenTypes) {
+    this.children.forEach(child => child.resolveTypes(givenTypes))
+
+    this.returnType = this.children[0].returnType
+  }
+
   setParents () {
     this.applyAll(child => {
       if (child.children) {
@@ -95,74 +134,11 @@ class ASTNode {
     })
   }
 
-  substitute (replacement, criterion) {
-    let substituted = []
-
-    this.applyAll((child) => {
-      if (substituted.includes(child)) {
-        return
-      }
-
-      const children = child.children
-
-      for (let i = 0; i < children.length; ++i) {
-        let subchild = children[i]
-
-        let res = criterion(subchild)
-
-        if (res) {
-          children[i] = replacement.clone()
-          substituted.push(children[i])
-        }
-      }
-    })
-  }
-
-  substituteByFunction (substitutionFunc) {
-    let substituted = []
-
-    this.applyAll((child) => {
-      if (substituted.includes(child)) {
-        return
-      }
-
-      const children = child.children
-
-      for (let i = 0; i < children.length; ++i) {
-        let subchild = children[i]
-
-        let res = substitutionFunc(subchild)
-
-        if (res) {
-          children[i] = res
-          substituted.push(children[i])
-        }
-      }
-    })
-  }
-
-  substituteVariable (variable, replacement) {
-    this.substitute(replacement, node => node instanceof VariableNode && node.name === variable)
-  }
-
-  substituteVariables (dict) {
-    this.substituteByFunction((node) => {
-      if (node instanceof VariableNode) {
-        let potentialReplacement = dict[node.name]
-
-        if (potentialReplacement) {
-          return potentialReplacement
-        }
-      }
-
-      return false
-    })
-  }
-
   toJSON () {
     return {
       type: 'node',
-      children: this.children.map(child => child.toJSON())
+      children: this.children.map(child => child.toJSON()),
+      returnType: this.returnType
     }
   }
 
@@ -192,12 +168,24 @@ class VariableNode extends ASTNode {
     this.name = name
   }
 
+  _getCompileText(exportedVariables) {
+    if (comparisonOperators.includes(this.name))
+      return `"${this.name}"`
+    if (exportedVariables.includes(this.name))
+      return this.name
+    else
+      return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
+  }
+
   clone () {
     return new VariableNode({ name: this.name })
   }
 
-  evaluateConstant () {
-    return NaN
+  derivative(variable) {
+    if (this.name === variable)
+      return new ConstantNode({value: 1})
+    else
+      return new ConstantNode({value: 0})
   }
 
   getText () {
@@ -228,10 +216,31 @@ class VariableNode extends ASTNode {
     return substituteGreekLetters(this.name)
   }
 
+  resolveTypes(typeInfo) {
+    if (typeInfo[this.name]) {
+      this.returnType = typeInfo[this.name]
+      return
+    }
+
+    let variable = getVariable(this.name)
+
+    if (variable) {
+      if (variable.returnType) {
+        this.returnType = variable.returnType
+      } else {
+        throw new Error("UserDefinedVariable " + this.name + " is defined but has unknown type. Please properly define the variable.")
+      }
+    } else {
+      throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
+    }
+
+  }
+
   toJSON () {
     return {
       type: 'variable',
-      name: this.name
+      name: this.name,
+      returnType: this.returnType
     }
   }
 
@@ -277,6 +286,26 @@ class OperatorNode extends ASTNode {
     } = params
 
     this.operator = operator
+    this.definition = null
+  }
+
+  _getCompileText(exportedVariables) {
+    if (!this.definition)
+      throw new Error("huh")
+
+    const definition = this.definition
+
+    return this.definition.evaluate + "(" + this.children.map((child, index) => {
+      let text = child._getCompileText(exportedVariables)
+
+      if (child.returnType !== definition.signature[index]) {
+        let func = getCastingFunction(child.returnType, definition.signature[index])
+
+        text = func + '(' + text + ')'
+      }
+
+      return text
+    }).join(',') + ")"
   }
 
   clone () {
@@ -287,8 +316,12 @@ class OperatorNode extends ASTNode {
     return node
   }
 
-  evaluateConstant () {
-    return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
+  derivative(variable) {
+    if (!this.definition.derivative) {
+      throw new Error("Cannot take derivative of operator " + this.operator + ".")
+    }
+
+    return this.definition.derivative(variable, ...this.children)
   }
 
   getText () {
@@ -297,6 +330,47 @@ class OperatorNode extends ASTNode {
 
   latex () {
     return getLatex(this)
+  }
+
+  resolveTypes(typeInfo={}) {
+    super.resolveTypes(typeInfo)
+
+    let signature = this.getChildrenSignature()
+
+    if (Functions[this.operator]) {
+      let func = Functions[this.operator]
+
+      const funcSig = func.definition.signature
+
+      if (castableIntoMultiple(signature, funcSig)) {
+        this.definition = func.definition
+        this.returnType = func.returnType
+        return
+      } else {
+        throw new Error("Given signature " + signature + " is not castable into function " + this.operator + ", signature " + funcSig + '.')
+      }
+    }
+
+    let potentialDefinitions = Operators[this.operator]
+
+    if (!potentialDefinitions) {
+      throw new Error("Unknown operation " + this.operator + ".")
+    }
+
+    for (let definition of potentialDefinitions) {
+      if (definition.signatureWorks(signature)) {
+        this.definition = definition.getDefinition(signature)
+        this.returnType = definition.returns
+
+        return
+      }
+    }
+
+    throw new Error("Could not find a suitable definition for " + this.operator + "(" + signature.join(', ') + ').')
+  }
+
+  getChildrenSignature() {
+    return this.children.map(child => child.returnType)
   }
 
   toJSON () {
@@ -327,16 +401,17 @@ class ConstantNode extends ASTNode {
     this.invisible = invisible
   }
 
+  _getCompileText(exportedVariables) {
+    return this.value
+  }
+
   clone () {
     return new ConstantNode({
       value: this.value,
       invisible: this.invisible,
-      text: this.text
+      text: this.text,
+      returnType: this.returnType
     })
-  }
-
-  evaluateConstant () {
-    return this.value
   }
 
   getText () {
@@ -351,11 +426,18 @@ class ConstantNode extends ASTNode {
     return this.getText()
   }
 
+  resolveTypes(givenTypes) {
+    if (Number.isInteger(this.value))
+      this.returnType = "int"
+    else this.returnType = "real"
+  }
+
   toJSON () {
     return {
       value: this.value,
       text: this.text,
       invisible: this.invisible,
+      returnType: this.returnType,
       type: 'constant'
     }
   }
@@ -365,39 +447,10 @@ class ConstantNode extends ASTNode {
   }
 }
 
-const LN2 = new OperatorNode({
-  operator: 'ln',
-  children: [new ConstantNode({ value: 10 })]
-})
-const LN10 = new OperatorNode({
-  operator: 'ln',
-  children: [new ConstantNode({ value: 10 })]
-})
-const ONE_THIRD = new OperatorNode({
-  operator: '/',
-  children: [
-    new ConstantNode({ value: 1 }),
-    new ConstantNode({ value: 3 })
-  ]
-})
-const PI = new ConstantNode({
-  text: 'pi',
-  value: Math.PI
-})
-const E = new ConstantNode({
-  text: 'e',
-  value: 2.71828182845904523
-})
-
 export {
-  ONE_THIRD,
   VariableNode,
   OperatorNode,
   ConstantNode,
   ASTNode,
-  OperatorSynonyms,
-  LN2,
-  LN10,
-  PI,
-  E
+  OperatorSynonyms
 }

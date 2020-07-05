@@ -5,11 +5,8 @@ import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm
 import * as utils from "../core/utils"
 import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
-import { Sqrt } from '../math/complex/pow'
-import { Complex } from '../math/complex/complex'
-import { Add, Re } from '../math/complex/basic_arithmetic'
-import { Arccos } from '../math/complex/inverse_trig'
-import { Arctanh } from '../math/complex/inverse_hyperbolic'
+import { getFunctionName } from '../core/utils'
+import { defineFunction, getFunction, undefineFunction } from '../ast/user_defined'
 
 // Allowed plotting modes:
 // rough = linear sample, no refinement
@@ -27,8 +24,10 @@ class FunctionPlot2D extends InteractiveElement {
     this.plotPoints = plotPoints
     this.plottingMode = plottingMode
     this.quality = 1
+    this.plottingAxis = 'x'
 
-    this.function = (x) => Re(Sin(new Complex(x)))
+    this.function = (x) => x
+    this.functionName = getFunctionName()
 
     this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2})
     this.polyline = null
@@ -38,8 +37,11 @@ class FunctionPlot2D extends InteractiveElement {
     this.interactivityEnabled = true
   }
 
-  setFunction(func) {
-    this.function = func
+  setFunction(func, variable='x') {
+    defineFunction(this.functionName, func, [variable])
+
+    this.function = getFunction(this.functionName).evaluate
+    this.markUpdate()
   }
 
   isClick(position) {
@@ -56,6 +58,14 @@ class FunctionPlot2D extends InteractiveElement {
     adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness)
   }
 
+  setAxis(axis) {
+    if (axis !== 'x' && axis !== 'y')
+      throw new Error("Axis should be x or y, not " + axis + ".")
+
+    this.plottingAxis = axis
+    this.markUpdate()
+  }
+
   update(info) {
     super.update()
 
@@ -67,19 +77,31 @@ class FunctionPlot2D extends InteractiveElement {
 
     let plotPoints = this.plotPoints
 
+    let width = this.plottingAxis === 'x' ? box.width : box.height
+
     if (plotPoints === "auto") {
-      plotPoints = this.quality * box.width
+      plotPoints = this.quality * width
     }
 
     let vertices = []
+    let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y1
+    let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y2
 
     if (this.plottingMode === "rough") {
-      let points = box.width * this.quality
+      let points = width * this.quality
 
-      vertices = sample_1d(coords.x1, coords.x2, this.function, points)
+      vertices = sample_1d(x1, x2, this.function, points)
     } else {
-      vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function,
-        box.width * this.quality, transform.getAspect(), coords.height / box.height)
+      vertices = adaptively_sample_1d(x1, x2, this.function,
+        width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width)
+    }
+
+    if (this.plottingAxis !== 'x') {
+      for (let i = 0; i < vertices.length; i += 2) {
+        let tmp = vertices[i]
+        vertices[i] = vertices[i + 1]
+        vertices[i + 1] = tmp
+      }
     }
 
     this.plot.transform.plotToPixelArr(vertices)
@@ -118,6 +140,8 @@ class FunctionPlot2D extends InteractiveElement {
   destroy() {
     if (this.polyline)
       this.polyline.destroy()
+
+    undefineFunction(this.functionName)
   }
 }
 

@@ -64,7 +64,7 @@ class GraphemeElement {
   /**
    * Add event listener to this element
    * @param type {string} Event type to listen for
-   * @param callback {Function} Function to call
+   * @param callback {UserDefinedFunction} UserDefinedFunction to call
    */
   addEventListener (type, callback) {
     const listenerArray = this.eventListeners[type]
@@ -177,7 +177,7 @@ class GraphemeElement {
   /**
    * Remove event listener from this element
    * @param type {string} Event type listened for
-   * @param callback {Function} Callback to remove
+   * @param callback {UserDefinedFunction} Callback to remove
    */
   removeEventListener(type, callback) {
     const listenerArray = this.eventListeners[type]
@@ -272,7 +272,7 @@ class GraphemeElement {
   }
 
   /**
-   * Function called to update for rendering.
+   * UserDefinedFunction called to update for rendering.
    */
   update () {
     this.needsUpdate = false

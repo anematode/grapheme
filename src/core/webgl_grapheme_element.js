@@ -19,7 +19,7 @@ class WebGLElement extends GraphemeElement {
   /**
    *
    * @param info {Object} The render info
-   * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
+   * @param info.beforeWebGLRender {UserDefinedFunction} Prepare the universe for WebGL drawing
    */
   render (info) {
     // Call beforeWebGLRender()

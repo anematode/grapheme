@@ -157,7 +157,7 @@ class GraphemeCanvas extends GraphemeGroup {
     // Whether the universe's canvas needs to be copied over
     let needsWebGLCopy = false
 
-    // Function called before an element that doesn't use WebGL is rendered
+    // UserDefinedFunction called before an element that doesn't use WebGL is rendered
     const beforeNormalRender = () => {
       if (needsWebGLCopy) {
         // Copy the universe's canvas over

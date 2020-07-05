@@ -33,14 +33,24 @@
   let dplot = new Grapheme.InteractiveFunctionPlot2D()
   plot.add(dplot)
 
-  let d = new Grapheme.Complex(0)
 
-  fplot.setFunction((x) => Grapheme.ComplexFunctions.Re(
-    Grapheme.ComplexFunctions.Trigamma(
-      Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
-  dplot.setFunction((x) => Grapheme.ComplexFunctions.Im(
-    Grapheme.ComplexFunctions.Trigamma(
-      Grapheme.ComplexFunctions.Add(new Grapheme.Complex(x), d))))
+  setTimeout( () => {
+    Grapheme.defineVariable('a', "0")
+
+    setFunction("tan(x+i+a)")
+
+    fplot.setFunction("Re(f(x))")
+    dplot.setFunction("Im(f(x))")
+  }, 1)
+
+  function setFunction(str) {
+    Grapheme.defineFunction('f', str, ['x'])
+
+    fplot.setFunction("Re(f(x))")
+    dplot.setFunction("Im(f(x))")
+
+    fplot.markUpdate(); dplot.markUpdate()
+  }
 
   dplot.pen.color = Grapheme.Colors.BLACK
 
@@ -52,12 +62,13 @@
     requestAnimationFrame(render);
   }
 
-  window.onload = () => setFunction("tan(x)")
   render()
 </script>
 
 <div style="position:absolute; top: 10px; left: 10px">
-    <textarea oninput="setFunction(this.value)">tan(x)</textarea>
+    <textarea oninput="setFunction(this.value)">tan(x+i+a)</textarea>
+    <input type="range" oninput="Grapheme.defineVariable('a', this.value); fplot.markUpdate(); dplot.markUpdate()" min="0" max="10" step="0.001" id="a">
+    <label for="a">a</label>
     <br>
     <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
 </div>

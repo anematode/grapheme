@@ -15,7 +15,7 @@ class FunctionPlot2DInspectionPoint extends LabeledPoint {
 }
 
 /**
- * Function plot intended for use in a graphing calculator setting
+ * UserDefinedFunction plot intended for use in a graphing calculator setting
  */
 class InteractiveFunctionPlot2D extends FunctionPlot2D {
   constructor (params = {}) {

@@ -59,3 +59,22 @@ export const Re = (z) => {
 export const Im = (z) => {
   return z.im
 }
+
+export const Construct = (a, b=0) => {
+  return new Complex(a, b)
+}
+
+const piecewise = (val1, cond, ...args) => {
+  if (cond)
+    return val1
+  if (args.length === 0) {
+    if (cond === undefined)
+      return val1
+    else
+      return new Complex(0)
+  }
+
+  return piecewise(...args)
+}
+
+export const Piecewise = piecewise

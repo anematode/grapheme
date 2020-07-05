@@ -800,6 +800,10 @@ var Grapheme = (function (exports) {
     };
   })();
 
+  function getFunctionName() {
+    return '$' + getRenderID()
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -831,7 +835,8 @@ var Grapheme = (function (exports) {
     roundToCanvasPixel: roundToCanvasPixel,
     removeDuplicates: removeDuplicates,
     isWorker: isWorker,
-    levenshtein: levenshtein
+    levenshtein: levenshtein,
+    getFunctionName: getFunctionName
   });
 
   /**
@@ -1210,7 +1215,7 @@ var Grapheme = (function (exports) {
     /**
      * Add event listener to this element
      * @param type {string} Event type to listen for
-     * @param callback {Function} Function to call
+     * @param callback {UserDefinedFunction} UserDefinedFunction to call
      */
     addEventListener (type, callback) {
       const listenerArray = this.eventListeners[type];
@@ -1323,7 +1328,7 @@ var Grapheme = (function (exports) {
     /**
      * Remove event listener from this element
      * @param type {string} Event type listened for
-     * @param callback {Function} Callback to remove
+     * @param callback {UserDefinedFunction} Callback to remove
      */
     removeEventListener(type, callback) {
       const listenerArray = this.eventListeners[type];
@@ -1418,7 +1423,7 @@ var Grapheme = (function (exports) {
     }
 
     /**
-     * Function called to update for rendering.
+     * UserDefinedFunction called to update for rendering.
      */
     update () {
       this.needsUpdate = false;
@@ -1654,7 +1659,7 @@ var Grapheme = (function (exports) {
       // Whether the universe's canvas needs to be copied over
       let needsWebGLCopy = false;
 
-      // Function called before an element that doesn't use WebGL is rendered
+      // UserDefinedFunction called before an element that doesn't use WebGL is rendered
       const beforeNormalRender = () => {
         if (needsWebGLCopy) {
           // Copy the universe's canvas over
@@ -1827,7 +1832,7 @@ var Grapheme = (function (exports) {
     /**
      * Add an event listener to this keyboard
      * @param name {string} The event to listen for
-     * @param callback {Function} The function to call
+     * @param callback {UserDefinedFunction} The function to call
      */
     addEventListener (name, callback) {
       let listeners = this.eventListeners[name];
@@ -1892,7 +1897,7 @@ var Grapheme = (function (exports) {
     /**
      * Remove an event listener from this keyboard
      * @param name {string} The event to listen for
-     * @param callback {Function} The callback function
+     * @param callback {UserDefinedFunction} The callback function
      */
     removeEventListener (name, callback) {
       let listeners = this.eventListeners[name];
@@ -4099,819 +4104,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // const fs = require( ...
-
-  // List of operators (currently)
-  // +, -, *, /, ^,
-
-  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
-
-  class ASTNode {
-    constructor (params = {}) {
-
-      const {
-        parent = null,
-        children = []
-      } = params;
-
-      this.children = children;
-      this.parent = parent;
-      this.type = null;
-    }
-
-    applyAll (func, depth = 0, childrenFirst=false) {
-      if (!childrenFirst)
-        func(this, depth);
-
-      this.children.forEach(child => {
-        if (child.applyAll) {
-          child.applyAll(func, depth + 1, childrenFirst);
-        }
-      });
-
-      if (childrenFirst)
-        func(this, depth);
-    }
-
-    clone () {
-      let node = new ASTNode();
-
-      node.children = this.children.map(child => child.clone());
-
-      return node
-    }
-
-    evaluateConstant () {
-      return this.children.map(child => child.evaluateConstant()).reduce((x, y) => x + y, 0)
-    }
-
-    getDependencies() {
-      let varDependencies = new Set();
-      let funcDependencies = new Set();
-
-      this.applyAll(child => {
-        if (child instanceof VariableNode) {
-          varDependencies.add(child.name);
-        } else if (child instanceof OperatorNode) {
-          funcDependencies.add();
-        }
-      });
-    }
-
-    getText () {
-      return '(node)'
-    }
-
-    hasChildren () {
-      return this.children.length !== 0
-    }
-
-    isConstant () {
-      return this.children.every(child => child.isConstant())
-    }
-
-    latex (parens = true) {
-      let latex = this.children.map(child => child.latex()).join('');
-
-      if (parens) {
-        return String.raw`\left(${latex}\right)`
-      }
-
-      return latex
-    }
-
-    needsParentheses () {
-      return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
-    }
-
-    setParents () {
-      this.applyAll(child => {
-        if (child.children) {
-          child.children.forEach(subchild => subchild.parent = child);
-        }
-      });
-    }
-
-    substitute (replacement, criterion) {
-      let substituted = [];
-
-      this.applyAll((child) => {
-        if (substituted.includes(child)) {
-          return
-        }
-
-        const children = child.children;
-
-        for (let i = 0; i < children.length; ++i) {
-          let subchild = children[i];
-
-          let res = criterion(subchild);
-
-          if (res) {
-            children[i] = replacement.clone();
-            substituted.push(children[i]);
-          }
-        }
-      });
-    }
-
-    substituteByFunction (substitutionFunc) {
-      let substituted = [];
-
-      this.applyAll((child) => {
-        if (substituted.includes(child)) {
-          return
-        }
-
-        const children = child.children;
-
-        for (let i = 0; i < children.length; ++i) {
-          let subchild = children[i];
-
-          let res = substitutionFunc(subchild);
-
-          if (res) {
-            children[i] = res;
-            substituted.push(children[i]);
-          }
-        }
-      });
-    }
-
-    substituteVariable (variable, replacement) {
-      this.substitute(replacement, node => node instanceof VariableNode && node.name === variable);
-    }
-
-    substituteVariables (dict) {
-      this.substituteByFunction((node) => {
-        if (node instanceof VariableNode) {
-          let potentialReplacement = dict[node.name];
-
-          if (potentialReplacement) {
-            return potentialReplacement
-          }
-        }
-
-        return false
-      });
-    }
-
-    toJSON () {
-      return {
-        type: 'node',
-        children: this.children.map(child => child.toJSON())
-      }
-    }
-
-    type () {
-      return 'node'
-    }
-  }
-
-  const greek = ['alpha', 'beta', 'gamma', 'Gamma', 'delta', 'Delta', 'epsilon', 'zeta', 'eta', 'theta', 'Theta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi', 'rho', 'Rho', 'sigma', 'Sigma', 'tau', 'phi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega'];
-
-  function substituteGreekLetters (string) {
-    if (greek.includes(string)) {
-      return '\\' + string
-    }
-
-    return string
-  }
-
-  class VariableNode extends ASTNode {
-    constructor (params = {}) {
-      super();
-
-      const {
-        name = 'x'
-      } = params;
-
-      this.name = name;
-    }
-
-    clone () {
-      return new VariableNode({ name: this.name })
-    }
-
-    evaluateConstant () {
-      return NaN
-    }
-
-    getText () {
-      return this.name
-    }
-
-    isConstant () {
-      return false
-    }
-
-    latex () {
-      if (comparisonOperators.includes(this.name)) {
-        switch (this.name) {
-          case '>':
-          case '<':
-            return this.name
-          case '>=':
-            return '\\geq '
-          case '<=':
-            return '\\leq '
-          case '==':
-            return '='
-          case '!=':
-            return '\\neq '
-        }
-      }
-
-      return substituteGreekLetters(this.name)
-    }
-
-    toJSON () {
-      return {
-        type: 'variable',
-        name: this.name
-      }
-    }
-
-    type () {
-      return 'variable'
-    }
-  }
-
-  const OperatorSynonyms = {
-    'arcsinh': 'asinh',
-    'arsinh': 'asinh',
-    'arccosh': 'acosh',
-    'arcosh': 'acosh',
-    'arctanh': 'atanh',
-    'artanh': 'atanh',
-    'arcsech': 'asech',
-    'arccsch': 'acsch',
-    'arccoth': 'acoth',
-    'arsech': 'asech',
-    'arcsch': 'acsch',
-    'arcoth': 'acoth',
-    'arcsin': 'asin',
-    'arsin': 'asin',
-    'arccos': 'acos',
-    'arcos': 'acos',
-    'arctan': 'atan',
-    'artan': 'atan',
-    'arcsec': 'asec',
-    'arccsc': 'acsc',
-    'arccot': 'acot',
-    'arsec': 'asec',
-    'arcsc': 'acsc',
-    'arcot': 'acot',
-    'log': 'ln'
-  };
-
-  class OperatorNode extends ASTNode {
-    constructor (params = {}) {
-      super(params);
-
-      const {
-        operator = '^'
-      } = params;
-
-      this.operator = operator;
-    }
-
-    clone () {
-      let node = new OperatorNode({ operator: this.operator });
-
-      node.children = this.children.map(child => child.clone());
-
-      return node
-    }
-
-    evaluateConstant () {
-      return Operators[this.operator](...this.children.map(child => child.evaluateConstant()))
-    }
-
-    getText () {
-      return this.operator
-    }
-
-    latex () {
-      return getLatex(this)
-    }
-
-    toJSON () {
-      return {
-        type: 'operator',
-        operator: this.operator,
-        children: this.children.map(child => child.toJSON())
-      }
-    }
-
-    type () {
-      return 'operator'
-    }
-  }
-
-  class ConstantNode extends ASTNode {
-    constructor (params = {}) {
-      super();
-
-      const {
-        value = 0,
-        text = '',
-        invisible = false
-      } = params;
-
-      this.value = value;
-      this.text = text ? text : StandardLabelFunction(value);
-      this.invisible = invisible;
-    }
-
-    clone () {
-      return new ConstantNode({
-        value: this.value,
-        invisible: this.invisible,
-        text: this.text
-      })
-    }
-
-    evaluateConstant () {
-      return this.value
-    }
-
-    getText () {
-      return this.invisible ? '' : this.text
-    }
-
-    isConstant () {
-      return true
-    }
-
-    latex () {
-      return this.getText()
-    }
-
-    toJSON () {
-      return {
-        value: this.value,
-        text: this.text,
-        invisible: this.invisible,
-        type: 'constant'
-      }
-    }
-
-    type () {
-      return 'constant'
-    }
-  }
-
-  const LN2 = new OperatorNode({
-    operator: 'ln',
-    children: [new ConstantNode({ value: 10 })]
-  });
-  const LN10 = new OperatorNode({
-    operator: 'ln',
-    children: [new ConstantNode({ value: 10 })]
-  });
-  const ONE_THIRD = new OperatorNode({
-    operator: '/',
-    children: [
-      new ConstantNode({ value: 1 }),
-      new ConstantNode({ value: 3 })
-    ]
-  });
-  const PI = new ConstantNode({
-    text: 'pi',
-    value: Math.PI
-  });
-  const E = new ConstantNode({
-    text: 'e',
-    value: 2.71828182845904523
-  });
-
-  // a * b - c * d ^ g
-
-  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/;
-  let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
-  let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
-  let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
-  let paren_regex = /^[()\[\]]/;
-  let comma_regex = /^,/;
-
-  function get_angry_at(string, index=0, message="I'm angry!") {
-    let spaces = "";
-
-    for (let i = 0; i < index; ++i)
-      spaces += " ";
-
-    throw new Error(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
-  }
-
-  function check_parens_balanced(string) {
-    let stack = [];
-
-    let i;
-    let err = false;
-    for (i = 0; i < string.length; ++i) {
-      let chr = string[i];
-
-      if (chr === '(') {
-        stack.push('(');
-      } else if (chr === '[') {
-        stack.push('[');
-      } else if (chr === ')' || chr === ']') {
-        if (stack.length === 0) {
-          err = true;
-          break
-        }
-
-        if (chr === ')') {
-          let pop = stack.pop();
-
-          if (pop !== '(') {
-            err = true;
-            break
-          }
-        } else {
-          let pop = stack.pop();
-
-          if (pop !== '[') {
-            err = true;
-            break
-          }
-        }
-      }
-    }
-
-    if (stack.length !== 0)
-      err = true;
-
-    if (err) {
-
-      get_angry_at(string, i, "Unbalanced parentheses/brackets");
-    }
-
-  }
-
-  function* tokenizer(string) {
-    // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
-
-    string = string.trimEnd();
-
-    let i = 0;
-    let prev_len = string.length;
-
-    let original_string = string;
-
-    while (string) {
-      string = string.trim();
-
-      i += prev_len - string.length;
-      prev_len = string.length;
-
-      let match;
-
-      do {
-        match = string.match(paren_regex);
-
-        if (match) {
-          yield {
-            type: "paren",
-            paren: match[0],
-            index: i
-          };
-          break
-        }
-
-        match = string.match(operator_regex);
-
-        if (match) {
-          yield {
-            type: "operator",
-            op: match[0],
-            index: i
-          };
-          break
-        }
-
-        match = string.match(constant_regex);
-
-        if (match) {
-          yield {
-            type: "constant",
-            value: match[0],
-            index: i
-          };
-          break
-        }
-
-        match = string.match(comma_regex);
-
-        if (match) {
-          yield {
-            type: "comma",
-            index: i
-          };
-          break
-        }
-
-        match = string.match(function_regex);
-
-        if (match) {
-          yield {
-            type: "function",
-            name: match[1],
-            index: i
-          };
-
-          yield {
-            type: "paren",
-            paren: '(',
-            index: i + match[1].length
-          };
-
-          break
-        }
-
-        match = string.match(variable_regex);
-
-        if (match) {
-          yield {
-            type: "variable",
-            name: match[0],
-            index: i
-          };
-
-          break
-        }
-
-        get_angry_at(original_string, i, "Unrecognized token");
-      } while (false)
-
-      let len = match[0].length;
-
-      string = string.slice(len);
-    }
-  }
-
-  function check_valid(string, tokens) {
-    for (let i = 0; i < tokens.length - 1; ++i) {
-      let token1 = tokens[i];
-      let token2 = tokens[i+1];
-
-      if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
-        (!(token2.op === '-' && token2.op === '+') || i === tokens.length - 2))
-        get_angry_at(string, token2.index, "No consecutive operators/commas");
-      if (token1.paren === "(" && token2.paren === ")")
-        get_angry_at(string, token2.index, "No empty parentheses");
-      if (token1.paren === "[" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No empty brackets");
-      if (token1.type === "operator" && token2.paren === ")")
-        get_angry_at(string, token2.index, "No operator followed by closing parenthesis");
-      if (token1.type === "operator" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No operator followed by closing bracket");
-      if (token1.type === "comma" && token2.paren === ")")
-      get_angry_at(string, token2.index, "No comma followed by closing parenthesis");
-      if (token1.type === "comma" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No comma followed by closing bracket");
-      if (token1.paren === '(' && token2.type === "comma")
-        get_angry_at(string, token2.index, "No comma after starting parenthesis");
-      if (token1.paren === '[' && token2.type === "comma")
-        get_angry_at(string, token2.index, "No comma after starting bracket");
-    }
-
-    if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
-      get_angry_at(string, 0, "No starting comma/operator");
-
-    const last_token = tokens[tokens.length - 1];
-    if (last_token.type === "comma" || last_token.type === "operator")
-      get_angry_at(string, tokens.length - 1, "No ending comma/operator");
-  }
-
-  function find_paren_indices(children) {
-    let start_paren_index = -1;
-
-    for (let i = 0; i < children.length; ++i) {
-      let child = children[i];
-
-      if (child.paren === '(' || child.paren === '[')
-        start_paren_index = i;
-
-      if ((child.paren === ')' || child.paren === ']') && start_paren_index !== -1)
-        return [start_paren_index, i]
-    }
-  }
-
-  function parse_tokens(tokens) {
-    for (let i = 0; i < tokens.length; ++i) {
-      let token = tokens[i];
-
-      switch (token.type) {
-        case "constant":
-          tokens[i] = new ConstantNode({value: parseFloat(token.value), text: token.value});
-          break
-        case "variable":
-          tokens[i] = new VariableNode({name: token.name});
-          break
-      }
-    }
-
-    let root = new ASTNode();
-    root.children = tokens;
-
-    let parens_remaining = true;
-
-    while (parens_remaining) {
-      parens_remaining = false;
-
-      root.applyAll(child => {
-        if (!(child instanceof ASTNode))
-          return
-
-        let indices = find_paren_indices(child.children);
-
-
-        if (indices) {
-          parens_remaining = true;
-
-          let new_node = new ASTNode();
-          new_node.children = child.children.slice(indices[0] + 1, indices[1]);
-          child.children = child.children.slice(0, indices[0]).concat([
-            new_node
-          ]).concat(child.children.slice(indices[1] + 1));
-        }
-      });
-    }
-
-    root.applyAll(child => {
-      let children = child.children;
-
-      if (children) {
-        let first_child = children[0];
-
-        if (first_child) {
-          if (first_child.op === '+' || first_child.op === '-') {
-            children.splice(0, 0, new ConstantNode({value: 0, invisible: true}));
-          }
-        }
-      }
-    });
-
-    let functions_remaining = true;
-
-    while (functions_remaining) {
-      functions_remaining = false;
-
-      root.applyAll(child => {
-        let children = child.children;
-
-        if (children) {
-          for (let i = 0; i < children.length; ++i) {
-            let child_test = children[i];
-
-            if (child_test.type === "function") {
-              let synonym = OperatorSynonyms[child_test.name];
-
-              let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name });
-
-              children[i] = function_node;
-
-              function_node.children = children[i + 1].children;
-
-              functions_remaining = true;
-
-              children.splice(i + 1, 1);
-              return
-            }
-          }
-        }
-      });
-    }
-
-    let unary_remaining = true;
-
-    while (unary_remaining) {
-      unary_remaining = false;
-
-      root.applyAll(child => {
-        let children = child.children;
-
-        for (let i = 0; i < children.length - 2; ++i) {
-          let child1 = children[i];
-          let child2 = children[i + 1];
-
-          if (child1.op && (child2.op === '-' || child2.op === '+')) {
-            const egg = new OperatorNode({
-              operator: "*",
-              children: [
-                new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
-                children[i + 2]
-              ]
-            });
-
-            child.children = children.slice(0, i + 1).concat([egg]).concat(children.slice(i + 3));
-            unary_remaining = true;
-
-            return
-          }
-        }
-      });
-    }
-
-    function combineOperators(operators) {
-      let operators_remaining = true;
-
-      while (operators_remaining) {
-        operators_remaining = false;
-
-        root.applyAll(child => {
-          let children = child.children;
-
-          for (let i = 0; i < children.length; ++i) {
-            let child_test = children[i];
-
-            if (operators.includes(child_test.op)) {
-              let new_node = new OperatorNode({operator: child_test.op});
-
-              new_node.children = [children[i-1],children[i+1]];
-
-              child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2));
-              operators_remaining = true;
-
-              return
-            }
-          }
-        });
-      }
-    }
-
-    combineOperators(['^']);
-    combineOperators(['*','/']);
-    combineOperators(['-','+']);
-
-    const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>'];
-
-    // CChain
-    let cchain_remaining = true;
-    while (cchain_remaining) {
-      cchain_remaining = false;
-
-      root.applyAll(child => {
-        const children = child.children;
-        let cchain_found = false;
-
-        for (let i = 0; i < children.length; ++i) {
-          if (comparisonOperators.includes(children[i].op)) {
-            let j;
-            for (j = i + 2; j < children.length; j += 2) {
-              if (comparisonOperators.includes(children[j].op)) {
-                cchain_found = true;
-              } else {
-                break
-              }
-            }
-
-            if (cchain_found) {
-              child.children = children.slice(0, i-1).concat(new OperatorNode({
-                operator: "cchain",
-                children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
-              })).concat(children.slice(j));
-
-              cchain_remaining = true;
-
-              return
-
-            }
-          }
-        }
-      });
-    }
-
-    combineOperators(comparisonOperators);
-    combineOperators(["and", "or"]);
-
-    root.applyAll(child => {
-      if (child.children) {
-        child.children = child.children.filter(child => child.type !== "comma");
-      }
-    });
-
-    root.setParents();
-
-    return root
-  }
-
-  function parseString(string) {
-    check_parens_balanced(string);
-
-    let tokens = [];
-
-    for (let token of tokenizer(string)) {
-      tokens.push(token);
-    }
-
-    check_valid(string, tokens);
-
-    return parse_tokens(tokens)
-  }
-
   class ConwaysGameOfLifeElement extends GraphemeElement {
     constructor(params={}) {
       super(params);
@@ -5026,7 +4218,7 @@ var Grapheme = (function (exports) {
     /**
      *
      * @param info {Object} The render info
-     * @param info.beforeWebGLRender {Function} Prepare the universe for WebGL drawing
+     * @param info.beforeWebGLRender {UserDefinedFunction} Prepare the universe for WebGL drawing
      */
     render (info) {
       // Call beforeWebGLRender()
@@ -6088,556 +5280,1595 @@ void main() {
     polyline._internal_polyline.needsBufferCopy = true;
   }
 
-  /**
-   * Represents a complex number, with a real part and an imaginary part both represented by floats.
-   */
+  // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
-  class Complex {
-    /**
-     * Construct a new complex number.
-     * @param re The real part of the complex number.
-     * @param im The imaginary part of the complex number.
-     */
-    constructor(re, im=0) {
-      this.re = re;
-      this.im = im;
-    }
+  const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
 
-    /**
-     * Get i.
-     * @returns {Complex} i.
-     * @constructor
-     */
-    static get I() {
-      return new Complex(0, 1)
-    }
+  function isValidType(typename) {
+    return TYPES.includes(typename)
+  }
 
-    /**
-     * Get 1.
-     * @returns {Complex} 1.
-     * @constructor
-     */
-    static get One() {
-      return new Complex(1, 0)
-    }
+  function throwInvalidType(typename) {
+    if (!isValidType(typename)) {
 
-    /**
-     * Return the complex argument (principal value) corresponding to the complex number.
-     * @returns {number} The complex argument Arg(z).
-     */
-    arg() {
-      return Math.atan2(this.im, this.re)
-    }
+      let didYouMean = "";
 
-    /**
-     * Returns |z|.
-     * @returns {number} The complex magnitude |z|.
-     */
-    magnitude() {
-      return Math.hypot(this.re, this.im)
-    }
+      let distances = TYPES.map(type => levenshtein(typename, type));
+      let minDistance = Math.min(...distances);
 
-    /**
-     * Returns |z|^2.
-     * @returns {number} The square of the complex magnitude |z|^2.
-     */
-    magnitudeSquared() {
-      return this.re * this.re + this.im * this.im
-    }
+      if (minDistance < 2) {
+        didYouMean = "Did you mean " + TYPES[distances.indexOf(minDistance)] + "?";
+      }
 
-    /**
-     * Returns z bar.
-     * @returns {Complex} The conjugate of z.
-     */
-    conj() {
-      return new Complex(this.re, -this.im)
-    }
-
-    /**
-     * Clone this complex number.
-     * @returns {Complex} Clone of z.
-     */
-    clone() {
-      return new Complex(this.re, this.im)
-    }
-
-    /**
-     * Scale this complex number by the real factor r.
-     * @param r {number} The scaling factor.
-     */
-    scale(r) {
-      return new Complex(this.re * r, this.im * r)
-    }
-
-    /**
-     * Check whether this complex number is equal to another.
-     * @param z {Complex} Complex number to compare with.
-     */
-    equals(z) {
-      return (this.re === z.re) && (this.im === z.im)
-    }
-
-    /**
-     * Return a complex number pointing in the same direction, with magnitude 1.
-     * @returns {Complex}
-     */
-    normalize() {
-      let mag = this.magnitude();
-
-      return this.scale(1 / mag)
+      throw new Error(`Unrecognized type ${typename}; valid types are ${TYPES.join(', ')}. ${didYouMean}`)
     }
   }
 
-  /**
-   * Returns a + b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Add = (a, b) => {
-    return new Complex(a.re + b.re, a.im + b.im)
-  };
+  class OperatorDefinition {
+    constructor(params={}) {
+      this.returns = params.returns || "real";
 
-  /**
-   * Returns a * b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Multiply = (a, b) => {
-    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
-  };
+      throwInvalidType(this.returns);
 
-  /**
-   * Returns a / b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Divide = (a, b) => {
-    let div = b.magnitudeSquared();
+      let evaluate = params.evaluate;
 
-    return Multiply(a, b.conj()).scale(1 / div)
-  };
+      this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate;
+    }
+  }
 
-  /**
-   * Returns a - b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Subtract = (a, b) => {
-    return new Complex(a.re - b.re, a.im - b.im)
-  };
+  function castableIntoMultiple(signature1, signature2) {
+    return (signature1.length === signature2.length) && signature1.every((type, index) => castableInto(type, signature2[index]))
+  }
 
-  /**
-   * Returns Re(z).
-   * @param z
-   * @returns {number}
-   */
-  const Re = (z) => {
-    return z.re
-  };
+  class NormalDefinition extends OperatorDefinition {
+    constructor(params={}) {
+      super(params);
 
-  /**
-   * Returns Im(z)
-   * @param z
-   * @returns {number}
-   */
-  const Im = (z) => {
-    return z.im
-  };
+      this.signature = params.signature;
+      if (!Array.isArray(this.signature))
+        throw new Error("Given signature is not an array")
 
-  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
-    Add: Add,
-    Multiply: Multiply,
-    Divide: Divide,
-    Subtract: Subtract,
-    Re: Re,
-    Im: Im
-  });
+      this.signature.forEach(throwInvalidType);
 
-  /**
-   * Returns e^(i theta) for real theta.
-   * @param theta {number}
-   * @returns {Complex} cis(theta)
-   */
-  const Cis = (theta) => {
-    // For real theta
-    let c = Math.cos(theta);
-    let s = Math.sin(theta);
-
-    return new Complex(c, s)
-  };
-
-  /**
-   * Returns e^z for complex z.
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Exp = (z) => {
-    let magnitude = Math.exp(z.re);
-
-    let angle = z.im;
-
-    return Cis(angle).scale(magnitude)
-  };
-
-  /**
-   * Return the principal value of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @returns {Complex}
-   */
-  const Pow = (z, w) => {
-    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())))
-  };
-
-  /**
-   * Multivalued version of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const PowBranched = (z, w, branch=0) => {
-    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
-  };
-
-  /**
-   * z^r, where r is a real number.
-   * @param z {Complex}
-   * @param r {number}
-   * @returns {Complex}
-   */
-  const PowR = (z, r) => {
-    return Pow(z, new Complex(r))
-  };
-
-  /**
-   * z^r, where r is a real number, branched.
-   * @param z {Complex}
-   * @param r {number}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const PowRBranched = (z, r, branch=0) => {
-    return PowBranched(z, new Complex(r), branch)
-  };
-
-  /**
-   * Returns z^n, where n is a positive integer
-   * @param z {Complex} The base of the exponentiation.
-   * @param n {number} Positive integer, exponent.
-   * @returns {Complex}
-   */
-  const PowN = (z, n) => {
-    if (n === 0) {
-      return new Complex(1, 0)
-    } else if (n === 1) {
-      return z.clone()
-    } else if (n === -1) {
-      return z.conj().scale(1 / z.magnitudeSquared())
-    } else if (n === 2) {
-      return Multiply(z, z)
     }
 
-    let mag = z.magnitude();
-    let angle = z.arg();
+    signatureWorks(signature) {
+      return castableIntoMultiple(signature, this.signature)
+    }
 
-    let newMag = Math.pow(mag, n);
-    let newAngle = angle * n;
+    getDefinition(signature) {
+      return this
+    }
+  }
 
-    return Cis(newAngle).scale(newMag)
+  class VariadicDefinition extends OperatorDefinition {
+    constructor(params={}) {
+      super(params);
+
+      this.initialSignature = params.initialSignature;
+      this.repeatingSignature = params.repeatingSignature;
+
+      this.initialSignature.forEach(throwInvalidType);
+      this.repeatingSignature.forEach(throwInvalidType);
+    }
+
+    getSignatureOfLength(len) {
+      let signature = this.initialSignature.slice();
+
+      while (signature.length < len) {
+        signature.push(...this.repeatingSignature);
+      }
+
+      return signature
+    }
+
+    signatureWorks(signature) {
+      let len = signature.length;
+
+      if (len < this.initialSignature.length)
+        return false
+
+      let compSig = this.getSignatureOfLength(len);
+      if (!compSig)
+        return false
+
+      return castableIntoMultiple(signature, compSig)
+    }
+
+    getDefinition(signature) {
+      let sig = this.getSignatureOfLength(signature.length);
+
+      return new NormalDefinition({
+        signature: sig,
+        returns: this.returns,
+        evaluate: this.evaluate,
+        desc: this.desc
+      })
+    }
+  }
+
+  function castableInto(from, into) {
+    if (from === into)
+      return true
+
+    let summarizedTypecasts = SummarizedTypecasts[from];
+
+    if (!summarizedTypecasts)
+      return false
+
+    return summarizedTypecasts.includes(into)
+  }
+
+  function getCastingFunction(from, into) {
+    if (!castableInto(from, into))
+      throw new Error("Cannot cast from type " + from + " into " + into + ".")
+
+    let casts = Typecasts[from];
+
+    for (let cast of casts) {
+      if (cast.returns === into)
+        return cast.evaluate
+    }
+  }
+
+  class TypecastDefinition extends OperatorDefinition {
+    constructor(params={}) {
+      super(params);
+    }
+  }
+
+  const Typecasts = {
+    'int': [
+      new TypecastDefinition({
+        returns: 'real',
+        evaluate: "Typecasts.Identity"
+      }),
+      new TypecastDefinition({
+        returns: 'complex',
+        evaluate: "Typecasts.RealToComplex"
+      })
+    ],
+    'real': [
+      new TypecastDefinition({
+        returns: 'complex',
+        evaluate: "Typecasts.RealToComplex"
+      })
+    ],
+    'real_interval': [
+      new TypecastDefinition({
+        returns: 'complex_interval',
+        evaluate: "Typecasts.RealIntervalToComplexInterval"
+      })
+    ]
   };
 
-  /**
-   * Returns the principal value of sqrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Sqrt = (z) => {
-    // Handle real z specially
-    if (Math.abs(z.im) < 1e-17) {
-      let r = z.re;
+  const SummarizedTypecasts = {};
 
-      if (r >= 0) {
-        return new Complex(Math.sqrt(r))
-      } else {
-        return new Complex(0, Math.sqrt(-r))
+  for (let type in Typecasts) {
+    if (Typecasts.hasOwnProperty(type)) {
+      SummarizedTypecasts[type] = Typecasts[type].map(cast => cast.returns);
+    }
+  }
+
+  function constructTrigDefinitions(name, funcName) {
+    return [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions." + funcName,
+        desc: "Returns the " + name + " of the real number x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions." + funcName,
+        desc: "Returns the " + name + " of the complex number z."
+      })
+    ]
+  }
+
+  const Operators = {
+    '*': [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Multiply",
+        desc: "Returns the product of two integers."
+      }),
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Multiply",
+        desc: "Returns the product of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Multiply",
+        desc: "Returns the product of two complex numbers."
+      })
+    ],
+    '+': [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Add",
+        desc: "Returns the sum of two integers."
+      }),
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Add",
+        desc: "Returns the sum of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Add",
+        desc: "Returns the sum of two complex numbers."
+      })
+    ],
+    '-': [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Subtract",
+        desc: "Returns the difference of two integers."
+      }),
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Subtract",
+        desc: "Returns the difference of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Subtract",
+        desc: "Returns the difference of two complex numbers."
+      })
+    ],
+    '/': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Divide",
+        desc: "Returns the quotient of two real numbers."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Divide",
+        desc: "Returns the quotient of two real numbers."
+      })
+    ],
+    "complex": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Construct",
+        desc: "complex(a) casts a real number to a complex number."
+      }),
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Construct",
+        desc: "complex(a, b) returns the complex number a + bi."
+      })
+    ],
+    "sin": constructTrigDefinitions("sine", "Sin"),
+    "cos": constructTrigDefinitions("cosine", "Cos"),
+    "tan": constructTrigDefinitions("tangent", "Tan"),
+    "csc": constructTrigDefinitions("cosecant", "Csc"),
+    "sec": constructTrigDefinitions("secant", "Sec"),
+    "cot": constructTrigDefinitions("cotangent", "Cot"),
+    "asin": constructTrigDefinitions("inverse sine", "Arcsin"),
+    "acos": constructTrigDefinitions("inverse cosine", "Arccos"),
+    "atan": constructTrigDefinitions("inverse tangent", "Arctan"),
+    "acsc": constructTrigDefinitions("inverse cosecant", "Arccsc"),
+    "asec": constructTrigDefinitions("inverse secant", "Arcsec"),
+    "acot": constructTrigDefinitions("inverse cotangent", "Arccot"),
+    "sinh": constructTrigDefinitions("hyperbolic sine", "Sinh"),
+    "cosh": constructTrigDefinitions("hyperbolic cosine", "Cosh"),
+    "tanh": constructTrigDefinitions("hyperbolic tangent", "Tanh"),
+    "csch": constructTrigDefinitions("hyperbolic cosecant", "Csch"),
+    "sech": constructTrigDefinitions("hyperbolic secant", "Sech"),
+    "coth": constructTrigDefinitions("hyperbolic cotangent", "Coth"),
+    "asinh": constructTrigDefinitions("inverse hyperbolic sine", "Arcsinh"),
+    "acosh": constructTrigDefinitions("inverse hyperbolic cosine", "Arccosh"),
+    "atanh": constructTrigDefinitions("inverse hyperbolic tangent", "Arctanh"),
+    "acsch": constructTrigDefinitions("inverse hyperbolic cosecant", "Arccsch"),
+    "asech": constructTrigDefinitions("inverse hyperbolic secant", "Arcsech"),
+    "acoth": constructTrigDefinitions("inverse hyperbolic cotangent", "Arccoth"),
+    "Im": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Im",
+        desc: "Im(r) returns the imaginary part of r, i.e. 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "real",
+        evaluate: "ComplexFunctions.Im",
+        desc: "Im(z) returns the imaginary part of z."
+      })
+    ],
+    "Re": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Re",
+        desc: "Re(r) returns the real part of r, i.e. r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "real",
+        evaluate: "ComplexFunctions.Re",
+        desc: "Re(z) returns the real part of z."
+      })
+    ],
+    "gamma": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Gamma",
+        desc: "Evaluates the gamma function at r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Gamma",
+        desc: "Evaluates the gamma function at z."
+      })
+    ],
+    '^': [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Pow",
+        desc: "Evaluates a^b, undefined for negative b. If you want to evaluate something like a^(1/5), use pow_rational(a, 1, 5)."
+      }),
+      new NormalDefinition({
+        signature: ["complex", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Pow",
+        desc: "Returns the principal value of z^w."
+      })
+    ],
+    "pow_rational": [
+      new NormalDefinition({
+        signature: ["real", "int", "int"],
+        returns: "real",
+        evaluate: "RealFunctions.PowRational"
+      })
+    ],
+    "digamma": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Digamma",
+        desc: "Evaluates the digamma function at r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Digamma",
+        desc: "Evaluates the digamma function at z."
+      })
+    ],
+    "trigamma": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Trigamma",
+        desc: "Evaluates the trigamma function at r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Trigamma",
+        desc: "Evaluates the trigamma function at z."
+      })
+    ],
+    "polygamma": [
+      new NormalDefinition({
+        signature: ["int", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Polygamma",
+        desc: "polygamma(n, r) evaluates the nth polygamma function at r."
+      }),
+      new NormalDefinition({
+        signature: ["int", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Polygamma",
+        desc: "polygamma(n, z) evaluates the nth polygamma function at z."
+      })
+    ],
+    "sqrt": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Sqrt",
+        desc: "sqrt(r) returns the square root of r. NaN if r < 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Sqrt",
+        desc: "sqrt(z) returns the principal branch of the square root of z."
+      })
+    ],
+    "cbrt": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Cbrt",
+        desc: "cbrt(r) returns the cube root of r. NaN if r < 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Cbrt",
+        desc: "cbrt(z) returns the principal branch of the cube root of z."
+      })
+    ],
+    "ln": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Ln",
+        desc: "ln(r) returns the natural logarithm of r. NaN if r < 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Ln",
+        desc: "ln(z) returns the principal value of the natural logarithm of z."
+      })
+    ],
+    "log10": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Log10",
+        desc: "log10(r) returns the base-10 logarithm of r. NaN if r < 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Log10",
+        desc: "log10(z) returns the principal value of base-10 logarithm of z."
+      })
+    ],
+    "log2": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Log2",
+        desc: "log2(r) returns the base-2 logarithm of r. NaN if r < 0."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Log2",
+        desc: "log2(z) returns the principal value of base-2 logarithm of z."
+      })
+    ],
+    "piecewise": [
+      new VariadicDefinition({
+        initialSignature: [],
+        repeatingSignature: ["real", "bool"],
+        returns: "real",
+        evaluate: "RealFunctions.Piecewise",
+        desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise."
+      }),
+      new VariadicDefinition({
+        initialSignature: ["real"],
+        repeatingSignature: ["bool", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Piecewise",
+        desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise."
+      }),
+      new VariadicDefinition({
+        initialSignature: [],
+        repeatingSignature: ["complex", "bool"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Piecewise",
+        desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise."
+      }),
+      new VariadicDefinition({
+        initialSignature: ["complex"],
+        repeatingSignature: ["bool", "complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Piecewise",
+        desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise."
+      }),
+    ],
+    "ifelse": [
+      new NormalDefinition({
+        signature: ["real", "bool", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Piecewise",
+        desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise"
+      }),
+      new NormalDefinition({
+        signature: ["complex", "bool", "complex"],
+        returns: "real",
+        evaluate: "RealFunctions.Piecewise",
+        desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise"
+      })
+    ],
+    "cchain": [
+      new VariadicDefinition({
+        initialSignature: ["real"],
+        repeatingSignature: ["int", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.CChain",
+        desc: "Used internally to describe comparison chains (e.x. 0 < a < b < 1)"
+      })
+    ],
+    "<": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.LessThan",
+        desc: "Returns a < b."
+      })
+    ],
+    ">": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.GreaterThan",
+        desc: "Returns a > b."
+      })
+    ],
+    "<=": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.LessEqualThan",
+        desc: "Returns a <= b."
+      })
+    ],
+    ">=": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.GreaterEqualThan",
+        desc: "Returns a >= b."
+      })
+    ],
+    "==": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.Equal",
+        desc: "Returns a == b."
+      })
+    ],
+    "!=": [
+      new NormalDefinition( {
+        signature: ["real", "real"],
+        returns: "bool",
+        evaluate: "RealFunctions.Cmp.NotEqual",
+        desc: "Returns a != b."
+      })
+    ],
+  };
+
+  function processExportedVariables(exportedVariables) {
+    if (typeof exportedVariables === "string")
+      return [[exportedVariables, "real"]]
+    for (let i = 0; i < exportedVariables.length; ++i) {
+      let pair = exportedVariables[i];
+
+      if (typeof pair === "string") {
+        exportedVariables[i] = [pair, "real"];
       }
     }
 
-    let r = z.magnitude();
+    return exportedVariables
+  }
 
-    let zR = Add(z, new Complex(r)).normalize();
+  class UserDefinedFunction {
+    constructor(name, node, exportedVariables=['x']) {
+      this.name = name;
 
-    return zR.scale(Math.sqrt(r))
-  };
+      this.node = node;
 
-  /**
-   * Branched version of Sqrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const SqrtBranched = (z, branch=0) => {
-    if (branch % 2 === 0) {
-      return Sqrt(z)
-    } else {
-      return Multiply(new Complex(-1, 0), Sqrt(z))
+      this.exportedVariables = processExportedVariables(exportedVariables);
+
+      this.definition = null;
+
+      this.update();
     }
+
+    getVariableTypesAsDict() {
+      let dict = {};
+
+      for (let pair of this.exportedVariables) {
+        dict[pair[0]] = pair[1];
+      }
+
+      return dict
+    }
+
+    getSignature() {
+      return this.exportedVariables.map(pair => pair[1])
+    }
+
+    getVariables() {
+      return this.exportedVariables.map(pair => pair[0])
+    }
+
+    update() {
+      this.usable = false;
+
+      this.node.resolveTypes(this.getVariableTypesAsDict());
+      this.evaluate = this.node.compile(this.getVariables());
+
+      const returnType = this.node.returnType;
+
+      if (!returnType)
+        throw new Error("Was not able to find a return type for function " + this.name + ".")
+
+      this.definition = new NormalDefinition({
+        signature: this.getSignature(),
+        returns: returnType,
+        evaluate: "Functions." + this.name + '.evaluate'
+      });
+      this.returnType = returnType;
+
+      this.usable = true;
+    }
+  }
+
+  class UserDefinedVariable extends UserDefinedFunction {
+    constructor(name, node) {
+      super(name, node, []);
+    }
+
+    update() {
+      super.update();
+
+      this.usable = false;
+
+      this.value = this.evaluate();
+
+      this.usable = true;
+    }
+  }
+
+  // List of operators (currently)
+  // +, -, *, /, ^,
+
+  const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
+
+  class ASTNode {
+    constructor (params = {}) {
+      const {
+        parent = null,
+        children = [],
+        returnType = null
+      } = params;
+
+      this.children = children;
+      this.parent = parent;
+      this.returnType = returnType;
+    }
+
+    _getCompileText(exportedVariables=['x']) {
+      return this.children[0]._getCompileText(exportedVariables)
+    }
+
+    applyAll (func, depth = 0, childrenFirst=false) {
+      if (!childrenFirst)
+        func(this, depth);
+
+      this.children.forEach(child => {
+        if (child.applyAll) {
+          child.applyAll(func, depth + 1, childrenFirst);
+        }
+      });
+
+      if (childrenFirst)
+        func(this, depth);
+    }
+
+    compile(exportedVariables) {
+      if (!this.returnType) {
+        throw new Error("Need to call resolveTypes before compiling node.")
+      }
+
+      let compileText = this._getCompileText(exportedVariables);
+
+      return new Function(...exportedVariables, "return " + compileText)
+    }
+
+    compileInterval(exportedVariables) {
+      if (!this.returnType) {
+        throw new Error("Need to call resolveTypes before compiling node.")
+      }
+
+      this.applyAll(child => {
+        if (child.definition && !child.definition.evaluateInterval) {
+          throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly.")
+        }
+      });
+
+      let compileText = this._getIntervalCompileText(exportedVariables);
+
+      return new Function(...exportedVariables, "return " + compileText)
+    }
+
+    derivative(variable) {
+      return this.children[0].derivative(variable)
+    }
+
+    clone () {
+      return new ASTNode({
+        children: this.children.map(child => child.clone()),
+        returnType: this.returnType
+      })
+    }
+
+    getDependencies() {
+      let varDependencies = new Set();
+      let funcDependencies = new Set();
+
+      this.applyAll(child => {
+        if (child instanceof VariableNode) {
+          varDependencies.add(child.name);
+        } else if (child instanceof OperatorNode) {
+          funcDependencies.add();
+        }
+      });
+    }
+
+    getText () {
+      return '(node)'
+    }
+
+    hasChildren () {
+      return this.children.length !== 0
+    }
+
+    isConstant () {
+      return this.children.every(child => child.isConstant())
+    }
+
+    latex (parens = true) {
+      let latex = this.children.map(child => child.latex()).join('');
+
+      if (parens) {
+        return String.raw`\left(${latex}\right)`
+      }
+
+      return latex
+    }
+
+    needsParentheses () {
+      return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
+    }
+
+    resolveTypes(givenTypes) {
+      this.children.forEach(child => child.resolveTypes(givenTypes));
+
+      this.returnType = this.children[0].returnType;
+    }
+
+    setParents () {
+      this.applyAll(child => {
+        if (child.children) {
+          child.children.forEach(subchild => subchild.parent = child);
+        }
+      });
+    }
+
+    toJSON () {
+      return {
+        type: 'node',
+        children: this.children.map(child => child.toJSON()),
+        returnType: this.returnType
+      }
+    }
+
+    type () {
+      return 'node'
+    }
+  }
+
+  const greek = ['alpha', 'beta', 'gamma', 'Gamma', 'delta', 'Delta', 'epsilon', 'zeta', 'eta', 'theta', 'Theta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi', 'rho', 'Rho', 'sigma', 'Sigma', 'tau', 'phi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega'];
+
+  function substituteGreekLetters (string) {
+    if (greek.includes(string)) {
+      return '\\' + string
+    }
+
+    return string
+  }
+
+  class VariableNode extends ASTNode {
+    constructor (params = {}) {
+      super();
+
+      const {
+        name = 'x'
+      } = params;
+
+      this.name = name;
+    }
+
+    _getCompileText(exportedVariables) {
+      if (comparisonOperators.includes(this.name))
+        return `"${this.name}"`
+      if (exportedVariables.includes(this.name))
+        return this.name
+      else
+        return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
+    }
+
+    clone () {
+      return new VariableNode({ name: this.name })
+    }
+
+    derivative(variable) {
+      if (this.name === variable)
+        return new ConstantNode({value: 1})
+      else
+        return new ConstantNode({value: 0})
+    }
+
+    getText () {
+      return this.name
+    }
+
+    isConstant () {
+      return false
+    }
+
+    latex () {
+      if (comparisonOperators.includes(this.name)) {
+        switch (this.name) {
+          case '>':
+          case '<':
+            return this.name
+          case '>=':
+            return '\\geq '
+          case '<=':
+            return '\\leq '
+          case '==':
+            return '='
+          case '!=':
+            return '\\neq '
+        }
+      }
+
+      return substituteGreekLetters(this.name)
+    }
+
+    resolveTypes(typeInfo) {
+      if (typeInfo[this.name]) {
+        this.returnType = typeInfo[this.name];
+        return
+      }
+
+      let variable = getVariable(this.name);
+
+      if (variable) {
+        if (variable.returnType) {
+          this.returnType = variable.returnType;
+        } else {
+          throw new Error("UserDefinedVariable " + this.name + " is defined but has unknown type. Please properly define the variable.")
+        }
+      } else {
+        throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
+      }
+
+    }
+
+    toJSON () {
+      return {
+        type: 'variable',
+        name: this.name,
+        returnType: this.returnType
+      }
+    }
+
+    type () {
+      return 'variable'
+    }
+  }
+
+  const OperatorSynonyms = {
+    'arcsinh': 'asinh',
+    'arsinh': 'asinh',
+    'arccosh': 'acosh',
+    'arcosh': 'acosh',
+    'arctanh': 'atanh',
+    'artanh': 'atanh',
+    'arcsech': 'asech',
+    'arccsch': 'acsch',
+    'arccoth': 'acoth',
+    'arsech': 'asech',
+    'arcsch': 'acsch',
+    'arcoth': 'acoth',
+    'arcsin': 'asin',
+    'arsin': 'asin',
+    'arccos': 'acos',
+    'arcos': 'acos',
+    'arctan': 'atan',
+    'artan': 'atan',
+    'arcsec': 'asec',
+    'arccsc': 'acsc',
+    'arccot': 'acot',
+    'arsec': 'asec',
+    'arcsc': 'acsc',
+    'arcot': 'acot',
+    'log': 'ln'
   };
 
-  /**
-   * Principal value of cbrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Cbrt = (z) => {
-    return PowR(z, 1/3)
-  };
+  class OperatorNode extends ASTNode {
+    constructor (params = {}) {
+      super(params);
 
-  /**
-   * Multivalued version of Cbrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const CbrtBranched = (z, branch=0) => {
-    return PowRBranched(z, 1/3, branch)
-  };
+      const {
+        operator = '^'
+      } = params;
 
-  var PowFunctions = /*#__PURE__*/Object.freeze({
-    Pow: Pow,
-    PowBranched: PowBranched,
-    PowR: PowR,
-    PowRBranched: PowRBranched,
-    PowN: PowN,
-    Sqrt: Sqrt,
-    SqrtBranched: SqrtBranched,
-    Cbrt: Cbrt,
-    CbrtBranched: CbrtBranched
-  });
+      this.operator = operator;
+      this.definition = null;
+    }
 
-  /**
-   * Returns ln(z), where ln is the natural logarithm.
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Ln = (z) => {
-    let mag = Math.log(z.magnitude());
-    let theta = z.arg();
+    _getCompileText(exportedVariables) {
+      if (!this.definition)
+        throw new Error("huh")
 
-    return new Complex(mag, theta)
-  };
+      const definition = this.definition;
 
-  /**
-   * The multivalued version of ln(z). In other words, if ln(z) is the principal value of ln(z), it returns
-   * ln(z) + 2 * pi * i * branch, where branch is an integer.
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const LnBranched = (z, branch=0) => {
-    return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
-  };
+      return this.definition.evaluate + "(" + this.children.map((child, index) => {
+        let text = child._getCompileText(exportedVariables);
 
-  /* Alias for Ln */
-  const Log = Ln;
+        if (child.returnType !== definition.signature[index]) {
+          let func = getCastingFunction(child.returnType, definition.signature[index]);
 
-  /* Alias for LnBranched */
-  const LogBranched = LnBranched;
+          text = func + '(' + text + ')';
+        }
 
-  // Constants
-  const LN10$1 = Math.log(10);
-  const LN2$1 = Math.log(2);
+        return text
+      }).join(',') + ")"
+    }
 
-  /**
-   * log10(z) (principal value)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log10 = (z) => {
-    return Ln(z).scale(1 / LN10$1)
-  };
+    clone () {
+      let node = new OperatorNode({ operator: this.operator });
 
-  /**
-   * log10(z) (branched)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log10Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN10$1)
-  };
+      node.children = this.children.map(child => child.clone());
 
-  /**
-   * log2(z) (principal value)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log2 = (z) => {
-    return Ln(z).scale(1 / LN2$1)
-  };
+      return node
+    }
 
-  /**
-   * log2(z) (branched)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log2Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN2$1)
-  };
+    derivative(variable) {
+      if (!this.definition.derivative) {
+        throw new Error("Cannot take derivative of operator " + this.operator + ".")
+      }
 
-  /**
-   * Log base b of z
-   * @param b {Complex}
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const LogB = (b, z) => {
-    if (b.equals(z))
-      return Complex.One
+      return this.definition.derivative(variable, ...this.children)
+    }
 
-    return Divide(Ln(z), Ln(b))
-  };
+    getText () {
+      return this.operator
+    }
 
-  /**
-   * Log base b of z, multivalued
-   * @param b {Complex}
-   * @param z {Complex}
-   * @param branch {number} Integer, which branch to evaluate
-   * @returns {Complex}
-   */
-  const LogBBranched = (b, z, branch=0) => {
-    if (branch === 0 && b.equals(z))
-      return Complex.One
+    latex () {
+      return getLatex(this)
+    }
 
-    return Divide(LnBranched(z, branch), LnBranched(b, branch))
-  };
+    resolveTypes(typeInfo={}) {
+      super.resolveTypes(typeInfo);
 
-  var LnFunctions = /*#__PURE__*/Object.freeze({
-    Ln: Ln,
-    LnBranched: LnBranched,
-    Log: Log,
-    LogBranched: LogBranched,
-    Log10: Log10,
-    Log10Branched: Log10Branched,
-    Log2: Log2,
-    Log2Branched: Log2Branched,
-    LogB: LogB,
-    LogBBranched: LogBBranched
-  });
+      let signature = this.getChildrenSignature();
 
-  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
-  const Arcsin = (z) => Multiply(Complex.I.scale(-1), // -i
-    Ln(Add(Multiply(Complex.I, z),                              // i * z
-      Sqrt(Subtract(Complex.One, Multiply(z, z))))));            // sqrt(1 - z^2
+      if (Functions[this.operator]) {
+        let func = Functions[this.operator];
 
-  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
-  const Arccos = (z) => Add(new Complex(Math.PI / 2), // pi / 2
-    Multiply(Complex.I, Ln(Add(Multiply(Complex.I, z),           // i * ln(iz
-      Sqrt(Subtract(Complex.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
+        const funcSig = func.definition.signature;
 
-  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
-  const Arctan = (z) => Multiply(Complex.I.scale(1/2),  // i / 2
-    Ln(Divide(Add(Complex.I, z), Subtract(Complex.I, z))));      // ln( (i+z) / (1-z) )
+        if (castableIntoMultiple(signature, funcSig)) {
+          this.definition = func.definition;
+          this.returnType = func.returnType;
+          return
+        } else {
+          throw new Error("Given signature " + signature + " is not castable into function " + this.operator + ", signature " + funcSig + '.')
+        }
+      }
 
-  // arcsec(z) = arccos(1 / z)
-  const Arcsec = (z) => Arccos(Divide(Complex.One, z));
+      let potentialDefinitions = Operators[this.operator];
 
-  // arccsc(z) = arcsin(1 / z)
-  const Arccsc = (z) => Arcsin(Divide(Complex.One, z));
+      if (!potentialDefinitions) {
+        throw new Error("Unknown operation " + this.operator + ".")
+      }
 
-  // arccot(z) = pi / 2 - arctan(z)
-  const Arccot = (z) => Subtract(new Complex(Math.PI / 2), Arctan(z));
+      for (let definition of potentialDefinitions) {
+        if (definition.signatureWorks(signature)) {
+          this.definition = definition.getDefinition(signature);
+          this.returnType = definition.returns;
 
-  // Branched variants of the inverse trig functions
-  const ArcsinBranched = (z, branch=0) => {
-    return Add(Arcsin(z), new Complex(2 * Math.PI * branch))
-  };
+          return
+        }
+      }
 
-  const ArccosBranched = (z, branch=0) => {
-    return Add(Arccos(z), new Complex(2 * Math.PI * branch))
-  };
+      throw new Error("Could not find a suitable definition for " + this.operator + "(" + signature.join(', ') + ').')
+    }
 
-  const ArctanBranched = (z, branch=0) =>
-    Add(Arctan(z), new Complex(Math.PI * branch));
+    getChildrenSignature() {
+      return this.children.map(child => child.returnType)
+    }
 
-  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex.One, z), branch);
+    toJSON () {
+      return {
+        type: 'operator',
+        operator: this.operator,
+        children: this.children.map(child => child.toJSON())
+      }
+    }
 
-  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex.One, z), branch);
+    type () {
+      return 'operator'
+    }
+  }
 
-  const ArccotBranched = (z, branch=0) =>
-    Subtract(new Complex(Math.PI / 2), ArctanBranched(z, -branch));
+  class ConstantNode extends ASTNode {
+    constructor (params = {}) {
+      super();
 
-  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
-    Arcsin: Arcsin,
-    Arccos: Arccos,
-    Arctan: Arctan,
-    Arcsec: Arcsec,
-    Arccsc: Arccsc,
-    Arccot: Arccot,
-    ArcsinBranched: ArcsinBranched,
-    ArccosBranched: ArccosBranched,
-    ArctanBranched: ArctanBranched,
-    ArcsecBranched: ArcsecBranched,
-    ArccscBranched: ArccscBranched,
-    ArccotBranched: ArccotBranched
-  });
+      const {
+        value = 0,
+        text = '',
+        invisible = false
+      } = params;
 
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))));
+      this.value = value;
+      this.text = text ? text : StandardLabelFunction(value);
+      this.invisible = invisible;
+    }
 
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))));
+    _getCompileText(exportedVariables) {
+      return this.value
+    }
 
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const Arctanh = (z) => Ln(Divide(Add(Complex.One, z), Subtract(Complex.One, z))).scale(1/2);
+    clone () {
+      return new ConstantNode({
+        value: this.value,
+        invisible: this.invisible,
+        text: this.text,
+        returnType: this.returnType
+      })
+    }
 
-  const Arcsech = (z) => Arccosh(Divide(Complex.One, z));
+    getText () {
+      return this.invisible ? '' : this.text
+    }
 
-  // arccsch(z) = arcsinh(1/z)
-  const Arccsch = (z) => Arcsinh(Divide(Complex.One, z));
+    isConstant () {
+      return true
+    }
 
-  // arccoth(z) = arctanh(1/z)
-  const Arccoth = (z) => Arctanh(Divide(Complex.One, z));
+    latex () {
+      return this.getText()
+    }
 
-  // Branched variants of the normal functions
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const ArcsinhBranched = (z, branch=0) =>
-    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch);
+    resolveTypes(givenTypes) {
+      if (Number.isInteger(this.value))
+        this.returnType = "int";
+      else this.returnType = "real";
+    }
 
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const ArccoshBranched = (z, branch=0) =>
-    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))), branch);
+    toJSON () {
+      return {
+        value: this.value,
+        text: this.text,
+        invisible: this.invisible,
+        returnType: this.returnType,
+        type: 'constant'
+      }
+    }
 
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const ArctanhBranched = (z, branch=0) =>
-    LnBranched(Divide(Add(Complex.One, z), Subtract(Complex.One, z)), branch).scale(1/2);
+    type () {
+      return 'constant'
+    }
+  }
 
-  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex.One, z), branch);
+  // a * b - c * d ^ g
 
-  // arccsch(z) = arcsinh(1/z)
-  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex.One, z), branch);
+  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/;
+  let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
+  let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
+  let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
+  let paren_regex = /^[()\[\]]/;
+  let comma_regex = /^,/;
 
-  // arccoth(z) = arctanh(1/z)
-  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex.One, z), branch);
+  function get_angry_at(string, index=0, message="I'm angry!") {
+    let spaces = "";
 
-  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
-    Arcsinh: Arcsinh,
-    Arccosh: Arccosh,
-    Arctanh: Arctanh,
-    Arcsech: Arcsech,
-    Arccsch: Arccsch,
-    Arccoth: Arccoth,
-    ArcsinhBranched: ArcsinhBranched,
-    ArccoshBranched: ArccoshBranched,
-    ArctanhBranched: ArctanhBranched,
-    ArcsechBranched: ArcsechBranched,
-    ArccschBranched: ArccschBranched,
-    ArccothBranched: ArccothBranched
-  });
+    for (let i = 0; i < index; ++i)
+      spaces += " ";
+
+    throw new Error(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
+  }
+
+  function check_parens_balanced(string) {
+    let stack = [];
+
+    let i;
+    let err = false;
+    for (i = 0; i < string.length; ++i) {
+      let chr = string[i];
+
+      if (chr === '(') {
+        stack.push('(');
+      } else if (chr === '[') {
+        stack.push('[');
+      } else if (chr === ')' || chr === ']') {
+        if (stack.length === 0) {
+          err = true;
+          break
+        }
+
+        if (chr === ')') {
+          let pop = stack.pop();
+
+          if (pop !== '(') {
+            err = true;
+            break
+          }
+        } else {
+          let pop = stack.pop();
+
+          if (pop !== '[') {
+            err = true;
+            break
+          }
+        }
+      }
+    }
+
+    if (stack.length !== 0)
+      err = true;
+
+    if (err) {
+
+      get_angry_at(string, i, "Unbalanced parentheses/brackets");
+    }
+
+  }
+
+  function* tokenizer(string) {
+    // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
+
+    string = string.trimEnd();
+
+    let i = 0;
+    let prev_len = string.length;
+
+    let original_string = string;
+
+    while (string) {
+      string = string.trim();
+
+      i += prev_len - string.length;
+      prev_len = string.length;
+
+      let match;
+
+      do {
+        match = string.match(paren_regex);
+
+        if (match) {
+          yield {
+            type: "paren",
+            paren: match[0],
+            index: i
+          };
+          break
+        }
+
+        match = string.match(operator_regex);
+
+        if (match) {
+          yield {
+            type: "operator",
+            op: match[0],
+            index: i
+          };
+          break
+        }
+
+        match = string.match(constant_regex);
+
+        if (match) {
+          yield {
+            type: "constant",
+            value: match[0],
+            index: i
+          };
+          break
+        }
+
+        match = string.match(comma_regex);
+
+        if (match) {
+          yield {
+            type: "comma",
+            index: i
+          };
+          break
+        }
+
+        match = string.match(function_regex);
+
+        if (match) {
+          yield {
+            type: "function",
+            name: match[1],
+            index: i
+          };
+
+          yield {
+            type: "paren",
+            paren: '(',
+            index: i + match[1].length
+          };
+
+          break
+        }
+
+        match = string.match(variable_regex);
+
+        if (match) {
+          yield {
+            type: "variable",
+            name: match[0],
+            index: i
+          };
+
+          break
+        }
+
+        get_angry_at(original_string, i, "Unrecognized token");
+      } while (false)
+
+      let len = match[0].length;
+
+      string = string.slice(len);
+    }
+  }
+
+  function check_valid(string, tokens) {
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      let token1 = tokens[i];
+      let token2 = tokens[i+1];
+
+      if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
+        (!(token2.op === '-' && token2.op === '+') || i === tokens.length - 2))
+        get_angry_at(string, token2.index, "No consecutive operators/commas");
+      if (token1.paren === "(" && token2.paren === ")")
+        get_angry_at(string, token2.index, "No empty parentheses");
+      if (token1.paren === "[" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No empty brackets");
+      if (token1.type === "operator" && token2.paren === ")")
+        get_angry_at(string, token2.index, "No operator followed by closing parenthesis");
+      if (token1.type === "operator" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No operator followed by closing bracket");
+      if (token1.type === "comma" && token2.paren === ")")
+        get_angry_at(string, token2.index, "No comma followed by closing parenthesis");
+      if (token1.type === "comma" && token2.paren === "]")
+        get_angry_at(string, token2.index, "No comma followed by closing bracket");
+      if (token1.paren === '(' && token2.type === "comma")
+        get_angry_at(string, token2.index, "No comma after starting parenthesis");
+      if (token1.paren === '[' && token2.type === "comma")
+        get_angry_at(string, token2.index, "No comma after starting bracket");
+    }
+
+    if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
+      get_angry_at(string, 0, "No starting comma/operator");
+
+    const last_token = tokens[tokens.length - 1];
+    if (last_token.type === "comma" || last_token.type === "operator")
+      get_angry_at(string, tokens.length - 1, "No ending comma/operator");
+  }
+
+  function find_paren_indices(children) {
+    let start_paren_index = -1;
+
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i];
+
+      if (child.paren === '(' || child.paren === '[')
+        start_paren_index = i;
+
+      if ((child.paren === ')' || child.paren === ']') && start_paren_index !== -1)
+        return [start_paren_index, i]
+    }
+  }
+
+  function parse_tokens(tokens) {
+    for (let i = 0; i < tokens.length; ++i) {
+      let token = tokens[i];
+
+      switch (token.type) {
+        case "constant":
+          tokens[i] = new ConstantNode({value: parseFloat(token.value), text: token.value});
+          break
+        case "variable":
+          tokens[i] = new VariableNode({name: token.name});
+          break
+      }
+    }
+
+    let root = new ASTNode();
+    root.children = tokens;
+
+    let parens_remaining = true;
+
+    while (parens_remaining) {
+      parens_remaining = false;
+
+      root.applyAll(child => {
+        if (!(child instanceof ASTNode))
+          return
+
+        let indices = find_paren_indices(child.children);
+
+
+        if (indices) {
+          parens_remaining = true;
+
+          let new_node = new ASTNode();
+          new_node.children = child.children.slice(indices[0] + 1, indices[1]);
+          child.children = child.children.slice(0, indices[0]).concat([
+            new_node
+          ]).concat(child.children.slice(indices[1] + 1));
+        }
+      });
+    }
+
+    root.applyAll(child => {
+      let children = child.children;
+
+      if (children) {
+        let first_child = children[0];
+
+        if (first_child) {
+          if (first_child.op === '+' || first_child.op === '-') {
+            children.splice(0, 0, new ConstantNode({value: 0, invisible: true}));
+          }
+        }
+      }
+    });
+
+    let functions_remaining = true;
+
+    while (functions_remaining) {
+      functions_remaining = false;
+
+      root.applyAll(child => {
+        let children = child.children;
+
+        if (children) {
+          for (let i = 0; i < children.length; ++i) {
+            let child_test = children[i];
+
+            if (child_test.type === "function") {
+              let synonym = OperatorSynonyms[child_test.name];
+
+              let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name });
+
+              children[i] = function_node;
+
+              function_node.children = children[i + 1].children;
+
+              functions_remaining = true;
+
+              children.splice(i + 1, 1);
+              return
+            }
+          }
+        }
+      });
+    }
+
+    let unary_remaining = true;
+
+    while (unary_remaining) {
+      unary_remaining = false;
+
+      root.applyAll(child => {
+        let children = child.children;
+
+        for (let i = 0; i < children.length - 2; ++i) {
+          let child1 = children[i];
+          let child2 = children[i + 1];
+
+          if (child1.op && (child2.op === '-' || child2.op === '+')) {
+            const egg = new OperatorNode({
+              operator: "*",
+              children: [
+                new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
+                children[i + 2]
+              ]
+            });
+
+            child.children = children.slice(0, i + 1).concat([egg]).concat(children.slice(i + 3));
+            unary_remaining = true;
+
+            return
+          }
+        }
+      });
+    }
+
+    function combineOperators(operators) {
+      let operators_remaining = true;
+
+      while (operators_remaining) {
+        operators_remaining = false;
+
+        root.applyAll(child => {
+          let children = child.children;
+
+          for (let i = 0; i < children.length; ++i) {
+            let child_test = children[i];
+
+            if (operators.includes(child_test.op)) {
+              let new_node = new OperatorNode({operator: child_test.op});
+
+              new_node.children = [children[i-1],children[i+1]];
+
+              child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2));
+              operators_remaining = true;
+
+              return
+            }
+          }
+        });
+      }
+    }
+
+    combineOperators(['^']);
+    combineOperators(['*','/']);
+    combineOperators(['-','+']);
+
+    const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>'];
+
+    // CChain
+    let cchain_remaining = true;
+    while (cchain_remaining) {
+      cchain_remaining = false;
+
+      root.applyAll(child => {
+        const children = child.children;
+        let cchain_found = false;
+
+        for (let i = 0; i < children.length; ++i) {
+          if (comparisonOperators.includes(children[i].op)) {
+            let j;
+            for (j = i + 2; j < children.length; j += 2) {
+              if (comparisonOperators.includes(children[j].op)) {
+                cchain_found = true;
+              } else {
+                break
+              }
+            }
+
+            if (cchain_found) {
+              child.children = children.slice(0, i-1).concat(new OperatorNode({
+                operator: "cchain",
+                children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
+              })).concat(children.slice(j));
+
+              cchain_remaining = true;
+
+              return
+
+            }
+          }
+        }
+      });
+    }
+
+    combineOperators(comparisonOperators);
+    combineOperators(["and", "or"]);
+
+    root.applyAll(child => {
+      if (child.children) {
+        child.children = child.children.filter(child => child.type !== "comma");
+      }
+    });
+
+    root.setParents();
+
+    return root
+  }
+
+  function parseString(string) {
+    check_parens_balanced(string);
+
+    let tokens = [];
+
+    for (let token of tokenizer(string)) {
+      tokens.push(token);
+    }
+
+    check_valid(string, tokens);
+
+    return parse_tokens(tokens)
+  }
+
+  const Variables = {};
+  const Functions = {};
+
+  const RESERVED_VARIABLES = [];
+  const RESERVED_FUNCTIONS = Object.keys(Operators);
+
+  function defineVariable(variableName, node) {
+    if (Variables[variableName])
+      undefineVariable(variableName);
+    if (RESERVED_VARIABLES.includes(variableName))
+      throw new Error("The variable " + variableName + " is reserved by Grapheme. Please choose a different name.")
+
+    if (typeof node === 'string')
+      node = parseString(node);
+
+    return Variables[variableName] = new UserDefinedVariable(variableName, node)
+  }
+
+  function defineFunction(funcName, node, exportedVariables=[["x", "real"]]) {
+    if (Functions[funcName])
+      undefineFunction(funcName);
+    if (RESERVED_FUNCTIONS.includes(funcName))
+      throw new Error("The function " + funcName + " is reserved by Grapheme. Please choose a different name.")
+
+    if (typeof node === 'string')
+      node = parseString(node);
+
+    return Functions[funcName] = new UserDefinedFunction(funcName, node, exportedVariables)
+  }
+
+  function undefineVariable(variableName) {
+    if (RESERVED_VARIABLES.includes(variableName))
+      throw new Error("The variable " + variableName + " is reserved by Grapheme, and cannot be undefined.")
+    delete Variables[variableName];
+  }
+
+  function undefineFunction(funcName) {
+    if (RESERVED_FUNCTIONS.includes(funcName))
+      throw new Error("The function " + funcName + " is reserved by Grapheme, and cannot be undefined.")
+    delete Functions[funcName];
+  }
+
+  function getFunction(funcName) {
+    return Functions[funcName]
+  }
+
+  function getVariable(varName) {
+    return Variables[varName]
+  }
+
+  setTimeout(() => {
+    defineVariable('i', parseString("complex(0, 1)"));
+    defineVariable('pi', parseString("3.141592653589793238"));
+    defineVariable('e', parseString("2.71828182845904523536"));
+    defineVariable('<', parseString("1"));
+    defineVariable('>', parseString("1"));
+    defineVariable('<=', parseString("1"));
+    defineVariable('>=', parseString("1"));
+    defineVariable('!=', parseString("1"));
+    defineVariable('==', parseString("1"));
+
+    RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e');
+  }, 0);
 
   // Allowed plotting modes:
   // rough = linear sample, no refinement
@@ -6655,8 +6886,10 @@ void main() {
       this.plotPoints = plotPoints;
       this.plottingMode = plottingMode;
       this.quality = 1;
+      this.plottingAxis = 'x';
 
-      this.function = (x) => Re(Sin(new Complex(x)));
+      this.function = (x) => x;
+      this.functionName = getFunctionName();
 
       this.pen = new Pen({color: Colors.RED, useNative: false, thickness: 2});
       this.polyline = null;
@@ -6666,8 +6899,11 @@ void main() {
       this.interactivityEnabled = true;
     }
 
-    setFunction(func) {
-      this.function = func;
+    setFunction(func, variable='x') {
+      defineFunction(this.functionName, func, [variable]);
+
+      this.function = getFunction(this.functionName).evaluate;
+      this.markUpdate();
     }
 
     isClick(position) {
@@ -6684,6 +6920,14 @@ void main() {
       adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness);
     }
 
+    setAxis(axis) {
+      if (axis !== 'x' && axis !== 'y')
+        throw new Error("Axis should be x or y, not " + axis + ".")
+
+      this.plottingAxis = axis;
+      this.markUpdate();
+    }
+
     update(info) {
       super.update();
 
@@ -6695,19 +6939,31 @@ void main() {
 
       let plotPoints = this.plotPoints;
 
+      let width = this.plottingAxis === 'x' ? box.width : box.height;
+
       if (plotPoints === "auto") {
-        plotPoints = this.quality * box.width;
+        plotPoints = this.quality * width;
       }
 
       let vertices = [];
+      let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y1;
+      let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y2;
 
       if (this.plottingMode === "rough") {
-        let points = box.width * this.quality;
+        let points = width * this.quality;
 
-        vertices = sample_1d(coords.x1, coords.x2, this.function, points);
+        vertices = sample_1d(x1, x2, this.function, points);
       } else {
-        vertices = adaptively_sample_1d(coords.x1, coords.x2, this.function,
-          box.width * this.quality, transform.getAspect(), coords.height / box.height);
+        vertices = adaptively_sample_1d(x1, x2, this.function,
+          width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width);
+      }
+
+      if (this.plottingAxis !== 'x') {
+        for (let i = 0; i < vertices.length; i += 2) {
+          let tmp = vertices[i];
+          vertices[i] = vertices[i + 1];
+          vertices[i + 1] = tmp;
+        }
       }
 
       this.plot.transform.plotToPixelArr(vertices);
@@ -6746,6 +7002,8 @@ void main() {
     destroy() {
       if (this.polyline)
         this.polyline.destroy();
+
+      undefineFunction(this.functionName);
     }
   }
 
@@ -7156,7 +7414,7 @@ void main() {
   }
 
   /**
-   * Function plot intended for use in a graphing calculator setting
+   * UserDefinedFunction plot intended for use in a graphing calculator setting
    */
   class InteractiveFunctionPlot2D extends FunctionPlot2D {
     constructor (params = {}) {
@@ -7405,6 +7663,196 @@ void main() {
 
     return [n, d]
   }
+
+  /**
+   * Represents a complex number, with a real part and an imaginary part both represented by floats.
+   */
+
+  class Complex {
+    /**
+     * Construct a new complex number.
+     * @param re The real part of the complex number.
+     * @param im The imaginary part of the complex number.
+     */
+    constructor(re, im=0) {
+      this.re = re;
+      this.im = im;
+    }
+
+    /**
+     * Get i.
+     * @returns {Complex} i.
+     * @constructor
+     */
+    static get I() {
+      return new Complex(0, 1)
+    }
+
+    /**
+     * Get 1.
+     * @returns {Complex} 1.
+     * @constructor
+     */
+    static get One() {
+      return new Complex(1, 0)
+    }
+
+    /**
+     * Return the complex argument (principal value) corresponding to the complex number.
+     * @returns {number} The complex argument Arg(z).
+     */
+    arg() {
+      return Math.atan2(this.im, this.re)
+    }
+
+    /**
+     * Returns |z|.
+     * @returns {number} The complex magnitude |z|.
+     */
+    magnitude() {
+      return Math.hypot(this.re, this.im)
+    }
+
+    /**
+     * Returns |z|^2.
+     * @returns {number} The square of the complex magnitude |z|^2.
+     */
+    magnitudeSquared() {
+      return this.re * this.re + this.im * this.im
+    }
+
+    /**
+     * Returns z bar.
+     * @returns {Complex} The conjugate of z.
+     */
+    conj() {
+      return new Complex(this.re, -this.im)
+    }
+
+    /**
+     * Clone this complex number.
+     * @returns {Complex} Clone of z.
+     */
+    clone() {
+      return new Complex(this.re, this.im)
+    }
+
+    /**
+     * Scale this complex number by the real factor r.
+     * @param r {number} The scaling factor.
+     */
+    scale(r) {
+      return new Complex(this.re * r, this.im * r)
+    }
+
+    /**
+     * Check whether this complex number is equal to another.
+     * @param z {Complex} Complex number to compare with.
+     */
+    equals(z) {
+      return (this.re === z.re) && (this.im === z.im)
+    }
+
+    /**
+     * Return a complex number pointing in the same direction, with magnitude 1.
+     * @returns {Complex}
+     */
+    normalize() {
+      let mag = this.magnitude();
+
+      return this.scale(1 / mag)
+    }
+  }
+
+  /**
+   * Returns a + b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Add = (a, b) => {
+    return new Complex(a.re + b.re, a.im + b.im)
+  };
+
+  /**
+   * Returns a * b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Multiply = (a, b) => {
+    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
+  };
+
+  /**
+   * Returns a / b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Divide = (a, b) => {
+    let div = b.magnitudeSquared();
+
+    return Multiply(a, b.conj()).scale(1 / div)
+  };
+
+  /**
+   * Returns a - b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Subtract = (a, b) => {
+    return new Complex(a.re - b.re, a.im - b.im)
+  };
+
+  /**
+   * Returns Re(z).
+   * @param z
+   * @returns {number}
+   */
+  const Re = (z) => {
+    return z.re
+  };
+
+  /**
+   * Returns Im(z)
+   * @param z
+   * @returns {number}
+   */
+  const Im = (z) => {
+    return z.im
+  };
+
+  const Construct = (a, b=0) => {
+    return new Complex(a, b)
+  };
+
+  const piecewise = (val1, cond, ...args) => {
+    if (cond)
+      return val1
+    if (args.length === 0) {
+      if (cond === undefined)
+        return val1
+      else
+        return new Complex(0)
+    }
+
+    return piecewise(...args)
+  };
+
+  const Piecewise = piecewise;
+
+  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
+    Add: Add,
+    Multiply: Multiply,
+    Divide: Divide,
+    Subtract: Subtract,
+    Re: Re,
+    Im: Im,
+    Construct: Construct,
+    Piecewise: Piecewise
+  });
 
   function multiplyPolynomials(coeffs1, coeffs2, degree) {
     let ret = [];
@@ -8246,7 +8694,7 @@ void main() {
     let max = i1.max;
 
     if (max < 0) {
-      // Function is totally undefined
+      // UserDefinedFunction is totally undefined
       return new Interval(0, 0, false, false, i1.contMin, i1.contMax)
     } else if (min < 0) {
       // 0 included in range, so the function is partially undefined
@@ -9206,28 +9654,6 @@ void main() {
     }
   }
 
-  /**
-   * Convert a JSONified node into a node that we can use. This works recursively
-   * @param json The JSON to convert
-   * @returns {ConstantNode|VariableNode|ASTNode|OperatorNode} The corresponding ASTNode
-   */
-  function nodeFromJSON(json) {
-    // Children of the node
-    let children = json.children ? json.children.map(child => nodeFromJSON(child)) : [];
-
-    // Return corresponding node type
-    switch (json.type) {
-      case "operator":
-        return new OperatorNode({operator: json.operator, children})
-      case "variable":
-        return new VariableNode({name: json.name, children})
-      case "node":
-        return new ASTNode({children})
-      case "constant":
-        return new ConstantNode({value: json.value, text: json.text, invisible: json.invisible})
-    }
-  }
-
   let id = 0;
 
   function getJobID() {
@@ -9497,8 +9923,171 @@ void main() {
     return rectangles
   }
 
+  /**
+   * Returns e^(i theta) for real theta.
+   * @param theta {number}
+   * @returns {Complex} cis(theta)
+   */
+  const Cis = (theta) => {
+    // For real theta
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+
+    return new Complex(c, s)
+  };
+
+  /**
+   * Returns e^z for complex z.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Exp = (z) => {
+    let magnitude = Math.exp(z.re);
+
+    let angle = z.im;
+
+    return Cis(angle).scale(magnitude)
+  };
+
+  /**
+   * Return the principal value of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @returns {Complex}
+   */
+  const Pow = (z, w) => {
+    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())))
+  };
+
+  /**
+   * Multivalued version of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowBranched = (z, w, branch=0) => {
+    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
+  };
+
+  /**
+   * z^r, where r is a real number.
+   * @param z {Complex}
+   * @param r {number}
+   * @returns {Complex}
+   */
+  const PowR = (z, r) => {
+    return Pow(z, new Complex(r))
+  };
+
+  /**
+   * z^r, where r is a real number, branched.
+   * @param z {Complex}
+   * @param r {number}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowRBranched = (z, r, branch=0) => {
+    return PowBranched(z, new Complex(r), branch)
+  };
+
+  /**
+   * Returns z^n, where n is a positive integer
+   * @param z {Complex} The base of the exponentiation.
+   * @param n {number} Positive integer, exponent.
+   * @returns {Complex}
+   */
+  const PowN = (z, n) => {
+    if (n === 0) {
+      return new Complex(1, 0)
+    } else if (n === 1) {
+      return z.clone()
+    } else if (n === -1) {
+      return z.conj().scale(1 / z.magnitudeSquared())
+    } else if (n === 2) {
+      return Multiply(z, z)
+    }
+
+    let mag = z.magnitude();
+    let angle = z.arg();
+
+    let newMag = Math.pow(mag, n);
+    let newAngle = angle * n;
+
+    return Cis(newAngle).scale(newMag)
+  };
+
+  /**
+   * Returns the principal value of sqrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sqrt = (z) => {
+    // Handle real z specially
+    if (Math.abs(z.im) < 1e-17) {
+      let r = z.re;
+
+      if (r >= 0) {
+        return new Complex(Math.sqrt(r))
+      } else {
+        return new Complex(0, Math.sqrt(-r))
+      }
+    }
+
+    let r = z.magnitude();
+
+    let zR = Add(z, new Complex(r)).normalize();
+
+    return zR.scale(Math.sqrt(r))
+  };
+
+  /**
+   * Branched version of Sqrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const SqrtBranched = (z, branch=0) => {
+    if (branch % 2 === 0) {
+      return Sqrt(z)
+    } else {
+      return Multiply(new Complex(-1, 0), Sqrt(z))
+    }
+  };
+
+  /**
+   * Principal value of cbrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Cbrt = (z) => {
+    return PowR(z, 1/3)
+  };
+
+  /**
+   * Multivalued version of Cbrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const CbrtBranched = (z, branch=0) => {
+    return PowRBranched(z, 1/3, branch)
+  };
+
+  var PowFunctions = /*#__PURE__*/Object.freeze({
+    Pow: Pow,
+    PowBranched: PowBranched,
+    PowR: PowR,
+    PowRBranched: PowRBranched,
+    PowN: PowN,
+    Sqrt: Sqrt,
+    SqrtBranched: SqrtBranched,
+    Cbrt: Cbrt,
+    CbrtBranched: CbrtBranched
+  });
+
   // sin(a+bi) = sin a cosh b + i cos a sinh b
-  const Sin$1 = (z) => {
+  const Sin = (z) => {
     let a = z.re, b = z.im;
     let sinA = Math.sin(a);
     let cosA = Math.cos(a);
@@ -9538,7 +10127,7 @@ void main() {
 
   // csc(a+bi) = 1 / sin(a+bi)
   const Csc = (z) => {
-    return Divide(Complex.One, Sin$1(z))
+    return Divide(Complex.One, Sin(z))
   };
 
   // sec(a+bi) = 1 / cos(a+bi)
@@ -9547,12 +10136,121 @@ void main() {
   };
 
   var TrigFunctions = /*#__PURE__*/Object.freeze({
-    Sin: Sin$1,
+    Sin: Sin,
     Cos: Cos,
     Tan: Tan,
     Sec: Sec,
     Csc: Csc,
     Cot: Cot
+  });
+
+  /**
+   * Returns ln(z), where ln is the natural logarithm.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Ln = (z) => {
+    let mag = Math.log(z.magnitude());
+    let theta = z.arg();
+
+    return new Complex(mag, theta)
+  };
+
+  /**
+   * The multivalued version of ln(z). In other words, if ln(z) is the principal value of ln(z), it returns
+   * ln(z) + 2 * pi * i * branch, where branch is an integer.
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const LnBranched = (z, branch=0) => {
+    return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
+  };
+
+  /* Alias for Ln */
+  const Log = Ln;
+
+  /* Alias for LnBranched */
+  const LogBranched = LnBranched;
+
+  // Constants
+  const LN10 = Math.log(10);
+  const LN2 = Math.log(2);
+
+  /**
+   * log10(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10 = (z) => {
+    return Ln(z).scale(1 / LN10)
+  };
+
+  /**
+   * log10(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN10)
+  };
+
+  /**
+   * log2(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2 = (z) => {
+    return Ln(z).scale(1 / LN2)
+  };
+
+  /**
+   * log2(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN2)
+  };
+
+  /**
+   * Log base b of z
+   * @param b {Complex}
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const LogB = (b, z) => {
+    if (b.equals(z))
+      return Complex.One
+
+    return Divide(Ln(z), Ln(b))
+  };
+
+  /**
+   * Log base b of z, multivalued
+   * @param b {Complex}
+   * @param z {Complex}
+   * @param branch {number} Integer, which branch to evaluate
+   * @returns {Complex}
+   */
+  const LogBBranched = (b, z, branch=0) => {
+    if (branch === 0 && b.equals(z))
+      return Complex.One
+
+    return Divide(LnBranched(z, branch), LnBranched(b, branch))
+  };
+
+  var LnFunctions = /*#__PURE__*/Object.freeze({
+    Ln: Ln,
+    LnBranched: LnBranched,
+    Log: Log,
+    LogBranched: LogBranched,
+    Log10: Log10,
+    Log10Branched: Log10Branched,
+    Log2: Log2,
+    Log2Branched: Log2Branched,
+    LogB: LogB,
+    LogBBranched: LogBBranched
   });
 
   /**
@@ -9642,12 +10340,122 @@ void main() {
     Coth: Coth
   });
 
+  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
+  const Arcsin = (z) => Multiply(Complex.I.scale(-1), // -i
+    Ln(Add(Multiply(Complex.I, z),                              // i * z
+      Sqrt(Subtract(Complex.One, Multiply(z, z))))));            // sqrt(1 - z^2
+
+  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
+  const Arccos = (z) => Add(new Complex(Math.PI / 2), // pi / 2
+    Multiply(Complex.I, Ln(Add(Multiply(Complex.I, z),           // i * ln(iz
+      Sqrt(Subtract(Complex.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
+
+  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
+  const Arctan = (z) => Multiply(Complex.I.scale(1/2),  // i / 2
+    Ln(Divide(Add(Complex.I, z), Subtract(Complex.I, z))));      // ln( (i+z) / (1-z) )
+
+  // arcsec(z) = arccos(1 / z)
+  const Arcsec = (z) => Arccos(Divide(Complex.One, z));
+
+  // arccsc(z) = arcsin(1 / z)
+  const Arccsc = (z) => Arcsin(Divide(Complex.One, z));
+
+  // arccot(z) = pi / 2 - arctan(z)
+  const Arccot = (z) => Subtract(new Complex(Math.PI / 2), Arctan(z));
+
+  // Branched variants of the inverse trig functions
+  const ArcsinBranched = (z, branch=0) => {
+    return Add(Arcsin(z), new Complex(2 * Math.PI * branch))
+  };
+
+  const ArccosBranched = (z, branch=0) => {
+    return Add(Arccos(z), new Complex(2 * Math.PI * branch))
+  };
+
+  const ArctanBranched = (z, branch=0) =>
+    Add(Arctan(z), new Complex(Math.PI * branch));
+
+  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex.One, z), branch);
+
+  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex.One, z), branch);
+
+  const ArccotBranched = (z, branch=0) =>
+    Subtract(new Complex(Math.PI / 2), ArctanBranched(z, -branch));
+
+  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
+    Arcsin: Arcsin,
+    Arccos: Arccos,
+    Arctan: Arctan,
+    Arcsec: Arcsec,
+    Arccsc: Arccsc,
+    Arccot: Arccot,
+    ArcsinBranched: ArcsinBranched,
+    ArccosBranched: ArccosBranched,
+    ArctanBranched: ArctanBranched,
+    ArcsecBranched: ArcsecBranched,
+    ArccscBranched: ArccscBranched,
+    ArccotBranched: ArccotBranched
+  });
+
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))));
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))));
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const Arctanh = (z) => Ln(Divide(Add(Complex.One, z), Subtract(Complex.One, z))).scale(1/2);
+
+  const Arcsech = (z) => Arccosh(Divide(Complex.One, z));
+
+  // arccsch(z) = arcsinh(1/z)
+  const Arccsch = (z) => Arcsinh(Divide(Complex.One, z));
+
+  // arccoth(z) = arctanh(1/z)
+  const Arccoth = (z) => Arctanh(Divide(Complex.One, z));
+
+  // Branched variants of the normal functions
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const ArcsinhBranched = (z, branch=0) =>
+    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch);
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const ArccoshBranched = (z, branch=0) =>
+    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))), branch);
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const ArctanhBranched = (z, branch=0) =>
+    LnBranched(Divide(Add(Complex.One, z), Subtract(Complex.One, z)), branch).scale(1/2);
+
+  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex.One, z), branch);
+
+  // arccsch(z) = arcsinh(1/z)
+  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex.One, z), branch);
+
+  // arccoth(z) = arctanh(1/z)
+  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex.One, z), branch);
+
+  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
+    Arcsinh: Arcsinh,
+    Arccosh: Arccosh,
+    Arctanh: Arctanh,
+    Arcsech: Arcsech,
+    Arccsch: Arccsch,
+    Arccoth: Arccoth,
+    ArcsinhBranched: ArcsinhBranched,
+    ArccoshBranched: ArccoshBranched,
+    ArctanhBranched: ArctanhBranched,
+    ArcsechBranched: ArcsechBranched,
+    ArccschBranched: ArccschBranched,
+    ArccothBranched: ArccothBranched
+  });
+
   function Gamma(z) {
     if (z.re < 1/2) {
       // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
       // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
 
-      return Divide(new Complex(Math.PI), Multiply(Sin$1(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
+      return Divide(new Complex(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
     }
 
     if (Math.abs(z.im) < 1e-17) {
@@ -9747,7 +10555,7 @@ void main() {
       // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
       // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
-      return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin$1(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
+      return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
     } else if (z.re < 20) {
       // psi_1(z+1) = psi_1(z) - 1/z^2
       // psi_1(z) = psi_1(z+1) + 1/z^2
@@ -9807,7 +10615,7 @@ void main() {
       // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
 
       return Multiply(new Complex(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
-        (PowN(Sin$1(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex.One, z))))
+        (PowN(Sin(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex.One, z))))
     } else if (z < 8) {
       // Recurrence relation
       // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
@@ -9840,7 +10648,7 @@ void main() {
       // Compute via reflection formula
       let reflected = LnGamma(Subtract(Complex.One, z));
 
-      return Subtract(Subtract(new Complex(logPi), Ln(Sin$1(Multiply(new Complex(Math.PI), z)))), reflected)
+      return Subtract(Subtract(new Complex(logPi), Ln(Sin(Multiply(new Complex(Math.PI), z)))), reflected)
     } else {
       z.re -= 1;
 
@@ -9886,7 +10694,7 @@ void main() {
 
   const Log10$1 = Math.log10;
 
-  const Sin$2 = Math.sin;
+  const Sin$1 = Math.sin;
 
   const Cos$1 = Math.cos;
 
@@ -9941,7 +10749,7 @@ void main() {
     Log: Log$1,
     Log2: Log2$1,
     Log10: Log10$1,
-    Sin: Sin$2,
+    Sin: Sin$1,
     Cos: Cos$1,
     Tan: Tan$1,
     Sec: Sec$1,
@@ -9966,7 +10774,59 @@ void main() {
     Arccoth: Arccoth$1
   });
 
+  const piecewise$1 = (val1, cond, ...args) => {
+    if (cond)
+      return val1
+    if (args.length === 0) {
+      if (cond === undefined)
+        return val1
+      else
+        return 0
+    }
+
+    return piecewise$1(...args)
+  };
+
+  const cchain = (val1, comparison, val2, ...args) => {
+    switch (comparison) {
+      case "<":
+        if (val1 >= val2)
+          return false
+        break
+      case ">":
+        if (val1 <= val2)
+          return false
+        break
+      case "<=":
+        if (val1 > val2)
+          return false
+        break
+      case ">=":
+        if (val1 < val2)
+          return false
+        break
+      case "==":
+        if (val1 !== val2)
+          return false
+        break
+      case "!=":
+        if (val1 === val2)
+          return false
+        break
+    }
+
+    if (args.length === 0)
+      return true
+    else
+      return cchain(val2, ...args)
+  };
+
   const ExtraFunctions$1 = {
+    Sqrt: Math.sqrt,
+    Cbrt: Math.cbrt,
+    Log2: Math.log2,
+    Log10: Math.log10,
+    Ln: Math.log,
     LogB: (b, v) => {
       return Math.log(v) / Math.log(b)
     },
@@ -10025,148 +10885,35 @@ void main() {
         }
       }
     },
-    Pow: (x, r) => { // Tries to find a ratio close to r, then do PowRational, otherwise just do normal pow
-
+    Pow: (x, r) => {
+      return Math.pow(x, r)
+    },
+    Im: (x) => {
+      return 0
+    },
+    Re: (x) => {
+      return x
     },
     Mod: (n, m) => {
       return ((n % m) + m) % m
+    },
+    Piecewise: piecewise$1,
+    CChain: cchain,
+    Cmp: {
+      LessThan: (a, b) => a < b,
+      GreaterThan: (a, b) => a > b,
+      LessEqualThan: (a, b) => a <= b,
+      GreaterEqualThan: (a, b) => a >= b,
+      Equal: (a,b) => a === b,
+      NotEqual: (a,b) => a !== b
+    },
+    Logic: {
+      And: (a, b) => a && b,
+      Or: (a, b) => a || b
     }
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
-
-  // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
-
-  const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
-
-  function isValidType(typename) {
-    return TYPES.includes(typename)
-  }
-
-  function throwInvalidType(typename) {
-    if (!isValidType(typename)) {
-
-      let didYouMean = "";
-
-      let distances = TYPES.map(type => levenshtein(typename, type));
-      let minDistance = Math.min(...distances);
-
-      if (minDistance < 2) {
-        didYouMean = "Did you mean " + TYPES[distances.indexOf(minDistance)] + "?";
-      }
-
-      throw new Error(`Unrecognized type ${typename}; valid types are ${TYPES.join(', ')}. ${didYouMean}`)
-    }
-  }
-
-  class OperatorDefinition {
-    constructor(params={}) {
-      this.returns = params.returns || "real";
-
-      throwInvalidType(this.returns);
-
-      this.evaluate = (isWorker ? "" : "Grapheme") + params.evaluate;
-    }
-  }
-
-  class NormalDefinition extends OperatorDefinition {
-    constructor(params={}) {
-      super(params);
-
-      this.signature = params.signature;
-      if (!Array.isArray(this.signature))
-        throw new Error("Given signature is not an array")
-
-      this.signature.forEach(throwInvalidType);
-
-    }
-  }
-
-  class TypecastDefinition extends OperatorDefinition {
-    constructor(params={}) {
-      super(params);
-    }
-  }
-
-  const Typecasts = {
-    'int': [
-      new TypecastDefinition({
-        returns: 'real',
-        evaluate: "Typecasts.Identity"
-      }),
-      new TypecastDefinition({
-        returns: 'complex',
-        evaluate: "Typecasts.RealToComplex"
-      })
-    ],
-    'real': [
-      new TypecastDefinition({
-        returns: 'complex',
-        evaluate: "Typecasts.RealToComplex"
-      })
-    ],
-    'real_interval': [
-      new TypecastDefinition({
-        returns: 'complex_interval',
-        evaluate: "Typecasts.RealIntervalToComplexInterval"
-      })
-    ]
-  };
-
-  const Operators$1 = {
-    '*': [
-      new NormalDefinition({
-        signature: ["real", "real"],
-        returns: "real",
-        evaluate: "RealFunctions.Multiply",
-        desc: "Returns the product of two real numbers."
-      }),
-      new NormalDefinition({
-        signature: ["complex", "complex"],
-        returns: "complex",
-        evaluate: "ComplexFunctions.Multiply",
-        desc: "Returns the product of two complex numbers."
-      })
-    ],
-    '+': [
-      new NormalDefinition({
-        signature: ["real", "real"],
-        returns: "real",
-        evaluate: "RealFunctions.Add",
-        desc: "Returns the sum of two real numbers."
-      }),
-      new NormalDefinition({
-        signature: ["complex", "complex"],
-        returns: "complex",
-        evaluate: "ComplexFunctions.Add",
-        desc: "Returns the sum of two complex numbers."
-      })
-    ],
-    '-': [
-      new NormalDefinition({
-        signature: ["real", "real"],
-        returns: "real",
-        evaluate: "RealFunctions.Subtract"
-      }),
-      new NormalDefinition({
-        signature: ["complex", "complex"],
-        returns: "complex",
-        evaluate: "ComplexFunctions.Subtract"
-      })
-    ],
-    '/': [
-      new NormalDefinition({
-        signature: ["real", "real"],
-        returns: "real",
-        evaluate: "RealFunctions.Divide"
-      }),
-      new NormalDefinition({
-        signature: ["complex", "complex"],
-        returns: "complex",
-        evaluate: "ComplexFunctions.Divide"
-      })
-    ]
-  };
 
   class ComplexInterval {
     constructor(reMin, reMax, imMin, imMax) {
@@ -10184,109 +10931,6 @@ void main() {
     Identity: (r) => r
   };
 
-  const Variables = {};
-  const Functions = {};
-
-  const RESERVED_VARIABLES = [];
-  const RESERVED_FUNCTIONS = Object.keys(Operators$1);
-
-  class UserDefinedBase {
-    constructor(params={}) {
-      this.node = params.node;
-      this.name = params.name;
-
-      this.type = null;
-
-      this.usable = false;
-      this.canTakeDerivative = false;
-      this.canEvaluateInterval = false;
-
-      this.varDependencies = [];
-      this.funcDependencies = [];
-
-      let deps = this.node.getDependencies();
-
-      this.unusableBecause = "";
-    }
-
-    checkDependencies() {
-      for (let i = 0; i < varDependencies.length; ++i) {
-
-      }
-    }
-
-    update() {
-      this.usable = false;
-
-
-      this.usable = true;
-    }
-
-    onUsableChanged(callback) {
-
-    }
-  }
-
-  class UserDefinedVariable extends UserDefinedBase {
-
-  }
-
-  class UserDefinedFunction extends UserDefinedBase {
-    constructor(params={}) {
-      super(params);
-    }
-  }
-
-  function defineVariable(variableName, node) {
-    if (Variables[variableName])
-      throw new Error("There is already a variable named " + variableName + ". Remove that definition or choose a different name.")
-    if (RESERVED_VARIABLES.includes(variableName))
-      throw new Error("The variable " + variableName + " is reserved by Grapheme. Please choose a different name.")
-
-    if (typeof node === 'string')
-      node = parseString(node);
-
-    return Variables[variableName] = new UserDefinedVariable({name: variableName, node})
-  }
-
-  function defineFunction(funcName, node, exportedVariables={'x': "real"}) {
-    if (Functions[funcName])
-      throw new Error("There is already a function named " + funcName + ". Remove that definition or choose a different name.")
-    if (RESERVED_FUNCTIONS.includes(funcName))
-      throw new Error("The function " + funcName + " is reserved by Grapheme. Please choose a different name.")
-
-    if (typeof node === 'string')
-      node = parseString(node);
-
-    return Functions[funcName] = new UserDefinedFunction({name: funcName, node})
-  }
-
-  function undefineVariable(variableName) {
-    if (RESERVED_VARIABLES.includes(variableName))
-      throw new Error("The variable " + variableName + " is reserved by Grapheme, and cannot be undefined.")
-    delete Variables[variableName];
-  }
-
-  function undefineFunction(funcName) {
-    if (RESERVED_FUNCTIONS.includes(variableName))
-      throw new Error("The function " + funcName + " is reserved by Grapheme, and cannot be undefined.")
-    delete Functions[funcName];
-  }
-
-  function getFunction(funcName) {
-    return Functions[funcName]
-  }
-
-  function getVariable(varName) {
-    return Variables[varName]
-  }
-
-  defineVariable('i', parseString("complex(0, 1)"));
-  defineVariable('pi', parseString("3.141592653589793238"));
-  defineVariable('e', parseString("2.71828182845904523536"));
-
-  RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e');
-
   exports.ASTNode = ASTNode;
   exports.BEAST_POOL = BEAST_POOL;
   exports.BasicLabel = BasicLabel;
@@ -10298,7 +10942,6 @@ void main() {
   exports.ConstantNode = ConstantNode;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.DefaultUniverse = DefaultUniverse;
-  exports.E = E;
   exports.EquationPlot2D = EquationPlot2D;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.Functions = Functions;
@@ -10314,13 +10957,9 @@ void main() {
   exports.IntervalFunctions = IntervalFunctions;
   exports.IntervalSet = IntervalSet;
   exports.LANCZOS_COEFFICIENTS = LANCZOS_COEFFICIENTS;
-  exports.LN10 = LN10;
-  exports.LN2 = LN2;
   exports.Label2D = Label2D;
-  exports.ONE_THIRD = ONE_THIRD;
   exports.OperatorNode = OperatorNode;
   exports.OperatorSynonyms = OperatorSynonyms;
-  exports.PI = PI;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
@@ -10360,7 +10999,6 @@ void main() {
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
   exports.nextPowerOfTwo = nextPowerOfTwo;
-  exports.nodeFromJSON = nodeFromJSON;
   exports.parseString = parseString;
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;

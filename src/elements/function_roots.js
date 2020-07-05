@@ -1,7 +1,7 @@
 import { find_roots } from '../math/function_plot_algorithm'
 import { InspectablePoint } from './inspectable_point'
 import { StandardLabelFunction } from './gridlines'
-import { parseString } from '../function_ast/parse_string'
+import { parseString } from '../ast/parse_string'
 
 class FunctionPoints extends GraphemeElement {
   constructor(params={}) {

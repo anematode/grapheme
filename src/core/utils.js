@@ -432,6 +432,10 @@ const levenshtein = (function()
   };
 })();
 
+function getFunctionName() {
+  return '$' + getRenderID()
+}
+
 export {
   benchmark,
   gcd,
@@ -463,5 +467,6 @@ export {
   roundToCanvasPixel,
   removeDuplicates,
   isWorker,
-  levenshtein
+  levenshtein,
+  getFunctionName
 }

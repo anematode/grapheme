@@ -70,7 +70,7 @@ class Keyboard {
   /**
    * Add an event listener to this keyboard
    * @param name {string} The event to listen for
-   * @param callback {Function} The function to call
+   * @param callback {UserDefinedFunction} The function to call
    */
   addEventListener (name, callback) {
     let listeners = this.eventListeners[name]
@@ -135,7 +135,7 @@ class Keyboard {
   /**
    * Remove an event listener from this keyboard
    * @param name {string} The event to listen for
-   * @param callback {Function} The callback function
+   * @param callback {UserDefinedFunction} The callback function
    */
   removeEventListener (name, callback) {
     let listeners = this.eventListeners[name]

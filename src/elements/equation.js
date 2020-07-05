@@ -1,4 +1,4 @@
-import { parseString } from '../function_ast/parse_string'
+import { parseString } from '../ast/parse_string'
 import {InteractiveElement} from '../core/interactive_element'
 import { Colors } from '../other/color'
 import { Interval} from '../math/interval_arithmetic'
@@ -6,7 +6,7 @@ import * as utils from "../core/utils"
 import {WebGLPolyline} from './webgl_polyline'
 import { generateContours1, generateContours2 } from '../math/contouring'
 import { adaptPolyline } from '../math/adapt_polyline'
-import { ASTNode } from '../function_ast/node'
+import { ASTNode } from '../ast/node'
 
 /**
  * Plots an equation of x and y of the form equation(x,y) = 0.

@@ -1,7 +1,59 @@
 import { mod, gcd } from "../../core/utils"
 import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function'
 
+const piecewise = (val1, cond, ...args) => {
+  if (cond)
+    return val1
+  if (args.length === 0) {
+    if (cond === undefined)
+      return val1
+    else
+      return 0
+  }
+
+  return piecewise(...args)
+}
+
+const cchain = (val1, comparison, val2, ...args) => {
+  switch (comparison) {
+    case "<":
+      if (val1 >= val2)
+        return false
+      break
+    case ">":
+      if (val1 <= val2)
+        return false
+      break
+    case "<=":
+      if (val1 > val2)
+        return false
+      break
+    case ">=":
+      if (val1 < val2)
+        return false
+      break
+    case "==":
+      if (val1 !== val2)
+        return false
+      break
+    case "!=":
+      if (val1 === val2)
+        return false
+      break
+  }
+
+  if (args.length === 0)
+    return true
+  else
+    return cchain(val2, ...args)
+}
+
 const ExtraFunctions = {
+  Sqrt: Math.sqrt,
+  Cbrt: Math.cbrt,
+  Log2: Math.log2,
+  Log10: Math.log10,
+  Ln: Math.log,
   LogB: (b, v) => {
     return Math.log(v) / Math.log(b)
   },
@@ -60,11 +112,31 @@ const ExtraFunctions = {
       }
     }
   },
-  Pow: (x, r) => { // Tries to find a ratio close to r, then do PowRational, otherwise just do normal pow
-
+  Pow: (x, r) => {
+    return Math.pow(x, r)
+  },
+  Im: (x) => {
+    return 0
+  },
+  Re: (x) => {
+    return x
   },
   Mod: (n, m) => {
     return ((n % m) + m) % m
+  },
+  Piecewise: piecewise,
+  CChain: cchain,
+  Cmp: {
+    LessThan: (a, b) => a < b,
+    GreaterThan: (a, b) => a > b,
+    LessEqualThan: (a, b) => a <= b,
+    GreaterEqualThan: (a, b) => a >= b,
+    Equal: (a,b) => a === b,
+    NotEqual: (a,b) => a !== b
+  },
+  Logic: {
+    And: (a, b) => a && b,
+    Or: (a, b) => a || b
   }
 }
 

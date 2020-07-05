@@ -1,4 +1,4 @@
-import {nodeFromJSON} from '../function_ast/from_json'
+import {nodeFromJSON} from '../ast/from_json'
 
 class BeastFunction {
   constructor(json) {

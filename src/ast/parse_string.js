@@ -187,7 +187,7 @@ function check_valid(string, tokens) {
     if (token1.type === "operator" && token2.paren === "]")
       get_angry_at(string, token2.index, "No operator followed by closing bracket")
     if (token1.type === "comma" && token2.paren === ")")
-    get_angry_at(string, token2.index, "No comma followed by closing parenthesis")
+      get_angry_at(string, token2.index, "No comma followed by closing parenthesis")
     if (token1.type === "comma" && token2.paren === "]")
       get_angry_at(string, token2.index, "No comma followed by closing bracket")
     if (token1.paren === '(' && token2.type === "comma")

@@ -358,7 +358,7 @@ function POW_R(i1, r) {
   let max = i1.max
 
   if (max < 0) {
-    // Function is totally undefined
+    // UserDefinedFunction is totally undefined
     return new Interval(0, 0, false, false, i1.contMin, i1.contMax)
   } else if (min < 0) {
     // 0 included in range, so the function is partially undefined
