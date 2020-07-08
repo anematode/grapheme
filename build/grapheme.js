@@ -6856,20 +6856,6 @@ void main() {
     return Variables[varName]
   }
 
-  setTimeout(() => {
-    defineVariable('i', parseString("complex(0, 1)"));
-    defineVariable('pi', parseString("3.141592653589793238"));
-    defineVariable('e', parseString("2.71828182845904523536"));
-    defineVariable('<', parseString("1"));
-    defineVariable('>', parseString("1"));
-    defineVariable('<=', parseString("1"));
-    defineVariable('>=', parseString("1"));
-    defineVariable('!=', parseString("1"));
-    defineVariable('==', parseString("1"));
-
-    RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e');
-  }, 0);
-
   // Allowed plotting modes:
   // rough = linear sample, no refinement
   // fine = linear sample with refinement
@@ -6946,8 +6932,8 @@ void main() {
       }
 
       let vertices = [];
-      let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y1;
-      let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y2;
+      let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y2;
+      let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y1;
 
       if (this.plottingMode === "rough") {
         let points = width * this.quality;
@@ -9654,184 +9640,6 @@ void main() {
     }
   }
 
-  let id = 0;
-
-  function getJobID() {
-    return id++
-  }
-
-  class Job {
-    constructor(beast, id) {
-      assert(beast instanceof Beast);
-
-      this.beast = beast;
-      this.id = id;
-
-      this.eventListeners = {};
-    }
-
-    addEventListener(type, callback) {
-      if (!this.eventListeners[type])
-        this.eventListeners[type] = [callback];
-      else
-        this.eventListeners[type].push(callback);
-    }
-
-    triggerEvent(type, evt) {
-      this.eventListeners[type] ? this.eventListeners[type].forEach(callback => callback(evt)) : null;
-    }
-
-    progress(callback) {
-      this.addEventListener("progress", callback);
-      return this
-    }
-
-    finished(callback) {
-      this.addEventListener("finished", callback);
-      return this
-    }
-
-    cancelled(callback) {
-      this.addEventListener("cancel", callback);
-      return this
-    }
-
-    onError(callback) {
-      this.addEventListener("error", callback);
-    }
-
-    error(err) {
-      if (this.eventListeners["error"].length > 0) {
-        this.triggerEvent("error");
-      } else {
-        throw new Error(err)
-      }
-    }
-
-    cancel() {
-      this.beast.cancelJob(this);
-      this.triggerEvent("cancel");
-    }
-  }
-
-  class Beast {
-    constructor() {
-      this.worker = new Worker("../build/grapheme_worker.js");
-
-      this.worker.onmessage = (evt) => {
-        this.onMessage(evt);
-      };
-
-      this.jobs = [];
-    }
-
-    cancelJob(job) {
-      this.worker.postMessage({job: "cancel", jobID: job.id});
-      this.removeJob(job);
-    }
-
-    removeJob(job) {
-      let index = this.jobs.indexOf(job);
-
-      if (index !== -1) {
-        this.jobs.splice(index, 1);
-      }
-    }
-
-    onMessage(evt) {
-      const data = evt.data;
-
-      switch (data.response) {
-        case "error":
-          this.jobs.forEach(job => {
-            if (job.id === data.jobID) {
-              job.error(data.data);
-            }
-          });
-          break
-        case "progress":
-          this.jobs.forEach(job => {
-            if (job.id === data.jobID) {
-              job.triggerEvent("progress", data.data);
-
-              if (data.data.progress === 1) {
-                this.removeJob(job);
-              }
-            }
-          });
-          break
-        default:
-          throw new Error("HUH?")
-      }
-    }
-
-    createJob(type, data) {
-      let id = getJobID();
-
-      this.worker.postMessage({job: type, jobID: id, data});
-
-      let job = new Job(this, id);
-
-      this.jobs.push(job);
-
-      return job
-    }
-
-    terminate() {
-      this.jobs.forEach(job => job.cancel());
-      this.jobs = [];
-
-      this.worker.terminate();
-    }
-  }
-
-  class BeastPool {
-    constructor() {
-      this.beasts = [];
-      this._index = 0;
-
-      this.setThreadCount(4);
-    }
-
-    get threadCount() {
-      return this.beasts.length
-    }
-
-    setThreadCount(t) {
-      let current = this.threadCount;
-
-      if (current === t)
-        return
-
-      if (current > t) {
-        this.beasts.slice(t).forEach(beast => beast.terminate());
-
-        this.beasts.length = t;
-      } else {
-        for (let i = 0; i < t - current; ++i) {
-          this.beasts.push(new Beast());
-        }
-      }
-    }
-
-    getBeast() {
-      if (this.threadCount <= 0)
-        throw new Error("No beasts to use!")
-
-      if (this._index >= this.threadCount) {
-        this._index = 0;
-      }
-
-      return this.beasts[this._index++]
-    }
-
-    destroy() {
-      this.beasts.forEach(beast => beast.terminate());
-    }
-  }
-
-  const BEAST_POOL = new BeastPool();
-
   // Takes in a function of arity 2, as well as (x1, y1, x2, y2) the box to plot in and xDivide yDivide, the number of
   // times to divide in each direction
   function intervalEqFindBoxes(func, x1, y1, x2, y2, xDivide, yDivide) {
@@ -10931,9 +10739,169 @@ void main() {
     Identity: (r) => r
   };
 
+  class Job extends Promise {
+    constructor(func) {
+
+      const progress = (completed) => this._triggerProgress(completed);
+
+      super((resolve, reject) => {
+        func(progress, resolve, reject);
+      });
+
+      this.startTime = Date.now();
+      this.progressCallbacks = [];
+    }
+
+    _triggerProgress(completed=0) {
+      let time = Date.now();
+
+      this.progressCallbacks.forEach(callback => callback(completed, this.startTime, time));
+    }
+
+    progress(callback) {
+      this.progressCallbacks.push(callback);
+
+      return this
+    }
+  }
+
+  class BeastJob extends Promise {
+    constructor(beast, id, progressCallback=null) {
+      if (beast instanceof Function) {
+        return super(beast)
+      }
+
+      let resolveFunc, rejectFunc;
+
+      super((resolve, reject) => {
+        resolveFunc = resolve;
+        rejectFunc = reject;
+      });
+
+      this.resolve = resolveFunc;
+      this.reject = rejectFunc;
+      this.progress = progressCallback;
+      this.beast = beast;
+      this.id = id;
+    }
+
+    static get [Symbol.species]() {
+      return Promise
+    }
+
+    get [Symbol.toStringTag]() {
+      return "BeastJob"
+    }
+
+    cancel() {
+      this.beast.cancelJob(this);
+    }
+  }
+
+  let id = 1;
+
+  function getJobID() {
+    return id++
+  }
+
+  /**
+   * Posted messages will be of the following forms:
+   * {type: "create", jobID: 2, jobType: "calculatePolylineVertices", data: { ... }}
+   * {type: "cancel", jobID: 2}
+   * {type: "cancelAll"}
+   * Received messages will be of the following forms:
+   * {type: "result", jobID: 2, data: { ... }}
+   * {type: "error", jobID: 2, error: ... }
+   * {type: "progress", jobID: 2, progress: 0.3}
+   */
+  class Beast {
+    constructor() {
+      this.worker = new Worker("../build/grapheme_worker.js");
+      this.worker.onmessage = message => this.receiveMessage(message);
+
+      this.jobs = [];
+    }
+
+    cancelAll() {
+      this.jobs.forEach(job => this.cancelJob(job));
+
+      this.worker.postMessage({type: "cancelAll"});
+    }
+
+    receiveMessage(message) {
+      let data = message.data;
+
+      let id = data.jobID;
+      let job = this.getJob(id);
+
+      if (!job)
+        return
+
+      switch (data.type) {
+        case "result":
+          job.resolve(data.data);
+
+          this._removeJob(job);
+
+          return
+        case "error":
+          job.reject(data.error);
+
+          this._removeJob(job);
+
+          return
+        case "progress":
+          if (job.progress)
+            job.progress(data.progress);
+
+          return
+      }
+    }
+
+    job(type, data, progressCallback) {
+      let id = getJobID();
+
+      console.log("created job " + id);
+
+      this.worker.postMessage({type: "create", jobID: id, data, jobType: type});
+
+      let job = new BeastJob(this, id, progressCallback);
+      this.jobs.push(job);
+
+      return job
+    }
+
+    getJob(id) {
+      for (let i = 0; i < this.jobs.length; ++i) {
+        let job = this.jobs[i];
+
+        if (job.id === id)
+          return job
+      }
+    }
+
+    cancelJob(job, reason="Job cancelled") {
+      console.log("cancelled job " + job.id);
+      this.worker.postMessage({type: "cancel", jobID: job.id});
+
+      job.reject(reason);
+
+      this._removeJob(job);
+    }
+
+    _removeJob(job) {
+      let index = this.jobs.indexOf(job);
+
+      if (index !== -1) {
+        this.jobs.splice(index, 1);
+      }
+    }
+  }
+
   exports.ASTNode = ASTNode;
-  exports.BEAST_POOL = BEAST_POOL;
   exports.BasicLabel = BasicLabel;
+  exports.Beast = Beast;
+  exports.BeastJob = BeastJob;
   exports.BoundingBox = BoundingBox;
   exports.Color = Color;
   exports.Colors = Colors;
@@ -10956,6 +10924,7 @@ void main() {
   exports.Interval = Interval;
   exports.IntervalFunctions = IntervalFunctions;
   exports.IntervalSet = IntervalSet;
+  exports.Job = Job;
   exports.LANCZOS_COEFFICIENTS = LANCZOS_COEFFICIENTS;
   exports.Label2D = Label2D;
   exports.OperatorNode = OperatorNode;
@@ -10965,6 +10934,8 @@ void main() {
   exports.Plot2D = Plot2D;
   exports.PolylineBase = PolylineBase;
   exports.PolylineElement = PolylineElement;
+  exports.RESERVED_FUNCTIONS = RESERVED_FUNCTIONS;
+  exports.RESERVED_VARIABLES = RESERVED_VARIABLES;
   exports.RealFunctions = RealFunctions;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
@@ -11015,3 +10986,14 @@ void main() {
   return exports;
 
 }({}));
+Grapheme.defineVariable('i', Grapheme.parseString("complex(0, 1)"))
+Grapheme.defineVariable('pi', Grapheme.parseString("3.141592653589793238"))
+Grapheme.defineVariable('e', Grapheme.parseString("2.71828182845904523536"))
+Grapheme.defineVariable('<', Grapheme.parseString("1"))
+Grapheme.defineVariable('>', Grapheme.parseString("1"))
+Grapheme.defineVariable('<=', Grapheme.parseString("1"))
+Grapheme.defineVariable('>=', Grapheme.parseString("1"))
+Grapheme.defineVariable('!=', Grapheme.parseString("1"))
+Grapheme.defineVariable('==', Grapheme.parseString("1"))
+
+Grapheme.RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e')

@@ -84,8 +84,8 @@ class FunctionPlot2D extends InteractiveElement {
     }
 
     let vertices = []
-    let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y1
-    let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y2
+    let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y2
+    let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y1
 
     if (this.plottingMode === "rough") {
       let points = width * this.quality

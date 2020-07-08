@@ -4,4 +4,4 @@ export default {
     file: '../../build/grapheme_worker.js',
     format: 'cjs'
   }
-};
+}
