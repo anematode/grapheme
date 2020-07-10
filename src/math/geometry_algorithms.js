@@ -23,6 +23,29 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     return abs(x) * sqrt(1.0 + quot * quot)
   }
 
+  function fastAtan2(y, x) {
+    y = +y
+    x = +x
+
+    var abs_x = 0.0, abs_y = 0.0, a = 0.0, s = 0.0, r = 0.0
+
+    abs_x = abs(x)
+    abs_y = abs(y)
+
+    a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x
+    s = a * a
+    r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a
+
+    if (abs_y > abs_x)
+      r = 1.57079637 - r
+    if (x < 0.0)
+      r = 3.14159265 - r
+    if (y < 0.0)
+      r = -r
+
+    return r
+  }
+
   function point_line_segment_distance (px, py, ax, ay, bx, by) {
     // All input values are floats
     px = +px
@@ -162,7 +185,7 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     x3 = +x3
     y3 = +y3
 
-    return atan2(y3 - y1, x3 - x1) - atan2(y2 - y1, x2 - x1)
+    return +fastAtan2(y3 - y1, x3 - x1) - +fastAtan2(y2 - y1, x2 - x1)
   }
 
   // Returns 0 if no refinement needed, 1 if left refinement, 2 if right refinement, 3 if both refinment

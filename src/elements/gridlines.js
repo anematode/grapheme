@@ -107,6 +107,10 @@ class Gridlines extends GraphemeElement {
     this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
+  updateAsync(info) {
+    this.update(info)
+  }
+
   update(info) {
     super.update()
 

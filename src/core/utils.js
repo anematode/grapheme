@@ -436,6 +436,12 @@ function getFunctionName() {
   return '$' + getRenderID()
 }
 
+function wait(ms) {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, ms)
+  })
+}
+
 export {
   benchmark,
   gcd,
@@ -468,5 +474,6 @@ export {
   removeDuplicates,
   isWorker,
   levenshtein,
-  getFunctionName
+  getFunctionName,
+  wait
 }

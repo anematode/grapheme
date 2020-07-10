@@ -27,6 +27,8 @@ class BeastJob extends Promise {
   }
 
   cancel() {
+    this.reject("Job cancelled")
+
     this.beast.cancelJob(this)
   }
 }

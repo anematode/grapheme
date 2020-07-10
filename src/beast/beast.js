@@ -60,12 +60,10 @@ class Beast {
     }
   }
 
-  job(type, data, progressCallback) {
+  job(type, data, progressCallback=null, transferables=[]) {
     let id = getJobID()
 
-    console.log("created job " + id)
-
-    this.worker.postMessage({type: "create", jobID: id, data, jobType: type})
+    this.worker.postMessage({type: "create", jobID: id, data, jobType: type}, transferables)
 
     let job = new BeastJob(this, id, progressCallback)
     this.jobs.push(job)

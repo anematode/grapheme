@@ -57,6 +57,12 @@ class GraphemeCanvas extends GraphemeGroup {
 
     // Object containing information to be passed to rendered elements defined by derived classes
     /** @protected */ this.extraInfo = {}
+
+    // If we update asynchronously, how long to wait before forcing render. If less than 0, don't do this.
+    this.forceRenderAfter = -1
+
+    // Whether on render() we update asynchronously
+    this.updateAsynchronously = false
   }
 
   /**
@@ -143,6 +149,19 @@ class GraphemeCanvas extends GraphemeGroup {
       }, true)
   }
 
+  updateChildrenAsync(info, criteria) {
+    let cows = []
+
+    this.applyToChildren((child) => {
+      if (criteria(child)) {
+        let async = child.updateAsync(info)
+        cows.push(async)
+      }
+    }, true)
+
+    return Promise.allSettled(cows)
+  }
+
   /**
    * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
    * constructs the information needed to render the child elements.
@@ -196,30 +215,51 @@ class GraphemeCanvas extends GraphemeGroup {
       ...extraInfo
     }
 
-    // Clear the canvas
-    this.clear()
+    const doRender = () => {
 
-    // Reset the rendering context transform
-    this.resetCanvasCtxTransform()
+      // Clear the canvas
+      this.clear()
 
-    this.updateChildren(info, child => child.needsUpdate)
+      // Reset the rendering context transform
+      this.resetCanvasCtxTransform()
 
-    // If this class defines a beforeRender function, call it
-    if (this.beforeRender)
-      this.beforeRender(info)
+      // If this class defines a beforeRender function, call it
+      if (this.beforeRender)
+        this.beforeRender(info)
 
-    // Render all children
-    super.render(info)
+      // Render all children
+      super.render(info)
 
-    // If this class defines an after render function, call it
-    if (this.afterRender)
-      this.afterRender(info)
+      // If this class defines an after render function, call it
+      if (this.afterRender)
+        this.afterRender(info)
 
-    // Copy over the canvas if necessary
-    beforeNormalRender()
+      // Copy over the canvas if necessary
+      beforeNormalRender()
 
-    // Get rid of old labels
-    labelManager.removeOldLabels()
+      // Get rid of old labels
+
+      labelManager.removeOldLabels()
+    }
+
+    if (this.updateAsynchronously) {
+      let updatePromise
+
+      if (this.forceRenderAfter <= 0) {
+        updatePromise = this.updateChildrenAsync(info, child => child.needsUpdate)
+      } else {
+        updatePromise = Promise.race([
+          this.updateChildrenAsync(info, child => child.needsUpdate),
+          utils.wait(this.forceRenderAfter)
+        ])
+      }
+
+      updatePromise.then(doRender)
+    } else {
+      this.updateChildren(info, child => child.needsUpdate)
+
+      doRender()
+    }
   }
 
   /**

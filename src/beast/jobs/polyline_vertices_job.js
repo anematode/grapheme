@@ -1,5 +1,5 @@
 import { WorkerJob } from '../worker_job'
-import { calculatePolylineVertices } from '../../math/polyline_triangulation'
+import { asyncCalculatePolylineVertices, calculatePolylineVertices } from '../../math/polyline_triangulation'
 import { BoundingBox } from '../../math/bounding_box'
 import { Vec2 } from '../../math/vec'
 import { Pen } from '../../styles/pen'
@@ -18,12 +18,17 @@ class PolylineVerticesJob extends WorkerJob {
       this.error("No pen supplied")
     if (!Array.isArray(this.vertices) && !ArrayBuffer.isView(this.vertices))
       this.error("Invalid vertices supplied")
+
+    this.calculator = asyncCalculatePolylineVertices(this.vertices, this.pen, this.box)
   }
 
   tick() {
-    let result = calculatePolylineVertices(this.vertices, this.pen, this.box)
+    let res = this.calculator.next()
 
-    this.result(result, [result.glVertices.buffer])
+    if (res.done)
+      this.result(res.value)
+    else
+      this.progress(res.value)
   }
 }
 

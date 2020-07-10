@@ -28,18 +28,16 @@
 
   let functions = [Math.cosh, Math.sinh, Math.tanh, Math.acosh, Math.asinh, Math.atanh, Math.tan, Math.sin, Math.cos, Math.atan, Math.asin, Math.acos, Math.sqrt, Math.abs, Math.cbrt, Math.floor, Math.ceil, Math.log10]
 
-  for (let i = 0; i < 50; ++i) {
+  for (let i = 0; i < 2; ++i) {
     for (let function_ of functions) {
       let k = i
       let function_plot = new Grapheme.InteractiveFunctionPlot2D()
 
-      function_plot.setFunction(x => (function_(x - i)))
+      function_plot.function = (x => (function_(x - i)))
 
       plot.add(function_plot)
     }
   }
-
-  plot.children.forEach(child => child.update())
 
   let ia = 0
 
@@ -47,6 +45,7 @@
     ia += 0.1
 
     plot.render()
+
     requestAnimationFrame(render)
   }
 

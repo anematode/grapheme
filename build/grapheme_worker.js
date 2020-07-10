@@ -776,7 +776,7 @@ function fastHypot(x, y) {
   return Math.sqrt(x * x + y * y)
 }
 
-const MAX_VERTICES = 1e6;
+const MAX_VERTICES = 1e7;
 
 /**
  * Convert a polyline into another polyline, but with dashes.
@@ -785,7 +785,7 @@ const MAX_VERTICES = 1e6;
  * @param box {BoundingBox}
  * @returns {Array}
  */
-function getDashedPolyline(vertices, pen, box) {
+function* getDashedPolyline(vertices, pen, box, chunkSize=256000) {
   let dashPattern = pen.dashPattern;
 
   if (dashPattern.length % 2 === 1) {
@@ -833,6 +833,8 @@ function getDashedPolyline(vertices, pen, box) {
     currentLesserOffset = lesserOffset;
   }
 
+  let chunkPos = 0;
+
   function generateDashes(x1, y1, x2, y2) {
     let length = fastHypot(x2 - x1, y2 - y1);
     let i = currentIndex;
@@ -867,9 +869,6 @@ function getDashedPolyline(vertices, pen, box) {
 
       totalLen += componentLen;
     }
-
-    if (_ === MAX_VERTICES)
-      console.log(x1, y1, x2, y2);
 
     recalculateOffset(length);
   }
@@ -913,7 +912,16 @@ function getDashedPolyline(vertices, pen, box) {
       recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]));
     }
 
+    chunkPos++;
     generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
+
+    chunkPos++;
+
+    if (chunkPos >= chunkSize) {
+      yield i / vertices.length;
+
+      chunkPos = 0;
+    }
 
     if (!pt2Contained) {
       recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
@@ -978,22 +986,46 @@ function fastAtan2(y, x) {
   return r
 }
 
-/**
- * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
- * @param vertices {Array} The vertices of the polyline.
- * @param pen {Object} A JSON representation of the pen. Could also be the pen object itself.
- * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
- */
-function calculatePolylineVertices(vertices, pen, box) {
+function* asyncCalculatePolylineVertices(vertices, pen, box) {
   if (pen.dashPattern.length === 0) {
     // No dashes to draw
-    return convertTriangleStrip(vertices, pen);
+    let generator = convertTriangleStrip(vertices, pen);
+
+    while (true) {
+      let ret = generator.next();
+
+      if (ret.done)
+        return ret.value
+      else
+        yield ret.value;
+    }
   } else {
-    return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen)
+    let gen1 = getDashedPolyline(vertices, pen, box);
+    let ret;
+
+    while (true) {
+      ret = gen1.next();
+
+      if (ret.done)
+        break
+      else
+        yield ret.value / 2;
+    }
+
+    let gen2 = convertTriangleStrip(ret.value, pen);
+
+    while (true) {
+      let ret = gen2.next();
+
+      if (ret.done)
+        return ret.value
+      else
+        yield ret.value / 2 + 0.5;
+    }
   }
 }
 
-function convertTriangleStrip(vertices, pen) {
+function* convertTriangleStrip(vertices, pen, chunkSize=256000) {
   if (pen.thickness <= 0 ||
     pen.endcapRes < MIN_RES_ANGLE ||
     pen.joinRes < MIN_RES_ANGLE ||
@@ -1018,8 +1050,17 @@ function convertTriangleStrip(vertices, pen) {
 
   let x1, x2, x3, y1, y2, y3;
   let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis;
+  let chunkPos = 0;
 
   for (let i = 0; i < origVertexCount; ++i) {
+    chunkPos++;
+
+    if (chunkPos >= chunkSize) {
+      yield i / origVertexCount;
+
+      chunkPos = 0;
+    }
+
     x1 = (i !== 0) ? vertices[2 * i - 2] : NaN; // Previous vertex
     x2 = vertices[2 * i]; // Current vertex
     x3 = (i !== origVertexCount - 1) ? vertices[2 * i + 2] : NaN; // Next vertex
@@ -1341,12 +1382,17 @@ class PolylineVerticesJob extends WorkerJob {
       this.error("No pen supplied");
     if (!Array.isArray(this.vertices) && !ArrayBuffer.isView(this.vertices))
       this.error("Invalid vertices supplied");
+
+    this.calculator = asyncCalculatePolylineVertices(this.vertices, this.pen, this.box);
   }
 
   tick() {
-    let result = calculatePolylineVertices(this.vertices, this.pen, this.box);
+    let res = this.calculator.next();
 
-    this.result(result, [result.glVertices.buffer]);
+    if (res.done)
+      this.result(res.value);
+    else
+      this.progress(res.value);
   }
 }
 

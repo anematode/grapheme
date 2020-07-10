@@ -52,7 +52,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
 
       this.inspPt.style.fill = this.pen.color
 
-      this.inspPt.markUpdate()
+      this.inspPt.update(info)
     }
   }
 

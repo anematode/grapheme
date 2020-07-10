@@ -1,3 +1,4 @@
+
 import { Label2D } from './label'
 import { Vec2 } from '../math/vec'
 import { BoundingBox} from '../math/bounding_box'
@@ -91,12 +92,19 @@ class SmartLabel extends Label2D {
   }
 
   render(info, force=false) {
+
+    if (!this.objectBox)
+      return
+
+    const smartLabelManager = info.smartLabelManager
+
     if (this.renderTop && !force) {
-      info.smartLabelManager.renderTopLabel(this)
+      smartLabelManager.renderTopLabel(this)
       return
     }
 
     let bbox = this.boundingBoxNaive()
+
 
     let dir = this.forceDir
     const sS = this.style.shadowSize
@@ -104,11 +112,11 @@ class SmartLabel extends Label2D {
     if (!this.forceDir) {
       let min_area = Infinity
 
-      if (info.smartLabelManager && !this.forceDir) {
+      if (smartLabelManager && !this.forceDir) {
         for (let direction of directionPrecedence) {
           let bbox_computed = this.computeTranslatedBoundingBox(bbox, direction)
 
-          let area = info.smartLabelManager.getIntersectingArea(bbox_computed)
+          let area = smartLabelManager.getIntersectingArea(bbox_computed)
 
           if (area <= min_area) {
             dir = direction
@@ -130,7 +138,7 @@ class SmartLabel extends Label2D {
     this.style.dir = dir
     this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y)
 
-    info.smartLabelManager.addBox(computed)
+    smartLabelManager.addBox(computed)
 
     super.render(info)
   }

@@ -28,9 +28,6 @@ class GraphemeElement {
 
     // Whether this element is visible
     /** @public */ this.visible = true
-
-    // Jobs of this element, used with beasts
-    /** @protected */ this.jobs = []
   }
 
   /**
@@ -80,10 +77,10 @@ class GraphemeElement {
   applyToChildren(func, recursive=true) {
     func(this)
 
-    this.children.forEach(func)
-
     if (recursive) {
       this.children.forEach(child => child.applyToChildren(func, true))
+    } else {
+      this.children.forEach(func)
     }
   }
 
@@ -281,8 +278,22 @@ class GraphemeElement {
   /**
    * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly
    */
-  async updateAsync() {
-    this.update()
+  updateAsync(info, progress=null) {
+    if (this.updateTimeout)
+      clearTimeout(this.updateTimeout)
+
+    return new Promise((resolve, reject) => {
+      this.needsUpdate = false
+
+      this.updateTimeout = setTimeout(() => {
+        this.update(info)
+
+        if (progress)
+          progress(1)
+
+        resolve("done")
+      }, 0)
+    })
   }
 }
 

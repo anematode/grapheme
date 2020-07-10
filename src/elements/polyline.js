@@ -1,7 +1,6 @@
 import {Element as GraphemeElement} from "../core/grapheme_element.js"
 import { Pen } from '../styles/pen'
 import * as utils from "../core/utils"
-import { Arrowheads } from '../other/arrowheads'
 import * as GEOCALC from '../math/geometry_algorithms'
 
 class PolylineBase extends GraphemeElement {
@@ -28,16 +27,12 @@ class PolylineElement extends PolylineBase {
     super(params)
 
     this.mainPath = null
-    this.arrowPath = null
   }
 
   update () {
     super.update()
     const path = new Path2D()
     this.mainPath = path
-
-    const arrowPath = new Path2D()
-    this.arrowPath = arrowPath
 
     let vertices = this.vertices
 
@@ -51,14 +46,6 @@ class PolylineElement extends PolylineBase {
     }
 
     const coordinateCount = vertices.length
-    const { arrowLocations, thickness } = this.pen
-
-    const arrowhead = Arrowheads[this.pen.arrowhead]
-
-    const inclStart = arrowLocations.includes('start') && arrowhead
-    const inclSubstart = arrowLocations.includes('substart') && arrowhead
-    const inclEnd = arrowLocations.includes('end') && arrowhead
-    const inclSubend = arrowLocations.includes('subend') && arrowhead
 
     let x2 = NaN
     let x3 = NaN
@@ -82,13 +69,7 @@ class PolylineElement extends PolylineBase {
       const isStartingEndcap = Number.isNaN(x1)
       const isEndingEndcap = Number.isNaN(x3)
 
-      if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-        const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness)
-        path.moveTo(newV.x, newV.y)
-      } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-        const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness)
-        path.lineTo(newV.x, newV.y)
-      } else if (isStartingEndcap) {
+      if (isStartingEndcap) {
         path.moveTo(x2, y2)
       } else {
         path.lineTo(x2, y2)
@@ -111,7 +92,7 @@ class PolylineElement extends PolylineBase {
   render (info) {
     super.render(info)
 
-    if (!this.pen.visible || !this.mainPath || !this.arrowPath)
+    if (!this.pen.visible || !this.mainPath)
       return
 
     const ctx = info.ctx
@@ -119,7 +100,6 @@ class PolylineElement extends PolylineBase {
     this.pen.prepareContext(ctx)
 
     ctx.stroke(this.mainPath)
-    ctx.fill(this.arrowPath)
   }
 }
 

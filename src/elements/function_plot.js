@@ -25,6 +25,7 @@ class FunctionPlot2D extends InteractiveElement {
     this.plottingMode = plottingMode
     this.quality = 1
     this.plottingAxis = 'x'
+    this.maxDepth = 4
 
     this.function = (x) => x
     this.functionName = getFunctionName()
@@ -66,6 +67,16 @@ class FunctionPlot2D extends InteractiveElement {
     this.markUpdate()
   }
 
+  updateAsync(info, progress) {
+    if (this.polyline) {
+      this.polyline.glVertices = null
+
+      this.polyline.needsBufferCopy = true
+    }
+
+    return super.updateAsync(info, progress)
+  }
+
   update(info) {
     super.update()
 
@@ -93,7 +104,7 @@ class FunctionPlot2D extends InteractiveElement {
       vertices = sample_1d(x1, x2, this.function, points)
     } else {
       vertices = adaptively_sample_1d(x1, x2, this.function,
-        width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width)
+        width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth)
     }
 
     if (this.plottingAxis !== 'x') {

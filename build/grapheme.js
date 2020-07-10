@@ -804,6 +804,12 @@ var Grapheme = (function (exports) {
     return '$' + getRenderID()
   }
 
+  function wait(ms) {
+    return new Promise((resolve, reject) => {
+      setTimeout(resolve, ms);
+    })
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -836,7 +842,8 @@ var Grapheme = (function (exports) {
     removeDuplicates: removeDuplicates,
     isWorker: isWorker,
     levenshtein: levenshtein,
-    getFunctionName: getFunctionName
+    getFunctionName: getFunctionName,
+    wait: wait
   });
 
   /**
@@ -1179,9 +1186,6 @@ var Grapheme = (function (exports) {
 
       // Whether this element is visible
       /** @public */ this.visible = true;
-
-      // Jobs of this element, used with beasts
-      /** @protected */ this.jobs = [];
     }
 
     /**
@@ -1231,10 +1235,10 @@ var Grapheme = (function (exports) {
     applyToChildren(func, recursive=true) {
       func(this);
 
-      this.children.forEach(func);
-
       if (recursive) {
         this.children.forEach(child => child.applyToChildren(func, true));
+      } else {
+        this.children.forEach(func);
       }
     }
 
@@ -1432,8 +1436,22 @@ var Grapheme = (function (exports) {
     /**
      * Update asynchronously. If this is not specially defined by derived classes, it defaults to just calling update() directly
      */
-    async updateAsync() {
-      this.update();
+    updateAsync(info, progress=null) {
+      if (this.updateTimeout)
+        clearTimeout(this.updateTimeout);
+
+      return new Promise((resolve, reject) => {
+        this.needsUpdate = false;
+
+        this.updateTimeout = setTimeout(() => {
+          this.update(info);
+
+          if (progress)
+            progress(1);
+
+          resolve("done");
+        }, 0);
+      })
     }
   }
 
@@ -1559,6 +1577,12 @@ var Grapheme = (function (exports) {
 
       // Object containing information to be passed to rendered elements defined by derived classes
       /** @protected */ this.extraInfo = {};
+
+      // If we update asynchronously, how long to wait before forcing render. If less than 0, don't do this.
+      this.forceRenderAfter = -1;
+
+      // Whether on render() we update asynchronously
+      this.updateAsynchronously = false;
     }
 
     /**
@@ -1645,6 +1669,19 @@ var Grapheme = (function (exports) {
         }, true);
     }
 
+    updateChildrenAsync(info, criteria) {
+      let cows = [];
+
+      this.applyToChildren((child) => {
+        if (criteria(child)) {
+          let async = child.updateAsync(info);
+          cows.push(async);
+        }
+      }, true);
+
+      return Promise.allSettled(cows)
+    }
+
     /**
      * Render this GraphemeCanvas. Unlike other elements, it does not take in an "info" argument. This function
      * constructs the information needed to render the child elements.
@@ -1698,30 +1735,51 @@ var Grapheme = (function (exports) {
         ...extraInfo
       };
 
-      // Clear the canvas
-      this.clear();
+      const doRender = () => {
 
-      // Reset the rendering context transform
-      this.resetCanvasCtxTransform();
+        // Clear the canvas
+        this.clear();
 
-      this.updateChildren(info, child => child.needsUpdate);
+        // Reset the rendering context transform
+        this.resetCanvasCtxTransform();
 
-      // If this class defines a beforeRender function, call it
-      if (this.beforeRender)
-        this.beforeRender(info);
+        // If this class defines a beforeRender function, call it
+        if (this.beforeRender)
+          this.beforeRender(info);
 
-      // Render all children
-      super.render(info);
+        // Render all children
+        super.render(info);
 
-      // If this class defines an after render function, call it
-      if (this.afterRender)
-        this.afterRender(info);
+        // If this class defines an after render function, call it
+        if (this.afterRender)
+          this.afterRender(info);
 
-      // Copy over the canvas if necessary
-      beforeNormalRender();
+        // Copy over the canvas if necessary
+        beforeNormalRender();
 
-      // Get rid of old labels
-      labelManager.removeOldLabels();
+        // Get rid of old labels
+
+        labelManager.removeOldLabels();
+      };
+
+      if (this.updateAsynchronously) {
+        let updatePromise;
+
+        if (this.forceRenderAfter <= 0) {
+          updatePromise = this.updateChildrenAsync(info, child => child.needsUpdate);
+        } else {
+          updatePromise = Promise.race([
+            this.updateChildrenAsync(info, child => child.needsUpdate),
+            wait(this.forceRenderAfter)
+          ]);
+        }
+
+        updatePromise.then(doRender);
+      } else {
+        this.updateChildren(info, child => child.needsUpdate);
+
+        doRender();
+      }
     }
 
     /**
@@ -2909,87 +2967,6 @@ var Grapheme = (function (exports) {
     }
   }
 
-  // A glyph to be fill drawn in some fashion.
-  class Glyph {
-    constructor (params = {}) {
-      // vertices is array of Vec2s
-      const { vertices = [] } = params;
-      this.vertices = vertices;
-    }
-
-    addGlyphToPath (path, x = 0, y = 0, scale = 1, angle = 0) {
-      const vertices = this.vertices;
-
-      const translateV = new Vec2(x, y);
-
-      // Nothing to draw
-      if (vertices.length < 2) {
-        return
-      }
-
-      const p1 = vertices[0].clone().scale(scale).rotate(angle).add(translateV);
-      let jumpToNext = false;
-
-      path.moveTo(p1.x, p1.y);
-
-      for (let i = 1; i < vertices.length; ++i) {
-        const p = vertices[i].clone().scale(scale).rotate(angle).add(translateV);
-
-        if (p.hasNaN()) {
-          jumpToNext = true;
-          continue
-        }
-
-        if (jumpToNext) {
-          jumpToNext = false;
-          path.moveTo(p.x, p.y);
-        } else path.lineTo(p.x, p.y);
-      }
-
-      path.closePath();
-    }
-  }
-
-  /**
-  A glyph which creates an arrowhead. Tells you where the arrowhead will be with a Path2D
-  return value, but also tells you where the base of the arrowhead is so that you can join it
-  up properly.
-
-  length is the length of the arrowhead, from tip to tail */
-  class Arrowhead extends Glyph {
-    constructor (params = {}) {
-      super(params);
-
-      const { length = 0 } = params;
-      this.length = length;
-    }
-
-    addPath2D (path, x1, y1, x2, y2, thickness) {
-      const arrowTipAt = new Vec2(x2, y2);
-      const displacement = new Vec2(x1, y1).subtract(arrowTipAt).unit().scale(this.length);
-
-      this.addGlyphToPath(path, x2, y2, 2 * thickness, Math.atan2(y2 - y1, x2 - x1));
-
-      return arrowTipAt.add(displacement)
-    }
-  }
-
-  function createTriangleArrowhead (width, length) {
-    return new Arrowhead({
-      vertices: [
-        new Vec2(0, 0),
-        new Vec2(-length, width / 2),
-        new Vec2(-length, -width / 2)
-      ],
-      length
-    })
-  }
-
-  const Arrowheads = {
-    Normal: createTriangleArrowhead(3, 6),
-    Squat: createTriangleArrowhead(3, 3)
-  };
-
   function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     'use asm';
 
@@ -3013,6 +2990,29 @@ var Grapheme = (function (exports) {
       quot = y / x;
 
       return abs(x) * sqrt(1.0 + quot * quot)
+    }
+
+    function fastAtan2(y, x) {
+      y = +y;
+      x = +x;
+
+      var abs_x = 0.0, abs_y = 0.0, a = 0.0, s = 0.0, r = 0.0;
+
+      abs_x = abs(x);
+      abs_y = abs(y);
+
+      a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x;
+      s = a * a;
+      r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+
+      if (abs_y > abs_x)
+        r = 1.57079637 - r;
+      if (x < 0.0)
+        r = 3.14159265 - r;
+      if (y < 0.0)
+        r = -r;
+
+      return r
     }
 
     function point_line_segment_distance (px, py, ax, ay, bx, by) {
@@ -3154,7 +3154,7 @@ var Grapheme = (function (exports) {
       x3 = +x3;
       y3 = +y3;
 
-      return atan2(y3 - y1, x3 - x1) - atan2(y2 - y1, x2 - x1)
+      return +fastAtan2(y3 - y1, x3 - x1) - +fastAtan2(y2 - y1, x2 - x1)
     }
 
     // Returns 0 if no refinement needed, 1 if left refinement, 2 if right refinement, 3 if both refinment
@@ -3511,16 +3511,12 @@ var Grapheme = (function (exports) {
       super(params);
 
       this.mainPath = null;
-      this.arrowPath = null;
     }
 
     update () {
       super.update();
       const path = new Path2D();
       this.mainPath = path;
-
-      const arrowPath = new Path2D();
-      this.arrowPath = arrowPath;
 
       let vertices = this.vertices;
 
@@ -3534,14 +3530,6 @@ var Grapheme = (function (exports) {
       }
 
       const coordinateCount = vertices.length;
-      const { arrowLocations, thickness } = this.pen;
-
-      const arrowhead = Arrowheads[this.pen.arrowhead];
-
-      const inclStart = arrowLocations.includes('start') && arrowhead;
-      const inclSubstart = arrowLocations.includes('substart') && arrowhead;
-      const inclEnd = arrowLocations.includes('end') && arrowhead;
-      const inclSubend = arrowLocations.includes('subend') && arrowhead;
 
       let x2 = NaN;
       let x3 = NaN;
@@ -3555,23 +3543,14 @@ var Grapheme = (function (exports) {
         const x1 = x2;
         x2 = x3;
         x3 = (i === coordinateCount) ? NaN : vertices[i];
-
-        const y1 = y2;
         y2 = y3;
         y3 = (i === coordinateCount) ? NaN : vertices[i + 1];
 
         if (i === 0) continue
 
         const isStartingEndcap = Number.isNaN(x1);
-        const isEndingEndcap = Number.isNaN(x3);
 
-        if (isStartingEndcap && ((i === 1 && inclStart) || inclSubstart)) {
-          const newV = arrowhead.addPath2D(arrowPath, x3, y3, x2, y2, thickness);
-          path.moveTo(newV.x, newV.y);
-        } else if (isEndingEndcap && ((i === coordinateCount && inclEnd) || inclSubend)) {
-          const newV = arrowhead.addPath2D(arrowPath, x1, y1, x2, y2, thickness);
-          path.lineTo(newV.x, newV.y);
-        } else if (isStartingEndcap) {
+        if (isStartingEndcap) {
           path.moveTo(x2, y2);
         } else {
           path.lineTo(x2, y2);
@@ -3594,7 +3573,7 @@ var Grapheme = (function (exports) {
     render (info) {
       super.render(info);
 
-      if (!this.pen.visible || !this.mainPath || !this.arrowPath)
+      if (!this.pen.visible || !this.mainPath)
         return
 
       const ctx = info.ctx;
@@ -3602,7 +3581,6 @@ var Grapheme = (function (exports) {
       this.pen.prepareContext(ctx);
 
       ctx.stroke(this.mainPath);
-      ctx.fill(this.arrowPath);
     }
   }
 
@@ -3771,12 +3749,19 @@ var Grapheme = (function (exports) {
     }
 
     render(info, force=false) {
+
+      if (!this.objectBox)
+        return
+
+      const smartLabelManager = info.smartLabelManager;
+
       if (this.renderTop && !force) {
-        info.smartLabelManager.renderTopLabel(this);
+        smartLabelManager.renderTopLabel(this);
         return
       }
 
       let bbox = this.boundingBoxNaive();
+
 
       let dir = this.forceDir;
       const sS = this.style.shadowSize;
@@ -3784,11 +3769,11 @@ var Grapheme = (function (exports) {
       if (!this.forceDir) {
         let min_area = Infinity;
 
-        if (info.smartLabelManager && !this.forceDir) {
+        if (smartLabelManager && !this.forceDir) {
           for (let direction of directionPrecedence) {
             let bbox_computed = this.computeTranslatedBoundingBox(bbox, direction);
 
-            let area = info.smartLabelManager.getIntersectingArea(bbox_computed);
+            let area = smartLabelManager.getIntersectingArea(bbox_computed);
 
             if (area <= min_area) {
               dir = direction;
@@ -3810,7 +3795,7 @@ var Grapheme = (function (exports) {
       this.style.dir = dir;
       this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y);
 
-      info.smartLabelManager.addBox(computed);
+      smartLabelManager.addBox(computed);
 
       super.render(info);
     }
@@ -3911,6 +3896,10 @@ var Grapheme = (function (exports) {
       this._polylines = {};
 
       this.addEventListener("plotcoordschanged", () => this.markUpdate());
+    }
+
+    updateAsync(info) {
+      this.update(info);
     }
 
     update(info) {
@@ -4236,7 +4225,7 @@ var Grapheme = (function (exports) {
     return Math.sqrt(x * x + y * y)
   }
 
-  const MAX_VERTICES = 1e6;
+  const MAX_VERTICES = 1e7;
 
   /**
    * Convert a polyline into another polyline, but with dashes.
@@ -4245,7 +4234,7 @@ var Grapheme = (function (exports) {
    * @param box {BoundingBox}
    * @returns {Array}
    */
-  function getDashedPolyline(vertices, pen, box) {
+  function* getDashedPolyline(vertices, pen, box, chunkSize=256000) {
     let dashPattern = pen.dashPattern;
 
     if (dashPattern.length % 2 === 1) {
@@ -4293,6 +4282,8 @@ var Grapheme = (function (exports) {
       currentLesserOffset = lesserOffset;
     }
 
+    let chunkPos = 0;
+
     function generateDashes(x1, y1, x2, y2) {
       let length = fastHypot(x2 - x1, y2 - y1);
       let i = currentIndex;
@@ -4327,9 +4318,6 @@ var Grapheme = (function (exports) {
 
         totalLen += componentLen;
       }
-
-      if (_ === MAX_VERTICES)
-        console.log(x1, y1, x2, y2);
 
       recalculateOffset(length);
     }
@@ -4373,7 +4361,16 @@ var Grapheme = (function (exports) {
         recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]));
       }
 
+      chunkPos++;
       generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
+
+      chunkPos++;
+
+      if (chunkPos >= chunkSize) {
+        yield i / vertices.length;
+
+        chunkPos = 0;
+      }
 
       if (!pt2Contained) {
         recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
@@ -4449,15 +4446,56 @@ var Grapheme = (function (exports) {
    * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
    */
   function calculatePolylineVertices(vertices, pen, box) {
-    if (pen.dashPattern.length === 0) {
-      // No dashes to draw
-      return convertTriangleStrip(vertices, pen);
-    } else {
-      return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen)
+    let generator = asyncCalculatePolylineVertices(vertices, pen, box);
+
+    while (true) {
+      let ret = generator.next();
+
+      if (ret.done)
+        return ret.value
     }
   }
 
-  function convertTriangleStrip(vertices, pen) {
+  function* asyncCalculatePolylineVertices(vertices, pen, box) {
+    if (pen.dashPattern.length === 0) {
+      // No dashes to draw
+      let generator = convertTriangleStrip(vertices, pen);
+
+      while (true) {
+        let ret = generator.next();
+
+        if (ret.done)
+          return ret.value
+        else
+          yield ret.value;
+      }
+    } else {
+      let gen1 = getDashedPolyline(vertices, pen, box);
+      let ret;
+
+      while (true) {
+        ret = gen1.next();
+
+        if (ret.done)
+          break
+        else
+          yield ret.value / 2;
+      }
+
+      let gen2 = convertTriangleStrip(ret.value, pen);
+
+      while (true) {
+        let ret = gen2.next();
+
+        if (ret.done)
+          return ret.value
+        else
+          yield ret.value / 2 + 0.5;
+      }
+    }
+  }
+
+  function* convertTriangleStrip(vertices, pen, chunkSize=256000) {
     if (pen.thickness <= 0 ||
       pen.endcapRes < MIN_RES_ANGLE ||
       pen.joinRes < MIN_RES_ANGLE ||
@@ -4482,8 +4520,17 @@ var Grapheme = (function (exports) {
 
     let x1, x2, x3, y1, y2, y3;
     let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis;
+    let chunkPos = 0;
 
     for (let i = 0; i < origVertexCount; ++i) {
+      chunkPos++;
+
+      if (chunkPos >= chunkSize) {
+        yield i / origVertexCount;
+
+        chunkPos = 0;
+      }
+
       x1 = (i !== 0) ? vertices[2 * i - 2] : NaN; // Previous vertex
       x2 = vertices[2 * i]; // Current vertex
       x3 = (i !== origVertexCount - 1) ? vertices[2 * i + 2] : NaN; // Next vertex
@@ -4738,6 +4785,10 @@ void main() {
       this.glVertices = glVertices;
     }
 
+    updateAsync(progress) {
+
+    }
+
     update (info) {
       super.update();
 
@@ -4784,7 +4835,7 @@ void main() {
     }
 
     render (info) {
-      if (!this.visible) {
+      if (!this.visible || !this.glVertices) {
         return
       }
 
@@ -5094,10 +5145,10 @@ void main() {
 
   // TODO: Stop this function from making too many points
   function adaptively_sample_1d(start, end, func, initialPoints=500,
-    aspectRatio = 1, yRes = 0,
+    aspectRatio = 1, yRes = 0, maxDepth=MAX_DEPTH,
     angle_threshold=0.1, depth=0,
     includeEndpoints=true, ptCount=0) {
-    if (depth > MAX_DEPTH || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+    if (depth > maxDepth || start === undefined || end === undefined || isNaN(start) || isNaN(end))
       return new Float64Array([NaN, NaN])
 
     let vertices = sample_1d(start, end, func, initialPoints, includeEndpoints);
@@ -5141,7 +5192,7 @@ void main() {
       let angle_i = i / 2;
 
       if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
-        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, angle_threshold, depth + 1, true, ptCount);
+        let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, maxDepth, angle_threshold, depth + 1, true, ptCount);
 
         addVertices(vs);
 
@@ -6873,6 +6924,7 @@ void main() {
       this.plottingMode = plottingMode;
       this.quality = 1;
       this.plottingAxis = 'x';
+      this.maxDepth = 4;
 
       this.function = (x) => x;
       this.functionName = getFunctionName();
@@ -6914,6 +6966,16 @@ void main() {
       this.markUpdate();
     }
 
+    updateAsync(info, progress) {
+      if (this.polyline) {
+        this.polyline.glVertices = null;
+
+        this.polyline.needsBufferCopy = true;
+      }
+
+      return super.updateAsync(info, progress)
+    }
+
     update(info) {
       super.update();
 
@@ -6941,7 +7003,7 @@ void main() {
         vertices = sample_1d(x1, x2, this.function, points);
       } else {
         vertices = adaptively_sample_1d(x1, x2, this.function,
-          width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width);
+          width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth);
       }
 
       if (this.plottingAxis !== 'x') {
@@ -7437,7 +7499,7 @@ void main() {
 
         this.inspPt.style.fill = this.pen.color;
 
-        this.inspPt.markUpdate();
+        this.inspPt.update(info);
       }
     }
 
@@ -10739,32 +10801,6 @@ void main() {
     Identity: (r) => r
   };
 
-  class Job extends Promise {
-    constructor(func) {
-
-      const progress = (completed) => this._triggerProgress(completed);
-
-      super((resolve, reject) => {
-        func(progress, resolve, reject);
-      });
-
-      this.startTime = Date.now();
-      this.progressCallbacks = [];
-    }
-
-    _triggerProgress(completed=0) {
-      let time = Date.now();
-
-      this.progressCallbacks.forEach(callback => callback(completed, this.startTime, time));
-    }
-
-    progress(callback) {
-      this.progressCallbacks.push(callback);
-
-      return this
-    }
-  }
-
   class BeastJob extends Promise {
     constructor(beast, id, progressCallback=null) {
       if (beast instanceof Function) {
@@ -10794,6 +10830,8 @@ void main() {
     }
 
     cancel() {
+      this.reject("Job cancelled");
+
       this.beast.cancelJob(this);
     }
   }
@@ -10858,12 +10896,10 @@ void main() {
       }
     }
 
-    job(type, data, progressCallback) {
+    job(type, data, progressCallback=null, transferables=[]) {
       let id = getJobID();
 
-      console.log("created job " + id);
-
-      this.worker.postMessage({type: "create", jobID: id, data, jobType: type});
+      this.worker.postMessage({type: "create", jobID: id, data, jobType: type}, transferables);
 
       let job = new BeastJob(this, id, progressCallback);
       this.jobs.push(job);
@@ -10924,7 +10960,6 @@ void main() {
   exports.Interval = Interval;
   exports.IntervalFunctions = IntervalFunctions;
   exports.IntervalSet = IntervalSet;
-  exports.Job = Job;
   exports.LANCZOS_COEFFICIENTS = LANCZOS_COEFFICIENTS;
   exports.Label2D = Label2D;
   exports.OperatorNode = OperatorNode;
@@ -10948,6 +10983,7 @@ void main() {
   exports._interpolationsEnabled = _interpolationsEnabled;
   exports.adaptively_sample_1d = adaptively_sample_1d;
   exports.anglesBetween = anglesBetween;
+  exports.asyncCalculatePolylineVertices = asyncCalculatePolylineVertices;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
   exports.defineFunction = defineFunction;

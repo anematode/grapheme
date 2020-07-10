@@ -75,6 +75,10 @@ class WebGLPolyline extends WebGLElement {
     this.glVertices = glVertices
   }
 
+  updateAsync(progress) {
+
+  }
+
   update (info) {
     super.update()
 
@@ -121,7 +125,7 @@ class WebGLPolyline extends WebGLElement {
   }
 
   render (info) {
-    if (!this.visible) {
+    if (!this.visible || !this.glVertices) {
       return
     }
 

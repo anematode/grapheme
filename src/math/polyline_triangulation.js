@@ -64,15 +64,56 @@ function fastAtan2(y, x) {
  * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
  */
 function calculatePolylineVertices(vertices, pen, box) {
-  if (pen.dashPattern.length === 0) {
-    // No dashes to draw
-    return convertTriangleStrip(vertices, pen);
-  } else {
-    return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen)
+  let generator = asyncCalculatePolylineVertices(vertices, pen, box)
+
+  while (true) {
+    let ret = generator.next()
+
+    if (ret.done)
+      return ret.value
   }
 }
 
-function convertTriangleStrip(vertices, pen) {
+function* asyncCalculatePolylineVertices(vertices, pen, box) {
+  if (pen.dashPattern.length === 0) {
+    // No dashes to draw
+    let generator = convertTriangleStrip(vertices, pen);
+
+    while (true) {
+      let ret = generator.next()
+
+      if (ret.done)
+        return ret.value
+      else
+        yield ret.value
+    }
+  } else {
+    let gen1 = getDashedPolyline(vertices, pen, box)
+    let ret
+
+    while (true) {
+      ret = gen1.next()
+
+      if (ret.done)
+        break
+      else
+        yield ret.value / 2
+    }
+
+    let gen2 = convertTriangleStrip(ret.value, pen)
+
+    while (true) {
+      let ret = gen2.next()
+
+      if (ret.done)
+        return ret.value
+      else
+        yield ret.value / 2 + 0.5
+    }
+  }
+}
+
+function* convertTriangleStrip(vertices, pen, chunkSize=256000) {
   if (pen.thickness <= 0 ||
     pen.endcapRes < MIN_RES_ANGLE ||
     pen.joinRes < MIN_RES_ANGLE ||
@@ -99,8 +140,17 @@ function convertTriangleStrip(vertices, pen) {
 
   let x1, x2, x3, y1, y2, y3
   let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis
+  let chunkPos = 0
 
   for (let i = 0; i < origVertexCount; ++i) {
+    chunkPos++
+
+    if (chunkPos >= chunkSize) {
+      yield i / origVertexCount
+
+      chunkPos = 0
+    }
+
     x1 = (i !== 0) ? vertices[2 * i - 2] : NaN // Previous vertex
     x2 = vertices[2 * i] // Current vertex
     x3 = (i !== origVertexCount - 1) ? vertices[2 * i + 2] : NaN // Next vertex
@@ -287,4 +337,4 @@ function convertTriangleStrip(vertices, pen) {
   }
 }
 
-export {calculatePolylineVertices, nextPowerOfTwo}
+export {calculatePolylineVertices, nextPowerOfTwo, asyncCalculatePolylineVertices}
