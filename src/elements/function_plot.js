@@ -132,18 +132,10 @@ class FunctionPlot2D extends InteractiveElement {
     if (!this.polyline)
       return
 
-    const box = info.plot.transform.box
-    const gl = info.universe.gl
-
-    gl.enable(gl.SCISSOR_TEST)
-    gl.scissor(box.top_left.x * utils.dpr,
-      box.top_left.y * utils.dpr,
-      box.width * utils.dpr,
-      box.height * utils.dpr)
-
+    info.scissorPlot(true)
     this.polyline.render(info)
 
-    gl.disable(gl.SCISSOR_TEST)
+    info.scissorPlot(false)
 
     this.renderChildren(info)
   }

@@ -10,7 +10,7 @@ class Dataset2D extends GraphemeElement {
 
     this.points = []
     this.pixelPoints = []
-    this.useNative = true
+    this.useNative = false
 
     this.geometry = new Simple2DWebGLGeometry()
 
@@ -57,9 +57,13 @@ class Dataset2D extends GraphemeElement {
   }
 
   render(info) {
+    info.scissorPlot(true)
+
     super.render(info)
 
     this.geometry.render(info)
+
+    info.scissorPlot(false)
   }
 
   distanceFrom(v) {

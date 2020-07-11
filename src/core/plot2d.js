@@ -4,6 +4,7 @@ import { BoundingBox } from '../math/bounding_box'
 import { Vec2 } from '../math/vec.js'
 import { DefaultUniverse } from './grapheme_universe'
 import { SmartLabelManager } from '../other/smart_label_manager'
+import * as utils from './utils'
 
 /**
  * @class Plot2D
@@ -40,6 +41,20 @@ class Plot2D extends InteractiveCanvas {
 
     // smartLabelManager, used to keep track of smart label positions and keep them from intersecting
     this.extraInfo.smartLabelManager = new SmartLabelManager(this)
+    this.extraInfo.scissorPlot = (bool) => {
+      const gl = this.universe.gl
+      const box = this.transform.box
+
+      if (bool) {
+        gl.enable(gl.SCISSOR_TEST)
+        gl.scissor(box.top_left.x * utils.dpr,
+          box.top_left.y * utils.dpr,
+          box.width * utils.dpr,
+          box.height * utils.dpr)
+      } else {
+        gl.disable(gl.SCISSOR_TEST)
+      }
+    }
 
     // Add event listeners for mouse events
     this.addEventListener('mousedown', evt => this.mouseDown(evt))
@@ -95,6 +110,8 @@ class Plot2D extends InteractiveCanvas {
    * @param info {Object} (unused)
    */
   beforeRender (info) {
+    this.extraInfo.scissorPlot(false)
+
     this.extraInfo.smartLabelManager.reset()
   }
 

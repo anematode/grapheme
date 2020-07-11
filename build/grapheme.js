@@ -2371,6 +2371,20 @@ var Grapheme = (function (exports) {
 
       // smartLabelManager, used to keep track of smart label positions and keep them from intersecting
       this.extraInfo.smartLabelManager = new SmartLabelManager(this);
+      this.extraInfo.scissorPlot = (bool) => {
+        const gl = this.universe.gl;
+        const box = this.transform.box;
+
+        if (bool) {
+          gl.enable(gl.SCISSOR_TEST);
+          gl.scissor(box.top_left.x * dpr,
+            box.top_left.y * dpr,
+            box.width * dpr,
+            box.height * dpr);
+        } else {
+          gl.disable(gl.SCISSOR_TEST);
+        }
+      };
 
       // Add event listeners for mouse events
       this.addEventListener('mousedown', evt => this.mouseDown(evt));
@@ -2426,6 +2440,8 @@ var Grapheme = (function (exports) {
      * @param info {Object} (unused)
      */
     beforeRender (info) {
+      this.extraInfo.scissorPlot(false);
+
       this.extraInfo.smartLabelManager.reset();
     }
 
@@ -7092,18 +7108,10 @@ void main() {
       if (!this.polyline)
         return
 
-      const box = info.plot.transform.box;
-      const gl = info.universe.gl;
-
-      gl.enable(gl.SCISSOR_TEST);
-      gl.scissor(box.top_left.x * dpr,
-        box.top_left.y * dpr,
-        box.width * dpr,
-        box.height * dpr);
-
+      info.scissorPlot(true);
       this.polyline.render(info);
 
-      gl.disable(gl.SCISSOR_TEST);
+      info.scissorPlot(false);
 
       this.renderChildren(info);
     }
@@ -11682,7 +11690,7 @@ void main() {
 
       this.points = [];
       this.pixelPoints = [];
-      this.useNative = true;
+      this.useNative = false;
 
       this.geometry = new Simple2DWebGLGeometry();
 
@@ -11729,9 +11737,13 @@ void main() {
     }
 
     render(info) {
+      info.scissorPlot(true);
+
       super.render(info);
 
       this.geometry.render(info);
+
+      info.scissorPlot(false);
     }
 
     distanceFrom(v) {
