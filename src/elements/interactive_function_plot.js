@@ -26,7 +26,6 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
     this.inspectionEnabled = true
 
     this.inspPt = null
-    this.inspPos = null
 
     this.inspectionPointLingers = true
     this.inspPtLabelStyle = new Label2DStyle({dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2})
@@ -46,14 +45,6 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
 
   update(info) {
     super.update(info)
-
-    if (this.inspPt && this.inspPos) {
-      this.inspPt.position = this.plot.transform.plotToPixel(this.inspPos)
-
-      this.inspPt.style.fill = this.pen.color
-
-      this.inspPt.update(info)
-    }
   }
 
   set inspectionEnabled (value) {
@@ -84,7 +75,8 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
             labelStyle: this.inspPtLabelStyle
           })
 
-          this.inspPt.style.fill = this.pen.color
+          this.inspPt.color = this.pen.color
+          this.inspPt.glyph = this.inspPt.glyph.clone().scale(0.75)
 
           this.add(this.inspPt)
         } else {
@@ -93,7 +85,7 @@ class InteractiveFunctionPlot2D extends FunctionPlot2D {
           this.inspPos = pos
 
           let inspPt = this.inspPt
-          inspPt.position = this.plot.transform.plotToPixel(pos)
+          inspPt.position = pos
 
           inspPt.label.text = "(" + pos.asArray().map(StandardLabelFunction).join(', ') + ')'
         }

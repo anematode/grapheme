@@ -10,48 +10,56 @@ class Dataset2D extends GraphemeElement {
 
     this.points = []
     this.pixelPoints = []
+    this.useNative = true
 
     this.geometry = new Simple2DWebGLGeometry()
-
-    this.color = this.geometry.color
-
-    this.clickRadius = 5
 
     this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
-  update(info) {
-    let triangulation = this.glyph.triangulation
-    let triVertices = new Float32Array(triangulation.length * this.points.length / 2)
+  get color() {
+    return this.geometry.color
+  }
 
+  set color(v) {
+    this.geometry.color = v
+  }
+
+  update(info) {
     const points = this.pixelPoints = this.points.slice()
 
     info.plot.transform.plotToPixelArr(points)
 
-    let index = 0
+    if (this.useNative) {
+      this.geometry.glVertices = new Float32Array(points)
+      this.geometry.renderMode = "points"
+    } else {
+      let triangulation = this.glyph.triangulation
+      let triVertices = new Float32Array(triangulation.length * this.points.length / 2)
 
-    for (let i = 0; i < points.length; i += 2) {
-      let x = points[i]
-      let y = points[i+1]
+      let index = 0
 
-      for (let j = 0; j < triangulation.length; j += 2) {
-        triVertices[index++] = triangulation[j] + x
-        triVertices[index++] = triangulation[j+1] + y
+      for (let i = 0; i < points.length; i += 2) {
+        let x = points[i]
+        let y = points[i + 1]
+
+        for (let j = 0; j < triangulation.length; j += 2) {
+          triVertices[index++] = triangulation[j] + x
+          triVertices[index++] = triangulation[j + 1] + y
+        }
       }
+
+      this.geometry.glVertices = triVertices
+      this.geometry.renderMode = "triangles"
     }
 
-    this.geometry.glVertices = triVertices
-    this.geometry.needsBufferCopy = true
+    this.geometry.color = this.color
   }
 
   render(info) {
     super.render(info)
 
     this.geometry.render(info)
-  }
-
-  isClick(v) {
-    return this.distanceFrom(v) < this.clickRadius
   }
 
   distanceFrom(v) {

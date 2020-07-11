@@ -4,25 +4,23 @@ import { Colors } from '../other/color'
 import { StandardLabelFunction } from './gridlines'
 import { Element as GraphemeElement } from '../core/grapheme_element'
 import { SmartLabel } from './smart_label'
+import { Glyphs } from '../other/glyph'
 
 class LabeledPoint extends PointElement {
   constructor (params = {}) {
-    super()
+    super(params)
 
-    this.position = params.position instanceof Vec2 ? params.position : new Vec2(params.position)
-    this.label = new SmartLabel({style: params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}})
+    const labelStyle = params.labelStyle ? params.labelStyle : {dir: "NE", fontSize: 14, shadowColor: Colors.WHITE, shadowSize: 2}
+
+    this.label = new SmartLabel({style: labelStyle})
 
     this.add(this.label)
   }
 
-  update () {
-    super.update()
+  update (info) {
+    super.update(info)
 
     this.label.objectBox = this.getBBox()
-  }
-
-  render (info) {
-    super.render(info)
   }
 }
 

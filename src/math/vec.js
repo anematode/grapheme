@@ -17,6 +17,11 @@ class Vec2 {
     return new Vec2(this.x, this.y)
   }
 
+  setComponents(x, y) {
+    this.x = x
+    this.y = y
+  }
+
   set(v) {
     this.x = v.x
     this.y = v.y

@@ -33,6 +33,16 @@ class Simple2DWebGLGeometry extends WebGLElement {
     this.needsBufferCopy = true
   }
 
+  get glVertices() {
+    return this.vertices
+  }
+
+  set glVertices(verts) {
+    this.vertices = verts
+
+    this.needsBufferCopy = true
+  }
+
   render(info) {
     if (!this.visible || !this.glVertices || this.glVertices.length === 0)
       return

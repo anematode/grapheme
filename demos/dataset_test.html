@@ -30,9 +30,12 @@
   let dataset = new Grapheme.Dataset2D()
   plot.add(dataset)
 
+  let point = new Grapheme.LabeledPoint()
+  plot.add(point)
+
   dataset.points = []
 
-  for (let i = 0; i < 100; ++i) {
+  for (let i = 1; i < 1e6; ++i) {
     dataset.points.push(Math.random(), Math.random())
   }
 

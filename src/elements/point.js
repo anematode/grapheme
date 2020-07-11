@@ -1,85 +1,65 @@
 import { Element as GraphemeElement } from '../core/grapheme_element'
-import { Pen } from '../styles/pen'
-import { Colors } from '../other/color'
 import { Vec2 } from '../math/vec'
 import { BoundingBox } from '../math/bounding_box'
-
-class PointElementStyle {
-  constructor(params={}) {
-    const {
-      pen = new Pen(),
-      fill = Colors.RED,
-      doStroke = false,
-      doFill = true,
-      radius = 3
-    } = params
-
-    this.pen = pen
-    this.fill = fill
-    this.doStroke = doStroke
-    this.doFill = doFill
-    this.radius = radius
-  }
-
-  prepareContext(ctx) {
-    this.pen.prepareContext(ctx)
-
-    ctx.fillStyle = this.fill.hex()
-  }
-}
+import { Simple2DWebGLGeometry } from './webgl_geometry'
+import { Glyphs } from '../other/glyph'
 
 class PointElement extends GraphemeElement {
   constructor(params={}) {
     super(params)
 
-    const {
-      position = new Vec2(0,0),
-      style = {}
-    } = params
+    let position = params.position ? params.position : new Vec2(0, 0)
 
-    this.position = new Vec2(position)
+    if (!position instanceof Vec2) {
+      position = new Vec2(position)
+    }
 
-    this.style = new PointElementStyle(style)
+    this.position = position
+    this.pixelPosition = new Vec2(0, 0)
+    this.geometry = new Simple2DWebGLGeometry()
+    this.radius = 5
+    this.glyph = params.glyph ? params.glyph : Glyphs.CIRCLE
+
+    this.addEventListener("plotcoordschanged", () => {
+      this.markUpdate()
+    })
   }
 
-  get radius() {
-    return this.style.radius
+  get color() {
+    return this.geometry.color
   }
 
-  set radius(value) {
-    this.style.radius = value
+  set color(v) {
+    this.geometry.color = v
   }
 
   isClick(pos) {
     return this.position.distanceSquaredTo(pos) <= (2 + this.radius + (this.style.doStroke ? this.style.pen.thickness : 0)) ** 2
   }
 
+  update(info) {
+    super.update(info)
 
-  update() {
-    super.update()
+    const plot = info.plot
 
-    this._path = new Path2D()
-    this._path.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI)
+    let pixelPos = this.pixelPosition = plot.transform.plotToPixel(this.position)
+
+    this.geometry.glVertices = this.glyph.clone().translate(pixelPos.x, pixelPos.y).triangulation
   }
 
   render(info) {
     super.render(info)
 
-    this.style.prepareContext(info.ctx)
-
-    if (this.style.doFill)
-      info.ctx.fill(this._path)
-    if (this.style.doStroke)
-      info.ctx.stroke(this._path)
+    this.geometry.render(info)
   }
 
   getBBox() {
-    let cx = this.position.x
-    let cy = this.position.y
+    let cx = this.pixelPosition.x
+    let cy = this.pixelPosition.y
 
     let box = new BoundingBox()
 
-    box.height = box.width = this.radius * 2 * 1.4
+    box.height = box.width = this.radius
 
     box.cx = cx
     box.cy = cy
@@ -88,4 +68,4 @@ class PointElement extends GraphemeElement {
   }
 }
 
-export { PointElement, PointElementStyle }
+export { PointElement }
