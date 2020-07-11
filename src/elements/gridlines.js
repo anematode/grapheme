@@ -239,7 +239,7 @@ class Gridlines extends GraphemeElement {
           }
 
           if (right) {
-            let style = getLabelStyle("right", (style) => style.dir = "W")
+            let style = getLabelStyle("right", (style) => style.dir = "E")
 
             addLabel(marker.pos, style, new Vec2(ex + label_padding, y_coord))
           }

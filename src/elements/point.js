@@ -59,7 +59,7 @@ class PointElement extends GraphemeElement {
 
     let box = new BoundingBox()
 
-    box.height = box.width = this.radius
+    box.height = box.width = this.radius * 1.4
 
     box.cx = cx
     box.cy = cy

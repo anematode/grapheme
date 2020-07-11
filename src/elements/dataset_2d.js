@@ -26,6 +26,8 @@ class Dataset2D extends GraphemeElement {
   }
 
   update(info) {
+    super.update(info)
+
     const points = this.pixelPoints = this.points.slice()
 
     info.plot.transform.plotToPixelArr(points)

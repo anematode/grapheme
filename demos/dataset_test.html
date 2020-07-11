@@ -33,13 +33,6 @@
   let point = new Grapheme.LabeledPoint()
   plot.add(point)
 
-  dataset.points = []
-
-  for (let i = 1; i < 1e4; ++i) {
-    dataset.points.push(Math.random(), Math.random())
-  }
-
-
   let ia = 0;
   function render() {
     ia += 0.1;
