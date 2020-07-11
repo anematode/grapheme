@@ -12,6 +12,7 @@ import Digamma from "./digamma"
 import Trigamma from "./trigamma"
 import Polygamma from "./polygamma"
 import LnGamma from "./ln_gamma"
+import Zeta from "./zeta"
 
 /**
  * Complex functions!
@@ -19,7 +20,7 @@ import LnGamma from "./ln_gamma"
 const ComplexFunctions = Object.freeze({
   ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
   ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-  Gamma, Digamma, Trigamma, Polygamma, LnGamma
+  Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta
 })
 
 export { ComplexFunctions }

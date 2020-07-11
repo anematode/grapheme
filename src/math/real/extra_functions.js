@@ -1,5 +1,6 @@
 import { mod, gcd } from "../../core/utils"
 import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function'
+import { zeta } from '../riemann_zeta'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -140,6 +141,7 @@ const ExtraFunctions = {
   },
   Floor: Math.floor,
   Ceil: Math.ceil,
+  Zeta: zeta
 }
 
 export default ExtraFunctions

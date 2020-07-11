@@ -34,6 +34,13 @@ export const PowR = (z, r) => {
   return Pow(z, new Complex(r))
 }
 
+export const PowZ = (r, z) => {
+  if (r === 0)
+    return new Complex(0)
+
+  return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
+}
+
 /**
  * z^r, where r is a real number, branched.
  * @param z {Complex}

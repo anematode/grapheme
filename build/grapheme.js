@@ -6736,7 +6736,21 @@ void main() {
         evaluate: "RealFunctions.Ceil",
         desc: "Returns the ceiling of a real number r."
       })
-    ]
+    ],
+    "riemann_zeta": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Zeta",
+        desc: "Returns the Riemann zeta function of a real number r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Zeta",
+        desc: "Returns the Riemann zeta function of a complex number r."
+      })
+    ],
   };
 
   function processExportedVariables(exportedVariables) {
@@ -10650,6 +10664,13 @@ void main() {
     return Pow(z, new Complex(r))
   };
 
+  const PowZ = (r, z) => {
+    if (r === 0)
+      return new Complex(0)
+
+    return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
+  };
+
   /**
    * z^r, where r is a real number, branched.
    * @param z {Complex}
@@ -10748,6 +10769,7 @@ void main() {
     Pow: Pow,
     PowBranched: PowBranched,
     PowR: PowR,
+    PowZ: PowZ,
     PowRBranched: PowRBranched,
     PowN: PowN,
     Sqrt: Sqrt,
@@ -11339,13 +11361,140 @@ void main() {
     }
   }
 
+  const ZETA_N = 30;
+  const ZETA_COEFFS = [];
+
+  for (let k = 0; k <= ZETA_N; ++k) {
+    let value = 0;
+
+    for (let j = k; j <= ZETA_N; ++j) {
+      value += gamma$1(ZETA_N + j - 1) * 4 ** j / gamma$1(ZETA_N - j) / gamma$1(2 * j);
+    }
+
+    value *= ZETA_N;
+
+    ZETA_COEFFS.push(value);
+  }
+
+  function zeta(r) {
+    if (r === 1)
+      return Infinity
+
+    if (r % 2 === 0 && r < 0)
+      return 0
+
+    if (r < 0.5) {
+      // zeta(s) = 2 ^ s * pi ^ (s - 1) * sin( pi * s / 2 ) * gamma( 1 - s ) * zeta( 1 - s )
+
+      return 2 ** r * Math.PI ** (r - 1) * Math.sin(Math.PI * r / 2) * gamma$1(1 - r) * zeta(1 - r)
+    }
+
+    if (r === 0.5) {
+      return -1.4603545088095868
+    }
+
+    let seriesSum = 0;
+    let sign = 1;
+
+    for (let k = 0; k < ZETA_N; ++k) {
+      seriesSum += sign * ZETA_COEFFS[k+1] / ((k+1) ** r);
+
+      sign *= -1;
+    }
+
+    return seriesSum / (ZETA_COEFFS[0] * (1 - 2 ** (1 - r)))
+  }
+
+  zeta.coeffs = ZETA_COEFFS;
+  zeta.n = ZETA_N;
+
+  let ZETA_COEFFS$1 = zeta.coeffs;
+  let ZETA_N$1 = zeta.n;
+
+  function Chi(s) {
+    let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex(1))));
+
+    let sine = Sin(s.scale(Math.PI / 2));
+
+    let gamma = Gamma(Subtract(new Complex(1), s));
+
+    return Multiply(powers, Multiply(sine, gamma))
+  }
+
+  function RiemannSiegel(z) {
+    let t = z.im;
+    let m = 10;
+
+    let chiS = Chi(z);
+
+    let sum = new Complex(0);
+
+    let mZ = z.scale(-1);
+
+    for (let n = 1; n <= m; ++n) {
+      let component = PowZ(n, mZ);
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    let secondSum = new Complex(0);
+
+    let oneMz = Subtract(z, new Complex(1));
+
+    for (let n = 1; n <= m; ++n) {
+      let component = PowZ(n, oneMz);
+
+      secondSum.re += component.re;
+      secondSum.im += component.im;
+    }
+
+    secondSum = Multiply(chiS, secondSum);
+
+    return Add(sum, secondSum)
+  }
+
+  // Implementation of the riemann zeta function for complex numbers
+
+  function Zeta(z) {
+    if (Math.abs(z.im) < 1e-17)
+      return new Complex(zeta(z.re))
+
+    if (z.re < 0.5) {
+      // Reflection formula
+
+      return Multiply(Chi(z), Zeta(Subtract(new Complex(1), z)))
+    }
+
+    if (0 <= z.re && z.re <= 1 && Math.abs(z.im) > 48.005150881167159727942472749427) {
+      return RiemannSiegel(z)
+    }
+
+    // series time
+
+    let seriesSum = new Complex(0);
+
+    let sign = new Complex(1);
+
+    for (let k = 0; k < ZETA_N$1; ++k) {
+      let component = Divide(sign, PowZ(k + 1, z)).scale(ZETA_COEFFS$1[k + 1]);
+
+      seriesSum.re += component.re;
+      seriesSum.im += component.im;
+
+      sign.re *= -1;
+    }
+
+    return Divide(seriesSum, Multiply(new Complex(ZETA_COEFFS$1[0]), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))))
+  }
+
   /**
    * Complex functions!
    */
   const ComplexFunctions = Object.freeze({
     ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
     ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-    Gamma, Digamma, Trigamma, Polygamma, LnGamma
+    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta
   });
 
   const Multiply$1 = (a, b) => a * b;
@@ -11583,6 +11732,7 @@ void main() {
     },
     Floor: Math.floor,
     Ceil: Math.ceil,
+    Zeta: zeta
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -12368,6 +12518,7 @@ void main() {
   exports.undefineFunction = undefineFunction;
   exports.undefineVariable = undefineVariable;
   exports.utils = utils;
+  exports.zeta = zeta;
 
   return exports;
 

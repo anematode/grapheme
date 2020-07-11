@@ -599,7 +599,21 @@ const Operators = {
       evaluate: "RealFunctions.Ceil",
       desc: "Returns the ceiling of a real number r."
     })
-  ]
+  ],
+  "riemann_zeta": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Zeta",
+      desc: "Returns the Riemann zeta function of a real number r."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Zeta",
+      desc: "Returns the Riemann zeta function of a complex number r."
+    })
+  ],
 }
 
 export { Typecasts, Operators, castableInto, castableIntoMultiple, getCastingFunction, NormalDefinition }
