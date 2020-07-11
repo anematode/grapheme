@@ -329,7 +329,22 @@ function pollardBrent(n) {
 }
 
 function factor(n) {
+  if (Math.abs(n) > Number.MAX_SAFE_INTEGER)
+    throw new Error("Number to factor is too large to be represented by a JS Number")
+
+  n = Math.floor(n)
+
+  if (n === 0)
+    return [0]
+  if (n === 1)
+    return [1]
+
   let factors = []
+
+  if (n < 0) {
+    factors.push(-1)
+    n = -n
+  }
 
   for (let i = 0; i < smallPrimes.length; ++i) {
     let prime = smallPrimes[i]
@@ -370,4 +385,26 @@ function factor(n) {
   return factors
 }
 
-export { isPrime, expMod, squareMod, addMod, mulMod, jacobi, isPerfectSquare, factor }
+function distinctFactors(n) {
+  return Array.from(new Set(factor(n)))
+}
+
+function eulerPhi(n) {
+  let factors = distinctFactors(n)
+
+  let prod = 1
+
+  prod *= n
+
+  for (let i = 0; i < factors.length; ++i) {
+    let factor = factors[i]
+
+    // This order of evaluation prevents overflow
+    prod /= factor
+    prod *= factor - 1
+  }
+
+  return prod
+}
+
+export { isPrime, expMod, squareMod, addMod, mulMod, jacobi, isPerfectSquare, factor, distinctFactors, eulerPhi }

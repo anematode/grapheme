@@ -137,7 +137,9 @@ const ExtraFunctions = {
   Logic: {
     And: (a, b) => a && b,
     Or: (a, b) => a || b
-  }
+  },
+  Floor: Math.floor,
+  Ceil: Math.ceil,
 }
 
 export default ExtraFunctions

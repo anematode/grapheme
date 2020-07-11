@@ -374,6 +374,707 @@ var Grapheme = (function (exports) {
     return new BoundingBox(new Vec2(x1, y1), width, height)
   }
 
+  /**
+   * Represents a complex number, with a real part and an imaginary part both represented by floats.
+   */
+
+  class Complex {
+    /**
+     * Construct a new complex number.
+     * @param re The real part of the complex number.
+     * @param im The imaginary part of the complex number.
+     */
+    constructor(re, im=0) {
+      this.re = re;
+      this.im = im;
+    }
+
+    /**
+     * Get i.
+     * @returns {Complex} i.
+     * @constructor
+     */
+    static get I() {
+      return new Complex(0, 1)
+    }
+
+    /**
+     * Get 1.
+     * @returns {Complex} 1.
+     * @constructor
+     */
+    static get One() {
+      return new Complex(1, 0)
+    }
+
+    /**
+     * Return the complex argument (principal value) corresponding to the complex number.
+     * @returns {number} The complex argument Arg(z).
+     */
+    arg() {
+      return Math.atan2(this.im, this.re)
+    }
+
+    /**
+     * Returns |z|.
+     * @returns {number} The complex magnitude |z|.
+     */
+    magnitude() {
+      return Math.hypot(this.re, this.im)
+    }
+
+    /**
+     * Returns |z|^2.
+     * @returns {number} The square of the complex magnitude |z|^2.
+     */
+    magnitudeSquared() {
+      return this.re * this.re + this.im * this.im
+    }
+
+    /**
+     * Returns z bar.
+     * @returns {Complex} The conjugate of z.
+     */
+    conj() {
+      return new Complex(this.re, -this.im)
+    }
+
+    /**
+     * Clone this complex number.
+     * @returns {Complex} Clone of z.
+     */
+    clone() {
+      return new Complex(this.re, this.im)
+    }
+
+    /**
+     * Scale this complex number by the real factor r.
+     * @param r {number} The scaling factor.
+     */
+    scale(r) {
+      return new Complex(this.re * r, this.im * r)
+    }
+
+    /**
+     * Check whether this complex number is equal to another.
+     * @param z {Complex} Complex number to compare with.
+     */
+    equals(z) {
+      return (this.re === z.re) && (this.im === z.im)
+    }
+
+    /**
+     * Return a complex number pointing in the same direction, with magnitude 1.
+     * @returns {Complex}
+     */
+    normalize() {
+      let mag = this.magnitude();
+
+      return this.scale(1 / mag)
+    }
+  }
+
+  /**
+   * Returns a + b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Add = (a, b) => {
+    return new Complex(a.re + b.re, a.im + b.im)
+  };
+
+  /**
+   * Returns a * b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Multiply = (a, b) => {
+    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
+  };
+
+  /**
+   * Returns a / b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Divide = (a, b) => {
+    let div = b.magnitudeSquared();
+
+    return Multiply(a, b.conj()).scale(1 / div)
+  };
+
+  /**
+   * Returns a - b.
+   * @param a {Complex}
+   * @param b {Complex}
+   * @returns {Complex}
+   */
+  const Subtract = (a, b) => {
+    return new Complex(a.re - b.re, a.im - b.im)
+  };
+
+  /**
+   * Returns Re(z).
+   * @param z
+   * @returns {number}
+   */
+  const Re = (z) => {
+    return z.re
+  };
+
+  /**
+   * Returns Im(z)
+   * @param z
+   * @returns {number}
+   */
+  const Im = (z) => {
+    return z.im
+  };
+
+  const Construct = (a, b=0) => {
+    return new Complex(a, b)
+  };
+
+  const piecewise = (val1, cond, ...args) => {
+    if (cond)
+      return val1
+    if (args.length === 0) {
+      if (cond === undefined)
+        return val1
+      else
+        return new Complex(0)
+    }
+
+    return piecewise(...args)
+  };
+
+  const Piecewise = piecewise;
+
+  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
+    Add: Add,
+    Multiply: Multiply,
+    Divide: Divide,
+    Subtract: Subtract,
+    Re: Re,
+    Im: Im,
+    Construct: Construct,
+    Piecewise: Piecewise
+  });
+
+  function multiplyPolynomials(coeffs1, coeffs2, degree) {
+    let ret = [];
+    for (let i = 0; i <= degree; ++i) {
+      ret.push(0);
+    }
+
+    for (let i = 0; i < coeffs1.length; ++i) {
+      for (let j = 0; j < coeffs2.length; ++j) {
+        ret[i + j] += coeffs1[i] * coeffs2[j];
+      }
+    }
+
+    return ret
+  }
+
+  class SingleVariablePolynomial {
+    constructor(coeffs=[0]) {
+      // Order: first is constant, second is linear, etc.
+      this.coeffs = coeffs;
+    }
+
+    _evaluateFloat(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        sum += coeffs[i] * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    evaluateComplex(z) {
+      let coeffs = this.coeffs;
+      let prod = Complex.One;
+      let sum = new Complex(0);
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        let component = Multiply(new Complex(coeff), prod);
+
+        prod = Multiply(prod, z);
+      }
+
+      return sum
+    }
+
+    evaluate(x) {
+      let coeffs = this.coeffs;
+      let prod = 1;
+      let sum = 0;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        sum += coeff * prod;
+
+        prod *= x;
+      }
+
+      return sum
+    }
+
+    degree() {
+      return this.coeffs.length - 1
+    }
+
+    derivative() {
+      let newCoeffs = [];
+      const coeffs = this.coeffs;
+
+      for (let i = 1; i < coeffs.length; ++i) {
+        let coeff = coeffs[i];
+
+        newCoeffs.push(i * coeff);
+      }
+
+      return new SingleVariablePolynomial(newCoeffs)
+    }
+
+    clone() {
+      return new SingleVariablePolynomial(this.coeffs.slice())
+    }
+
+    add(poly) {
+      let coeffs = this.coeffs;
+      let otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    subtract(poly) {
+      const coeffs = this.coeffs;
+      const otherCoeffs = poly.coeffs;
+
+      for (let i = 0; i < otherCoeffs.length; ++i) {
+        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
+      }
+
+      return this
+    }
+
+    multiplyScalar(s) {
+      const coeffs = this.coeffs;
+
+      for (let i = 0; i < coeffs.length; ++i) {
+        coeffs[i] *= s;
+      }
+
+      return this
+    }
+
+    multiply(poly) {
+      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
+      return this
+    }
+
+    integral() {
+      // TODO
+    }
+  }
+
+  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
+
+  var g = 7;
+  var LANCZOS_COEFFICIENTS = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ];
+  var INTEGER_FACTORIALS = [
+    1,
+    1,
+    2,
+    6,
+    24,
+    120,
+    720,
+    5040,
+    40320,
+    362880,
+    3628800,
+    39916800,
+    479001600,
+    6227020800,
+    87178291200,
+    1307674368000,
+    20922789888000,
+    355687428096000,
+    6402373705728000,
+    121645100408832000,
+    2432902008176640000,
+    51090942171709440000,
+    1.1240007277776077e+21,
+    2.585201673888498e+22,
+    6.204484017332394e+23,
+    1.5511210043330986e+25,
+    4.0329146112660565e+26,
+    1.0888869450418352e+28,
+    3.0488834461171384e+29,
+    8.841761993739701e+30,
+    2.6525285981219103e+32,
+    8.222838654177922e+33,
+    2.631308369336935e+35,
+    8.683317618811886e+36,
+    2.9523279903960412e+38,
+    1.0333147966386144e+40,
+    3.719933267899012e+41,
+    1.3763753091226343e+43,
+    5.23022617466601e+44,
+    2.0397882081197442e+46,
+    8.159152832478977e+47,
+    3.3452526613163803e+49,
+    1.4050061177528798e+51,
+    6.041526306337383e+52,
+    2.6582715747884485e+54,
+    1.1962222086548019e+56,
+    5.5026221598120885e+57,
+    2.5862324151116818e+59,
+    1.2413915592536073e+61,
+    6.082818640342675e+62,
+    3.0414093201713376e+64,
+    1.5511187532873822e+66,
+    8.065817517094388e+67,
+    4.2748832840600255e+69,
+    2.308436973392414e+71,
+    1.2696403353658276e+73,
+    7.109985878048635e+74,
+    4.052691950487722e+76,
+    2.350561331282879e+78,
+    1.3868311854568986e+80,
+    8.320987112741392e+81,
+    5.075802138772248e+83,
+    3.146997326038794e+85,
+    1.98260831540444e+87,
+    1.2688693218588417e+89,
+    8.247650592082472e+90,
+    5.443449390774431e+92,
+    3.647111091818868e+94,
+    2.4800355424368305e+96,
+    1.711224524281413e+98,
+    1.197857166996989e+100,
+    8.504785885678622e+101,
+    6.123445837688608e+103,
+    4.4701154615126834e+105,
+    3.3078854415193856e+107,
+    2.480914081139539e+109,
+    1.8854947016660498e+111,
+    1.4518309202828584e+113,
+    1.1324281178206295e+115,
+    8.946182130782973e+116,
+    7.156945704626378e+118,
+    5.797126020747366e+120,
+    4.75364333701284e+122,
+    3.945523969720657e+124,
+    3.314240134565352e+126,
+    2.8171041143805494e+128,
+    2.4227095383672724e+130,
+    2.107757298379527e+132,
+    1.8548264225739836e+134,
+    1.6507955160908452e+136,
+    1.4857159644817607e+138,
+    1.3520015276784023e+140,
+    1.24384140546413e+142,
+    1.1567725070816409e+144,
+    1.0873661566567424e+146,
+    1.0329978488239052e+148,
+    9.916779348709491e+149,
+    9.619275968248206e+151,
+    9.426890448883242e+153,
+    9.33262154439441e+155,
+    9.33262154439441e+157,
+    9.425947759838354e+159,
+    9.614466715035121e+161,
+    9.902900716486175e+163,
+    1.0299016745145622e+166,
+    1.0813967582402903e+168,
+    1.1462805637347078e+170,
+    1.2265202031961373e+172,
+    1.3246418194518284e+174,
+    1.4438595832024928e+176,
+    1.5882455415227421e+178,
+    1.7629525510902437e+180,
+    1.9745068572210728e+182,
+    2.2311927486598123e+184,
+    2.543559733472186e+186,
+    2.925093693493014e+188,
+    3.3931086844518965e+190,
+    3.969937160808719e+192,
+    4.6845258497542883e+194,
+    5.574585761207603e+196,
+    6.689502913449124e+198,
+    8.09429852527344e+200,
+    9.875044200833598e+202,
+    1.2146304367025325e+205,
+    1.5061417415111404e+207,
+    1.8826771768889254e+209,
+    2.372173242880046e+211,
+    3.012660018457658e+213,
+    3.8562048236258025e+215,
+    4.9745042224772855e+217,
+    6.466855489220472e+219,
+    8.471580690878817e+221,
+    1.118248651196004e+224,
+    1.4872707060906852e+226,
+    1.992942746161518e+228,
+    2.6904727073180495e+230,
+    3.659042881952547e+232,
+    5.01288874827499e+234,
+    6.917786472619486e+236,
+    9.615723196941086e+238,
+    1.346201247571752e+241,
+    1.89814375907617e+243,
+    2.6953641378881614e+245,
+    3.8543707171800706e+247,
+    5.550293832739301e+249,
+    8.047926057471987e+251,
+    1.17499720439091e+254,
+    1.7272458904546376e+256,
+    2.5563239178728637e+258,
+    3.808922637630567e+260,
+    5.7133839564458505e+262,
+    8.627209774233235e+264,
+    1.3113358856834518e+267,
+    2.006343905095681e+269,
+    3.089769613847349e+271,
+    4.789142901463391e+273,
+    7.47106292628289e+275,
+    1.1729568794264138e+278,
+    1.8532718694937338e+280,
+    2.946702272495037e+282,
+    4.714723635992059e+284,
+    7.590705053947215e+286,
+    1.2296942187394488e+289,
+    2.0044015765453015e+291,
+    3.2872185855342945e+293,
+    5.423910666131586e+295,
+    9.003691705778433e+297,
+    1.5036165148649983e+300,
+    2.526075744973197e+302,
+    4.2690680090047027e+304,
+    7.257415615307994e+306
+  ];
+
+  function gamma$1 (z) {
+
+    // Define gamma specially for integral values
+    if (z % 1 === 0) {
+      if (z <= 0) {
+        return Infinity
+      }
+
+      let res = INTEGER_FACTORIALS[Math.round(z - 1)];
+
+      if (!res) {
+        return Infinity
+      }
+
+      return res
+    }
+
+    if (z < 0.5) {
+      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
+    } else {
+      z -= 1;
+
+      var x = LANCZOS_COEFFICIENTS[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += LANCZOS_COEFFICIENTS[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
+    }
+  }
+
+  function ln_gamma (z) {
+    if (z < 0.5) {
+      // Compute via reflection formula
+      let reflected = ln_gamma(1 - z);
+
+      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
+    } else {
+      z -= 1;
+
+      var x = LANCZOS_COEFFICIENTS[0];
+      for (var i = 1; i < g + 2; i++) {
+        x += LANCZOS_COEFFICIENTS[i] / (z + i);
+      }
+
+      var t = z + g + 0.5;
+
+      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
+    }
+  }
+
+  function polygamma (m, z) {
+    if (m % 1 !== 0) {
+      return NaN
+    }
+
+    if (m === 0) {
+      return digamma(z)
+    }
+
+    if (m === 1) {
+      return trigamma(z)
+    }
+
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return Infinity
+
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
+        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
+    }
+
+    // Series representation
+
+    let sum = 0;
+    for (let i = 0; i < 200; ++i) {
+      sum += 1 / Math.pow(z + i, m + 1);
+    }
+
+    return sign * gamma$1(m + 1) * sum
+
+  }
+
+  const GREGORY_COEFFICIENTS = [
+    1.0,
+    0.5,
+    -0.08333333333333333,
+    0.041666666666666664,
+    -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
+  ];
+
+  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
+
+  let POLY1 = new SingleVariablePolynomial([0, 1]);
+  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
+
+  function getPolygammaNumeratorPolynomial(n) {
+    let poly = PolygammaNumeratorPolynomials[n];
+    if (poly)
+      return poly
+
+    if (n > 10000)
+      return new SingleVariablePolynomial([0])
+
+    if (n > 20) {
+      // to prevent stack overflow issues
+      for (let i = 0; i < n; ++i) {
+        getPolygammaNumeratorPolynomial(i);
+      }
+    }
+
+    return PolygammaNumeratorPolynomials[n] =
+      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
+        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
+      )
+  }
+
+  function digamma (z) {
+    if (z < 0.5) {
+      // psi(1-x) - psi(x) = pi cot(pi x)
+      // psi(x) = psi(1-x) - pi cot (pi x)
+
+      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
+    } else if (z < 15) {
+      // psi(x+1) = psi(x) + 1/x
+      // psi(x) = psi(x+1) - 1/x
+
+      let sum = 0;
+
+      while (z < 15) {
+        sum += 1 / z;
+
+        z += 1;
+      }
+
+      return digamma(z) - sum
+    }
+
+    let egg = 1;
+    let sum = Math.log(z);
+
+    for (let n = 1; n < 15; ++n) {
+      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
+
+      egg *= ((n-1) ? (n-1) : 1);
+      egg /= z + n - 1;
+
+      sum -= coeff * egg;
+    }
+
+    return sum
+  }
+
+  function trigamma(z) {
+    if (z < 0.5) {
+      if (z % 1 === 0) {
+        return Infinity
+      }
+
+      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
+      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
+
+      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
+    } else if (z < 20) {
+      // psi_1(z+1) = psi_1(z) - 1/z^2
+      // psi_1(z) = psi_1(z+1) + 1/z^2
+
+      let sum = 0;
+
+      while (z < 20) {
+        sum += 1 / (z * z);
+
+        z += 1;
+      }
+
+      return trigamma(z) + sum
+    }
+
+    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
+  }
+
   // This file defines some common utilities that Grapheme uses!
 
   // A list of all extant Grapheme Universes
@@ -821,6 +1522,25 @@ var Grapheme = (function (exports) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
+  const BINOMIAL_TABLE = new Float64Array([0, 0, 0.6931471805599453, 1.791759469228055, 3.1780538303479458, 4.787491742782046, 6.579251212010101, 8.525161361065415, 10.60460290274525, 12.801827480081469, 15.104412573075516, 17.502307845873887, 19.987214495661885, 22.552163853123425, 25.19122118273868, 27.89927138384089, 30.671860106080672, 33.50507345013689, 36.39544520803305, 39.339884187199495, 42.335616460753485, 45.38013889847691, 48.47118135183523, 51.60667556776438, 54.78472939811232, 58.00360522298052, 61.261701761002, 64.55753862700634, 67.88974313718154, 71.25703896716801, 74.65823634883016, 78.0922235533153, 81.55795945611504, 85.05446701758152, 88.58082754219768, 92.1361756036871, 95.7196945421432, 99.33061245478743, 102.96819861451381, 106.63176026064346, 110.32063971475739, 114.0342117814617, 117.77188139974507, 121.53308151543864, 125.3172711493569, 129.12393363912722, 132.95257503561632, 136.80272263732635, 140.67392364823425, 144.5657439463449, 148.47776695177302, 152.40959258449735, 156.3608363030788, 160.3311282166309, 164.32011226319517, 168.32744544842765,  172.3527971391628, 176.39584840699735, 180.45629141754378, 184.53382886144948, 188.6281734236716, 192.7390472878449, 196.86618167289, 201.00931639928152, 205.1681994826412, 209.34258675253685, 213.53224149456327, 217.73693411395422, 221.95644181913033, 226.1905483237276, 230.43904356577696, 234.70172344281826, 238.97838956183432, 243.2688490029827, 247.57291409618688, 251.8904022097232, 256.22113555000954, 260.5649409718632, 264.9216497985528, 269.2910976510198, 273.6731242856937, 278.0675734403661, 282.4742926876304, 286.893133295427, 291.3239500942703, 295.76660135076065, 300.22094864701415, 304.6868567656687, 309.1641935801469, 313.65282994987905, 318.1526396202093, 322.66349912672615, 327.1852877037752, 331.7178871969285, 336.26118197919845, 340.815058870799, 345.37940706226686, 349.95411804077025, 354.5390855194408, 359.1342053695754, 363.73937555556347]);
+  const binomComputed = BINOMIAL_TABLE.length;
+
+  function nCrFloat(n, k) {
+    if (Number.isInteger(n) && Number.isInteger(k) && n >= 0 && k >= 0 && n < binomComputed && k < binomComputed)
+      return Math.exp(BINOMIAL_TABLE[n] - BINOMIAL_TABLE[n-k] - BINOMIAL_TABLE[k]);
+    else return Math.exp(ln_gamma(n) - ln_gamma(n - k) - ln_gamma(k))
+  }
+
+  function nCr(n, k) {
+    let result = 1;
+
+    for (let i = 1; i <= k; i++) {
+      result *= (n + 1 - i) / i;
+    }
+
+    return result;
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -855,7 +1575,9 @@ var Grapheme = (function (exports) {
     levenshtein: levenshtein,
     getFunctionName: getFunctionName,
     wait: wait,
-    getRandomInt: getRandomInt
+    getRandomInt: getRandomInt,
+    nCrFloat: nCrFloat,
+    nCr: nCr
   });
 
   /**
@@ -5991,6 +6713,30 @@ void main() {
         desc: "Returns a != b."
       })
     ],
+    "euler_phi": [
+      new NormalDefinition({
+        signature: ["int"],
+        returns: "int",
+        evaluate: "eulerPhi",
+        desc: "Returns Euler's totient function evaluated at an integer n."
+      })
+    ],
+    "floor": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "int",
+        evaluate: "RealFunctions.Floor",
+        desc: "Returns the floor of a real number r."
+      })
+    ],
+    "ceil": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "int",
+        evaluate: "RealFunctions.Ceil",
+        desc: "Returns the ceiling of a real number r."
+      })
+    ]
   };
 
   function processExportedVariables(exportedVariables) {
@@ -8467,707 +9213,6 @@ void main() {
     return [n, d]
   }
 
-  /**
-   * Represents a complex number, with a real part and an imaginary part both represented by floats.
-   */
-
-  class Complex {
-    /**
-     * Construct a new complex number.
-     * @param re The real part of the complex number.
-     * @param im The imaginary part of the complex number.
-     */
-    constructor(re, im=0) {
-      this.re = re;
-      this.im = im;
-    }
-
-    /**
-     * Get i.
-     * @returns {Complex} i.
-     * @constructor
-     */
-    static get I() {
-      return new Complex(0, 1)
-    }
-
-    /**
-     * Get 1.
-     * @returns {Complex} 1.
-     * @constructor
-     */
-    static get One() {
-      return new Complex(1, 0)
-    }
-
-    /**
-     * Return the complex argument (principal value) corresponding to the complex number.
-     * @returns {number} The complex argument Arg(z).
-     */
-    arg() {
-      return Math.atan2(this.im, this.re)
-    }
-
-    /**
-     * Returns |z|.
-     * @returns {number} The complex magnitude |z|.
-     */
-    magnitude() {
-      return Math.hypot(this.re, this.im)
-    }
-
-    /**
-     * Returns |z|^2.
-     * @returns {number} The square of the complex magnitude |z|^2.
-     */
-    magnitudeSquared() {
-      return this.re * this.re + this.im * this.im
-    }
-
-    /**
-     * Returns z bar.
-     * @returns {Complex} The conjugate of z.
-     */
-    conj() {
-      return new Complex(this.re, -this.im)
-    }
-
-    /**
-     * Clone this complex number.
-     * @returns {Complex} Clone of z.
-     */
-    clone() {
-      return new Complex(this.re, this.im)
-    }
-
-    /**
-     * Scale this complex number by the real factor r.
-     * @param r {number} The scaling factor.
-     */
-    scale(r) {
-      return new Complex(this.re * r, this.im * r)
-    }
-
-    /**
-     * Check whether this complex number is equal to another.
-     * @param z {Complex} Complex number to compare with.
-     */
-    equals(z) {
-      return (this.re === z.re) && (this.im === z.im)
-    }
-
-    /**
-     * Return a complex number pointing in the same direction, with magnitude 1.
-     * @returns {Complex}
-     */
-    normalize() {
-      let mag = this.magnitude();
-
-      return this.scale(1 / mag)
-    }
-  }
-
-  /**
-   * Returns a + b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Add = (a, b) => {
-    return new Complex(a.re + b.re, a.im + b.im)
-  };
-
-  /**
-   * Returns a * b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Multiply = (a, b) => {
-    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
-  };
-
-  /**
-   * Returns a / b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Divide = (a, b) => {
-    let div = b.magnitudeSquared();
-
-    return Multiply(a, b.conj()).scale(1 / div)
-  };
-
-  /**
-   * Returns a - b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-  const Subtract = (a, b) => {
-    return new Complex(a.re - b.re, a.im - b.im)
-  };
-
-  /**
-   * Returns Re(z).
-   * @param z
-   * @returns {number}
-   */
-  const Re = (z) => {
-    return z.re
-  };
-
-  /**
-   * Returns Im(z)
-   * @param z
-   * @returns {number}
-   */
-  const Im = (z) => {
-    return z.im
-  };
-
-  const Construct = (a, b=0) => {
-    return new Complex(a, b)
-  };
-
-  const piecewise = (val1, cond, ...args) => {
-    if (cond)
-      return val1
-    if (args.length === 0) {
-      if (cond === undefined)
-        return val1
-      else
-        return new Complex(0)
-    }
-
-    return piecewise(...args)
-  };
-
-  const Piecewise = piecewise;
-
-  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
-    Add: Add,
-    Multiply: Multiply,
-    Divide: Divide,
-    Subtract: Subtract,
-    Re: Re,
-    Im: Im,
-    Construct: Construct,
-    Piecewise: Piecewise
-  });
-
-  function multiplyPolynomials(coeffs1, coeffs2, degree) {
-    let ret = [];
-    for (let i = 0; i <= degree; ++i) {
-      ret.push(0);
-    }
-
-    for (let i = 0; i < coeffs1.length; ++i) {
-      for (let j = 0; j < coeffs2.length; ++j) {
-        ret[i + j] += coeffs1[i] * coeffs2[j];
-      }
-    }
-
-    return ret
-  }
-
-  class SingleVariablePolynomial {
-    constructor(coeffs=[0]) {
-      // Order: first is constant, second is linear, etc.
-      this.coeffs = coeffs;
-    }
-
-    _evaluateFloat(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        sum += coeffs[i] * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    evaluateComplex(z) {
-      let coeffs = this.coeffs;
-      let prod = Complex.One;
-      let sum = new Complex(0);
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        let component = Multiply(new Complex(coeff), prod);
-
-        prod = Multiply(prod, z);
-      }
-
-      return sum
-    }
-
-    evaluate(x) {
-      let coeffs = this.coeffs;
-      let prod = 1;
-      let sum = 0;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        sum += coeff * prod;
-
-        prod *= x;
-      }
-
-      return sum
-    }
-
-    degree() {
-      return this.coeffs.length - 1
-    }
-
-    derivative() {
-      let newCoeffs = [];
-      const coeffs = this.coeffs;
-
-      for (let i = 1; i < coeffs.length; ++i) {
-        let coeff = coeffs[i];
-
-        newCoeffs.push(i * coeff);
-      }
-
-      return new SingleVariablePolynomial(newCoeffs)
-    }
-
-    clone() {
-      return new SingleVariablePolynomial(this.coeffs.slice())
-    }
-
-    add(poly) {
-      let coeffs = this.coeffs;
-      let otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) + otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    subtract(poly) {
-      const coeffs = this.coeffs;
-      const otherCoeffs = poly.coeffs;
-
-      for (let i = 0; i < otherCoeffs.length; ++i) {
-        coeffs[i] = (coeffs[i] ? coeffs[i] : 0) - otherCoeffs[i];
-      }
-
-      return this
-    }
-
-    multiplyScalar(s) {
-      const coeffs = this.coeffs;
-
-      for (let i = 0; i < coeffs.length; ++i) {
-        coeffs[i] *= s;
-      }
-
-      return this
-    }
-
-    multiply(poly) {
-      this.coeffs = multiplyPolynomials(poly.coeffs, this.coeffs, poly.degree() + this.degree());
-      return this
-    }
-
-    integral() {
-      // TODO
-    }
-  }
-
-  // Credit to https://stackoverflow.com/questions/15454183/how-to-make-a-function-that-computes-the-factorial-for-numbers-with-decimals!! Thank you so much
-
-  var g = 7;
-  var LANCZOS_COEFFICIENTS = [
-    0.99999999999980993,
-    676.5203681218851,
-    -1259.1392167224028,
-    771.32342877765313,
-    -176.61502916214059,
-    12.507343278686905,
-    -0.13857109526572012,
-    9.9843695780195716e-6,
-    1.5056327351493116e-7
-  ];
-  var INTEGER_FACTORIALS = [
-    1,
-    1,
-    2,
-    6,
-    24,
-    120,
-    720,
-    5040,
-    40320,
-    362880,
-    3628800,
-    39916800,
-    479001600,
-    6227020800,
-    87178291200,
-    1307674368000,
-    20922789888000,
-    355687428096000,
-    6402373705728000,
-    121645100408832000,
-    2432902008176640000,
-    51090942171709440000,
-    1.1240007277776077e+21,
-    2.585201673888498e+22,
-    6.204484017332394e+23,
-    1.5511210043330986e+25,
-    4.0329146112660565e+26,
-    1.0888869450418352e+28,
-    3.0488834461171384e+29,
-    8.841761993739701e+30,
-    2.6525285981219103e+32,
-    8.222838654177922e+33,
-    2.631308369336935e+35,
-    8.683317618811886e+36,
-    2.9523279903960412e+38,
-    1.0333147966386144e+40,
-    3.719933267899012e+41,
-    1.3763753091226343e+43,
-    5.23022617466601e+44,
-    2.0397882081197442e+46,
-    8.159152832478977e+47,
-    3.3452526613163803e+49,
-    1.4050061177528798e+51,
-    6.041526306337383e+52,
-    2.6582715747884485e+54,
-    1.1962222086548019e+56,
-    5.5026221598120885e+57,
-    2.5862324151116818e+59,
-    1.2413915592536073e+61,
-    6.082818640342675e+62,
-    3.0414093201713376e+64,
-    1.5511187532873822e+66,
-    8.065817517094388e+67,
-    4.2748832840600255e+69,
-    2.308436973392414e+71,
-    1.2696403353658276e+73,
-    7.109985878048635e+74,
-    4.052691950487722e+76,
-    2.350561331282879e+78,
-    1.3868311854568986e+80,
-    8.320987112741392e+81,
-    5.075802138772248e+83,
-    3.146997326038794e+85,
-    1.98260831540444e+87,
-    1.2688693218588417e+89,
-    8.247650592082472e+90,
-    5.443449390774431e+92,
-    3.647111091818868e+94,
-    2.4800355424368305e+96,
-    1.711224524281413e+98,
-    1.197857166996989e+100,
-    8.504785885678622e+101,
-    6.123445837688608e+103,
-    4.4701154615126834e+105,
-    3.3078854415193856e+107,
-    2.480914081139539e+109,
-    1.8854947016660498e+111,
-    1.4518309202828584e+113,
-    1.1324281178206295e+115,
-    8.946182130782973e+116,
-    7.156945704626378e+118,
-    5.797126020747366e+120,
-    4.75364333701284e+122,
-    3.945523969720657e+124,
-    3.314240134565352e+126,
-    2.8171041143805494e+128,
-    2.4227095383672724e+130,
-    2.107757298379527e+132,
-    1.8548264225739836e+134,
-    1.6507955160908452e+136,
-    1.4857159644817607e+138,
-    1.3520015276784023e+140,
-    1.24384140546413e+142,
-    1.1567725070816409e+144,
-    1.0873661566567424e+146,
-    1.0329978488239052e+148,
-    9.916779348709491e+149,
-    9.619275968248206e+151,
-    9.426890448883242e+153,
-    9.33262154439441e+155,
-    9.33262154439441e+157,
-    9.425947759838354e+159,
-    9.614466715035121e+161,
-    9.902900716486175e+163,
-    1.0299016745145622e+166,
-    1.0813967582402903e+168,
-    1.1462805637347078e+170,
-    1.2265202031961373e+172,
-    1.3246418194518284e+174,
-    1.4438595832024928e+176,
-    1.5882455415227421e+178,
-    1.7629525510902437e+180,
-    1.9745068572210728e+182,
-    2.2311927486598123e+184,
-    2.543559733472186e+186,
-    2.925093693493014e+188,
-    3.3931086844518965e+190,
-    3.969937160808719e+192,
-    4.6845258497542883e+194,
-    5.574585761207603e+196,
-    6.689502913449124e+198,
-    8.09429852527344e+200,
-    9.875044200833598e+202,
-    1.2146304367025325e+205,
-    1.5061417415111404e+207,
-    1.8826771768889254e+209,
-    2.372173242880046e+211,
-    3.012660018457658e+213,
-    3.8562048236258025e+215,
-    4.9745042224772855e+217,
-    6.466855489220472e+219,
-    8.471580690878817e+221,
-    1.118248651196004e+224,
-    1.4872707060906852e+226,
-    1.992942746161518e+228,
-    2.6904727073180495e+230,
-    3.659042881952547e+232,
-    5.01288874827499e+234,
-    6.917786472619486e+236,
-    9.615723196941086e+238,
-    1.346201247571752e+241,
-    1.89814375907617e+243,
-    2.6953641378881614e+245,
-    3.8543707171800706e+247,
-    5.550293832739301e+249,
-    8.047926057471987e+251,
-    1.17499720439091e+254,
-    1.7272458904546376e+256,
-    2.5563239178728637e+258,
-    3.808922637630567e+260,
-    5.7133839564458505e+262,
-    8.627209774233235e+264,
-    1.3113358856834518e+267,
-    2.006343905095681e+269,
-    3.089769613847349e+271,
-    4.789142901463391e+273,
-    7.47106292628289e+275,
-    1.1729568794264138e+278,
-    1.8532718694937338e+280,
-    2.946702272495037e+282,
-    4.714723635992059e+284,
-    7.590705053947215e+286,
-    1.2296942187394488e+289,
-    2.0044015765453015e+291,
-    3.2872185855342945e+293,
-    5.423910666131586e+295,
-    9.003691705778433e+297,
-    1.5036165148649983e+300,
-    2.526075744973197e+302,
-    4.2690680090047027e+304,
-    7.257415615307994e+306
-  ];
-
-  function gamma$1 (z) {
-
-    // Define gamma specially for integral values
-    if (z % 1 === 0) {
-      if (z <= 0) {
-        return Infinity
-      }
-
-      let res = INTEGER_FACTORIALS[Math.round(z - 1)];
-
-      if (!res) {
-        return Infinity
-      }
-
-      return res
-    }
-
-    if (z < 0.5) {
-      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
-    } else {
-      z -= 1;
-
-      var x = LANCZOS_COEFFICIENTS[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += LANCZOS_COEFFICIENTS[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-      return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x
-    }
-  }
-
-  function ln_gamma (z) {
-    if (z < 0.5) {
-      // Compute via reflection formula
-      let reflected = ln_gamma(1 - z);
-
-      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - reflected
-    } else {
-      z -= 1;
-
-      var x = LANCZOS_COEFFICIENTS[0];
-      for (var i = 1; i < g + 2; i++) {
-        x += LANCZOS_COEFFICIENTS[i] / (z + i);
-      }
-
-      var t = z + g + 0.5;
-
-      return Math.log(2 * Math.PI) / 2 + Math.log(t) * (z + 0.5) - t + Math.log(x)
-    }
-  }
-
-  function polygamma (m, z) {
-    if (m % 1 !== 0) {
-      return NaN
-    }
-
-    if (m === 0) {
-      return digamma(z)
-    }
-
-    if (m === 1) {
-      return trigamma(z)
-    }
-
-    let sign = (m % 2 === 0) ? -1 : 1;
-    let numPoly = getPolygammaNumeratorPolynomial(m);
-
-    if (z < 0.5) {
-      if (z % 1 === 0)
-        return Infinity
-
-      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
-      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
-
-      return -(Math.pow(Math.PI, m + 1) * numPoly.evaluate(Math.cos(Math.PI * z)) /
-        (Math.pow(Math.sin(Math.PI * z), m+1)) + sign * polygamma(m, 1 - z))
-    } else if (z < 8) {
-      // Recurrence relation
-      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
-
-      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
-    }
-
-    // Series representation
-
-    let sum = 0;
-    for (let i = 0; i < 200; ++i) {
-      sum += 1 / Math.pow(z + i, m + 1);
-    }
-
-    return sign * gamma$1(m + 1) * sum
-
-  }
-
-  const GREGORY_COEFFICIENTS = [
-    1.0,
-    0.5,
-    -0.08333333333333333,
-    0.041666666666666664,
-    -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
-  ];
-
-  let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
-
-  let POLY1 = new SingleVariablePolynomial([0, 1]);
-  let POLY2 = new SingleVariablePolynomial([-1, 0, 1]);
-
-  function getPolygammaNumeratorPolynomial(n) {
-    let poly = PolygammaNumeratorPolynomials[n];
-    if (poly)
-      return poly
-
-    if (n > 10000)
-      return new SingleVariablePolynomial([0])
-
-    if (n > 20) {
-      // to prevent stack overflow issues
-      for (let i = 0; i < n; ++i) {
-        getPolygammaNumeratorPolynomial(i);
-      }
-    }
-
-    return PolygammaNumeratorPolynomials[n] =
-      getPolygammaNumeratorPolynomial(n - 1).clone().multiplyScalar(-n).multiply(POLY1).add(
-        getPolygammaNumeratorPolynomial(n - 1).derivative().multiply(POLY2)
-      )
-  }
-
-  function digamma (z) {
-    if (z < 0.5) {
-      // psi(1-x) - psi(x) = pi cot(pi x)
-      // psi(x) = psi(1-x) - pi cot (pi x)
-
-      return digamma(1 - z) - Math.PI / Math.tan(Math.PI * z)
-    } else if (z < 15) {
-      // psi(x+1) = psi(x) + 1/x
-      // psi(x) = psi(x+1) - 1/x
-
-      let sum = 0;
-
-      while (z < 15) {
-        sum += 1 / z;
-
-        z += 1;
-      }
-
-      return digamma(z) - sum
-    }
-
-    let egg = 1;
-    let sum = Math.log(z);
-
-    for (let n = 1; n < 15; ++n) {
-      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
-
-      egg *= ((n-1) ? (n-1) : 1);
-      egg /= z + n - 1;
-
-      sum -= coeff * egg;
-    }
-
-    return sum
-  }
-
-  function trigamma(z) {
-    if (z < 0.5) {
-      if (z % 1 === 0) {
-        return Infinity
-      }
-
-      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
-      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
-
-      return (Math.PI * Math.PI) / (Math.sin(Math.PI * z) ** 2) - trigamma(1-z)
-    } else if (z < 20) {
-      // psi_1(z+1) = psi_1(z) - 1/z^2
-      // psi_1(z) = psi_1(z+1) + 1/z^2
-
-      let sum = 0;
-
-      while (z < 20) {
-        sum += 1 / (z * z);
-
-        z += 1;
-      }
-
-      return trigamma(z) + sum
-    }
-
-    return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
-  }
-
   // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
 
   class Interval {
@@ -11535,7 +11580,9 @@ void main() {
     Logic: {
       And: (a, b) => a && b,
       Or: (a, b) => a || b
-    }
+    },
+    Floor: Math.floor,
+    Ceil: Math.ceil,
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -12100,7 +12147,22 @@ void main() {
   }
 
   function factor(n) {
+    if (Math.abs(n) > Number.MAX_SAFE_INTEGER)
+      throw new Error("Number to factor is too large to be represented by a JS Number")
+
+    n = Math.floor(n);
+
+    if (n === 0)
+      return [0]
+    if (n === 1)
+      return [1]
+
     let factors = [];
+
+    if (n < 0) {
+      factors.push(-1);
+      n = -n;
+    }
 
     for (let i = 0; i < smallPrimes.length; ++i) {
       let prime = smallPrimes[i];
@@ -12140,6 +12202,70 @@ void main() {
 
     return factors
   }
+
+  function distinctFactors(n) {
+    return Array.from(new Set(factor(n)))
+  }
+
+  function eulerPhi(n) {
+    let factors = distinctFactors(n);
+
+    let prod = 1;
+
+    prod *= n;
+
+    for (let i = 0; i < factors.length; ++i) {
+      let factor = factors[i];
+
+      // This order of evaluation prevents overflow
+      prod /= factor;
+      prod *= factor - 1;
+    }
+
+    return prod
+  }
+
+  const MAX_BERNOULLI = 1e4;
+
+  const BERNOULLI_N_NUMBERS = new Float64Array(MAX_BERNOULLI);
+  let BERNOULLI_N_INDEX = 0;
+
+  function computeBernoulli(index) {
+    for (let i = BERNOULLI_N_INDEX; i <= index; ++i) {
+      let value = i === 0 ? 1 : 0;
+
+      for (let j = 0; j < i; ++j) {
+        value -= nCr(i, j) * BERNOULLI_N_NUMBERS[j] / (i - j + 1);
+      }
+
+      BERNOULLI_N_NUMBERS[i] = value;
+    }
+
+    BERNOULLI_N_INDEX = index + 1;
+  }
+
+  function bernoulliN(n) {
+    if (n > MAX_BERNOULLI) {
+      // Okay, that's a bit much
+      throw new Error("Excessive n")
+    }
+
+    if (n < BERNOULLI_N_INDEX)
+      return BERNOULLI_N_NUMBERS[n]
+
+    computeBernoulli(n);
+
+    return BERNOULLI_N_NUMBERS[n]
+  }
+
+  function bernoulliP(n) {
+    if (n === 1)
+      return 0.5
+
+    return bernoulliN(n)
+  }
+
+  const bernoulli = bernoulliP;
 
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
@@ -12195,11 +12321,16 @@ void main() {
   exports.addMod = addMod;
   exports.anglesBetween = anglesBetween;
   exports.asyncCalculatePolylineVertices = asyncCalculatePolylineVertices;
+  exports.bernoulli = bernoulli;
+  exports.bernoulliN = bernoulliN;
+  exports.bernoulliP = bernoulliP;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
   exports.defineFunction = defineFunction;
   exports.defineVariable = defineVariable;
   exports.digamma = digamma;
+  exports.distinctFactors = distinctFactors;
+  exports.eulerPhi = eulerPhi;
   exports.expMod = expMod;
   exports.factor = factor;
   exports.fastHypot = fastHypot;

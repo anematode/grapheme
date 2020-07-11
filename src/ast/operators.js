@@ -576,6 +576,30 @@ const Operators = {
       desc: "Returns a != b."
     })
   ],
+  "euler_phi": [
+    new NormalDefinition({
+      signature: ["int"],
+      returns: "int",
+      evaluate: "eulerPhi",
+      desc: "Returns Euler's totient function evaluated at an integer n."
+    })
+  ],
+  "floor": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "int",
+      evaluate: "RealFunctions.Floor",
+      desc: "Returns the floor of a real number r."
+    })
+  ],
+  "ceil": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "int",
+      evaluate: "RealFunctions.Ceil",
+      desc: "Returns the ceiling of a real number r."
+    })
+  ]
 }
 
 export { Typecasts, Operators, castableInto, castableIntoMultiple, getCastingFunction, NormalDefinition }
