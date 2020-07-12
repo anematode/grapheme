@@ -60,7 +60,7 @@
 
 <div style="position:absolute; top: 10px; left: 10px">
     <textarea oninput="setFunction(this.value)">vec2(fresnel_S(x), fresnel_C(x))</textarea>
-    <input type="range" oninput="Grapheme.defineVariable('a', this.value); fplot.markUpdate();" min="0" max="10" step="0.001" id="a">
+    <input type="range" oninput="fplot.markUpdate();" min="0" max="10" step="0.001" id="a">
     <label for="a">a</label>
     <br>
     <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>

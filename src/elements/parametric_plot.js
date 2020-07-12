@@ -15,6 +15,8 @@ class ParametricPlot2D extends InteractiveElement {
 
     this.rangeStart = -20
     this.rangeEnd = 20
+    
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
   get pen() {
@@ -37,6 +39,8 @@ class ParametricPlot2D extends InteractiveElement {
   }
 
   update(info) {
+    super.update(info)
+
     if (!this.function)
       return
 
@@ -57,6 +61,8 @@ class ParametricPlot2D extends InteractiveElement {
     }
 
     info.plot.transform.plotToPixelArr(vertices)
+
+    console.log("hi")
 
     this.polyline.update(info)
   }

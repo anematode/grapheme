@@ -13403,6 +13403,8 @@ void main() {
 
       this.rangeStart = -20;
       this.rangeEnd = 20;
+      
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
     }
 
     get pen() {
@@ -13425,6 +13427,8 @@ void main() {
     }
 
     update(info) {
+      super.update(info);
+
       if (!this.function)
         return
 
@@ -13445,6 +13449,8 @@ void main() {
       }
 
       info.plot.transform.plotToPixelArr(vertices);
+
+      console.log("hi");
 
       this.polyline.update(info);
     }
