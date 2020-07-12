@@ -764,12 +764,6 @@ const Operators = {
       returns: "real",
       evaluate: "RealFunctions.Si",
       desc: "Returns the sine integral of x."
-    }),
-    new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Si",
-      desc: "Returns the sine integral of z."
     })
   ],
   "Ci": [
@@ -778,12 +772,34 @@ const Operators = {
       returns: "real",
       evaluate: "RealFunctions.Ci",
       desc: "Returns the cosine integral of x."
+    })
+  ],
+  "erf": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Erf",
+      desc: "Returns the error function of x."
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
-      evaluate: "ComplexFunctions.Ci",
-      desc: "Returns the cosine integral of z."
+      evaluate: "ComplexFunctions.Erf",
+      desc: "Returns the error function of z."
+    })
+  ],
+  "erfc": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Erfc",
+      desc: "Returns the complementary error function of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Erfc",
+      desc: "Returns the complementary error function of z."
     })
   ]
 }

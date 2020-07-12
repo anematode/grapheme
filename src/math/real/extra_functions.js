@@ -3,6 +3,7 @@ import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function
 import { eta, zeta } from '../riemann_zeta'
 import { ei, li } from '../exp_integral'
 import { Ci, Si } from '../trig_integrals'
+import { erf, erfc } from '../erf'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -155,7 +156,9 @@ const ExtraFunctions = {
   Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
   NormSinc: (x) => ExtraFunctions.Sinc(x * Math.PI),
   Si: Si,
-  Ci: Ci
+  Ci: Ci,
+  Erf: erf,
+  Erfc: erfc
 }
 
 export default ExtraFunctions

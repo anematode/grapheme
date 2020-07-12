@@ -6913,12 +6913,6 @@ void main() {
         returns: "real",
         evaluate: "RealFunctions.Si",
         desc: "Returns the sine integral of x."
-      }),
-      new NormalDefinition({
-        signature: ["complex"],
-        returns: "complex",
-        evaluate: "ComplexFunctions.Si",
-        desc: "Returns the sine integral of z."
       })
     ],
     "Ci": [
@@ -6927,12 +6921,34 @@ void main() {
         returns: "real",
         evaluate: "RealFunctions.Ci",
         desc: "Returns the cosine integral of x."
+      })
+    ],
+    "erf": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Erf",
+        desc: "Returns the error function of x."
       }),
       new NormalDefinition({
         signature: ["complex"],
         returns: "complex",
-        evaluate: "ComplexFunctions.Ci",
-        desc: "Returns the cosine integral of z."
+        evaluate: "ComplexFunctions.Erf",
+        desc: "Returns the error function of z."
+      })
+    ],
+    "erfc": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Erfc",
+        desc: "Returns the complementary error function of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Erfc",
+        desc: "Returns the complementary error function of z."
       })
     ]
   };
@@ -11814,13 +11830,85 @@ void main() {
     Ci: Ci
   });
 
+  const p = 0.3275911;
+  const ERF_POLY = new SingleVariablePolynomial([0, 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429]);
+
+  function erf(x) {
+    if (x === 0)
+      return 0
+    if (x < 0)
+      return -erf(-x)
+
+    let t = 1 / (1 + p * x);
+
+    return 1 - ERF_POLY.evaluate(t) * Math.exp(- x * x)
+  }
+
+  function erfc(x) {
+    return 1 - erf(x)
+  }
+
+  function erfi(x) {
+
+  }
+
+  function fk(k, x, y, cosXY, sinXY) {
+    return 2 * x * (1 - cosXY * Math.cosh(k * y)) + k * sinXY * Math.sinh(k * y)
+  }
+
+  function gk(k, x, y, cosXY, sinXY) {
+    return 2 * x * sinXY * Math.cosh(k * y) + k * cosXY * Math.sinh(k * y)
+  }
+
+  function ErfSubcall(x, y) {
+
+    let xy2 = 2 * x * y;
+    let cosxy2 = Math.cos(xy2);
+    let sinxy2 = Math.sin(xy2);
+
+    let expX2 = Math.exp(- x * x);
+
+    let cmp1 = new Complex$1(erf(x));
+    let cmp2 = new Complex$1(1 - cosxy2, sinxy2).scale(expX2 / (2 * Math.PI * x));
+
+    let sum = new Complex$1(0);
+    let terms = Math.min(Math.max(10 * Math.abs(y), 10), 100);
+
+    for (let k = 1; k < terms; ++k) {
+      let component = new Complex$1(fk(k, x, y, cosxy2, sinxy2), gk(k, x, y, cosxy2, sinxy2)).scale(Math.exp(- k * k / 4) / (k * k + 4 * x * x));
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Add(cmp1, Add(cmp2, sum.scale(2 / Math.PI * expX2)))
+  }
+
+  function Erf(z) {
+    if (z.im < 1e-17)
+      return new Complex$1(erf(z.re))
+
+    let x = z.re, y = z.im;
+
+    return ErfSubcall(x, y)
+  }
+
+  function Erfc(z) {
+    return Erf(Subtract(new Complex$1(1), z))
+  }
+
+  var Erfs = /*#__PURE__*/Object.freeze({
+    Erf: Erf,
+    Erfc: Erfc
+  });
+
   /**
    * Complex functions!
    */
   const ComplexFunctions = Object.freeze({
     ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
     ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta, Eta, ...MiscSpecial, ...ExpIntegrals, ...TrigIntegrals
+    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta, Eta, ...MiscSpecial, ...ExpIntegrals, ...TrigIntegrals, ...Erfs
   });
 
   const Multiply$1 = (a, b) => a * b;
@@ -12129,7 +12217,9 @@ void main() {
     Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
     NormSinc: (x) => ExtraFunctions$1.Sinc(x * Math.PI),
     Si: Si$1,
-    Ci: Ci$1
+    Ci: Ci$1,
+    Erf: erf,
+    Erfc: erfc
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -12884,6 +12974,9 @@ void main() {
   exports.digamma = digamma;
   exports.distinctFactors = distinctFactors;
   exports.ei = ei;
+  exports.erf = erf;
+  exports.erfc = erfc;
+  exports.erfi = erfi;
   exports.eta = eta;
   exports.eulerPhi = eulerPhi;
   exports.expMod = expMod;
