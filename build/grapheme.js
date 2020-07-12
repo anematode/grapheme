@@ -108,6 +108,7 @@ var Grapheme = (function (exports) {
       return this
     }
   }
+
   const Origin = new Vec2(0,0);
 
   class BoundingBox {
@@ -551,6 +552,10 @@ var Grapheme = (function (exports) {
     return piecewise(...args)
   };
 
+  const Abs = (z) => {
+    return z.magnitudeSquared()
+  };
+
   const IsFinite = (z) => {
     return isFinite(z.re) && isFinite(z.im)
   };
@@ -565,6 +570,7 @@ var Grapheme = (function (exports) {
     Re: Re,
     Im: Im,
     Construct: Construct,
+    Abs: Abs,
     IsFinite: IsFinite,
     Piecewise: Piecewise
   });
@@ -6378,6 +6384,12 @@ void main() {
         returns: "complex",
         evaluate: "ComplexFunctions.Add",
         desc: "Returns the sum of two complex numbers."
+      }),
+      new NormalDefinition({
+        signature: ["vec2", "vec2"],
+        returns: "vec2",
+        evaluate: "VectorFunctions.Add",
+        desc: "Returns the sum of two 2-dimensional vectors."
       })
     ],
     '-': [
@@ -6398,6 +6410,12 @@ void main() {
         returns: "complex",
         evaluate: "ComplexFunctions.Subtract",
         desc: "Returns the difference of two complex numbers."
+      }),
+      new NormalDefinition({
+        signature: ["vec2", "vec2"],
+        returns: "vec2",
+        evaluate: "VectorFunctions.Subtract",
+        desc: "Returns the sum of two 2-dimensional vectors."
       })
     ],
     '/': [
@@ -7027,6 +7045,52 @@ void main() {
         returns: "real",
         evaluate: "RealFunctions.EllipticE",
         desc: "Return the complete elliptic integral E(x)."
+      })
+    ],
+    "agm": [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Agm",
+        desc: "Return the arithmetic geometric mean of a and b."
+      })
+    ],
+    "abs": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Abs",
+        desc: "Return the absolute value of r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "real",
+        evaluate: "ComplexFunctions.Abs",
+        desc: "Return the magnitude of z."
+      })
+    ],
+    "vec2": [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "vec2",
+        evaluate: "VectorFunctions.Construct",
+        desc: "Construct a new vec2."
+      })
+    ],
+    "vec": [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "vec2",
+        evaluate: "VectorFunctions.Construct",
+        desc: "Construct a new vec2."
+      })
+    ],
+    "dot": [
+      new NormalDefinition({
+        signature: ["vec2", "vec2"],
+        returns: "real",
+        evaluate: "VectorFunctions.Dot",
+        desc: "Find the dot product of vectors v and w."
       })
     ]
   };
@@ -12608,7 +12672,9 @@ void main() {
     ProductLogBranched: productLogBranched,
     EllipticE: ellipticE,
     EllipticK: ellipticK,
-    EllipticPi: ellipticPi
+    EllipticPi: ellipticPi,
+    Agm: agm,
+    Abs: Math.abs
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -13298,6 +13364,96 @@ void main() {
     Or: (a, b) => a || b
   };
 
+  const Add$2 = (v1, v2) => {
+    return new Vec2(v1.x + v2.x, v1.y + v2.y)
+  };
+
+  const Subtract$2 = (v1, v2) => {
+    return new Vec2(v1.x - v2.x, v1.y - v2.y)
+  };
+
+  const Dot = (v1, v2) => {
+    return v1.x * v2.x + v1.y * v2.y
+  };
+
+  const Construct$1 = (x, y) => {
+    return new Vec2(x, y)
+  };
+
+  var BasicArithmetic = /*#__PURE__*/Object.freeze({
+    Add: Add$2,
+    Subtract: Subtract$2,
+    Dot: Dot,
+    Construct: Construct$1
+  });
+
+  const VectorFunctions = {
+    ...BasicArithmetic
+  };
+
+  class ParametricPlot2D extends InteractiveElement {
+    constructor(params={}) {
+      super(params);
+
+      this.function = null;
+      this.functionName = getFunctionName();
+
+      this.polyline = new WebGLPolyline();
+      this.samples = 1000;
+
+      this.rangeStart = -20;
+      this.rangeEnd = 20;
+    }
+
+    get pen() {
+      return this.polyline.pen
+    }
+
+    set pen(pen) {
+      this.polyline.pen = pen;
+    }
+
+    setFunction(func, variable='x') {
+      defineFunction(this.functionName, func, [variable]);
+
+      this.function = getFunction(this.functionName).evaluate;
+      this.markUpdate();
+    }
+
+    render(info) {
+      this.polyline.render(info);
+    }
+
+    update(info) {
+      if (!this.function)
+        return
+
+      let vertices = this.polyline.vertices = [];
+
+      const samples = this.samples;
+      const rangeStart = this.rangeStart, rangeEnd = this.rangeEnd;
+      const func = this.function;
+
+      for (let i = 0; i <= samples; ++i) {
+        let frac = i / samples;
+
+        let t = rangeStart + (rangeEnd - rangeStart) * frac;
+
+        let res = func(t);
+
+        vertices.push(res.x, res.y);
+      }
+
+      info.plot.transform.plotToPixelArr(vertices);
+
+      this.polyline.update(info);
+    }
+
+    destroy() {
+      this.polyline.destroy();
+    }
+  }
+
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
   exports.Beast = Beast;
@@ -13334,6 +13490,7 @@ void main() {
   exports.LabeledPoint = LabeledPoint;
   exports.OperatorNode = OperatorNode;
   exports.OperatorSynonyms = OperatorSynonyms;
+  exports.ParametricPlot2D = ParametricPlot2D;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
   exports.Plot2D = Plot2D;
@@ -13349,6 +13506,7 @@ void main() {
   exports.VariableNode = VariableNode;
   exports.Variables = Variables;
   exports.Vec2 = Vec2;
+  exports.VectorFunctions = VectorFunctions;
   exports.WebGLPolyline = WebGLPolyline;
   exports._interpolationsEnabled = _interpolationsEnabled;
   exports.adaptively_sample_1d = adaptively_sample_1d;

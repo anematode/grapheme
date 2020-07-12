@@ -8,6 +8,7 @@ import * as utils from "../../core/utils"
 import { FresnelS, FresnelC } from '../fresnel'
 import { productLog, productLogBranched } from '../product_log'
 import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
+import { agm } from '../agm'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -173,7 +174,9 @@ const ExtraFunctions = {
   ProductLogBranched: productLogBranched,
   EllipticE: ellipticE,
   EllipticK: ellipticK,
-  EllipticPi: ellipticPi
+  EllipticPi: ellipticPi,
+  Agm: agm,
+  Abs: Math.abs
 }
 
 export default ExtraFunctions

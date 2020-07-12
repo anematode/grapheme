@@ -229,6 +229,12 @@ const Operators = {
       returns: "complex",
       evaluate: "ComplexFunctions.Add",
       desc: "Returns the sum of two complex numbers."
+    }),
+    new NormalDefinition({
+      signature: ["vec2", "vec2"],
+      returns: "vec2",
+      evaluate: "VectorFunctions.Add",
+      desc: "Returns the sum of two 2-dimensional vectors."
     })
   ],
   '-': [
@@ -249,6 +255,12 @@ const Operators = {
       returns: "complex",
       evaluate: "ComplexFunctions.Subtract",
       desc: "Returns the difference of two complex numbers."
+    }),
+    new NormalDefinition({
+      signature: ["vec2", "vec2"],
+      returns: "vec2",
+      evaluate: "VectorFunctions.Subtract",
+      desc: "Returns the sum of two 2-dimensional vectors."
     })
   ],
   '/': [
@@ -878,6 +890,52 @@ const Operators = {
       returns: "real",
       evaluate: "RealFunctions.EllipticE",
       desc: "Return the complete elliptic integral E(x)."
+    })
+  ],
+  "agm": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.Agm",
+      desc: "Return the arithmetic geometric mean of a and b."
+    })
+  ],
+  "abs": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Abs",
+      desc: "Return the absolute value of r."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "real",
+      evaluate: "ComplexFunctions.Abs",
+      desc: "Return the magnitude of z."
+    })
+  ],
+  "vec2": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "vec2",
+      evaluate: "VectorFunctions.Construct",
+      desc: "Construct a new vec2."
+    })
+  ],
+  "vec": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "vec2",
+      evaluate: "VectorFunctions.Construct",
+      desc: "Construct a new vec2."
+    })
+  ],
+  "dot": [
+    new NormalDefinition({
+      signature: ["vec2", "vec2"],
+      returns: "real",
+      evaluate: "VectorFunctions.Dot",
+      desc: "Find the dot product of vectors v and w."
     })
   ]
 }

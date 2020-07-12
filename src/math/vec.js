@@ -106,7 +106,12 @@ class Vec2 {
     return this
   }
 }
+
 const Origin = new Vec2(0,0)
+
+class Vec3 {
+
+}
 
 
 export {Vec2}
