@@ -46,7 +46,11 @@ function zeta(r) {
   return seriesSum / (ZETA_COEFFS[0] * (1 - 2 ** (1 - r)))
 }
 
+function eta(r) {
+  return (1 - 2 ** (1 - r)) * zeta(r)
+}
+
 zeta.coeffs = ZETA_COEFFS
 zeta.n = ZETA_N
 
-export { zeta }
+export { zeta, eta }

@@ -468,6 +468,8 @@ function nCr(n, k) {
   return result;
 }
 
+const eulerGamma = 0.57721566490153286060
+
 export {
   benchmark,
   gcd,
@@ -504,5 +506,6 @@ export {
   wait,
   getRandomInt,
   nCrFloat,
-  nCr
+  nCr,
+  eulerGamma
 }

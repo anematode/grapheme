@@ -13,6 +13,8 @@ import { PowN } from './pow'
  * @returns {Complex}
  */
 function Polygamma(m, z) {
+  if (m < 0)
+    return new Complex(NaN, NaN)
   if (m % 1 !== 0)
     return new Complex(NaN, NaN)
 

@@ -378,7 +378,7 @@ var Grapheme = (function (exports) {
    * Represents a complex number, with a real part and an imaginary part both represented by floats.
    */
 
-  class Complex {
+  class Complex$1 {
     /**
      * Construct a new complex number.
      * @param re The real part of the complex number.
@@ -395,7 +395,7 @@ var Grapheme = (function (exports) {
      * @constructor
      */
     static get I() {
-      return new Complex(0, 1)
+      return new Complex$1(0, 1)
     }
 
     /**
@@ -404,7 +404,7 @@ var Grapheme = (function (exports) {
      * @constructor
      */
     static get One() {
-      return new Complex(1, 0)
+      return new Complex$1(1, 0)
     }
 
     /**
@@ -436,7 +436,7 @@ var Grapheme = (function (exports) {
      * @returns {Complex} The conjugate of z.
      */
     conj() {
-      return new Complex(this.re, -this.im)
+      return new Complex$1(this.re, -this.im)
     }
 
     /**
@@ -444,7 +444,7 @@ var Grapheme = (function (exports) {
      * @returns {Complex} Clone of z.
      */
     clone() {
-      return new Complex(this.re, this.im)
+      return new Complex$1(this.re, this.im)
     }
 
     /**
@@ -452,7 +452,7 @@ var Grapheme = (function (exports) {
      * @param r {number} The scaling factor.
      */
     scale(r) {
-      return new Complex(this.re * r, this.im * r)
+      return new Complex$1(this.re * r, this.im * r)
     }
 
     /**
@@ -481,7 +481,7 @@ var Grapheme = (function (exports) {
    * @returns {Complex}
    */
   const Add = (a, b) => {
-    return new Complex(a.re + b.re, a.im + b.im)
+    return new Complex$1(a.re + b.re, a.im + b.im)
   };
 
   /**
@@ -491,7 +491,7 @@ var Grapheme = (function (exports) {
    * @returns {Complex}
    */
   const Multiply = (a, b) => {
-    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
+    return new Complex$1(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re)
   };
 
   /**
@@ -513,7 +513,7 @@ var Grapheme = (function (exports) {
    * @returns {Complex}
    */
   const Subtract = (a, b) => {
-    return new Complex(a.re - b.re, a.im - b.im)
+    return new Complex$1(a.re - b.re, a.im - b.im)
   };
 
   /**
@@ -535,7 +535,7 @@ var Grapheme = (function (exports) {
   };
 
   const Construct = (a, b=0) => {
-    return new Complex(a, b)
+    return new Complex$1(a, b)
   };
 
   const piecewise = (val1, cond, ...args) => {
@@ -545,10 +545,14 @@ var Grapheme = (function (exports) {
       if (cond === undefined)
         return val1
       else
-        return new Complex(0)
+        return new Complex$1(0)
     }
 
     return piecewise(...args)
+  };
+
+  const IsFinite = (z) => {
+    return isFinite(z.re) && isFinite(z.im)
   };
 
   const Piecewise = piecewise;
@@ -561,6 +565,7 @@ var Grapheme = (function (exports) {
     Re: Re,
     Im: Im,
     Construct: Construct,
+    IsFinite: IsFinite,
     Piecewise: Piecewise
   });
 
@@ -601,13 +606,13 @@ var Grapheme = (function (exports) {
 
     evaluateComplex(z) {
       let coeffs = this.coeffs;
-      let prod = Complex.One;
-      let sum = new Complex(0);
+      let prod = Complex$1.One;
+      let sum = new Complex$1(0);
 
       for (let i = 0; i < coeffs.length; ++i) {
         let coeff = coeffs[i];
 
-        let component = Multiply(new Complex(coeff), prod);
+        let component = Multiply(new Complex$1(coeff), prod);
 
         prod = Multiply(prod, z);
       }
@@ -623,9 +628,12 @@ var Grapheme = (function (exports) {
       for (let i = 0; i < coeffs.length; ++i) {
         let coeff = coeffs[i];
 
-        sum += coeff * prod;
+
+        if (coeff !== 0)
+          sum += coeff * prod;
 
         prod *= x;
+
       }
 
       return sum
@@ -935,7 +943,7 @@ var Grapheme = (function (exports) {
   }
 
   function polygamma (m, z) {
-    if (m % 1 !== 0) {
+    if (m % 1 !== 0 || m < 0) {
       return NaN
     }
 
@@ -978,11 +986,7 @@ var Grapheme = (function (exports) {
   }
 
   const GREGORY_COEFFICIENTS = [
-    1.0,
-    0.5,
-    -0.08333333333333333,
-    0.041666666666666664,
-    -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
+    1.0, 0.5, -0.08333333333333333, 0.041666666666666664, -0.02638888888888889, 0.01875, -0.014269179894179895, 0.01136739417989418, -0.00935653659611993, 0.00789255401234568, -0.006785849984634707, 0.005924056412337663, -0.005236693257950285, 0.004677498407042265, -0.004214952239005473, 0.003826899553211884, -0.0034973498453499175, 0.0032144964313235674, -0.0029694477154582097, 0.002755390299436716, -0.0025670225450072377, 0.0024001623785907204, -0.0022514701977588703, 0.0021182495272954456, -0.001998301255043453, 0.0018898154636786972, -0.0017912900780718936, 0.0017014689263700736, -0.0016192940490963672, 0.0015438685969283421, -0.0014744276890609623, 0.001410315320613454, -0.0013509659123128112, 0.0012958894558251668, -0.0012446594681088444, 0.0011969031579517945, -0.001152293347825886, 0.0011105417984181721, -0.001071393661516785, 0.0010346228462800521, -0.0010000281292566525, 0.0009674298734228264, -0.0009366672485567989, 0.0009075958663860963, -0.0008800857605298948, 0.000854019654366952, -0.0008292914703794421, 0.0008058050428513827, -0.0007834730024921167, 0.0007622158069590723, -0.0007419608956386516, 0.0007226419506180641, -0.0007041982487069233, 0.000686574091772996, -0.0006697183046421545, 0.0006535837914580035, -0.0006381271427651654, 0.0006233082867224927, -0.0006090901788092055, 0.0005954385251909118, -0.0005823215355902033, 0.0005697097020796109, -0.0005575756007007343, 0.0005458937132267388, -0.0005346402667379662, 0.0005237930889818988, -0.0005133314777471911, 0.0005032360827036401, -0.0004934887983513816, 0.00048407266688788627, -0.00047497178994440343, 0.00046617124826760925, -0.00045765702853009814, 0.00044941595654733894, -0.0004414356362607454, 0.0004337043939182513, -0.00042621122694664064, 0.00041894575706506086, -0.0004118981872376783, 0.0004050592621061756, -0.00039842023158052236, 0.0003919728172997837, -0.0003857091817042604, 0.00037962189948642086, -0.00037370393121133474, 0.0003679485989179907, -0.0003623495635312948, 0.0003569008039309683, -0.0003515965975382364, 0.0003464315022943173, -0.00034140033991647036, 0.0003364981803279027, -0.00033172032716728803, 0.00032706230429215997, -0.0003225198431980953, 0.000318088871282497, -0.000313765500888013, 0.00030954601906624203, -0.0003054268780074607, 0.00030140468608670396, -0.00029747619948069663, 0.0002936383143139141
   ];
 
   let PolygammaNumeratorPolynomials = [new SingleVariablePolynomial([0, 1])];
@@ -1073,6 +1077,10 @@ var Grapheme = (function (exports) {
     }
 
     return 1 / z + 1 / (2 * z**2) + 1 / (6 * z**3) - 1 / (30 * z**5) + 1/(42 * z**7) - 1/(30 * z**9) + 5/(66 * z**11) - 691 / (2730 * z**13) + 7 / (6 * z**15)
+  }
+
+  function factorial(z) {
+    return gamma$1(z + 1)
   }
 
   // This file defines some common utilities that Grapheme uses!
@@ -1541,6 +1549,8 @@ var Grapheme = (function (exports) {
     return result;
   }
 
+  const eulerGamma = 0.57721566490153286060;
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -1577,7 +1587,8 @@ var Grapheme = (function (exports) {
     wait: wait,
     getRandomInt: getRandomInt,
     nCrFloat: nCrFloat,
-    nCr: nCr
+    nCr: nCr,
+    eulerGamma: eulerGamma
   });
 
   /**
@@ -5494,6 +5505,7 @@ void main() {
       this.color = new Color();
 
       this.glVertices = null;
+
       this.renderMode = "triangles"; // allowed values: points, line_strip, line_loop, lines, triangle_strip, triangle_fan, triangles
       this.needsBufferCopy = true;
     }
@@ -6169,7 +6181,10 @@ void main() {
 
       let evaluate = params.evaluate;
 
-      this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate;
+      if (params.noGraphemePrefix)
+        this.evaluate = evaluate;
+      else
+        this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate;
     }
   }
 
@@ -6751,6 +6766,175 @@ void main() {
         desc: "Returns the Riemann zeta function of a complex number r."
       })
     ],
+    "dirichlet_eta": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Eta",
+        desc: "Returns the Dirichlet eta function of a real number r."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Eta",
+        desc: "Returns the Dirichlet eta function of a complex number r."
+      })
+    ],
+    "mod": [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Mod",
+        desc: "Returns a modulo b."
+      }),
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Mod",
+        desc: "Returns a modulo b."
+      })
+    ],
+    "frac": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Frac",
+        desc: "Returns the fractional part of x."
+      })
+    ],
+    "sign": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "int",
+        evaluate: "RealFunctions.Sign",
+        desc: "Returns the sign of x: 1 if x > 0, 0 if x == 0 and -1 otherwise."
+      })
+    ],
+    "round": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "int",
+        evaluate: "RealFunctions.Round",
+        desc: "Returns the nearest integer to x. Note that if |x| > " + Number.MAX_SAFE_INTEGER + " this may not be accurate."
+      })
+    ],
+    "trunc": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "int",
+        evaluate: "RealFunctions.Trunc",
+        desc: "Removes the fractional part of x."
+      })
+    ],
+    "is_finite": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "bool",
+        evaluate: "RealFunctions.IsFinite",
+        desc: "Returns true if the number is finite and false if it is -Infinity, Infinity, or NaN"
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "bool",
+        evaluate: "ComplexFunctions.IsFinite",
+        desc: "Returns true if the number is finite and false if it is undefined or infinite"
+      })
+    ],
+    "not": [
+      new NormalDefinition({
+        signature: ["bool"],
+        returns: "bool",
+        evaluate: "!",
+        noGraphemePrefix: true,
+        desc: "Returns the logical negation of b."
+      })
+    ],
+    "and": [
+      new NormalDefinition({
+        signature: ["bool", "bool"],
+        returns: "bool",
+        evaluate: "BooleanFunctions.And",
+        desc: "Returns true if a and b are true, and false otherwise."
+      })
+    ],
+    "or": [
+      new NormalDefinition({
+        signature: ["bool", "bool"],
+        returns: "bool",
+        evaluate: "BooleanFunctions.Or",
+        desc: "Returns true if a or b are true, and false otherwise."
+      })
+    ],
+    "Ei": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Ei",
+        desc: "Returns the exponential integral of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Ei",
+        desc: "Returns the exponential integral of z."
+      })
+    ],
+    "li": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Li",
+        desc: "Returns the logarithmic integral of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Li",
+        desc: "Returns the logarithmic integral of z."
+      })
+    ],
+    "sinc": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Sinc",
+        desc: "Returns the sinc function of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Sinc",
+        desc: "Returns the sinc function of x."
+      })
+    ],
+    "Si": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Si",
+        desc: "Returns the sine integral of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Si",
+        desc: "Returns the sine integral of z."
+      })
+    ],
+    "Ci": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Ci",
+        desc: "Returns the cosine integral of x."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Ci",
+        desc: "Returns the cosine integral of z."
+      })
+    ]
   };
 
   function processExportedVariables(exportedVariables) {
@@ -10617,7 +10801,7 @@ void main() {
     let c = Math.cos(theta);
     let s = Math.sin(theta);
 
-    return new Complex(c, s)
+    return new Complex$1(c, s)
   };
 
   /**
@@ -10640,7 +10824,7 @@ void main() {
    * @returns {Complex}
    */
   const Pow = (z, w) => {
-    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())))
+    return Exp(Multiply(w, new Complex$1(Math.log(z.magnitude()), z.arg())))
   };
 
   /**
@@ -10651,7 +10835,7 @@ void main() {
    * @returns {Complex}
    */
   const PowBranched = (z, w, branch=0) => {
-    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
+    return Multiply(Pow(z, w), Exp(Multiply(Complex$1.I, w.scale(2 * Math.PI * branch))))
   };
 
   /**
@@ -10661,14 +10845,14 @@ void main() {
    * @returns {Complex}
    */
   const PowR = (z, r) => {
-    return Pow(z, new Complex(r))
+    return Pow(z, new Complex$1(r))
   };
 
   const PowZ = (r, z) => {
     if (r === 0)
-      return new Complex(0)
+      return new Complex$1(0)
 
-    return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
+    return Exp(Multiply(z, new Complex$1(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
   };
 
   /**
@@ -10679,7 +10863,7 @@ void main() {
    * @returns {Complex}
    */
   const PowRBranched = (z, r, branch=0) => {
-    return PowBranched(z, new Complex(r), branch)
+    return PowBranched(z, new Complex$1(r), branch)
   };
 
   /**
@@ -10690,7 +10874,7 @@ void main() {
    */
   const PowN = (z, n) => {
     if (n === 0) {
-      return new Complex(1, 0)
+      return new Complex$1(1, 0)
     } else if (n === 1) {
       return z.clone()
     } else if (n === -1) {
@@ -10719,15 +10903,15 @@ void main() {
       let r = z.re;
 
       if (r >= 0) {
-        return new Complex(Math.sqrt(r))
+        return new Complex$1(Math.sqrt(r))
       } else {
-        return new Complex(0, Math.sqrt(-r))
+        return new Complex$1(0, Math.sqrt(-r))
       }
     }
 
     let r = z.magnitude();
 
-    let zR = Add(z, new Complex(r)).normalize();
+    let zR = Add(z, new Complex$1(r)).normalize();
 
     return zR.scale(Math.sqrt(r))
   };
@@ -10742,7 +10926,7 @@ void main() {
     if (branch % 2 === 0) {
       return Sqrt(z)
     } else {
-      return Multiply(new Complex(-1, 0), Sqrt(z))
+      return Multiply(new Complex$1(-1, 0), Sqrt(z))
     }
   };
 
@@ -10787,7 +10971,7 @@ void main() {
     let sinhB = Math.sinh(b);
     let coshB = Math.sqrt(1 + sinhB * sinhB);
 
-    return new Complex(sinA * coshB, cosA * sinhB)
+    return new Complex$1(sinA * coshB, cosA * sinhB)
   };
 
   // cos(a+bi) = cos a cosh b - i sin a sinh b
@@ -10799,7 +10983,7 @@ void main() {
     let sinhB = Math.sinh(b);
     let coshB = Math.sqrt(1 + sinhB * sinhB);
 
-    return new Complex(cosA * coshB, -sinA * sinhB)
+    return new Complex$1(cosA * coshB, -sinA * sinhB)
   };
 
   // tan(a+bi) = (tan a + i tanh b) / (1 - i tan a tanh b)
@@ -10809,22 +10993,22 @@ void main() {
     let tanA = Math.tan(a);
     let tanhB = Math.tanh(b);
 
-    return Divide(new Complex(tanA, tanhB), new Complex(1, -tanA * tanhB))
+    return Divide(new Complex$1(tanA, tanhB), new Complex$1(1, -tanA * tanhB))
   };
 
   // sec(a+bi) = 1 / cos(a+bi)
   const Sec = (z) => {
-    return Divide(Complex.One, Cos(z))
+    return Divide(Complex$1.One, Cos(z))
   };
 
   // csc(a+bi) = 1 / sin(a+bi)
   const Csc = (z) => {
-    return Divide(Complex.One, Sin(z))
+    return Divide(Complex$1.One, Sin(z))
   };
 
   // sec(a+bi) = 1 / cos(a+bi)
   const Cot = (z) => {
-    return Divide(Complex.One, Tan(z))
+    return Divide(Complex$1.One, Tan(z))
   };
 
   var TrigFunctions = /*#__PURE__*/Object.freeze({
@@ -10845,7 +11029,7 @@ void main() {
     let mag = Math.log(z.magnitude());
     let theta = z.arg();
 
-    return new Complex(mag, theta)
+    return new Complex$1(mag, theta)
   };
 
   /**
@@ -10856,7 +11040,7 @@ void main() {
    * @returns {Complex}
    */
   const LnBranched = (z, branch=0) => {
-    return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
+    return Add(Ln(z), Complex$1.I.scale(2 * Math.PI * branch))
   };
 
   /* Alias for Ln */
@@ -10913,7 +11097,7 @@ void main() {
    */
   const LogB = (b, z) => {
     if (b.equals(z))
-      return Complex.One
+      return Complex$1.One
 
     return Divide(Ln(z), Ln(b))
   };
@@ -10927,7 +11111,7 @@ void main() {
    */
   const LogBBranched = (b, z, branch=0) => {
     if (branch === 0 && b.equals(z))
-      return Complex.One
+      return Complex$1.One
 
     return Divide(LnBranched(z, branch), LnBranched(b, branch))
   };
@@ -10959,7 +11143,7 @@ void main() {
     let sinB = Math.sin(b);
     let cosB = Math.cos(b);
 
-    return new Complex(sinhA * cosB, coshA * sinB)
+    return new Complex$1(sinhA * cosB, coshA * sinB)
   };
 
   /**
@@ -10976,7 +11160,7 @@ void main() {
     let sinB = Math.sin(b);
     let cosB = Math.cos(b);
 
-    return new Complex(coshA * cosB, sinhA * sinB)
+    return new Complex$1(coshA * cosB, sinhA * sinB)
   };
 
   /**
@@ -10993,7 +11177,7 @@ void main() {
     let sinB = Math.sin(b);
     let cosB = Math.cos(b);
 
-    return new Complex(sinhA, sinB).scale(1 / (coshA + cosB))
+    return new Complex$1(sinhA, sinB).scale(1 / (coshA + cosB))
   };
 
   /**
@@ -11002,7 +11186,7 @@ void main() {
    * @returns {Complex}
    */
   const Sech = (z) => {
-    return Divide(Complex.One, Cosh(z))
+    return Divide(Complex$1.One, Cosh(z))
   };
 
   /**
@@ -11011,7 +11195,7 @@ void main() {
    * @returns {Complex}
    */
   const Csch = (z) => {
-    return Divide(Complex.One, Sinh(z))
+    return Divide(Complex$1.One, Sinh(z))
   };
 
   /**
@@ -11020,7 +11204,7 @@ void main() {
    * @returns {Complex}
    */
   const Coth = (z) => {
-    return Divide(Complex.One, Tanh(z))
+    return Divide(Complex$1.One, Tanh(z))
   };
 
   var HyperbolicTrigFunctions = /*#__PURE__*/Object.freeze({
@@ -11033,46 +11217,46 @@ void main() {
   });
 
   // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
-  const Arcsin = (z) => Multiply(Complex.I.scale(-1), // -i
-    Ln(Add(Multiply(Complex.I, z),                              // i * z
-      Sqrt(Subtract(Complex.One, Multiply(z, z))))));            // sqrt(1 - z^2
+  const Arcsin = (z) => Multiply(Complex$1.I.scale(-1), // -i
+    Ln(Add(Multiply(Complex$1.I, z),                              // i * z
+      Sqrt(Subtract(Complex$1.One, Multiply(z, z))))));            // sqrt(1 - z^2
 
   // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
-  const Arccos = (z) => Add(new Complex(Math.PI / 2), // pi / 2
-    Multiply(Complex.I, Ln(Add(Multiply(Complex.I, z),           // i * ln(iz
-      Sqrt(Subtract(Complex.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
+  const Arccos = (z) => Add(new Complex$1(Math.PI / 2), // pi / 2
+    Multiply(Complex$1.I, Ln(Add(Multiply(Complex$1.I, z),           // i * ln(iz
+      Sqrt(Subtract(Complex$1.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
 
   // arctan(z) = i/2 * ln( (i+z) / (1-z) )
-  const Arctan = (z) => Multiply(Complex.I.scale(1/2),  // i / 2
-    Ln(Divide(Add(Complex.I, z), Subtract(Complex.I, z))));      // ln( (i+z) / (1-z) )
+  const Arctan = (z) => Multiply(Complex$1.I.scale(1/2),  // i / 2
+    Ln(Divide(Add(Complex$1.I, z), Subtract(Complex$1.I, z))));      // ln( (i+z) / (1-z) )
 
   // arcsec(z) = arccos(1 / z)
-  const Arcsec = (z) => Arccos(Divide(Complex.One, z));
+  const Arcsec = (z) => Arccos(Divide(Complex$1.One, z));
 
   // arccsc(z) = arcsin(1 / z)
-  const Arccsc = (z) => Arcsin(Divide(Complex.One, z));
+  const Arccsc = (z) => Arcsin(Divide(Complex$1.One, z));
 
   // arccot(z) = pi / 2 - arctan(z)
-  const Arccot = (z) => Subtract(new Complex(Math.PI / 2), Arctan(z));
+  const Arccot = (z) => Subtract(new Complex$1(Math.PI / 2), Arctan(z));
 
   // Branched variants of the inverse trig functions
   const ArcsinBranched = (z, branch=0) => {
-    return Add(Arcsin(z), new Complex(2 * Math.PI * branch))
+    return Add(Arcsin(z), new Complex$1(2 * Math.PI * branch))
   };
 
   const ArccosBranched = (z, branch=0) => {
-    return Add(Arccos(z), new Complex(2 * Math.PI * branch))
+    return Add(Arccos(z), new Complex$1(2 * Math.PI * branch))
   };
 
   const ArctanBranched = (z, branch=0) =>
-    Add(Arctan(z), new Complex(Math.PI * branch));
+    Add(Arctan(z), new Complex$1(Math.PI * branch));
 
-  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex.One, z), branch);
+  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex$1.One, z), branch);
 
-  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex.One, z), branch);
+  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex$1.One, z), branch);
 
   const ArccotBranched = (z, branch=0) =>
-    Subtract(new Complex(Math.PI / 2), ArctanBranched(z, -branch));
+    Subtract(new Complex$1(Math.PI / 2), ArctanBranched(z, -branch));
 
   var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
     Arcsin: Arcsin,
@@ -11090,42 +11274,42 @@ void main() {
   });
 
   // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))));
+  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex$1.One))));
 
   // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))));
+  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex$1.One)), Sqrt(Subtract(z, Complex$1.One)))));
 
   // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const Arctanh = (z) => Ln(Divide(Add(Complex.One, z), Subtract(Complex.One, z))).scale(1/2);
+  const Arctanh = (z) => Ln(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z))).scale(1/2);
 
-  const Arcsech = (z) => Arccosh(Divide(Complex.One, z));
+  const Arcsech = (z) => Arccosh(Divide(Complex$1.One, z));
 
   // arccsch(z) = arcsinh(1/z)
-  const Arccsch = (z) => Arcsinh(Divide(Complex.One, z));
+  const Arccsch = (z) => Arcsinh(Divide(Complex$1.One, z));
 
   // arccoth(z) = arctanh(1/z)
-  const Arccoth = (z) => Arctanh(Divide(Complex.One, z));
+  const Arccoth = (z) => Arctanh(Divide(Complex$1.One, z));
 
   // Branched variants of the normal functions
   // arcsinh(z) = ln(z + sqrt(z^2 + 1))
   const ArcsinhBranched = (z, branch=0) =>
-    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex.One))), branch);
+    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex$1.One))), branch);
 
   // arccosh(z) = ln(z + sqrt(z^2 - 1))
   const ArccoshBranched = (z, branch=0) =>
-    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex.One)), Sqrt(Subtract(z, Complex.One)))), branch);
+    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex$1.One)), Sqrt(Subtract(z, Complex$1.One)))), branch);
 
   // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
   const ArctanhBranched = (z, branch=0) =>
-    LnBranched(Divide(Add(Complex.One, z), Subtract(Complex.One, z)), branch).scale(1/2);
+    LnBranched(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z)), branch).scale(1/2);
 
-  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex.One, z), branch);
+  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex$1.One, z), branch);
 
   // arccsch(z) = arcsinh(1/z)
-  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex.One, z), branch);
+  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex$1.One, z), branch);
 
   // arccoth(z) = arctanh(1/z)
-  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex.One, z), branch);
+  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex$1.One, z), branch);
 
   var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
     Arcsinh: Arcsinh,
@@ -11147,16 +11331,16 @@ void main() {
       // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
       // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
 
-      return Divide(new Complex(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
+      return Divide(new Complex$1(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex$1.One, z))))
     }
 
     if (Math.abs(z.im) < 1e-17) {
-      return new Complex(gamma$1(z.re))
+      return new Complex$1(gamma$1(z.re))
     }
 
     // We use the Lanczos approximation for the factorial function.
     z.re -= 1;
-    let x = new Complex(LANCZOS_COEFFICIENTS[0]);
+    let x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
 
     let newZ = z.clone();
     let re, im, mag2;
@@ -11181,9 +11365,9 @@ void main() {
     let t = z.clone();
     t.re += LANCZOS_COEFFICIENTS.length - 1.5;
 
-    return Multiply(new Complex(Math.sqrt(2 * Math.PI)),
+    return Multiply(new Complex$1(Math.sqrt(2 * Math.PI)),
       Multiply(x, Multiply(
-        Pow(t, Add(z, new Complex(0.5))),
+        Pow(t, Add(z, new Complex$1(0.5))),
         Exp(t.scale(-1)))))
   }
 
@@ -11197,13 +11381,13 @@ void main() {
       // psi(1-x) - psi(x) = pi cot(pi x)
       // psi(x) = psi(1-x) - pi cot (pi x)
 
-      return Subtract(Digamma(Subtract(Complex.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
+      return Subtract(Digamma(Subtract(Complex$1.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
     } else if (z.re < 15) {
       // psi(x+1) = psi(x) + 1/x
       // psi(x) = psi(x+1) - 1/x
 
-      let sum = new Complex(0);
-      let one = Complex.One;
+      let sum = new Complex$1(0);
+      let one = Complex$1.One;
 
       while (z.re < 15) {
         let component = Divide(one, z);
@@ -11217,13 +11401,13 @@ void main() {
       return Subtract(Digamma(z), sum)
     }
 
-    let egg = new Complex(1);
+    let egg = new Complex$1(1);
     let sum = Ln(z);
 
     for (let n = 1; n < 15; ++n) {
       let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
 
-      egg = Divide(Multiply(egg, new Complex(((n-1) ? (n-1) : 1))), Add(z, new Complex(n - 1)));
+      egg = Divide(Multiply(egg, new Complex$1(((n-1) ? (n-1) : 1))), Add(z, new Complex$1(n - 1)));
 
       sum.re -= coeff * egg.re;
       sum.im -= coeff * egg.im;
@@ -11241,18 +11425,18 @@ void main() {
    */
   function Trigamma(z) {
     if (Math.abs(z.im) < 1e-17)
-      return new Complex(trigamma(z.re))
+      return new Complex$1(trigamma(z.re))
 
     if (z.re < 0.5) {
       // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
       // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
-      return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
+      return Subtract(Divide(new Complex$1(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex$1.One, z)))
     } else if (z.re < 20) {
       // psi_1(z+1) = psi_1(z) - 1/z^2
       // psi_1(z) = psi_1(z+1) + 1/z^2
 
-      let sum = new Complex(0);
+      let sum = new Complex$1(0);
 
       while (z.re < 20) {
         let component = PowN(z, -2);
@@ -11266,13 +11450,13 @@ void main() {
       return Add(Trigamma(z), sum)
     }
 
-    let sum = new Complex(0);
+    let sum = new Complex$1(0);
 
     for (let coeffPair of coeffs) {
       let pow = coeffPair[0];
       let coeff = coeffPair[1];
 
-      let part = Multiply(new Complex(coeff), PowN(z, -pow));
+      let part = Multiply(new Complex$1(coeff), PowN(z, -pow));
 
       sum.re += part.re;
       sum.im += part.im;
@@ -11288,8 +11472,10 @@ void main() {
    * @returns {Complex}
    */
   function Polygamma(m, z) {
+    if (m < 0)
+      return new Complex$1(NaN, NaN)
     if (m % 1 !== 0)
-      return new Complex(NaN, NaN)
+      return new Complex$1(NaN, NaN)
 
     if (m === 0)
       return Digamma(z)
@@ -11301,31 +11487,31 @@ void main() {
 
     if (z < 0.5) {
       if (z % 1 === 0)
-        return new Complex(Infinity)
+        return new Complex$1(Infinity)
 
       // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
       // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
 
-      return Multiply(new Complex(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
-        (PowN(Sin(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex.One, z))))
+      return Multiply(new Complex$1(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
+        (PowN(Sin(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex$1.One, z))))
     } else if (z < 8) {
       // Recurrence relation
       // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
 
-      return Add(Polygamma(m, z+1), Divide(new Complex(sign * gamma$1(m + 1)), PowN(z, m+1)))
+      return Add(Polygamma(m, z+1), Divide(new Complex$1(sign * gamma$1(m + 1)), PowN(z, m+1)))
     }
 
     // Series representation
 
-    let sum = new Complex(0);
+    let sum = new Complex$1(0);
 
     for (let i = 0; i < 200; ++i) {
-      let component = Divide(Complex.One, PowN(Add(z, new Complex(i)), m + 1));
+      let component = Divide(Complex$1.One, PowN(Add(z, new Complex$1(i)), m + 1));
       sum.re += component.re;
       sum.im += component.im;
     }
 
-    return Multiply(new Complex(sign * gamma$1(m + 1)), sum)
+    return Multiply(new Complex$1(sign * gamma$1(m + 1)), sum)
   }
 
   const logPi = Math.log(Math.PI);
@@ -11333,31 +11519,31 @@ void main() {
 
   function LnGamma (z) {
     if (Math.abs(z.im) < 1e-17) {
-      return new Complex(ln_gamma(z.re))
+      return new Complex$1(ln_gamma(z.re))
     }
 
     if (z.re < 0.5) {
       // Compute via reflection formula
-      let reflected = LnGamma(Subtract(Complex.One, z));
+      let reflected = LnGamma(Subtract(Complex$1.One, z));
 
-      return Subtract(Subtract(new Complex(logPi), Ln(Sin(Multiply(new Complex(Math.PI), z)))), reflected)
+      return Subtract(Subtract(new Complex$1(logPi), Ln(Sin(Multiply(new Complex$1(Math.PI), z)))), reflected)
     } else {
       z.re -= 1;
 
       const g = 7;
 
-      var x = new Complex(LANCZOS_COEFFICIENTS[0]);
+      var x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
 
       for (var i = 1; i < g + 2; i++) {
-        let component = Divide(new Complex(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex(i)));
+        let component = Divide(new Complex$1(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex$1(i)));
 
         x.re += component.re;
         x.im += component.im;
       }
 
-      var t = Add(z, new Complex(g + 0.5));
+      var t = Add(z, new Complex$1(g + 0.5));
 
-      return Add(new Complex(logSqrt2Pi), Add(Subtract(Multiply(Ln(t), Add(z, new Complex(0.5))), t), Ln(x)))
+      return Add(new Complex$1(logSqrt2Pi), Add(Subtract(Multiply(Ln(t), Add(z, new Complex$1(0.5))), t), Ln(x)))
     }
   }
 
@@ -11405,6 +11591,10 @@ void main() {
     return seriesSum / (ZETA_COEFFS[0] * (1 - 2 ** (1 - r)))
   }
 
+  function eta(r) {
+    return (1 - 2 ** (1 - r)) * zeta(r)
+  }
+
   zeta.coeffs = ZETA_COEFFS;
   zeta.n = ZETA_N;
 
@@ -11412,11 +11602,11 @@ void main() {
   let ZETA_N$1 = zeta.n;
 
   function Chi(s) {
-    let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex(1))));
+    let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex$1(1))));
 
     let sine = Sin(s.scale(Math.PI / 2));
 
-    let gamma = Gamma(Subtract(new Complex(1), s));
+    let gamma = Gamma(Subtract(new Complex$1(1), s));
 
     return Multiply(powers, Multiply(sine, gamma))
   }
@@ -11427,7 +11617,7 @@ void main() {
 
     let chiS = Chi(z);
 
-    let sum = new Complex(0);
+    let sum = new Complex$1(0);
 
     let mZ = z.scale(-1);
 
@@ -11438,9 +11628,9 @@ void main() {
       sum.im += component.im;
     }
 
-    let secondSum = new Complex(0);
+    let secondSum = new Complex$1(0);
 
-    let oneMz = Subtract(z, new Complex(1));
+    let oneMz = Subtract(z, new Complex$1(1));
 
     for (let n = 1; n <= m; ++n) {
       let component = PowZ(n, oneMz);
@@ -11458,12 +11648,12 @@ void main() {
 
   function Zeta(z) {
     if (Math.abs(z.im) < 1e-17)
-      return new Complex(zeta(z.re))
+      return new Complex$1(zeta(z.re))
 
     if (z.re < 0.5) {
       // Reflection formula
 
-      return Multiply(Chi(z), Zeta(Subtract(new Complex(1), z)))
+      return Multiply(Chi(z), Zeta(Subtract(new Complex$1(1), z)))
     }
 
     if (0 <= z.re && z.re <= 1 && Math.abs(z.im) > 48.005150881167159727942472749427) {
@@ -11472,9 +11662,9 @@ void main() {
 
     // series time
 
-    let seriesSum = new Complex(0);
+    let seriesSum = new Complex$1(0);
 
-    let sign = new Complex(1);
+    let sign = new Complex$1(1);
 
     for (let k = 0; k < ZETA_N$1; ++k) {
       let component = Divide(sign, PowZ(k + 1, z)).scale(ZETA_COEFFS$1[k + 1]);
@@ -11485,8 +11675,144 @@ void main() {
       sign.re *= -1;
     }
 
-    return Divide(seriesSum, Multiply(new Complex(ZETA_COEFFS$1[0]), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))))
+    return Divide(seriesSum, Multiply(new Complex$1(ZETA_COEFFS$1[0]), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z)))))
   }
+
+  // Dirichlet eta function
+  function Eta(z) {
+    return Multiply(Zeta(z), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z))))
+  }
+
+  const Sinc = (x) => {
+    if (x.re === 0 && x.im === 0)
+      return new Complex(1)
+
+    return Divide(Sin(x), x)
+  };
+
+  const NormSinc = (x) => {
+    return Sinc(x.scale(Math.PI))
+  };
+
+  var MiscSpecial = /*#__PURE__*/Object.freeze({
+    Sinc: Sinc,
+    NormSinc: NormSinc
+  });
+
+  const EI_COEFFS = [];
+
+  function getEiCoeff(n) {
+    for (let i = EI_COEFFS.length; i <= n; ++i) {
+      let sum = 0;
+
+      for (let k = 0; k <= Math.floor((n - 1) / 2); ++k) {
+        sum += 1 / (2 * k + 1);
+      }
+
+      EI_COEFFS[i] = sum;
+    }
+
+    return EI_COEFFS[n]
+  }
+
+  function E1(x) {
+    if (x === 0)
+      return Infinity
+    // see https://www.sciencedirect.com/science/article/pii/S0022169499001845?via%3Dihub
+    if (x > 0) {
+      const q = 20 / 47 * x ** xPow;
+      const h = 1 / (1 + x * Math.sqrt(x)) + hInf * q / (1 + q);
+
+      return Math.exp(-x) / (G + (1 - G) * Math.exp(-x / (1 - G))) * Math.log(1 + G / x - (1 - G) / (h + b * x) ** 2)
+    } else {
+      return -ei(-x)
+    }
+  }
+
+  const G = Math.exp(-eulerGamma);
+  const b = Math.sqrt(2 * (1 - G) / (G * (2 - G)));
+  const hInf = (1-G) * (G * G - 6 * G + 12) / (3 * G * (2 - G) ** 2 * b);
+  const xPow = Math.sqrt(31 / 26);
+
+  // The exponential integral Ei(x).
+  // E1(z) = euler_gamma + ln(z) + exp(z / 2) * sum((-1)^(n-1) x^n / (n! 2^(n-1)) * sum(1 / (2k + 1) for k in [0, floor((n-1)/2)]) for n in [1, infinity])
+  function ei(x) {
+    if (x === 0)
+      return -Infinity
+
+    if (x < 0) {
+      return -E1(-x)
+    } else {
+      let sum = 0;
+
+      let z = 1, component = 0;
+
+      let terms = Math.min(100, Math.max(4 * x ** 0.75, 8));
+
+      for (let n = 1; n < terms; ++n) {
+        z *= x / n;
+
+        component = z * getEiCoeff(n);
+
+        z *= -1 / 2;
+
+        sum += component;
+      }
+
+      return eulerGamma + Math.log(x) + Math.exp(x / 2) * sum
+    }
+  }
+
+  // The logarithmic integral li(x).
+  function li(x) {
+    return ei(Math.log(x))
+  }
+
+  const Ei = (z) => {
+    if (z.im < 1e-17)
+      return new Complex$1(ei(z.re))
+
+    let sum = new Complex$1(0);
+    let accum = new Complex$1(1);
+
+    let terms = Math.min(Math.max(4 * z.magnitudeSquared() ** 0.375, 8), 100);
+
+    for (let n = 1; n < terms; ++n) {
+      accum = Multiply(accum, z.scale(1/n));
+
+      let component = accum.scale(getEiCoeff(n));
+
+      accum.re *= -0.5;
+      accum.im *= -0.5;
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Add(new Complex$1(eulerGamma), Add(Ln(z), Multiply(Exp(z.scale(0.5)), sum)))
+  };
+
+  const Li = (z) => {
+    return Ei(Ln(z))
+  };
+
+  var ExpIntegrals = /*#__PURE__*/Object.freeze({
+    Ei: Ei,
+    Li: Li
+  });
+
+  function Si(z) {
+    throw new Error("unimplemented")
+  }
+
+  function Ci(z) {
+    throw new Error("unimplemented")
+  }
+
+  var TrigIntegrals = /*#__PURE__*/Object.freeze({
+    Si: Si,
+    Ci: Ci
+  });
 
   /**
    * Complex functions!
@@ -11494,7 +11820,7 @@ void main() {
   const ComplexFunctions = Object.freeze({
     ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
     ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta
+    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta, Eta, ...MiscSpecial, ...ExpIntegrals, ...TrigIntegrals
   });
 
   const Multiply$1 = (a, b) => a * b;
@@ -11592,6 +11918,65 @@ void main() {
     Arccsch: Arccsch$1,
     Arccoth: Arccoth$1
   });
+
+  let SiP1 = new SingleVariablePolynomial([1, -4.54393409816329991e-2, 1.15457225751016682e-3, -1.41018536821330254e-5, 9.43280809438713025e-8, -3.53201978997168357e-10, 7.08240282274875911e-12, -6.05338212010422477e-16]);
+  let SiQ1 = new SingleVariablePolynomial([1, 1.01162145739225565e-2, 4.99175116169755106e-5, 1.55654986308745614e-7, 3.28067571055789734e-10, 4.5049097575386581e-13, 3.21107051193712168e-16]);
+  let CiP1 = new SingleVariablePolynomial([-0.25, 7.51851524438898291e-3, -1.27528342240267686e-4, 1.05297363846239184e-6, -4.68889508144848019e-9, 1.06480802891189243e-11, -9.93728488857585407e-15]);
+  let CiQ1 = new SingleVariablePolynomial([1, 1.1592605689110735e-2, 6.72126800814254432e-5, 2.55533277086129636e-7, 6.97071295760958946e-10, 1.38536352772778619e-12, 1.89106054713059759e-15, 1.39759616731376855e-18]);
+  let FP1 = new SingleVariablePolynomial([1, 7.44437068161936700618e2, 1.96396372895146869801e5, 2.37750310125431834034e7, 1.43073403821274636888e9, 4.33736238870432522765e10, 6.40533830574022022911e11, 4.20968180571076940208e12, 1.00795182980368574617e13, 4.94816688199951963482e12, 4.94701168645415959931e11]);
+  let FQ1 = new SingleVariablePolynomial([1, 7.46437068161927678031e2, 1.97865247031583951450e5, 2.41535670165126845144e7, 1.47478952192985464958e9, 4.58595115847765779830e10, 7.08501308149515401563e11, 5.06084464593475076774e12, 1.43468549171581016479e13, 1.11535493509914254097e13]);
+  let GP1 = new SingleVariablePolynomial([1, 8.1359520115168615e2, 2.35239181626478200e5, 3.12557570795778731e7, 2.06297595146763354e9, 6.83052205423625007e10, 1.09049528450362786e12, 7.57664583257834349e12, 1.81004487464664575e13, 6.43291613143049485e12,
+    -1.36517137670871689e12]);
+  let GQ1 = new SingleVariablePolynomial([1, 8.19595201151451564e2, 2.40036752835578777e5, 3.26026661647090822e7, 2.23355543278099360e9, 7.87465017341829930e10, 1.39866710696414565e12, 1.17164723371736605e13, 4.01839087307656620e13, 3.99653257887490811e13]);
+
+
+  function f(x) {
+    let recip = 1 / x;
+    let recipSq = recip * recip;
+
+    return recip * FP1.evaluate(recipSq) / FQ1.evaluate(recipSq)
+  }
+
+  function g$1(x) {
+    let recipSq = 1 / (x * x);
+
+    return recipSq * GP1.evaluate(recipSq) / GQ1.evaluate(recipSq)
+  }
+
+  function Si$1(x) {
+    if (x === 0)
+      return 0
+
+    if (x < 0)
+      return -Si$1(-x)
+
+    if (x <= 4) {
+      // PADE APPROXIMANT
+
+      let xSq = x * x;
+
+      return x * SiP1.evaluate(xSq) / SiQ1.evaluate(xSq)
+    } else {
+      return Math.PI / 2 - f(x) * Math.cos(x) - g$1(x) * Math.sin(x)
+    }
+  }
+
+  function Ci$1(x) {
+    if (x === 0)
+      return -Infinity
+
+    if (x < 0)
+      return Ci$1(-x)
+
+    if (x <= 4) {
+      // PADE APPROXIMANT
+      let xSq = x * x;
+
+      return eulerGamma + Math.log(x) + xSq * CiP1.evaluate(xSq) / CiQ1.evaluate(xSq)
+    } else {
+      return f(x) * Math.sin(x) - g$1(x) * Math.cos(x)
+    }
+  }
 
   const piecewise$1 = (val1, cond, ...args) => {
     if (cond)
@@ -11732,7 +12117,19 @@ void main() {
     },
     Floor: Math.floor,
     Ceil: Math.ceil,
-    Zeta: zeta
+    Zeta: zeta,
+    Eta: eta,
+    Frac: (x) => x - Math.floor(x),
+    Sign: Math.sign,
+    Round: Math.round,
+    Trunc: Math.trunc,
+    IsFinite: isFinite,
+    Ei: ei,
+    Li: li,
+    Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
+    NormSinc: (x) => ExtraFunctions$1.Sinc(x * Math.PI),
+    Si: Si$1,
+    Ci: Ci$1
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -11747,8 +12144,8 @@ void main() {
   }
 
   const Typecasts$1 = {
-    RealToComplex: (r) => new Complex(r),
-    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex(elem)),
+    RealToComplex: (r) => new Complex$1(r),
+    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
     RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
     Identity: (r) => r
   };
@@ -12417,14 +12814,20 @@ void main() {
 
   const bernoulli = bernoulliP;
 
+  const BooleanFunctions = {
+    And: (a, b) => a && b,
+    Or: (a, b) => a || b
+  };
+
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
   exports.Beast = Beast;
   exports.BeastJob = BeastJob;
+  exports.BooleanFunctions = BooleanFunctions;
   exports.BoundingBox = BoundingBox;
   exports.Color = Color;
   exports.Colors = Colors;
-  exports.Complex = Complex;
+  exports.Complex = Complex$1;
   exports.ComplexFunctions = ComplexFunctions;
   exports.ConstantNode = ConstantNode;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
@@ -12480,13 +12883,17 @@ void main() {
   exports.defineVariable = defineVariable;
   exports.digamma = digamma;
   exports.distinctFactors = distinctFactors;
+  exports.ei = ei;
+  exports.eta = eta;
   exports.eulerPhi = eulerPhi;
   exports.expMod = expMod;
   exports.factor = factor;
+  exports.factorial = factorial;
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
   exports.gamma = gamma$1;
   exports.getDashedPolyline = getDashedPolyline;
+  exports.getEiCoeff = getEiCoeff;
   exports.getFunction = getFunction;
   exports.getLineIntersection = getLineIntersection;
   exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
@@ -12499,6 +12906,7 @@ void main() {
   exports.isPerfectSquare = isPerfectSquare;
   exports.isPrime = isPrime;
   exports.jacobi = jacobi;
+  exports.li = li;
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
@@ -12526,6 +12934,7 @@ void main() {
 Grapheme.defineVariable('i', Grapheme.parseString("complex(0, 1)"))
 Grapheme.defineVariable('pi', Grapheme.parseString("3.141592653589793238"))
 Grapheme.defineVariable('e', Grapheme.parseString("2.71828182845904523536"))
+Grapheme.defineVariable('euler_gamma', Grapheme.parseString("0.57721566490153286060"))
 Grapheme.defineVariable('<', Grapheme.parseString("1"))
 Grapheme.defineVariable('>', Grapheme.parseString("1"))
 Grapheme.defineVariable('<=', Grapheme.parseString("1"))

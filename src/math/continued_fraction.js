@@ -73,4 +73,14 @@ function get_rational(x) {
   return [n, d]
 }
 
+function evaluateContinuedFraction(numerators, denominators) {
+  let result = 0
+
+
+  for (let i = denominators.length - 1; i >= 0; --i) {
+    result = denominators[i]
+
+  }
+}
+
 export { get_continued_fraction, get_rational }

@@ -77,4 +77,8 @@ const piecewise = (val1, cond, ...args) => {
   return piecewise(...args)
 }
 
+export const IsFinite = (z) => {
+  return isFinite(z.re) && isFinite(z.im)
+}
+
 export const Piecewise = piecewise

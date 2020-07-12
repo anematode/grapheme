@@ -85,4 +85,9 @@ function Zeta(z) {
   return Divide(seriesSum, Multiply(new Complex(ZETA_COEFFS[0]), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))))
 }
 
-export default Zeta
+// Dirichlet eta function
+function Eta(z) {
+  return Multiply(Zeta(z), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z))))
+}
+
+export {Eta, Zeta}

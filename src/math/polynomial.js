@@ -60,9 +60,12 @@ class SingleVariablePolynomial {
     for (let i = 0; i < coeffs.length; ++i) {
       let coeff = coeffs[i]
 
-      sum += coeff * prod
+
+      if (coeff !== 0)
+        sum += coeff * prod
 
       prod *= x
+
     }
 
     return sum

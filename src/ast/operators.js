@@ -32,7 +32,10 @@ class OperatorDefinition {
 
     let evaluate = params.evaluate
 
-    this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate
+    if (params.noGraphemePrefix)
+      this.evaluate = evaluate
+    else
+      this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate
   }
 }
 
@@ -614,6 +617,175 @@ const Operators = {
       desc: "Returns the Riemann zeta function of a complex number r."
     })
   ],
+  "dirichlet_eta": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Eta",
+      desc: "Returns the Dirichlet eta function of a real number r."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Eta",
+      desc: "Returns the Dirichlet eta function of a complex number r."
+    })
+  ],
+  "mod": [
+    new NormalDefinition({
+      signature: ["int", "int"],
+      returns: "int",
+      evaluate: "RealFunctions.Mod",
+      desc: "Returns a modulo b."
+    }),
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.Mod",
+      desc: "Returns a modulo b."
+    })
+  ],
+  "frac": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Frac",
+      desc: "Returns the fractional part of x."
+    })
+  ],
+  "sign": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "int",
+      evaluate: "RealFunctions.Sign",
+      desc: "Returns the sign of x: 1 if x > 0, 0 if x == 0 and -1 otherwise."
+    })
+  ],
+  "round": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "int",
+      evaluate: "RealFunctions.Round",
+      desc: "Returns the nearest integer to x. Note that if |x| > " + Number.MAX_SAFE_INTEGER + " this may not be accurate."
+    })
+  ],
+  "trunc": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "int",
+      evaluate: "RealFunctions.Trunc",
+      desc: "Removes the fractional part of x."
+    })
+  ],
+  "is_finite": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "bool",
+      evaluate: "RealFunctions.IsFinite",
+      desc: "Returns true if the number is finite and false if it is -Infinity, Infinity, or NaN"
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "bool",
+      evaluate: "ComplexFunctions.IsFinite",
+      desc: "Returns true if the number is finite and false if it is undefined or infinite"
+    })
+  ],
+  "not": [
+    new NormalDefinition({
+      signature: ["bool"],
+      returns: "bool",
+      evaluate: "!",
+      noGraphemePrefix: true,
+      desc: "Returns the logical negation of b."
+    })
+  ],
+  "and": [
+    new NormalDefinition({
+      signature: ["bool", "bool"],
+      returns: "bool",
+      evaluate: "BooleanFunctions.And",
+      desc: "Returns true if a and b are true, and false otherwise."
+    })
+  ],
+  "or": [
+    new NormalDefinition({
+      signature: ["bool", "bool"],
+      returns: "bool",
+      evaluate: "BooleanFunctions.Or",
+      desc: "Returns true if a or b are true, and false otherwise."
+    })
+  ],
+  "Ei": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Ei",
+      desc: "Returns the exponential integral of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Ei",
+      desc: "Returns the exponential integral of z."
+    })
+  ],
+  "li": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Li",
+      desc: "Returns the logarithmic integral of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Li",
+      desc: "Returns the logarithmic integral of z."
+    })
+  ],
+  "sinc": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Sinc",
+      desc: "Returns the sinc function of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Sinc",
+      desc: "Returns the sinc function of x."
+    })
+  ],
+  "Si": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Si",
+      desc: "Returns the sine integral of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Si",
+      desc: "Returns the sine integral of z."
+    })
+  ],
+  "Ci": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Ci",
+      desc: "Returns the cosine integral of x."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Ci",
+      desc: "Returns the cosine integral of z."
+    })
+  ]
 }
 
 export { Typecasts, Operators, castableInto, castableIntoMultiple, getCastingFunction, NormalDefinition }

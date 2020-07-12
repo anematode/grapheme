@@ -29,6 +29,7 @@ class Simple2DWebGLGeometry extends WebGLElement {
     this.color = new Color()
 
     this.glVertices = null
+
     this.renderMode = "triangles" // allowed values: points, line_strip, line_loop, lines, triangle_strip, triangle_fan, triangles
     this.needsBufferCopy = true
   }

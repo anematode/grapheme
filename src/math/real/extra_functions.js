@@ -1,6 +1,8 @@
 import { mod, gcd } from "../../core/utils"
 import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function'
-import { zeta } from '../riemann_zeta'
+import { eta, zeta } from '../riemann_zeta'
+import { ei, li } from '../exp_integral'
+import { Ci, Si } from '../trig_integrals'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -141,7 +143,19 @@ const ExtraFunctions = {
   },
   Floor: Math.floor,
   Ceil: Math.ceil,
-  Zeta: zeta
+  Zeta: zeta,
+  Eta: eta,
+  Frac: (x) => x - Math.floor(x),
+  Sign: Math.sign,
+  Round: Math.round,
+  Trunc: Math.trunc,
+  IsFinite: isFinite,
+  Ei: ei,
+  Li: li,
+  Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
+  NormSinc: (x) => ExtraFunctions.Sinc(x * Math.PI),
+  Si: Si,
+  Ci: Ci
 }
 
 export default ExtraFunctions

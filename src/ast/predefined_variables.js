@@ -1,6 +1,7 @@
 Grapheme.defineVariable('i', Grapheme.parseString("complex(0, 1)"))
 Grapheme.defineVariable('pi', Grapheme.parseString("3.141592653589793238"))
 Grapheme.defineVariable('e', Grapheme.parseString("2.71828182845904523536"))
+Grapheme.defineVariable('euler_gamma', Grapheme.parseString("0.57721566490153286060"))
 Grapheme.defineVariable('<', Grapheme.parseString("1"))
 Grapheme.defineVariable('>', Grapheme.parseString("1"))
 Grapheme.defineVariable('<=', Grapheme.parseString("1"))
