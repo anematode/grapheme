@@ -6950,6 +6950,84 @@ void main() {
         evaluate: "ComplexFunctions.Erfc",
         desc: "Returns the complementary error function of z."
       })
+    ],
+    "inverse_erf": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.InverseErf",
+        desc: "Returns the inverse error function of x."
+      })
+    ],
+    "inverse_erfc": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.InverseErfc",
+        desc: "Returns the inverse complementary error function of x."
+      })
+    ],
+    "gcd": [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Gcd",
+        desc: "Returns the greatest common divisor of a and b."
+      })
+    ],
+    "lcm": [
+      new NormalDefinition({
+        signature: ["int", "int"],
+        returns: "int",
+        evaluate: "RealFunctions.Lcm",
+        desc: "Returns the least common multiple of a and b."
+      })
+    ],
+    "fresnel_S": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.FresnelS",
+        desc: "Return the integral from 0 to x of sin(x^2)."
+      })
+    ],
+    "fresnel_C": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.FresnelC",
+        desc: "Return the integral from 0 to x of cos(x^2)."
+      })
+    ],
+    "product_log": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.ProductLog",
+        desc: "Return the principal branch of the product log of x (also known as the Lambert W function or W0(x))."
+      }),
+      new NormalDefinition({
+        signature: ["int", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.ProductLogBranched",
+        desc: "Return the nth branch of the product log of x (also known as the Lambert W function or W0(x)). n can be 0 or -1."
+      })
+    ],
+    "elliptic_K": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.EllipticK",
+        desc: "Return the complete elliptic integral K(x)."
+      })
+    ],
+    "elliptic_E": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.EllipticE",
+        desc: "Return the complete elliptic integral E(x)."
+      })
     ]
   };
 
@@ -11848,8 +11926,51 @@ void main() {
     return 1 - erf(x)
   }
 
-  function erfi(x) {
+  function fmaf(x, y, a) {
+    return x * y + a
+  }
 
+
+  // Credit to https://stackoverflow.com/questions/27229371/inverse-error-function-in-c
+  function inverseErf(x) {
+    if (x === 0)
+      return 0
+
+    let p = 0, r = 0, t = 0;
+    t = - x * x + 1;
+    t = Math.log(t);
+
+    if (Math.abs(t) > 6.125) { // maximum ulp error = 2.35793
+      p = 3.03697567e-10; //  0x1.4deb44p-32
+      p = fmaf (p, t,  2.93243101e-8); //  0x1.f7c9aep-26
+      p = fmaf (p, t,  1.22150334e-6); //  0x1.47e512p-20
+      p = fmaf (p, t,  2.84108955e-5); //  0x1.dca7dep-16
+      p = fmaf (p, t,  3.93552968e-4); //  0x1.9cab92p-12
+      p = fmaf (p, t,  3.02698812e-3); //  0x1.8cc0dep-9
+      p = fmaf (p, t,  4.83185798e-3); //  0x1.3ca920p-8
+      p = fmaf (p, t, -2.64646143e-1); // -0x1.0eff66p-2
+      p = fmaf (p, t,  8.40016484e-1); //  0x1.ae16a4p-1
+    } else { // maximum ulp error = 2.35456
+      p =              5.43877832e-9;  //  0x1.75c000p-28
+      p = fmaf (p, t,  1.43286059e-7); //  0x1.33b458p-23
+      p = fmaf (p, t,  1.22775396e-6); //  0x1.49929cp-20
+      p = fmaf (p, t,  1.12962631e-7); //  0x1.e52bbap-24
+      p = fmaf (p, t, -5.61531961e-5); // -0x1.d70c12p-15
+      p = fmaf (p, t, -1.47697705e-4); // -0x1.35be9ap-13
+      p = fmaf (p, t,  2.31468701e-3); //  0x1.2f6402p-9
+      p = fmaf (p, t,  1.15392562e-2); //  0x1.7a1e4cp-7
+      p = fmaf (p, t, -2.32015476e-1); // -0x1.db2aeep-3
+      p = fmaf (p, t,  8.86226892e-1); //  0x1.c5bf88p-1
+    }
+
+    r = x * p;
+
+    return r;
+
+  }
+
+  function inverseErfc(x) {
+    return inverseErf(1 - x)
   }
 
   function fk(k, x, y, cosXY, sinXY) {
@@ -12066,6 +12187,263 @@ void main() {
     }
   }
 
+  const sqrtPi2 = Math.sqrt(Math.PI / 2);
+  const sqrt2Pi = Math.sqrt(2 * Math.PI);
+  const sqrt8Pi = Math.sqrt(8 * Math.PI);
+
+  function LargeS(x) {
+    let xSq = x * x;
+    return sqrtPi2 * (Math.sign(x) / 2 - (Math.cos(xSq) / (x * sqrt2Pi) + Math.sin(xSq) / (x * xSq * sqrt8Pi)))
+  }
+
+  function LargeC(x) {
+    let xSq = x * x;
+    return sqrtPi2 * (Math.sign(x) / 2 + (Math.sin(xSq) / (x * sqrt2Pi) + Math.cos(xSq) / (x * xSq * sqrt8Pi)))
+  }
+
+  function SmallS(x) {
+    let sum = 0;
+
+    let z = x * x * x;
+    let xPow = z * x;
+
+    for (let n = 0; n < 50; ++n) {
+      if (n !== 0)
+        z /= 2 * n * (2 * n + 1);
+
+      let component = z / (4 * n + 3);
+
+      sum += component;
+
+      z *= xPow;
+
+      z *= -1;
+
+      if (Math.abs(component) < 1e-6)
+        break
+    }
+
+    return sum
+  }
+
+  function SmallC(x) {
+    let sum = 0;
+
+    let z = x;
+    let xPow = x * x * x * x;
+
+    for (let n = 0; n < 50; ++n) {
+      if (n !== 0)
+        z /= 2 * n * (2 * n - 1);
+
+      let component = z / (4 * n + 1);
+
+      sum += component;
+
+      z *= xPow;
+
+      z *= -1;
+
+      if (Math.abs(component) < 1e-6)
+        break
+    }
+
+    return sum
+  }
+
+  function S(x) {
+    if (Math.abs(x) > 5)
+      return LargeS(x)
+    return SmallS(x)
+  }
+
+  function C$1(x) {
+    if (Math.abs(x) > 5)
+      return LargeC(x)
+    return SmallC(x)
+  }
+
+  function seriesEval(r) {
+    const c = [
+      -1.0,
+      2.331643981597124203363536062168,
+      -1.812187885639363490240191647568,
+      1.936631114492359755363277457668,
+      -2.353551201881614516821543561516,
+      3.066858901050631912893148922704,
+      -4.175335600258177138854984177460,
+      5.858023729874774148815053846119,
+      -8.401032217523977370984161688514,
+      12.250753501314460424,
+      -18.100697012472442755,
+      27.029044799010561650];
+
+    const t_8 = c[8] + r * (c[9] + r * (c[10] + r * c[11]));
+    const t_5 = c[5] + r * (c[6] + r * (c[7] + r * t_8));
+    const t_1 = c[1] + r * (c[2] + r * (c[3] + r * (c[4] + r * t_5)));
+    return c[0] + r * t_1;
+  }
+
+  function approxProductLog(x) {
+    if (x > 1) {
+      let logX = Math.log(x);
+
+      return logX - Math.log(logX)
+    }
+
+    return 0
+  }
+
+  function approxProductLogM1(x) {
+    if (x < -1.0e-6) {
+      // Calculate via series
+
+      let q = x - RECIP_E;
+
+      let r = - Math.sqrt(q);
+
+      return seriesEval(r)
+    } else {
+      // Calculate via logs
+
+      let L1 = Math.log(-x);
+      let L2 = Math.log(-L1);
+
+      return L1 - L2 + L2 / L1
+    }
+  }
+
+  function halley(x, w, iters=8) {
+    for (let i = 0; i < 8; ++i) {
+      let eW = Math.exp(w);
+
+      w = w - (w * eW - x) / (eW * (w + 1) - (w + 2) * (w * eW - x) / (2 * w + 2));
+    }
+
+    return w
+  }
+
+  const RECIP_E = -1 / Math.exp(1);
+
+  function productLog(x) {
+
+    if (x < RECIP_E)
+      return NaN
+
+    // see https://mathworld.wolfram.com/LambertW-Function.html
+      let w = approxProductLog(x);
+
+      // Compute via Halley's method
+
+    return halley(x, w)
+  }
+
+  function productLogBranched(k, x) {
+    if (k === 0)
+      return productLog(x)
+    else if (k === -1) {
+      if (x === 0)
+        return Infinity
+
+      if (RECIP_E <= x && x < 0) {
+        let w = approxProductLogM1(x);
+
+        return halley(x, w)
+      }
+
+      return NaN
+    }
+
+    return NaN
+  }
+
+  // Arithmetic geometric mean
+
+  const MAX_ITERS = 20;
+
+  // Credit to Rosetta Code
+  function agm(a0, g0, tolerance=1e-17) {
+    let an = a0, gn = g0;
+    let i = 0;
+
+    while (Math.abs(an - gn) > tolerance && i < MAX_ITERS) {
+      i++;
+
+      let tmp = an;
+      an = (an + gn) / 2;
+      gn = Math.sqrt(tmp * gn);
+    }
+    return an;
+  }
+
+  function pochhammer(q, n) {
+    if (n === 0)
+      return 1
+    if (n === 1)
+      return q
+
+    let prod = 1;
+    for (let i = 0; i < n; ++i) {
+      prod *= q;
+      q++;
+    }
+
+    return prod
+  }
+
+  function hypergeometric(a, b, c, z, terms=40) {
+    let prod = 1;
+    let sum = 0;
+
+    if (Number.isInteger(c) && c <= 0)
+      return NaN
+
+    for (let n = 0; n < terms; ++n) {
+      sum += prod;
+
+      prod *= a * b;
+      prod /= c;
+
+      a++;
+      b++;
+      c++;
+
+      prod /= n + 1;
+
+      prod *= z;
+    }
+
+    return sum
+  }
+
+  function ellipticK(k) {
+    const absK = Math.abs(k);
+
+    if (absK > 1)
+      return NaN
+
+    if (absK === 1)
+      return Infinity
+
+    return Math.PI / 2 / agm(1, Math.sqrt(1 - k * k))
+  }
+
+
+  function ellipticE(k) {
+    let absK = Math.abs(k);
+
+    if (absK > 1)
+      return NaN
+    else if (absK === 1)
+      return 1
+
+    return Math.PI / 2 * hypergeometric(1/2, -1/2, 1, k * k)
+  }
+
+  function ellipticPi(n, k) {
+
+  }
+
   const piecewise$1 = (val1, cond, ...args) => {
     if (cond)
       return val1
@@ -12219,7 +12597,18 @@ void main() {
     Si: Si$1,
     Ci: Ci$1,
     Erf: erf,
-    Erfc: erfc
+    Erfc: erfc,
+    Gcd: (a, b) => gcd(Math.abs(a), Math.abs(b)),
+    Lcm: (a, b) => a * b / ExtraFunctions$1.Gcd(a, b),
+    FresnelS: S,
+    FresnelC: C$1,
+    InverseErf: inverseErf,
+    InverseErfc: inverseErfc,
+    ProductLog: productLog,
+    ProductLogBranched: productLogBranched,
+    EllipticE: ellipticE,
+    EllipticK: ellipticK,
+    EllipticPi: ellipticPi
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
@@ -12924,6 +13313,8 @@ void main() {
   exports.Dataset2D = Dataset2D;
   exports.DefaultUniverse = DefaultUniverse;
   exports.EquationPlot2D = EquationPlot2D;
+  exports.FresnelC = C$1;
+  exports.FresnelS = S;
   exports.FunctionPlot2D = FunctionPlot2D;
   exports.Functions = Functions;
   exports.GREGORY_COEFFICIENTS = GREGORY_COEFFICIENTS;
@@ -12962,6 +13353,7 @@ void main() {
   exports._interpolationsEnabled = _interpolationsEnabled;
   exports.adaptively_sample_1d = adaptively_sample_1d;
   exports.addMod = addMod;
+  exports.agm = agm;
   exports.anglesBetween = anglesBetween;
   exports.asyncCalculatePolylineVertices = asyncCalculatePolylineVertices;
   exports.bernoulli = bernoulli;
@@ -12976,7 +13368,6 @@ void main() {
   exports.ei = ei;
   exports.erf = erf;
   exports.erfc = erfc;
-  exports.erfi = erfi;
   exports.eta = eta;
   exports.eulerPhi = eulerPhi;
   exports.expMod = expMod;
@@ -12993,9 +13384,12 @@ void main() {
   exports.getVariable = getVariable;
   exports.get_continued_fraction = get_continued_fraction;
   exports.get_rational = get_rational;
+  exports.hypergeometric = hypergeometric;
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
   exports.intervalEqFindBoxes = intervalEqFindBoxes;
+  exports.inverseErf = inverseErf;
+  exports.inverseErfc = inverseErfc;
   exports.isPerfectSquare = isPerfectSquare;
   exports.isPrime = isPrime;
   exports.jacobi = jacobi;
@@ -13006,6 +13400,7 @@ void main() {
   exports.mulMod = mulMod;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.parseString = parseString;
+  exports.pochhammer = pochhammer;
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
   exports.polygamma = polygamma;

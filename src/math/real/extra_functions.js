@@ -3,7 +3,11 @@ import { gamma, polygamma, ln_gamma, digamma, trigamma } from '../gamma_function
 import { eta, zeta } from '../riemann_zeta'
 import { ei, li } from '../exp_integral'
 import { Ci, Si } from '../trig_integrals'
-import { erf, erfc } from '../erf'
+import { erf, erfc, inverseErf, inverseErfc } from '../erf'
+import * as utils from "../../core/utils"
+import { FresnelS, FresnelC } from '../fresnel'
+import { productLog, productLogBranched } from '../product_log'
+import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -158,7 +162,18 @@ const ExtraFunctions = {
   Si: Si,
   Ci: Ci,
   Erf: erf,
-  Erfc: erfc
+  Erfc: erfc,
+  Gcd: (a, b) => utils.gcd(Math.abs(a), Math.abs(b)),
+  Lcm: (a, b) => a * b / ExtraFunctions.Gcd(a, b),
+  FresnelS,
+  FresnelC,
+  InverseErf: inverseErf,
+  InverseErfc: inverseErfc,
+  ProductLog: productLog,
+  ProductLogBranched: productLogBranched,
+  EllipticE: ellipticE,
+  EllipticK: ellipticK,
+  EllipticPi: ellipticPi
 }
 
 export default ExtraFunctions

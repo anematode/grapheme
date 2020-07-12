@@ -801,6 +801,84 @@ const Operators = {
       evaluate: "ComplexFunctions.Erfc",
       desc: "Returns the complementary error function of z."
     })
+  ],
+  "inverse_erf": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.InverseErf",
+      desc: "Returns the inverse error function of x."
+    })
+  ],
+  "inverse_erfc": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.InverseErfc",
+      desc: "Returns the inverse complementary error function of x."
+    })
+  ],
+  "gcd": [
+    new NormalDefinition({
+      signature: ["int", "int"],
+      returns: "int",
+      evaluate: "RealFunctions.Gcd",
+      desc: "Returns the greatest common divisor of a and b."
+    })
+  ],
+  "lcm": [
+    new NormalDefinition({
+      signature: ["int", "int"],
+      returns: "int",
+      evaluate: "RealFunctions.Lcm",
+      desc: "Returns the least common multiple of a and b."
+    })
+  ],
+  "fresnel_S": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.FresnelS",
+      desc: "Return the integral from 0 to x of sin(x^2)."
+    })
+  ],
+  "fresnel_C": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.FresnelC",
+      desc: "Return the integral from 0 to x of cos(x^2)."
+    })
+  ],
+  "product_log": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.ProductLog",
+      desc: "Return the principal branch of the product log of x (also known as the Lambert W function or W0(x))."
+    }),
+    new NormalDefinition({
+      signature: ["int", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.ProductLogBranched",
+      desc: "Return the nth branch of the product log of x (also known as the Lambert W function or W0(x)). n can be 0 or -1."
+    })
+  ],
+  "elliptic_K": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.EllipticK",
+      desc: "Return the complete elliptic integral K(x)."
+    })
+  ],
+  "elliptic_E": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.EllipticE",
+      desc: "Return the complete elliptic integral E(x)."
+    })
   ]
 }
 
