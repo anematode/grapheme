@@ -11806,7 +11806,7 @@ void main() {
   }
 
   function Ci(z) {
-    throw new Error("unimplemented")
+    throw new Error("unimplemented")``
   }
 
   var TrigIntegrals = /*#__PURE__*/Object.freeze({
