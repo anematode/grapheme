@@ -1,4 +1,5 @@
 import * as utils from "../core/utils"
+import { li } from './exp_integral'
 
 let unsafeToSquare = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER))
 
@@ -78,7 +79,7 @@ function expModLargeB(b, exponent, m) {
     }
   }
 
-  return (b * y) % m
+  return mulMod(b, y, m)
 }
 
 function expMod(b, exponent, m) {
@@ -120,48 +121,6 @@ function _isPrimeTrialDivision(p) {
   }
 
   return true
-}
-
-function jacobi(n, k) {
-  if (!(k > 0 && k % 2 === 1))
-    throw new Error("Invalid (n, k)")
-
-  n = n % k
-
-  let t = 1
-
-  while (n !== 0) {
-    while (n % 2 === 0) {
-      n /= 2
-
-      let r = k % 8
-      if (r === 3 || r === 5) {
-        t = -t
-      }
-    }
-
-    let tmp = k
-    k = n
-    n = tmp
-
-    if (n % 4 === 3 && k % 4 === 3) {
-      t = -t
-    }
-
-    n = n % k
-  }
-
-  if (k === 1)
-    return t
-
-  return 0
-}
-
-function _isProbablePrimeLucas(n, D, P, Q) {
-  if (utils.gcd(n, Math.abs(P)) !== 1 || utils.gcd(n, Math.abs(Q)) !== 1)
-    return false
-
-
 }
 
 function _isProbablePrimeMillerRabin(p, base=2) {
@@ -235,32 +194,9 @@ function _isPrimeLarge(p) {
   else
     bases = [2, 3, 5, 7, 11, 13, 17, 19, 23]
 
+
   return bases.every(base => _isProbablePrimeMillerRabin(p, base))
 }
-
-/*
-
-  if (isPerfectSquare(p))
-    return false
-
-  let D
-
-  for (let i = 0; i < 1; ++i) {
-    let potentialD = (i % 2 === 0) ? 5 + 2 * i : -5 - 2 * i
-
-    if (jacobi(potentialD, p) === -1) {
-      D = potentialD
-      break
-    }
-  }
-
-  if (!D) // too powerful
-    return false
-
-  let P = 1, Q = (1 - D) / 4
-
-  return _isProbablePrimeLucas(p, D, P, Q)
- */
 
 let smallPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223]
 
@@ -435,11 +371,95 @@ function eratosthenes(n) {
   return output;
 }
 
+function eratosthenesWithPi(n) {
+  let array = [], upperLimit = Math.sqrt(n), output = [];
+  let pi = [0, 0]
 
-// Returns the number of primes below n. Uses the Meissel-Lehmer method. See https://codegolf.stackexchange.com/a/74372
-// Also see https://www.ams.org/journals/mcom/1996-65-213/S0025-5718-96-00674-6/S0025-5718-96-00674-6.pdf
-function primeCountingFunction(n) {
-  
+  for (let i = 0; i < n; i++) {
+    array.push(true);
+  }
+
+  for (let i = 2; i <= upperLimit; i++) {
+    if (array[i]) {
+      for (var j = i * i; j < n; j += i) {
+        array[j] = false;
+      }
+    }
+  }
+
+  let cnt = 0
+
+  for (let i = 2; i < n; i++) {
+    if (array[i]) {
+      output.push(i);
+      cnt++
+    }
+
+    pi.push(cnt)
+  }
+
+  return {primes: new Uint32Array(output), pi: new Uint32Array(pi)}
 }
 
-export { isPrime, expMod, squareMod, addMod, mulMod, jacobi, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes  }
+const phiMemo = []
+let primes = []
+
+function Phi(m, b) {
+  if (b === 0)
+    return m
+  if (m === 0)
+    return 0
+
+  if (m >= 800) {
+    return Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1)
+  }
+
+  let t = b * 800 + m
+
+  if (!phiMemo[t]) {
+    phiMemo[t] = Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1)
+  }
+
+  return phiMemo[t]
+}
+
+const smallValues = [0, 0, 1, 2, 2, 3]
+let piValues
+
+function primeCountingFunction(x) {
+  if (x > 1e9)
+    return li(x)
+
+  if (x < 6)
+    return smallValues[x]
+
+  let root2 = Math.floor(Math.sqrt(x))
+  let root3 = Math.floor(x ** (1/3))
+
+  let top = Math.floor(x / root3) + 1
+
+  if (root2 + 1 >= primes.length) {
+    let res = eratosthenesWithPi(top + 2)
+
+    primes = res.primes
+    piValues = res.pi
+  }
+
+  let a = piValues[root3 + 1], b = piValues[root2 + 1]
+
+  let sum = 0
+
+  for (let i = a; i < b; ++i) {
+    let p = primes[i]
+
+    sum += piValues[Math.floor(x / p)] - piValues[p] + 1
+  }
+
+  let phi = Phi(x, a)
+
+  return phi + a - 1 - sum
+}
+
+// for me: https://www.ams.org/journals/mcom/1996-65-213/S0025-5718-96-00674-6/S0025-5718-96-00674-6.pdf
+
+export { isPrime, expMod, squareMod, addMod, mulMod, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes, primeCountingFunction }
