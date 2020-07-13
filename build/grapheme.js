@@ -13045,13 +13045,14 @@ void main() {
       pi.push(cnt);
     }
 
-    return {primes: new Uint32Array(output), pi: new Uint32Array(pi)}
+    return {primes: output, pi: new Uint32Array(pi)}
   }
 
   const phiMemo = [];
   let primes = [];
 
   function Phi(m, b) {
+
     if (b === 0)
       return m
     if (m === 0)
@@ -13080,6 +13081,7 @@ void main() {
     if (x < 6)
       return smallValues[x]
 
+    // The square root of x
     let root2 = Math.floor(Math.sqrt(x));
     let root3 = Math.floor(x ** (1/3));
 

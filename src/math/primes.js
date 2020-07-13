@@ -398,13 +398,20 @@ function eratosthenesWithPi(n) {
     pi.push(cnt)
   }
 
-  return {primes: new Uint32Array(output), pi: new Uint32Array(pi)}
+  return {primes: output, pi: new Uint32Array(pi)}
+}
+
+const DEFAULT_BLOCK_SIZE = 1000
+
+function* eratosthenesSegmentedWithPi(n) {
+  let BLOCK_SIZE = Math.max(Math.ceil(Math.sqrt(n)), DEFAULT_BLOCK_SIZE)
 }
 
 const phiMemo = []
 let primes = []
 
 function Phi(m, b) {
+
   if (b === 0)
     return m
   if (m === 0)
@@ -433,6 +440,7 @@ function primeCountingFunction(x) {
   if (x < 6)
     return smallValues[x]
 
+  // The square root of x
   let root2 = Math.floor(Math.sqrt(x))
   let root3 = Math.floor(x ** (1/3))
 
