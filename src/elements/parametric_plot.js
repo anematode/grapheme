@@ -2,6 +2,7 @@ import { defineFunction, getFunction } from '../ast/user_defined'
 import { getFunctionName } from '../core/utils'
 import { WebGLPolyline } from './webgl_polyline'
 import { InteractiveElement } from '../core/interactive_element'
+import { adaptively_sample_parametric_1d, sample_parametric_1d } from '../math/function_plot_algorithm'
 
 class ParametricPlot2D extends InteractiveElement {
   constructor(params={}) {
@@ -11,10 +12,12 @@ class ParametricPlot2D extends InteractiveElement {
     this.functionName = getFunctionName()
 
     this.polyline = new WebGLPolyline()
-    this.samples = 1000
+    this.samples = 2000
 
     this.rangeStart = -20
     this.rangeEnd = 20
+    this.maxDepth = 3
+    this.plottingMode = "fine"
 
     this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
@@ -44,20 +47,13 @@ class ParametricPlot2D extends InteractiveElement {
     if (!this.function)
       return
 
-    let vertices = this.polyline.vertices = []
+    let vertices
+    const points = this.samples
 
-    const samples = this.samples
-    const rangeStart = this.rangeStart, rangeEnd = this.rangeEnd
-    const func = this.function
-
-    for (let i = 0; i <= samples; ++i) {
-      let frac = i / samples
-
-      let t = rangeStart + (rangeEnd - rangeStart) * frac
-
-      let res = func(t)
-
-      vertices.push(res.x, res.y)
+    if (this.plottingMode === "rough") {
+      vertices = this.polyline.vertices = sample_parametric_1d(this.rangeStart, this.rangeEnd, this.function, points, true)
+    } else {
+      vertices = this.polyline.vertices = adaptively_sample_parametric_1d(this.rangeStart, this.rangeEnd, this.function, points, info.plot.transform.getAspect(), this.maxDepth)
     }
 
     info.plot.transform.plotToPixelArr(vertices)

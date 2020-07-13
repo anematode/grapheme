@@ -78,6 +78,62 @@ function sample_1d(start, end, func, points=500, includeEndpoints=true) {
   return vertices
 }
 
+function adaptively_sample_parametric_1d(start, end, func, initialPoints=500, aspectRatio=1, maxDepth=MAX_DEPTH, angle_threshold=0.1, depth=0, ptCount=0) {
+  if (depth > maxDepth || start === undefined || end === undefined || isNaN(start) || isNaN(end))
+    return [NaN, NaN]
+
+  let vertices = sample_parametric_1d(start, end, func, initialPoints)
+
+  let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio))
+
+  let final_vertices = []
+
+  function addVertices(arr) {
+    for (let i = 0 ; i < arr.length; ++i) {
+      final_vertices.push(arr[i])
+    }
+  }
+
+  let len = vertices.length
+
+  for (let i = 0; i < len; i += 2) {
+    let angle_i = i / 2
+
+    if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
+      let rStart = start + i / len * (end - start), rEnd = start + (i + 2) / len * (end - start)
+
+      let vs = adaptively_sample_parametric_1d(rStart,
+        rEnd,
+        func, 3,
+        aspectRatio, maxDepth,
+        angle_threshold, depth + 1, ptCount)
+
+      addVertices(vs)
+
+      if (final_vertices.length > MAX_POINTS)
+        return final_vertices
+    } else {
+      final_vertices.push(vertices[i], vertices[i+1])
+    }
+  }
+
+  return final_vertices
+}
+
+function sample_parametric_1d(start, end, func, points=500, includeEndpoints=true) {
+  let vertices = []
+
+  for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
+    let t = start + i * (end - start) / points
+
+    let result = func(t)
+
+    vertices.push(result.x, result.y)
+  }
+
+  return vertices
+}
+
 function find_roots(start, end, func, derivative, initialPoints = 500, iterations=10, accuracy=0.001) {
   let res = (end - start) / initialPoints
 
@@ -152,4 +208,4 @@ function find_roots(start, end, func, derivative, initialPoints = 500, iteration
   return points
 }
 
-export {adaptively_sample_1d, sample_1d, find_roots}
+export {adaptively_sample_1d, sample_1d, find_roots, adaptively_sample_parametric_1d, sample_parametric_1d}
