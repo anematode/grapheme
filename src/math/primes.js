@@ -470,4 +470,4 @@ function primeCountingFunction(x) {
 
 // for me: https://www.ams.org/journals/mcom/1996-65-213/S0025-5718-96-00674-6/S0025-5718-96-00674-6.pdf
 
-export { isPrime, expMod, squareMod, addMod, mulMod, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes, primeCountingFunction }
+export { isPrime, expMod, squareMod, addMod, mulMod, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes, primeCountingFunction, pollardBrent }

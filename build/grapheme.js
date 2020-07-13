@@ -5974,38 +5974,7 @@ void main() {
 
     let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio));
 
-    let final_vertices = new Float64Array(16);
-    let index = 0;
-    let maxSize = final_vertices.length - 2;
-
-    function expandArray(size=-1) {
-      let newArr = new Float64Array((size === -1) ? final_vertices.length * 2 : size);
-      newArr.set(final_vertices);
-
-      final_vertices = newArr;
-
-      maxSize = final_vertices.length - 2;
-    }
-
-    function addVertex(x, y) {
-      if (index > maxSize) {
-        expandArray();
-      }
-
-      final_vertices[index++] = x;
-      final_vertices[index++] = y;
-    }
-
-    function addVertices(arr) {
-      let totalLen = index + arr.length;
-
-      if (totalLen >= final_vertices.length) {
-        expandArray(nextPowerOfTwo(totalLen));
-      }
-
-      final_vertices.set(arr, index);
-      index += arr.length;
-    }
+    let final_vertices = [];
 
     for (let i = 0; i < vertices.length; i += 2) {
       let angle_i = i / 2;
@@ -6013,23 +5982,28 @@ void main() {
       if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
         let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, maxDepth, angle_threshold, depth + 1, true, ptCount);
 
-        addVertices(vs);
+        for (let i = 0 ; i < vs.length; ++i) {
+          final_vertices.push(vs[i]);
+        }
 
-        if (index > MAX_POINTS)
+        if (final_vertices.length > MAX_POINTS)
           return final_vertices.subarray(0, index)
       } else {
-        addVertex(vertices[i], vertices[i+1]);
+        final_vertices.push(vertices[i], vertices[i+1]);
       }
     }
 
-    return final_vertices.subarray(0, index)
+    return final_vertices
   }
 
   function sample_1d(start, end, func, points=500, includeEndpoints=true) {
     let vertices = [];
 
+    points = Math.ceil(points);
+
     for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
       let x = start + i * (end - start) / points;
+
       vertices.push(x, func(x));
     }
 
@@ -13633,7 +13607,11 @@ void main() {
     }
 
     render(info) {
+      info.scissorPlot(true);
+
       this.polyline.render(info);
+
+      info.scissorPlot(false);
     }
 
     update(info) {
@@ -13816,6 +13794,7 @@ void main() {
   exports.pochhammer = pochhammer;
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
+  exports.pollardBrent = pollardBrent;
   exports.polygamma = polygamma;
   exports.primeCountingFunction = primeCountingFunction;
   exports.regularPolygonGlyph = regularPolygonGlyph;
