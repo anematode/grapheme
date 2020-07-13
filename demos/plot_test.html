@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grapheme VELARIZES -Sean</title>
+    <style>
+        * {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script src="../build/grapheme.js"></script>
+
+<script>
+  let plot = new Grapheme.Plot2D()
+  plot.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(plot.domElement);
+  let gridlines = new Grapheme.Gridlines()
+  plot.add(gridlines)
+  let fplot = new Grapheme.InteractiveFunctionPlot2D()
+  plot.add(fplot)
+  let dplot = new Grapheme.InteractiveFunctionPlot2D()
+  plot.add(dplot)
+  setTimeout( () => {
+    Grapheme.defineVariable('a', "0")
+    setFunction("tan(x+i+a)")
+    fplot.setFunction("Re(f(x))")
+    dplot.setFunction("Im(f(x))")
+  }, 1)
+  function setFunction(str) {
+    Grapheme.defineFunction('f', str, ['x'])
+    fplot.setFunction("Re(f(x))")
+    dplot.setFunction("Im(f(x))")
+    fplot.markUpdate(); dplot.markUpdate()
+  }
+  dplot.pen.color = Grapheme.Colors.BLACK
+  let ia = 0;
+  function render() {
+    ia += 0.1;
+    plot.render();
+    requestAnimationFrame(render);
+  }
+
+  fplot.quality = dplot.quality = 0.1
+
+  window.onresize = () => {
+    plot.setSize(window.innerWidth, window.innerHeight)
+  }
+
+  render()
+</script>
+<div style="position:absolute; top: 10px; left: 10px">
+    <textarea oninput="setFunction(this.value)">tan(x+i+a)</textarea>
+    <input type="range" oninput="Grapheme.defineVariable('a', this.value); fplot.markUpdate(); dplot.markUpdate()" min="0" max="10" step="0.001" id="a">
+    <label for="a">a</label>
+    <br>
+    <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
+</div>
+</body>
+</html>
