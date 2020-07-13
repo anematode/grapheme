@@ -18,4 +18,6 @@ function agm(a0, g0, tolerance=1e-17) {
   return an;
 }
 
+agm.MAX_ITERS = MAX_ITERS
+
 export { agm }

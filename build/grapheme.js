@@ -7036,7 +7036,7 @@ void main() {
         signature: ["real"],
         returns: "real",
         evaluate: "RealFunctions.EllipticK",
-        desc: "Return the complete elliptic integral K(x)."
+        desc: "Return the complete elliptic integral K(m) with parameter m = k^2."
       })
     ],
     "elliptic_E": [
@@ -7044,7 +7044,7 @@ void main() {
         signature: ["real"],
         returns: "real",
         evaluate: "RealFunctions.EllipticE",
-        desc: "Return the complete elliptic integral E(x)."
+        desc: "Return the complete elliptic integral E(m) with parameter m = k^2."
       })
     ],
     "agm": [
@@ -12440,6 +12440,8 @@ void main() {
     return an;
   }
 
+  agm.MAX_ITERS = MAX_ITERS;
+
   function pochhammer(q, n) {
     if (n === 0)
       return 1
@@ -12480,32 +12482,103 @@ void main() {
     return sum
   }
 
-  function ellipticK(k) {
-    const absK = Math.abs(k);
+  function ellipticK(m) {
+    const absM = Math.abs(m);
 
-    if (absK > 1)
+    if (m > 1)
       return NaN
 
-    if (absK === 1)
+    if (absM === 1)
       return Infinity
 
-    return Math.PI / 2 / agm(1, Math.sqrt(1 - k * k))
+    return Math.PI / 2 / agm(1, Math.sqrt(1 - m))
   }
 
-
-  function ellipticE(k) {
-    let absK = Math.abs(k);
-
-    if (absK > 1)
+  // See https://dlmf.nist.gov/19.8
+  function ellipticE(m, tolerance=1e-15) {
+    if (m > 1)
       return NaN
-    else if (absK === 1)
+    else if (m === 1)
       return 1
 
-    return Math.PI / 2 * hypergeometric(1/2, -1/2, 1, k * k)
+    if (m > 0) {
+      let an = 1, gn = Math.sqrt(1 - m);
+      let cn = Math.sqrt(Math.abs(an * an - gn * gn));
+      let i = 0;
+      let sum = 0;
+
+      do {
+        sum += (2 ** (i - 1)) * cn * cn;
+
+        i++;
+
+        let tmp = an;
+        an = (an + gn) / 2;
+        gn = Math.sqrt(tmp * gn);
+
+        cn = cn * cn / (4 * an);
+      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
+
+      return Math.PI / (2 * an) * (1 - sum);
+    } else if (m === 0) {
+      return Math.PI / 2
+    } else {
+      // Note that E(-m) = sqrt(m+1) * E(m / (m+1))
+
+      let nM = -m;
+
+      return Math.sqrt(nM + 1) * ellipticE(nM / (nM + 1), tolerance)
+    }
   }
 
-  function ellipticPi(n, k) {
+  // Doesn't work yet
+  function ellipticPi(n, m, tolerance=1e-15) {
+    if (m > 1)
+      return NaN
+    else if (m === 1)
+      return Infinity
 
+    if (m > 0) {
+      let an = 1, gn = Math.sqrt(1 - m);
+      let pn = 1 - n;
+      let Qn = 1;
+      let i = 0;
+      let sum = 0;
+
+      do {
+        sum += Qn;
+
+        i++;
+
+        let tmp = an;
+        an = (an + gn) / 2;
+        gn = Math.sqrt(tmp * gn);
+
+        let pn2 = pn * pn;
+        let angn = an * gn;
+
+        let en = (pn2 - angn) / (pn2 + angn);
+
+        pn = (pn2 + angn) / (2 * pn);
+
+        Qn = 0.5 * Qn * en;
+
+      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
+
+      return Math.PI / (4 * an) * (2 + n / (1 - n) * sum);
+    } else if (m === 0) {
+      return Math.PI / (2 * Math.sqrt(1 - n))
+    } else {
+      // Note that Pi(n, -m) = 1 / ((1 - n) * sqrt(m + 1)) * Pi(n / (n-1) | m / (m+1))
+
+      let nM = -m;
+
+      return 1 / ((1 - n) * Math.sqrt(nM + 1) * ellipticPi(n / (n - 1), nM / (nM + 1)))
+    }
+  }
+
+  function ellipsePerimeter(a, b) {
+    return 4 * a * ellipticE(1 - b * b / (a * a))
   }
 
   const piecewise$1 = (val1, cond, ...args) => {
@@ -13403,7 +13476,7 @@ void main() {
 
       this.rangeStart = -20;
       this.rangeEnd = 20;
-      
+
       this.addEventListener("plotcoordschanged", () => this.markUpdate());
     }
 
@@ -13450,14 +13523,53 @@ void main() {
 
       info.plot.transform.plotToPixelArr(vertices);
 
-      console.log("hi");
-
       this.polyline.update(info);
     }
 
     destroy() {
       this.polyline.destroy();
     }
+  }
+
+  function readDataset(file) {
+    return fetch(file)
+  }
+
+  function testFunctionAccuracy(func, dataset) {
+    return readDataset(dataset).then(output => output.json()).then(json => {
+      let xL = json.x;
+      let yL = json.y;
+
+      let rms = 0;
+      let samples = xL.length;
+      let maxErr = -Infinity;
+      let maxErrPos = 0;
+
+      if (xL.length !== yL.length)
+        throw new Error("Arrays are not of the same length")
+
+      for (let i = 0; i < samples; ++i) {
+        let x = xL[i];
+        let y = yL[i];
+
+        let calculatedY = func(x);
+
+        let error = y - calculatedY;
+
+        let errorRMS = (error) ** 2;
+
+        rms += errorRMS;
+
+        if (Math.abs(error) > maxErr) {
+          maxErr = Math.abs(error);
+          maxErrPos = x;
+        }
+      }
+
+      rms /= samples;
+
+      return {rms: rms, maxError: maxErr, maxErrorX: maxErrPos, samples}
+    })
   }
 
   exports.ASTNode = ASTNode;
@@ -13530,6 +13642,10 @@ void main() {
   exports.digamma = digamma;
   exports.distinctFactors = distinctFactors;
   exports.ei = ei;
+  exports.ellipsePerimeter = ellipsePerimeter;
+  exports.ellipticE = ellipticE;
+  exports.ellipticK = ellipticK;
+  exports.ellipticPi = ellipticPi;
   exports.erf = erf;
   exports.erfc = erfc;
   exports.eta = eta;
@@ -13573,6 +13689,7 @@ void main() {
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;
   exports.squareMod = squareMod;
+  exports.testFunctionAccuracy = testFunctionAccuracy;
   exports.tokenizer = tokenizer;
   exports.trigamma = trigamma;
   exports.undefineFunction = undefineFunction;

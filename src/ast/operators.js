@@ -881,7 +881,7 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.EllipticK",
-      desc: "Return the complete elliptic integral K(x)."
+      desc: "Return the complete elliptic integral K(m) with parameter m = k^2."
     })
   ],
   "elliptic_E": [
@@ -889,7 +889,7 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.EllipticE",
-      desc: "Return the complete elliptic integral E(x)."
+      desc: "Return the complete elliptic integral E(m) with parameter m = k^2."
     })
   ],
   "agm": [
