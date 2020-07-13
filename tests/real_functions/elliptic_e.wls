@@ -1,7 +1,7 @@
 
 sfile = "data/elliptic_e.json"
 
-function = EllipticE
+function[x_] := EllipticE[x*x]
 min = -1
 max = 1
 samples = 200

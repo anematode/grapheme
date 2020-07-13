@@ -3682,8 +3682,6 @@ var Grapheme = (function (exports) {
         join = 'miter', // join type, among "miter", "round", "bevel"
         joinRes = 1, // angle between consecutive join roundings
         useNative = false, // whether to use native line drawing, only used in WebGL
-        arrowhead = "Normal", // arrowhead to draw
-        arrowLocations = [], // possible values of locations to draw: "start", "substart", "end", "subend"
         visible = true
       } = params;
 
@@ -3696,8 +3694,6 @@ var Grapheme = (function (exports) {
       this.join = join;
       this.joinRes = joinRes;
       this.useNative = useNative;
-      this.arrowhead = arrowhead;
-      this.arrowLocations = arrowLocations;
       this.visible = visible;
     }
 
@@ -3709,6 +3705,7 @@ var Grapheme = (function (exports) {
     prepareContext (ctx) {
       ctx.fillStyle = ctx.strokeStyle = this.color.hex();
       ctx.lineWidth = this.thickness;
+
       ctx.setLineDash(this.dashPattern);
       ctx.lineDashOffset = this.dashOffset;
       ctx.miterLimit = this.thickness / Math.cos(this.joinRes / 2);
@@ -3727,8 +3724,6 @@ var Grapheme = (function (exports) {
         join: this.join,
         joinRes: this.joinRes,
         useNative: this.useNative,
-        arrowhead: this.arrowhead,
-        arrowLocations: this.arrowLocations.slice(),
         visible: this.visible
       }
     }
@@ -7147,6 +7142,14 @@ void main() {
         returns: "real",
         evaluate: "VectorFunctions.Dot",
         desc: "Find the dot product of vectors v and w."
+      })
+    ],
+    "prime_count": [
+      new NormalDefinition({
+        signature: ["int"],
+        returns: "int",
+        evaluate: "RealFunctions.PrimeCount",
+        desc: "Find the number of primes below n."
       })
     ]
   };
@@ -12637,413 +12640,12 @@ void main() {
     return 4 * a * ellipticE(1 - b * b / (a * a))
   }
 
-  const piecewise$1 = (val1, cond, ...args) => {
-    if (cond)
-      return val1
-    if (args.length === 0) {
-      if (cond === undefined)
-        return val1
-      else
-        return 0
-    }
-
-    return piecewise$1(...args)
-  };
-
-  const cchain = (val1, comparison, val2, ...args) => {
-    switch (comparison) {
-      case "<":
-        if (val1 >= val2)
-          return false
-        break
-      case ">":
-        if (val1 <= val2)
-          return false
-        break
-      case "<=":
-        if (val1 > val2)
-          return false
-        break
-      case ">=":
-        if (val1 < val2)
-          return false
-        break
-      case "==":
-        if (val1 !== val2)
-          return false
-        break
-      case "!=":
-        if (val1 === val2)
-          return false
-        break
-    }
-
-    if (args.length === 0)
-      return true
-    else
-      return cchain(val2, ...args)
-  };
-
-  const ExtraFunctions$1 = {
-    Sqrt: Math.sqrt,
-    Cbrt: Math.cbrt,
-    Log2: Math.log2,
-    Log10: Math.log10,
-    Ln: Math.log,
-    LogB: (b, v) => {
-      return Math.log(v) / Math.log(b)
-    },
-    Factorial: (a) => {
-      return ExtraFunctions$1.Gamma(a + 1)
-    },
-    Gamma: (a) => {
-      return gamma$1(a)
-    },
-    LnGamma: (a) => {
-      return ln_gamma(a)
-    },
-    Digamma: (a) => {
-      return digamma(a)
-    },
-    Trigamma: (a) => {
-      return trigamma(a)
-    },
-    Polygamma: (n, a) => {
-      return polygamma(n, a)
-    },
-    Arccot: (z) => {
-      let t = Math.atan(1 / z);
-
-      if (t < 0) {
-        t += Math.PI;
-      }
-
-      return t
-    },
-    PowRational: (x, p, q) => {
-      // Calculates x ^ (p / q), where p and q are integers
-
-      if (p === 0) {
-        return 1
-      }
-
-      let GCD = gcd(p, q);
-
-      if (GCD !== 1) {
-        p /= GCD;
-        q /= GCD;
-      }
-
-      if (x >= 0) {
-        return Math.pow(x, p / q)
-      } else {
-        if (mod(q, 2) === 0)
-          return NaN
-
-        let ret = Math.pow(-x, p / q);
-        if (mod(p, 2) === 0) {
-          return ret
-        } else {
-          return -ret
-        }
-      }
-    },
-    Pow: (x, r) => {
-      return Math.pow(x, r)
-    },
-    Im: (x) => {
-      return 0
-    },
-    Re: (x) => {
-      return x
-    },
-    Mod: (n, m) => {
-      return ((n % m) + m) % m
-    },
-    Piecewise: piecewise$1,
-    CChain: cchain,
-    Cmp: {
-      LessThan: (a, b) => a < b,
-      GreaterThan: (a, b) => a > b,
-      LessEqualThan: (a, b) => a <= b,
-      GreaterEqualThan: (a, b) => a >= b,
-      Equal: (a,b) => a === b,
-      NotEqual: (a,b) => a !== b
-    },
-    Logic: {
-      And: (a, b) => a && b,
-      Or: (a, b) => a || b
-    },
-    Floor: Math.floor,
-    Ceil: Math.ceil,
-    Zeta: zeta,
-    Eta: eta,
-    Frac: (x) => x - Math.floor(x),
-    Sign: Math.sign,
-    Round: Math.round,
-    Trunc: Math.trunc,
-    IsFinite: isFinite,
-    Ei: ei,
-    Li: li,
-    Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
-    NormSinc: (x) => ExtraFunctions$1.Sinc(x * Math.PI),
-    Si: Si$1,
-    Ci: Ci$1,
-    Erf: erf,
-    Erfc: erfc,
-    Gcd: (a, b) => gcd(Math.abs(a), Math.abs(b)),
-    Lcm: (a, b) => a * b / ExtraFunctions$1.Gcd(a, b),
-    FresnelS: S,
-    FresnelC: C$1,
-    InverseErf: inverseErf,
-    InverseErfc: inverseErfc,
-    ProductLog: productLog,
-    ProductLogBranched: productLogBranched,
-    EllipticE: ellipticE,
-    EllipticK: ellipticK,
-    EllipticPi: ellipticPi,
-    Agm: agm,
-    Abs: Math.abs
-  };
-
-  const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
-
-  class ComplexInterval {
-    constructor(reMin, reMax, imMin, imMax) {
-      this.reMin = reMin;
-      this.reMax = reMax;
-      this.imMin = imMin;
-      this.imMax = imMax;
-    }
+  function ellipticEModulus(m) {
+    return ellipticE(m * m)
   }
 
-  const Typecasts$1 = {
-    RealToComplex: (r) => new Complex$1(r),
-    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
-    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
-    Identity: (r) => r
-  };
-
-  class BeastJob extends Promise {
-    constructor(beast, id, progressCallback=null) {
-      if (beast instanceof Function) {
-        return super(beast)
-      }
-
-      let resolveFunc, rejectFunc;
-
-      super((resolve, reject) => {
-        resolveFunc = resolve;
-        rejectFunc = reject;
-      });
-
-      this.resolve = resolveFunc;
-      this.reject = rejectFunc;
-      this.progress = progressCallback;
-      this.beast = beast;
-      this.id = id;
-    }
-
-    static get [Symbol.species]() {
-      return Promise
-    }
-
-    get [Symbol.toStringTag]() {
-      return "BeastJob"
-    }
-
-    cancel() {
-      this.reject("Job cancelled");
-
-      this.beast.cancelJob(this);
-    }
-  }
-
-  let id = 1;
-
-  function getJobID() {
-    return id++
-  }
-
-  /**
-   * Posted messages will be of the following forms:
-   * {type: "create", jobID: 2, jobType: "calculatePolylineVertices", data: { ... }}
-   * {type: "cancel", jobID: 2}
-   * {type: "cancelAll"}
-   * Received messages will be of the following forms:
-   * {type: "result", jobID: 2, data: { ... }}
-   * {type: "error", jobID: 2, error: ... }
-   * {type: "progress", jobID: 2, progress: 0.3}
-   */
-  class Beast {
-    constructor() {
-      this.worker = new Worker("../build/grapheme_worker.js");
-      this.worker.onmessage = message => this.receiveMessage(message);
-
-      this.jobs = [];
-    }
-
-    cancelAll() {
-      this.jobs.forEach(job => this.cancelJob(job));
-
-      this.worker.postMessage({type: "cancelAll"});
-    }
-
-    receiveMessage(message) {
-      let data = message.data;
-
-      let id = data.jobID;
-      let job = this.getJob(id);
-
-      if (!job)
-        return
-
-      switch (data.type) {
-        case "result":
-          job.resolve(data.data);
-
-          this._removeJob(job);
-
-          return
-        case "error":
-          job.reject(data.error);
-
-          this._removeJob(job);
-
-          return
-        case "progress":
-          if (job.progress)
-            job.progress(data.progress);
-
-          return
-      }
-    }
-
-    job(type, data, progressCallback=null, transferables=[]) {
-      let id = getJobID();
-
-      this.worker.postMessage({type: "create", jobID: id, data, jobType: type}, transferables);
-
-      let job = new BeastJob(this, id, progressCallback);
-      this.jobs.push(job);
-
-      return job
-    }
-
-    getJob(id) {
-      for (let i = 0; i < this.jobs.length; ++i) {
-        let job = this.jobs[i];
-
-        if (job.id === id)
-          return job
-      }
-    }
-
-    cancelJob(job, reason="Job cancelled") {
-      console.log("cancelled job " + job.id);
-      this.worker.postMessage({type: "cancel", jobID: job.id});
-
-      job.reject(reason);
-
-      this._removeJob(job);
-    }
-
-    _removeJob(job) {
-      let index = this.jobs.indexOf(job);
-
-      if (index !== -1) {
-        this.jobs.splice(index, 1);
-      }
-    }
-  }
-
-  class Dataset2D extends GraphemeElement {
-    constructor(params={}) {
-      super(params);
-
-      this.glyph = Glyphs.CIRCLE;
-
-      this.points = [];
-      this.pixelPoints = [];
-      this.useNative = false;
-
-      this.geometry = new Simple2DWebGLGeometry();
-
-      this.addEventListener("plotcoordschanged", () => this.markUpdate());
-    }
-
-    get color() {
-      return this.geometry.color
-    }
-
-    set color(v) {
-      this.geometry.color = v;
-    }
-
-    update(info) {
-      super.update(info);
-
-      const points = this.pixelPoints = this.points.slice();
-
-      info.plot.transform.plotToPixelArr(points);
-
-      if (this.useNative) {
-        this.geometry.glVertices = new Float32Array(points);
-        this.geometry.renderMode = "points";
-      } else {
-        let triangulation = this.glyph.triangulation;
-        let triVertices = new Float32Array(triangulation.length * this.points.length / 2);
-
-        let index = 0;
-
-        for (let i = 0; i < points.length; i += 2) {
-          let x = points[i];
-          let y = points[i + 1];
-
-          for (let j = 0; j < triangulation.length; j += 2) {
-            triVertices[index++] = triangulation[j] + x;
-            triVertices[index++] = triangulation[j + 1] + y;
-          }
-        }
-
-        this.geometry.glVertices = triVertices;
-        this.geometry.renderMode = "triangles";
-      }
-
-      this.geometry.color = this.color;
-    }
-
-    render(info) {
-      info.scissorPlot(true);
-
-      super.render(info);
-
-      this.geometry.render(info);
-
-      info.scissorPlot(false);
-    }
-
-    distanceFrom(v) {
-      let minDis = Infinity;
-
-      for (let i = 0; i < this.pixelPoints.length; i += 2) {
-        let x = this.pixelPoints[i];
-        let y = this.pixelPoints[i + 1];
-
-        let xd = v.x - x, yd = v.y - y;
-
-        let disSquared = xd * xd + yd * yd;
-
-        if (disSquared < minDis)
-          minDis = disSquared;
-      }
-
-      return minDis
-    }
-
-    destroy() {
-      this.geometry.destroy();
-    }
+  function ellipticKModulus(m) {
+    return ellipticK(m * m)
   }
 
   let unsafeToSquare = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
@@ -13446,6 +13048,450 @@ void main() {
     return prod
   }
 
+  function eratosthenes(n) {
+    // Eratosthenes algorithm to find all primes under n
+    let array = [], upperLimit = Math.sqrt(n), output = [];
+
+    // Make an array from 2 to (n - 1)
+    for (let i = 0; i < n; i++) {
+      array.push(true);
+    }
+
+    // Remove multiples of primes starting from 2, 3, 5,...
+    for (let i = 2; i <= upperLimit; i++) {
+      if (array[i]) {
+        for (var j = i * i; j < n; j += i) {
+          array[j] = false;
+        }
+      }
+    }
+
+    // All array[i] set to true are primes
+    for (let i = 2; i < n; i++) {
+      if (array[i]) {
+        output.push(i);
+      }
+    }
+
+    return output;
+  }
+
+  const piecewise$1 = (val1, cond, ...args) => {
+    if (cond)
+      return val1
+    if (args.length === 0) {
+      if (cond === undefined)
+        return val1
+      else
+        return 0
+    }
+
+    return piecewise$1(...args)
+  };
+
+  const cchain = (val1, comparison, val2, ...args) => {
+    switch (comparison) {
+      case "<":
+        if (val1 >= val2)
+          return false
+        break
+      case ">":
+        if (val1 <= val2)
+          return false
+        break
+      case "<=":
+        if (val1 > val2)
+          return false
+        break
+      case ">=":
+        if (val1 < val2)
+          return false
+        break
+      case "==":
+        if (val1 !== val2)
+          return false
+        break
+      case "!=":
+        if (val1 === val2)
+          return false
+        break
+    }
+
+    if (args.length === 0)
+      return true
+    else
+      return cchain(val2, ...args)
+  };
+
+  const ExtraFunctions$1 = {
+    Sqrt: Math.sqrt,
+    Cbrt: Math.cbrt,
+    Log2: Math.log2,
+    Log10: Math.log10,
+    Ln: Math.log,
+    LogB: (b, v) => {
+      return Math.log(v) / Math.log(b)
+    },
+    Factorial: (a) => {
+      return ExtraFunctions$1.Gamma(a + 1)
+    },
+    Gamma: (a) => {
+      return gamma$1(a)
+    },
+    LnGamma: (a) => {
+      return ln_gamma(a)
+    },
+    Digamma: (a) => {
+      return digamma(a)
+    },
+    Trigamma: (a) => {
+      return trigamma(a)
+    },
+    Polygamma: (n, a) => {
+      return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
+    },
+    PowRational: (x, p, q) => {
+      // Calculates x ^ (p / q), where p and q are integers
+
+      if (p === 0) {
+        return 1
+      }
+
+      let GCD = gcd(p, q);
+
+      if (GCD !== 1) {
+        p /= GCD;
+        q /= GCD;
+      }
+
+      if (x >= 0) {
+        return Math.pow(x, p / q)
+      } else {
+        if (mod(q, 2) === 0)
+          return NaN
+
+        let ret = Math.pow(-x, p / q);
+        if (mod(p, 2) === 0) {
+          return ret
+        } else {
+          return -ret
+        }
+      }
+    },
+    Pow: (x, r) => {
+      return Math.pow(x, r)
+    },
+    Im: (x) => {
+      return 0
+    },
+    Re: (x) => {
+      return x
+    },
+    Mod: (n, m) => {
+      return ((n % m) + m) % m
+    },
+    Piecewise: piecewise$1,
+    CChain: cchain,
+    Cmp: {
+      LessThan: (a, b) => a < b,
+      GreaterThan: (a, b) => a > b,
+      LessEqualThan: (a, b) => a <= b,
+      GreaterEqualThan: (a, b) => a >= b,
+      Equal: (a,b) => a === b,
+      NotEqual: (a,b) => a !== b
+    },
+    Logic: {
+      And: (a, b) => a && b,
+      Or: (a, b) => a || b
+    },
+    Floor: Math.floor,
+    Ceil: Math.ceil,
+    Zeta: zeta,
+    Eta: eta,
+    Frac: (x) => x - Math.floor(x),
+    Sign: Math.sign,
+    Round: Math.round,
+    Trunc: Math.trunc,
+    IsFinite: isFinite,
+    Ei: ei,
+    Li: li,
+    Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
+    NormSinc: (x) => ExtraFunctions$1.Sinc(x * Math.PI),
+    Si: Si$1,
+    Ci: Ci$1,
+    Erf: erf,
+    Erfc: erfc,
+    Gcd: (a, b) => gcd(Math.abs(a), Math.abs(b)),
+    Lcm: (a, b) => a * b / ExtraFunctions$1.Gcd(a, b),
+    FresnelS: S,
+    FresnelC: C$1,
+    InverseErf: inverseErf,
+    InverseErfc: inverseErfc,
+    ProductLog: productLog,
+    ProductLogBranched: productLogBranched,
+    EllipticE: ellipticEModulus,
+    EllipticK: ellipticKModulus,
+    EllipticPi: ellipticPi,
+    Agm: agm,
+    Abs: Math.abs,
+    PrimeCount: (n) => {
+      if (n <= 1) {
+        return 0
+      }
+
+      return eratosthenes(n+1).length
+    }
+  };
+
+  const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
+
+  class ComplexInterval {
+    constructor(reMin, reMax, imMin, imMax) {
+      this.reMin = reMin;
+      this.reMax = reMax;
+      this.imMin = imMin;
+      this.imMax = imMax;
+    }
+  }
+
+  const Typecasts$1 = {
+    RealToComplex: (r) => new Complex$1(r),
+    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
+    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
+    Identity: (r) => r
+  };
+
+  class BeastJob extends Promise {
+    constructor(beast, id, progressCallback=null) {
+      if (beast instanceof Function) {
+        return super(beast)
+      }
+
+      let resolveFunc, rejectFunc;
+
+      super((resolve, reject) => {
+        resolveFunc = resolve;
+        rejectFunc = reject;
+      });
+
+      this.resolve = resolveFunc;
+      this.reject = rejectFunc;
+      this.progress = progressCallback;
+      this.beast = beast;
+      this.id = id;
+    }
+
+    static get [Symbol.species]() {
+      return Promise
+    }
+
+    get [Symbol.toStringTag]() {
+      return "BeastJob"
+    }
+
+    cancel() {
+      this.reject("Job cancelled");
+
+      this.beast.cancelJob(this);
+    }
+  }
+
+  let id = 1;
+
+  function getJobID() {
+    return id++
+  }
+
+  /**
+   * Posted messages will be of the following forms:
+   * {type: "create", jobID: 2, jobType: "calculatePolylineVertices", data: { ... }}
+   * {type: "cancel", jobID: 2}
+   * {type: "cancelAll"}
+   * Received messages will be of the following forms:
+   * {type: "result", jobID: 2, data: { ... }}
+   * {type: "error", jobID: 2, error: ... }
+   * {type: "progress", jobID: 2, progress: 0.3}
+   */
+  class Beast {
+    constructor() {
+      this.worker = new Worker("../build/grapheme_worker.js");
+      this.worker.onmessage = message => this.receiveMessage(message);
+
+      this.jobs = [];
+    }
+
+    cancelAll() {
+      this.jobs.forEach(job => this.cancelJob(job));
+
+      this.worker.postMessage({type: "cancelAll"});
+    }
+
+    receiveMessage(message) {
+      let data = message.data;
+
+      let id = data.jobID;
+      let job = this.getJob(id);
+
+      if (!job)
+        return
+
+      switch (data.type) {
+        case "result":
+          job.resolve(data.data);
+
+          this._removeJob(job);
+
+          return
+        case "error":
+          job.reject(data.error);
+
+          this._removeJob(job);
+
+          return
+        case "progress":
+          if (job.progress)
+            job.progress(data.progress);
+
+          return
+      }
+    }
+
+    job(type, data, progressCallback=null, transferables=[]) {
+      let id = getJobID();
+
+      this.worker.postMessage({type: "create", jobID: id, data, jobType: type}, transferables);
+
+      let job = new BeastJob(this, id, progressCallback);
+      this.jobs.push(job);
+
+      return job
+    }
+
+    getJob(id) {
+      for (let i = 0; i < this.jobs.length; ++i) {
+        let job = this.jobs[i];
+
+        if (job.id === id)
+          return job
+      }
+    }
+
+    cancelJob(job, reason="Job cancelled") {
+      console.log("cancelled job " + job.id);
+      this.worker.postMessage({type: "cancel", jobID: job.id});
+
+      job.reject(reason);
+
+      this._removeJob(job);
+    }
+
+    _removeJob(job) {
+      let index = this.jobs.indexOf(job);
+
+      if (index !== -1) {
+        this.jobs.splice(index, 1);
+      }
+    }
+  }
+
+  class Dataset2D extends GraphemeElement {
+    constructor(params={}) {
+      super(params);
+
+      this.glyph = Glyphs.CIRCLE;
+
+      this.points = [];
+      this.pixelPoints = [];
+      this.useNative = false;
+
+      this.geometry = new Simple2DWebGLGeometry();
+
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
+    }
+
+    get color() {
+      return this.geometry.color
+    }
+
+    set color(v) {
+      this.geometry.color = v;
+    }
+
+    update(info) {
+      super.update(info);
+
+      const points = this.pixelPoints = this.points.slice();
+
+      info.plot.transform.plotToPixelArr(points);
+
+      if (this.useNative) {
+        this.geometry.glVertices = new Float32Array(points);
+        this.geometry.renderMode = "points";
+      } else {
+        let triangulation = this.glyph.triangulation;
+        let triVertices = new Float32Array(triangulation.length * this.points.length / 2);
+
+        let index = 0;
+
+        for (let i = 0; i < points.length; i += 2) {
+          let x = points[i];
+          let y = points[i + 1];
+
+          for (let j = 0; j < triangulation.length; j += 2) {
+            triVertices[index++] = triangulation[j] + x;
+            triVertices[index++] = triangulation[j + 1] + y;
+          }
+        }
+
+        this.geometry.glVertices = triVertices;
+        this.geometry.renderMode = "triangles";
+      }
+
+      this.geometry.color = this.color;
+    }
+
+    render(info) {
+      info.scissorPlot(true);
+
+      super.render(info);
+
+      this.geometry.render(info);
+
+      info.scissorPlot(false);
+    }
+
+    distanceFrom(v) {
+      let minDis = Infinity;
+
+      for (let i = 0; i < this.pixelPoints.length; i += 2) {
+        let x = this.pixelPoints[i];
+        let y = this.pixelPoints[i + 1];
+
+        let xd = v.x - x, yd = v.y - y;
+
+        let disSquared = xd * xd + yd * yd;
+
+        if (disSquared < minDis)
+          minDis = disSquared;
+      }
+
+      return minDis
+    }
+
+    destroy() {
+      this.geometry.destroy();
+    }
+  }
+
   const MAX_BERNOULLI = 1e4;
 
   const BERNOULLI_N_NUMBERS = new Float64Array(MAX_BERNOULLI);
@@ -13695,9 +13741,12 @@ void main() {
   exports.distinctFactors = distinctFactors;
   exports.ei = ei;
   exports.ellipsePerimeter = ellipsePerimeter;
-  exports.ellipticE = ellipticE;
-  exports.ellipticK = ellipticK;
+  exports.ellipticE = ellipticEModulus;
+  exports.ellipticEParameter = ellipticE;
+  exports.ellipticK = ellipticKModulus;
+  exports.ellipticKParameter = ellipticK;
   exports.ellipticPi = ellipticPi;
+  exports.eratosthenes = eratosthenes;
   exports.erf = erf;
   exports.erfc = erfc;
   exports.eta = eta;

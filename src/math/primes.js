@@ -407,4 +407,39 @@ function eulerPhi(n) {
   return prod
 }
 
-export { isPrime, expMod, squareMod, addMod, mulMod, jacobi, isPerfectSquare, factor, distinctFactors, eulerPhi }
+function eratosthenes(n) {
+  // Eratosthenes algorithm to find all primes under n
+  let array = [], upperLimit = Math.sqrt(n), output = [];
+
+  // Make an array from 2 to (n - 1)
+  for (let i = 0; i < n; i++) {
+    array.push(true);
+  }
+
+  // Remove multiples of primes starting from 2, 3, 5,...
+  for (let i = 2; i <= upperLimit; i++) {
+    if (array[i]) {
+      for (var j = i * i; j < n; j += i) {
+        array[j] = false;
+      }
+    }
+  }
+
+  // All array[i] set to true are primes
+  for (let i = 2; i < n; i++) {
+    if (array[i]) {
+      output.push(i);
+    }
+  }
+
+  return output;
+}
+
+
+// Returns the number of primes below n. Uses the Meissel-Lehmer method. See https://codegolf.stackexchange.com/a/74372
+// Also see https://www.ams.org/journals/mcom/1996-65-213/S0025-5718-96-00674-6/S0025-5718-96-00674-6.pdf
+function primeCountingFunction(n) {
+  
+}
+
+export { isPrime, expMod, squareMod, addMod, mulMod, jacobi, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes  }

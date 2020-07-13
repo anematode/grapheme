@@ -105,5 +105,13 @@ function ellipsePerimeter(a, b) {
   return 4 * a * ellipticE(1 - b * b / (a * a))
 }
 
+function ellipticEModulus(m) {
+  return ellipticE(m * m)
+}
 
-export { ellipticK, ellipticE, ellipticPi, ellipsePerimeter }
+function ellipticKModulus(m) {
+  return ellipticK(m * m)
+}
+
+
+export { ellipticKModulus as ellipticK, ellipticEModulus as ellipticE, ellipticPi, ellipsePerimeter, ellipticE as ellipticEParameter, ellipticK as ellipticKParameter }

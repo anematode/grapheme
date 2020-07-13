@@ -937,6 +937,14 @@ const Operators = {
       evaluate: "VectorFunctions.Dot",
       desc: "Find the dot product of vectors v and w."
     })
+  ],
+  "prime_count": [
+    new NormalDefinition({
+      signature: ["int"],
+      returns: "int",
+      evaluate: "RealFunctions.PrimeCount",
+      desc: "Find the number of primes below n."
+    })
   ]
 }
 

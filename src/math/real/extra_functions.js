@@ -9,6 +9,7 @@ import { FresnelS, FresnelC } from '../fresnel'
 import { productLog, productLogBranched } from '../product_log'
 import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
 import { agm } from '../agm'
+import { eratosthenes } from '../primes'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -176,7 +177,14 @@ const ExtraFunctions = {
   EllipticK: ellipticK,
   EllipticPi: ellipticPi,
   Agm: agm,
-  Abs: Math.abs
+  Abs: Math.abs,
+  PrimeCount: (n) => {
+    if (n <= 1) {
+      return 0
+    }
+
+    return eratosthenes(n+1).length
+  }
 }
 
 export default ExtraFunctions

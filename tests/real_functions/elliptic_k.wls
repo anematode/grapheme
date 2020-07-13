@@ -1,7 +1,7 @@
 
 sfile = "data/elliptic_k.json"
 
-function = EllipticK
+function[x_] = EllipticK[x*x]
 min = -1
 max = 1
 samples = 200
