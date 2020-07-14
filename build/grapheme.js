@@ -13048,6 +13048,8 @@ void main() {
     return {primes: output, pi: new Uint32Array(pi)}
   }
 
+  const DEFAULT_BLOCK_SIZE = 1e5;
+
   const phiMemo = [];
   let primes = [];
 
@@ -13075,7 +13077,7 @@ void main() {
   let piValues;
 
   function primeCountingFunction(x) {
-    if (x > 1e9)
+    if (x > 1e10)
       return li(x)
 
     if (x < 6)
@@ -13087,7 +13089,7 @@ void main() {
 
     let top = Math.floor(x / root3) + 1;
 
-    if (root2 + 1 >= primes.length) {
+    if (top + 1 >= primes.length) {
       let res = eratosthenesWithPi(top + 2);
 
       primes = res.primes;
@@ -13101,7 +13103,142 @@ void main() {
     for (let i = a; i < b; ++i) {
       let p = primes[i];
 
-      sum += piValues[Math.floor(x / p)] - piValues[p] + 1;
+      sum += piValues[Math.floor(x / p)] + 1;
+    }
+
+    let primeCnt = b - a;
+
+    sum -= primeCnt * (piValues[primes[a]] - 1);
+    sum -= primeCnt * (primeCnt + 1) / 2;
+
+    let phi = Phi(x, a);
+
+    return phi + a - 1 - sum
+  }
+
+  let sieveArray, piArray;
+
+  const potPrimeIndices = new Uint8Array([0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]);
+  const indicesLength = 30;
+
+  function meisselLehmerExtended(x) {
+    if (x < 1000)
+      return primeCountingFunction(x)
+
+    // The square root of x
+    let root2 = Math.floor(Math.sqrt(x));
+    let root3 = Math.floor(x ** (1/3));
+
+    let top = root3 + 2;
+
+    if (top >= primes.length) {
+      let res = eratosthenesWithPi(top + 2);
+
+      primes = res.primes;
+      piValues = res.pi;
+    }
+
+    let a = piValues[root3 + 1], b = piValues[root2 + 1];
+
+    let BLOCK_SIZE = Math.max(a + 1, DEFAULT_BLOCK_SIZE);
+
+    if (!sieveArray || BLOCK_SIZE > sieveArray.length) {
+      sieveArray = new Uint8Array(BLOCK_SIZE);
+      piArray = new ((1.01 * li(x) < 4.2e9) ? Uint32Array : Array) (BLOCK_SIZE);
+    }
+
+    let ai = root3 + 1;
+    let bi = Math.ceil(x / root3) + 1;
+    let egg = root2 + 1;
+    let primeCnt = piValues[ai - 1], offset = ai;
+    let sum = 0;
+    let requiredHorses = [];
+
+    while (true) {
+      if (offset >= bi) {
+        break
+      }
+
+      if (offset + BLOCK_SIZE >= bi) {
+        BLOCK_SIZE = bi - offset;
+      }
+
+      let start = mod(-offset, 30);
+
+      sieveArray.fill(0);
+
+      for (let i = 0; i < indicesLength; ++i) {
+        let index = potPrimeIndices[i];
+
+        if (start >= i) {
+          if (index)
+            sieveArray[start - i] = 1;
+        } else {
+          break
+        }
+      }
+
+      const maxI = sieveArray.length - indicesLength - start;
+
+      let i = 0;
+
+      for (; i < maxI; i += indicesLength) {
+        let index = start + i;
+
+        sieveArray.set(potPrimeIndices, index);
+      }
+
+      sieveArray.set(potPrimeIndices.subarray(0, (sieveArray.length % indicesLength) - start), start + i);
+
+      for (let i = 3; i < a; ++i) {
+        let p = primes[i];
+
+        let cow = offset % p;
+
+        let m = 0;
+
+        if (cow === 0)
+          m = offset;
+        else
+          m = offset - cow + p;
+
+        for (let j = 0; j < BLOCK_SIZE; j += p) {
+          let potP = j + m;
+
+          if (potP !== p) {
+            sieveArray[potP - offset] = 0;
+          }
+        }
+      }
+
+      for (let i = 0; i < BLOCK_SIZE; ++i) {
+        if (sieveArray[i] === 1) {
+          let p = i + offset;
+
+          primeCnt++;
+
+          if (ai <= p && p < egg) {
+            sum += 1 - primeCnt;
+            requiredHorses.push(Math.floor(x / p));
+          }
+        }
+
+        piArray[i] = primeCnt;
+      }
+
+      for (let i = requiredHorses.length - 1; i >= 0; --i) {
+        let pop = requiredHorses[i];
+
+        if (pop < offset + BLOCK_SIZE) {
+          sum += piArray[pop - offset];
+        } else {
+          break
+        }
+
+        requiredHorses.pop();
+      }
+
+      offset += BLOCK_SIZE;
     }
 
     let phi = Phi(x, a);
@@ -13810,6 +13947,7 @@ void main() {
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
+  exports.meisselLehmerExtended = meisselLehmerExtended;
   exports.mulMod = mulMod;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.parseString = parseString;
