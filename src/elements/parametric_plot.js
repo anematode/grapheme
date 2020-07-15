@@ -38,7 +38,11 @@ class ParametricPlot2D extends InteractiveElement {
   }
 
   render(info) {
+    info.scissorPlot(true)
+
     this.polyline.render(info)
+
+    info.scissorPlot(false)
   }
 
   update(info) {

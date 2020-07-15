@@ -15,3 +15,7 @@ export const Dot = (v1, v2) => {
 export const Construct = (x, y) => {
   return new Vec2(x, y)
 }
+
+export const FromComplex = (z) => {
+  return new Vec2(z.re, z.im)
+}

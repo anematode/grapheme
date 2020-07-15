@@ -5974,38 +5974,7 @@ void main() {
 
     let angles = new Float32Array(anglesBetween(vertices, angle_threshold, aspectRatio));
 
-    let final_vertices = new Float64Array(16);
-    let index = 0;
-    let maxSize = final_vertices.length - 2;
-
-    function expandArray(size=-1) {
-      let newArr = new Float64Array((size === -1) ? final_vertices.length * 2 : size);
-      newArr.set(final_vertices);
-
-      final_vertices = newArr;
-
-      maxSize = final_vertices.length - 2;
-    }
-
-    function addVertex(x, y) {
-      if (index > maxSize) {
-        expandArray();
-      }
-
-      final_vertices[index++] = x;
-      final_vertices[index++] = y;
-    }
-
-    function addVertices(arr) {
-      let totalLen = index + arr.length;
-
-      if (totalLen >= final_vertices.length) {
-        expandArray(nextPowerOfTwo(totalLen));
-      }
-
-      final_vertices.set(arr, index);
-      index += arr.length;
-    }
+    let final_vertices = [];
 
     for (let i = 0; i < vertices.length; i += 2) {
       let angle_i = i / 2;
@@ -6013,23 +5982,28 @@ void main() {
       if (angles[angle_i] === 3 || angles[angle_i - 1] === 3) { //&& Math.abs(vertices[i+1] - vertices[i+3]) > yRes / 2) {
         let vs = adaptively_sample_1d(vertices[i], vertices[i + 2], func, 3, aspectRatio, yRes, maxDepth, angle_threshold, depth + 1, true, ptCount);
 
-        addVertices(vs);
+        for (let i = 0 ; i < vs.length; ++i) {
+          final_vertices.push(vs[i]);
+        }
 
-        if (index > MAX_POINTS)
+        if (final_vertices.length > MAX_POINTS)
           return final_vertices.subarray(0, index)
       } else {
-        addVertex(vertices[i], vertices[i+1]);
+        final_vertices.push(vertices[i], vertices[i+1]);
       }
     }
 
-    return final_vertices.subarray(0, index)
+    return final_vertices
   }
 
   function sample_1d(start, end, func, points=500, includeEndpoints=true) {
     let vertices = [];
 
+    points = Math.ceil(points);
+
     for (let i = 1 - includeEndpoints; i <= points - (1 - includeEndpoints); ++i) {
       let x = start + i * (end - start) / points;
+
       vertices.push(x, func(x));
     }
 
@@ -7126,6 +7100,12 @@ void main() {
         returns: "vec2",
         evaluate: "VectorFunctions.Construct",
         desc: "Construct a new vec2."
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "vec2",
+        evaluate: "VectorFunctions.FromComplex",
+        desc: "Construct a new vec2 from the real and imaginary components of a complex number."
       })
     ],
     "vec": [
@@ -7150,6 +7130,13 @@ void main() {
         returns: "int",
         evaluate: "RealFunctions.PrimeCount",
         desc: "Find the number of primes below n."
+      })
+    ],
+    "cis": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Cis"
       })
     ]
   };
@@ -13019,17 +13006,17 @@ void main() {
   }
 
   function eratosthenesWithPi(n) {
-    let array = [], upperLimit = Math.sqrt(n), output = [];
+    let array = new Uint8Array(n), upperLimit = Math.ceil(Math.sqrt(n)), output = [];
     let pi = [0, 0];
 
-    for (let i = 0; i < n; i++) {
-      array.push(true);
-    }
+    array.fill(1);
 
     for (let i = 2; i <= upperLimit; i++) {
-      if (array[i]) {
-        for (var j = i * i; j < n; j += i) {
-          array[j] = false;
+      if (array[i] === 1) {
+        let iSquared = i * i;
+
+        for (let j = iSquared; j < n; j += i) {
+          array[j] = 0;
         }
       }
     }
@@ -13037,7 +13024,7 @@ void main() {
     let cnt = 0;
 
     for (let i = 2; i < n; i++) {
-      if (array[i]) {
+      if (array[i] === 1) {
         output.push(i);
         cnt++;
       }
@@ -13054,7 +13041,6 @@ void main() {
   let primes = [];
 
   function Phi(m, b) {
-
     if (b === 0)
       return m
     if (m === 0)
@@ -13076,12 +13062,23 @@ void main() {
   const smallValues = [0, 0, 1, 2, 2, 3];
   let piValues;
 
+  function computeEratosthenes(top) {
+    let res = eratosthenesWithPi(top + 1);
+
+    primes = new Uint32Array(res.primes);
+    piValues = res.pi;
+  }
+
+  computeEratosthenes(1000);
+
   function primeCountingFunction(x) {
     if (x > 1e10)
       return li(x)
 
     if (x < 6)
       return smallValues[x]
+    if (x < piValues.length)
+      return piValues[x]
 
     // The square root of x
     let root2 = Math.floor(Math.sqrt(x));
@@ -13090,10 +13087,7 @@ void main() {
     let top = Math.floor(x / root3) + 1;
 
     if (top + 1 >= primes.length) {
-      let res = eratosthenesWithPi(top + 2);
-
-      primes = res.primes;
-      piValues = res.pi;
+      computeEratosthenes(top);
     }
 
     let a = piValues[root3 + 1], b = piValues[root2 + 1];
@@ -13241,9 +13235,7 @@ void main() {
       offset += BLOCK_SIZE;
     }
 
-    let phi = Phi(x, a);
-
-    return phi + a - 1 - sum
+    return Phi(x, a) + a - 1 - sum
   }
 
   const piecewise$1 = (val1, cond, ...args) => {
@@ -13725,11 +13717,16 @@ void main() {
     return new Vec2(x, y)
   };
 
+  const FromComplex = (z) => {
+    return new Vec2(z.re, z.im)
+  };
+
   var BasicArithmetic = /*#__PURE__*/Object.freeze({
     Add: Add$2,
     Subtract: Subtract$2,
     Dot: Dot,
-    Construct: Construct$1
+    Construct: Construct$1,
+    FromComplex: FromComplex
   });
 
   const VectorFunctions = {
@@ -13770,7 +13767,11 @@ void main() {
     }
 
     render(info) {
+      info.scissorPlot(true);
+
       this.polyline.render(info);
+
+      info.scissorPlot(false);
     }
 
     update(info) {
@@ -13917,6 +13918,7 @@ void main() {
   exports.ellipticKParameter = ellipticK;
   exports.ellipticPi = ellipticPi;
   exports.eratosthenes = eratosthenes;
+  exports.eratosthenesWithPi = eratosthenesWithPi;
   exports.erf = erf;
   exports.erfc = erfc;
   exports.eta = eta;
@@ -13947,7 +13949,6 @@ void main() {
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
-  exports.meisselLehmerExtended = meisselLehmerExtended;
   exports.mulMod = mulMod;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.parseString = parseString;
@@ -13955,7 +13956,7 @@ void main() {
   exports.pointLineSegmentClosest = pointLineSegmentClosest;
   exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
   exports.polygamma = polygamma;
-  exports.primeCountingFunction = primeCountingFunction;
+  exports.primeCountingFunction = meisselLehmerExtended;
   exports.regularPolygonGlyph = regularPolygonGlyph;
   exports.rgb = rgb;
   exports.rgba = rgba;

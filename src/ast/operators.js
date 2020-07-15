@@ -920,6 +920,12 @@ const Operators = {
       returns: "vec2",
       evaluate: "VectorFunctions.Construct",
       desc: "Construct a new vec2."
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "vec2",
+      evaluate: "VectorFunctions.FromComplex",
+      desc: "Construct a new vec2 from the real and imaginary components of a complex number."
     })
   ],
   "vec": [
@@ -944,6 +950,13 @@ const Operators = {
       returns: "int",
       evaluate: "RealFunctions.PrimeCount",
       desc: "Find the number of primes below n."
+    })
+  ],
+  "cis": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Cis"
     })
   ]
 }

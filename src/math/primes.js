@@ -372,17 +372,17 @@ function eratosthenes(n) {
 }
 
 function eratosthenesWithPi(n) {
-  let array = [], upperLimit = Math.sqrt(n), output = [];
+  let array = new Uint8Array(n), upperLimit = Math.ceil(Math.sqrt(n)), output = []
   let pi = [0, 0]
 
-  for (let i = 0; i < n; i++) {
-    array.push(true);
-  }
+  array.fill(1)
 
   for (let i = 2; i <= upperLimit; i++) {
-    if (array[i]) {
-      for (var j = i * i; j < n; j += i) {
-        array[j] = false;
+    if (array[i] === 1) {
+      let iSquared = i * i
+
+      for (let j = iSquared; j < n; j += i) {
+        array[j] = 0
       }
     }
   }
@@ -390,7 +390,7 @@ function eratosthenesWithPi(n) {
   let cnt = 0
 
   for (let i = 2; i < n; i++) {
-    if (array[i]) {
+    if (array[i] === 1) {
       output.push(i);
       cnt++
     }
@@ -407,7 +407,6 @@ const phiMemo = []
 let primes = []
 
 function Phi(m, b) {
-
   if (b === 0)
     return m
   if (m === 0)
@@ -429,12 +428,23 @@ function Phi(m, b) {
 const smallValues = [0, 0, 1, 2, 2, 3]
 let piValues
 
+function computeEratosthenes(top) {
+  let res = eratosthenesWithPi(top + 1)
+
+  primes = new Uint32Array(res.primes)
+  piValues = res.pi
+}
+
+computeEratosthenes(1000)
+
 function primeCountingFunction(x) {
   if (x > 1e10)
     return li(x)
 
   if (x < 6)
     return smallValues[x]
+  if (x < piValues.length)
+    return piValues[x]
 
   // The square root of x
   let root2 = Math.floor(Math.sqrt(x))
@@ -443,10 +453,7 @@ function primeCountingFunction(x) {
   let top = Math.floor(x / root3) + 1
 
   if (top + 1 >= primes.length) {
-    let res = eratosthenesWithPi(top + 2)
-
-    primes = res.primes
-    piValues = res.pi
+    computeEratosthenes(top)
   }
 
   let a = piValues[root3 + 1], b = piValues[root2 + 1]
@@ -594,11 +601,9 @@ function meisselLehmerExtended(x) {
     offset += BLOCK_SIZE
   }
 
-  let phi = Phi(x, a)
-
-  return phi + a - 1 - sum
+  return Phi(x, a) + a - 1 - sum
 }
 
 // for me: https://www.ams.org/journals/mcom/1996-65-213/S0025-5718-96-00674-6/S0025-5718-96-00674-6.pdf
 
-export { isPrime, expMod, squareMod, addMod, mulMod, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes, primeCountingFunction, meisselLehmerExtended }
+export { isPrime, expMod, squareMod, addMod, mulMod, isPerfectSquare, factor, distinctFactors, eulerPhi, eratosthenes, meisselLehmerExtended as primeCountingFunction, eratosthenesWithPi }
