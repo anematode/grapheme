@@ -1,0 +1,4 @@
+
+const Rules = [
+  new Rule()
+]

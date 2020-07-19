@@ -896,7 +896,7 @@ var Grapheme = (function (exports) {
     7.257415615307994e+306
   ];
 
-  function gamma$1 (z) {
+  function gamma (z) {
 
     // Define gamma specially for integral values
     if (z % 1 === 0) {
@@ -914,7 +914,7 @@ var Grapheme = (function (exports) {
     }
 
     if (z < 0.5) {
-      return Math.PI / (Math.sin(Math.PI * z) * gamma$1(1 - z))
+      return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z))
     } else {
       z -= 1;
 
@@ -977,7 +977,7 @@ var Grapheme = (function (exports) {
       // Recurrence relation
       // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
 
-      return polygamma(m, z+1) + sign * gamma$1(m + 1) / Math.pow(z, m+1)
+      return polygamma(m, z+1) + sign * gamma(m + 1) / Math.pow(z, m+1)
     }
 
     // Series representation
@@ -987,7 +987,7 @@ var Grapheme = (function (exports) {
       sum += 1 / Math.pow(z + i, m + 1);
     }
 
-    return sign * gamma$1(m + 1) * sum
+    return sign * gamma(m + 1) * sum
 
   }
 
@@ -1086,7 +1086,15 @@ var Grapheme = (function (exports) {
   }
 
   function factorial(z) {
-    return gamma$1(z + 1)
+    return gamma(z + 1)
+  }
+
+  function upperIncompleteGamma(a, z) {
+
+  }
+
+  function lowerIncompleteGamma(a, z) {
+
   }
 
   // This file defines some common utilities that Grapheme uses!
@@ -1557,6 +1565,10 @@ var Grapheme = (function (exports) {
 
   const eulerGamma = 0.57721566490153286060;
 
+  function bound(x) {
+    return Math.max(Math.min(x, 1e5), -1e5)
+  }
+
   var utils = /*#__PURE__*/Object.freeze({
     benchmark: benchmark,
     gcd: gcd,
@@ -1594,7 +1606,8 @@ var Grapheme = (function (exports) {
     getRandomInt: getRandomInt,
     nCrFloat: nCrFloat,
     nCr: nCr,
-    eulerGamma: eulerGamma
+    eulerGamma: eulerGamma,
+    bound: bound
   });
 
   /**
@@ -5721,11 +5734,13 @@ void main() {
 
       this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE});
       this.getTextOfNode = (node) => {
-        return node.getText()
+        return node.getTreeText()
       };
 
       this.vertices = [];
       this.labels = [];
+
+      this.addEventListener("plotcoordschanged", () => this.markUpdate());
     }
 
     update(info) {
@@ -6180,6 +6195,3471 @@ void main() {
     polyline._internal_polyline.needsBufferCopy = true;
   }
 
+  const Multiply$1 = (a, b) => a * b;
+
+  const Add$1 = (a, b) => a + b;
+
+  const Subtract$1 = (a, b) => a - b;
+
+  const Divide$1 = (a, b) => a / b;
+
+  const Ln = Math.log;
+
+  const Log = Ln;
+
+  const Log2 = Math.log2;
+
+  const Log10 = Math.log10;
+
+  const Sin = Math.sin;
+
+  const Cos = Math.cos;
+
+  const Tan = Math.tan;
+
+  const Sec = x => 1 / Math.cos(x);
+
+  const Csc = x => 1 / Math.sin(x);
+
+  const Cot = x => 1 / Math.tan(x);
+
+  const Arcsin = Math.asin;
+
+  const Arccos = Math.acos;
+
+  const Arctan = Math.atan;
+
+  const Arcsec = x => Math.acos(1 / x);
+
+  const Arccsc = x => Math.asin(1 / x);
+
+  const Sinh = Math.sinh;
+
+  const Cosh = Math.cosh;
+
+  const Tanh = Math.tanh;
+
+  const Sech = x => 1 / Math.cosh(x);
+
+  const Csch = x => 1 / Math.sinh(x);
+
+  const Coth = x => 1 / Math.tanh(x);
+
+  const Arcsinh = Math.asinh;
+
+  const Arccosh = Math.acosh;
+
+  const Arctanh = Math.atanh;
+
+  const Arcsech = x => Math.acosh( 1 / x);
+
+  const Arccsch = x => Math.asinh(1 / x);
+
+  const Arccoth = x => Math.atanh(1 / x);
+
+  var BasicFunctions = /*#__PURE__*/Object.freeze({
+    Multiply: Multiply$1,
+    Add: Add$1,
+    Subtract: Subtract$1,
+    Divide: Divide$1,
+    Ln: Ln,
+    Log: Log,
+    Log2: Log2,
+    Log10: Log10,
+    Sin: Sin,
+    Cos: Cos,
+    Tan: Tan,
+    Sec: Sec,
+    Csc: Csc,
+    Cot: Cot,
+    Arcsin: Arcsin,
+    Arccos: Arccos,
+    Arctan: Arctan,
+    Arcsec: Arcsec,
+    Arccsc: Arccsc,
+    Sinh: Sinh,
+    Cosh: Cosh,
+    Tanh: Tanh,
+    Sech: Sech,
+    Csch: Csch,
+    Coth: Coth,
+    Arcsinh: Arcsinh,
+    Arccosh: Arccosh,
+    Arctanh: Arctanh,
+    Arcsech: Arcsech,
+    Arccsch: Arccsch,
+    Arccoth: Arccoth
+  });
+
+  const MAX_BERNOULLI = 1e4;
+
+  const BERNOULLI_N_NUMBERS = new Float64Array(MAX_BERNOULLI);
+  let BERNOULLI_N_INDEX = 0;
+
+  function computeBernoulli(index) {
+    for (let i = BERNOULLI_N_INDEX; i <= index; ++i) {
+      let value = i === 0 ? 1 : 0;
+
+      for (let j = 0; j < i; ++j) {
+        value -= nCr(i, j) * BERNOULLI_N_NUMBERS[j] / (i - j + 1);
+      }
+
+      BERNOULLI_N_NUMBERS[i] = value;
+    }
+
+    BERNOULLI_N_INDEX = index + 1;
+  }
+
+  function bernoulliN(n) {
+    if (n > MAX_BERNOULLI) {
+      // Okay, that's a bit much
+      throw new Error("Excessive n")
+    }
+
+    if (n < BERNOULLI_N_INDEX)
+      return BERNOULLI_N_NUMBERS[n]
+
+    computeBernoulli(n);
+
+    return BERNOULLI_N_NUMBERS[n]
+  }
+
+  function bernoulliP(n) {
+    if (n === 1)
+      return 0.5
+
+    return bernoulliN(n)
+  }
+
+  const bernoulli = bernoulliP;
+
+  const ZETA_N = 30;
+  const ZETA_COEFFS = [];
+
+  for (let k = 0; k <= ZETA_N; ++k) {
+    let value = 0;
+
+    for (let j = k; j <= ZETA_N; ++j) {
+      value += gamma(ZETA_N + j - 1) * 4 ** j / gamma(ZETA_N - j) / gamma(2 * j);
+    }
+
+    value *= ZETA_N;
+
+    ZETA_COEFFS.push(value);
+  }
+
+  function zeta(r) {
+    if (r === 1)
+      return Infinity
+
+    if (r % 2 === 0 && r < 0)
+      return 0
+
+    if (r % 2 === 0 && r > 1) {
+      if (r > 100)
+        return 1
+
+      let prod1 = ((r / 2 + 1) % 2 === 0 ? 1 : -1) * bernoulli(r);
+
+      let lnProd2 = Math.log(2 * Math.PI) * r - Math.log(2) - ln_gamma(r + 1);
+
+      return prod1 * Math.exp(lnProd2)
+    }
+
+    if (r < 0.5) {
+      // zeta(s) = 2 ^ s * pi ^ (s - 1) * sin( pi * s / 2 ) * gamma( 1 - s ) * zeta( 1 - s )
+
+      return 2 ** r * Math.PI ** (r - 1) * Math.sin(Math.PI * r / 2) * gamma(1 - r) * zeta(1 - r)
+    }
+
+    if (r === 0.5) {
+      return -1.4603545088095868
+    }
+
+    let seriesSum = 0;
+    let sign = 1;
+
+    for (let k = 0; k < ZETA_N; ++k) {
+      seriesSum += sign * ZETA_COEFFS[k+1] / ((k+1) ** r);
+
+      sign *= -1;
+    }
+
+    return seriesSum / (ZETA_COEFFS[0] * (1 - 2 ** (1 - r)))
+  }
+
+  function eta(r) {
+    return (1 - 2 ** (1 - r)) * zeta(r)
+  }
+
+  zeta.coeffs = ZETA_COEFFS;
+  zeta.n = ZETA_N;
+
+  const EI_COEFFS = [];
+
+  function getEiCoeff(n) {
+    for (let i = EI_COEFFS.length; i <= n; ++i) {
+      let sum = 0;
+
+      for (let k = 0; k <= Math.floor((n - 1) / 2); ++k) {
+        sum += 1 / (2 * k + 1);
+      }
+
+      EI_COEFFS[i] = sum;
+    }
+
+    return EI_COEFFS[n]
+  }
+
+  function E1(x) {
+    if (x === 0)
+      return Infinity
+    // see https://www.sciencedirect.com/science/article/pii/S0022169499001845?via%3Dihub
+    if (x > 0) {
+      const q = 20 / 47 * x ** xPow;
+      const h = 1 / (1 + x * Math.sqrt(x)) + hInf * q / (1 + q);
+
+      return Math.exp(-x) / (G + (1 - G) * Math.exp(-x / (1 - G))) * Math.log(1 + G / x - (1 - G) / (h + b * x) ** 2)
+    } else {
+      return -ei(-x)
+    }
+  }
+
+  const G = Math.exp(-eulerGamma);
+  const b = Math.sqrt(2 * (1 - G) / (G * (2 - G)));
+  const hInf = (1-G) * (G * G - 6 * G + 12) / (3 * G * (2 - G) ** 2 * b);
+  const xPow = Math.sqrt(31 / 26);
+
+  // The exponential integral Ei(x).
+  // E1(z) = euler_gamma + ln(z) + exp(z / 2) * sum((-1)^(n-1) x^n / (n! 2^(n-1)) * sum(1 / (2k + 1) for k in [0, floor((n-1)/2)]) for n in [1, infinity])
+  function ei(x) {
+    if (x === 0)
+      return -Infinity
+
+    if (x < 0) {
+      return -E1(-x)
+    } else {
+      let sum = 0;
+
+      let z = 1, component = 0;
+
+      let terms = Math.min(100, Math.max(4 * x ** 0.75, 8));
+
+      for (let n = 1; n < terms; ++n) {
+        z *= x / n;
+
+        component = z * getEiCoeff(n);
+
+        z *= -1 / 2;
+
+        sum += component;
+      }
+
+      return eulerGamma + Math.log(x) + Math.exp(x / 2) * sum
+    }
+  }
+
+  // The logarithmic integral li(x).
+  function li(x) {
+    return ei(Math.log(x))
+  }
+
+  let SiP1 = new SingleVariablePolynomial([1, -4.54393409816329991e-2, 1.15457225751016682e-3, -1.41018536821330254e-5, 9.43280809438713025e-8, -3.53201978997168357e-10, 7.08240282274875911e-12, -6.05338212010422477e-16]);
+  let SiQ1 = new SingleVariablePolynomial([1, 1.01162145739225565e-2, 4.99175116169755106e-5, 1.55654986308745614e-7, 3.28067571055789734e-10, 4.5049097575386581e-13, 3.21107051193712168e-16]);
+  let CiP1 = new SingleVariablePolynomial([-0.25, 7.51851524438898291e-3, -1.27528342240267686e-4, 1.05297363846239184e-6, -4.68889508144848019e-9, 1.06480802891189243e-11, -9.93728488857585407e-15]);
+  let CiQ1 = new SingleVariablePolynomial([1, 1.1592605689110735e-2, 6.72126800814254432e-5, 2.55533277086129636e-7, 6.97071295760958946e-10, 1.38536352772778619e-12, 1.89106054713059759e-15, 1.39759616731376855e-18]);
+  let FP1 = new SingleVariablePolynomial([1, 7.44437068161936700618e2, 1.96396372895146869801e5, 2.37750310125431834034e7, 1.43073403821274636888e9, 4.33736238870432522765e10, 6.40533830574022022911e11, 4.20968180571076940208e12, 1.00795182980368574617e13, 4.94816688199951963482e12, 4.94701168645415959931e11]);
+  let FQ1 = new SingleVariablePolynomial([1, 7.46437068161927678031e2, 1.97865247031583951450e5, 2.41535670165126845144e7, 1.47478952192985464958e9, 4.58595115847765779830e10, 7.08501308149515401563e11, 5.06084464593475076774e12, 1.43468549171581016479e13, 1.11535493509914254097e13]);
+  let GP1 = new SingleVariablePolynomial([1, 8.1359520115168615e2, 2.35239181626478200e5, 3.12557570795778731e7, 2.06297595146763354e9, 6.83052205423625007e10, 1.09049528450362786e12, 7.57664583257834349e12, 1.81004487464664575e13, 6.43291613143049485e12,
+    -1.36517137670871689e12]);
+  let GQ1 = new SingleVariablePolynomial([1, 8.19595201151451564e2, 2.40036752835578777e5, 3.26026661647090822e7, 2.23355543278099360e9, 7.87465017341829930e10, 1.39866710696414565e12, 1.17164723371736605e13, 4.01839087307656620e13, 3.99653257887490811e13]);
+
+
+  function f(x) {
+    let recip = 1 / x;
+    let recipSq = recip * recip;
+
+    return recip * FP1.evaluate(recipSq) / FQ1.evaluate(recipSq)
+  }
+
+  function g$1(x) {
+    let recipSq = 1 / (x * x);
+
+    return recipSq * GP1.evaluate(recipSq) / GQ1.evaluate(recipSq)
+  }
+
+  function Si(x) {
+    if (x === 0)
+      return 0
+
+    if (x < 0)
+      return -Si(-x)
+
+    if (x <= 4) {
+      // PADE APPROXIMANT
+
+      let xSq = x * x;
+
+      return x * SiP1.evaluate(xSq) / SiQ1.evaluate(xSq)
+    } else {
+      return Math.PI / 2 - f(x) * Math.cos(x) - g$1(x) * Math.sin(x)
+    }
+  }
+
+  function Ci(x) {
+    if (x === 0)
+      return -Infinity
+
+    if (x < 0)
+      return Ci(-x)
+
+    if (x <= 4) {
+      // PADE APPROXIMANT
+      let xSq = x * x;
+
+      return eulerGamma + Math.log(x) + xSq * CiP1.evaluate(xSq) / CiQ1.evaluate(xSq)
+    } else {
+      return f(x) * Math.sin(x) - g$1(x) * Math.cos(x)
+    }
+  }
+
+  const p = 0.3275911;
+  const ERF_POLY = new SingleVariablePolynomial([0, 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429]);
+
+  function erf(x) {
+    if (x === 0)
+      return 0
+    if (x < 0)
+      return -erf(-x)
+
+    let t = 1 / (1 + p * x);
+
+    return 1 - ERF_POLY.evaluate(t) * Math.exp(- x * x)
+  }
+
+  function erfc(x) {
+    return 1 - erf(x)
+  }
+
+  function fmaf(x, y, a) {
+    return x * y + a
+  }
+
+
+  // Credit to https://stackoverflow.com/questions/27229371/inverse-error-function-in-c
+  function inverseErf(x) {
+    if (x === 0)
+      return 0
+
+    let p = 0, r = 0, t = 0;
+    t = - x * x + 1;
+    t = Math.log(t);
+
+    if (Math.abs(t) > 6.125) { // maximum ulp error = 2.35793
+      p = 3.03697567e-10; //  0x1.4deb44p-32
+      p = fmaf (p, t,  2.93243101e-8); //  0x1.f7c9aep-26
+      p = fmaf (p, t,  1.22150334e-6); //  0x1.47e512p-20
+      p = fmaf (p, t,  2.84108955e-5); //  0x1.dca7dep-16
+      p = fmaf (p, t,  3.93552968e-4); //  0x1.9cab92p-12
+      p = fmaf (p, t,  3.02698812e-3); //  0x1.8cc0dep-9
+      p = fmaf (p, t,  4.83185798e-3); //  0x1.3ca920p-8
+      p = fmaf (p, t, -2.64646143e-1); // -0x1.0eff66p-2
+      p = fmaf (p, t,  8.40016484e-1); //  0x1.ae16a4p-1
+    } else { // maximum ulp error = 2.35456
+      p =              5.43877832e-9;  //  0x1.75c000p-28
+      p = fmaf (p, t,  1.43286059e-7); //  0x1.33b458p-23
+      p = fmaf (p, t,  1.22775396e-6); //  0x1.49929cp-20
+      p = fmaf (p, t,  1.12962631e-7); //  0x1.e52bbap-24
+      p = fmaf (p, t, -5.61531961e-5); // -0x1.d70c12p-15
+      p = fmaf (p, t, -1.47697705e-4); // -0x1.35be9ap-13
+      p = fmaf (p, t,  2.31468701e-3); //  0x1.2f6402p-9
+      p = fmaf (p, t,  1.15392562e-2); //  0x1.7a1e4cp-7
+      p = fmaf (p, t, -2.32015476e-1); // -0x1.db2aeep-3
+      p = fmaf (p, t,  8.86226892e-1); //  0x1.c5bf88p-1
+    }
+
+    r = x * p;
+
+    return r;
+
+  }
+
+  function inverseErfc(x) {
+    return inverseErf(1 - x)
+  }
+
+  const sqrtPi2 = Math.sqrt(Math.PI / 2);
+  const sqrt2Pi = Math.sqrt(2 * Math.PI);
+  const sqrt8Pi = Math.sqrt(8 * Math.PI);
+
+  function LargeS(x) {
+    let xSq = x * x;
+    return sqrtPi2 * (Math.sign(x) / 2 - (Math.cos(xSq) / (x * sqrt2Pi) + Math.sin(xSq) / (x * xSq * sqrt8Pi)))
+  }
+
+  function LargeC(x) {
+    let xSq = x * x;
+    return sqrtPi2 * (Math.sign(x) / 2 + (Math.sin(xSq) / (x * sqrt2Pi) + Math.cos(xSq) / (x * xSq * sqrt8Pi)))
+  }
+
+  function SmallS(x) {
+    let sum = 0;
+
+    let z = x * x * x;
+    let xPow = z * x;
+
+    for (let n = 0; n < 50; ++n) {
+      if (n !== 0)
+        z /= 2 * n * (2 * n + 1);
+
+      let component = z / (4 * n + 3);
+
+      sum += component;
+
+      z *= xPow;
+
+      z *= -1;
+
+      if (Math.abs(component) < 1e-6)
+        break
+    }
+
+    return sum
+  }
+
+  function SmallC(x) {
+    let sum = 0;
+
+    let z = x;
+    let xPow = x * x * x * x;
+
+    for (let n = 0; n < 50; ++n) {
+      if (n !== 0)
+        z /= 2 * n * (2 * n - 1);
+
+      let component = z / (4 * n + 1);
+
+      sum += component;
+
+      z *= xPow;
+
+      z *= -1;
+
+      if (Math.abs(component) < 1e-6)
+        break
+    }
+
+    return sum
+  }
+
+  function S(x) {
+    if (Math.abs(x) > 5)
+      return LargeS(x)
+    return SmallS(x)
+  }
+
+  function C$1(x) {
+    if (Math.abs(x) > 5)
+      return LargeC(x)
+    return SmallC(x)
+  }
+
+  function seriesEval(r) {
+    const c = [
+      -1.0,
+      2.331643981597124203363536062168,
+      -1.812187885639363490240191647568,
+      1.936631114492359755363277457668,
+      -2.353551201881614516821543561516,
+      3.066858901050631912893148922704,
+      -4.175335600258177138854984177460,
+      5.858023729874774148815053846119,
+      -8.401032217523977370984161688514,
+      12.250753501314460424,
+      -18.100697012472442755,
+      27.029044799010561650];
+
+    const t_8 = c[8] + r * (c[9] + r * (c[10] + r * c[11]));
+    const t_5 = c[5] + r * (c[6] + r * (c[7] + r * t_8));
+    const t_1 = c[1] + r * (c[2] + r * (c[3] + r * (c[4] + r * t_5)));
+    return c[0] + r * t_1;
+  }
+
+  function approxProductLog(x) {
+    if (x > 1) {
+      let logX = Math.log(x);
+
+      return logX - Math.log(logX)
+    }
+
+    return 0
+  }
+
+  function approxProductLogM1(x) {
+    if (x < -1.0e-6) {
+      // Calculate via series
+
+      let q = x - RECIP_E;
+
+      let r = - Math.sqrt(q);
+
+      return seriesEval(r)
+    } else {
+      // Calculate via logs
+
+      let L1 = Math.log(-x);
+      let L2 = Math.log(-L1);
+
+      return L1 - L2 + L2 / L1
+    }
+  }
+
+  function halley(x, w, iters=8) {
+    for (let i = 0; i < 8; ++i) {
+      let eW = Math.exp(w);
+
+      w = w - (w * eW - x) / (eW * (w + 1) - (w + 2) * (w * eW - x) / (2 * w + 2));
+    }
+
+    return w
+  }
+
+  const RECIP_E = -1 / Math.exp(1);
+
+  function productLog(x) {
+
+    if (x < RECIP_E)
+      return NaN
+
+    // see https://mathworld.wolfram.com/LambertW-Function.html
+      let w = approxProductLog(x);
+
+      // Compute via Halley's method
+
+    return halley(x, w)
+  }
+
+  function productLogBranched(k, x) {
+    if (k === 0)
+      return productLog(x)
+    else if (k === -1) {
+      if (x === 0)
+        return Infinity
+
+      if (RECIP_E <= x && x < 0) {
+        let w = approxProductLogM1(x);
+
+        return halley(x, w)
+      }
+
+      return NaN
+    }
+
+    return NaN
+  }
+
+  // Arithmetic geometric mean
+
+  const MAX_ITERS = 20;
+
+  // Credit to Rosetta Code
+  function agm(a0, g0, tolerance=1e-17) {
+    let an = a0, gn = g0;
+    let i = 0;
+
+    while (Math.abs(an - gn) > tolerance && i < MAX_ITERS) {
+      i++;
+
+      let tmp = an;
+      an = (an + gn) / 2;
+      gn = Math.sqrt(tmp * gn);
+    }
+    return an;
+  }
+
+  agm.MAX_ITERS = MAX_ITERS;
+
+  function pochhammer(q, n) {
+    if (n === 0)
+      return 1
+    if (n === 1)
+      return q
+
+    let prod = 1;
+    for (let i = 0; i < n; ++i) {
+      prod *= q;
+      q++;
+    }
+
+    return prod
+  }
+
+  function hypergeometric(a, b, c, z, terms=40) {
+    let prod = 1;
+    let sum = 0;
+
+    if (Number.isInteger(c) && c <= 0)
+      return NaN
+
+    for (let n = 0; n < terms; ++n) {
+      sum += prod;
+
+      prod *= a * b;
+      prod /= c;
+
+      a++;
+      b++;
+      c++;
+
+      prod /= n + 1;
+
+      prod *= z;
+    }
+
+    return sum
+  }
+
+  function ellipticK(m) {
+    const absM = Math.abs(m);
+
+    if (m > 1)
+      return NaN
+
+    if (absM === 1)
+      return Infinity
+
+    return Math.PI / 2 / agm(1, Math.sqrt(1 - m))
+  }
+
+  // See https://dlmf.nist.gov/19.8
+  function ellipticE(m, tolerance=1e-15) {
+    if (m > 1)
+      return NaN
+    else if (m === 1)
+      return 1
+
+    if (m > 0) {
+      let an = 1, gn = Math.sqrt(1 - m);
+      let cn = Math.sqrt(Math.abs(an * an - gn * gn));
+      let i = 0;
+      let sum = 0;
+
+      do {
+        sum += (2 ** (i - 1)) * cn * cn;
+
+        i++;
+
+        let tmp = an;
+        an = (an + gn) / 2;
+        gn = Math.sqrt(tmp * gn);
+
+        cn = cn * cn / (4 * an);
+      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
+
+      return Math.PI / (2 * an) * (1 - sum);
+    } else if (m === 0) {
+      return Math.PI / 2
+    } else {
+      // Note that E(-m) = sqrt(m+1) * E(m / (m+1))
+
+      let nM = -m;
+
+      return Math.sqrt(nM + 1) * ellipticE(nM / (nM + 1), tolerance)
+    }
+  }
+
+  // Doesn't work yet
+  function ellipticPi(n, m, tolerance=1e-15) {
+    if (m > 1)
+      return NaN
+    else if (m === 1)
+      return Infinity
+
+    if (m > 0) {
+      let an = 1, gn = Math.sqrt(1 - m);
+      let pn = 1 - n;
+      let Qn = 1;
+      let i = 0;
+      let sum = 0;
+
+      do {
+        sum += Qn;
+
+        i++;
+
+        let tmp = an;
+        an = (an + gn) / 2;
+        gn = Math.sqrt(tmp * gn);
+
+        let pn2 = pn * pn;
+        let angn = an * gn;
+
+        let en = (pn2 - angn) / (pn2 + angn);
+
+        pn = (pn2 + angn) / (2 * pn);
+
+        Qn = 0.5 * Qn * en;
+
+      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
+
+      return Math.PI / (4 * an) * (2 + n / (1 - n) * sum);
+    } else if (m === 0) {
+      return Math.PI / (2 * Math.sqrt(1 - n))
+    } else {
+      // Note that Pi(n, -m) = 1 / ((1 - n) * sqrt(m + 1)) * Pi(n / (n-1) | m / (m+1))
+
+      let nM = -m;
+
+      return 1 / ((1 - n) * Math.sqrt(nM + 1) * ellipticPi(n / (n - 1), nM / (nM + 1)))
+    }
+  }
+
+  function ellipsePerimeter(a, b) {
+    return 4 * a * ellipticE(1 - b * b / (a * a))
+  }
+
+  function ellipticEModulus(m) {
+    return ellipticE(m * m)
+  }
+
+  function ellipticKModulus(m) {
+    return ellipticK(m * m)
+  }
+
+  let unsafeToSquare = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
+
+  function addMod(a, b, m) {
+    // Returns (a + b) % m
+
+    let sum = a + b;
+
+    let result = sum % m;
+
+    if (sum < Number.MAX_SAFE_INTEGER)
+      return result
+
+    let signature = ((a % 8) + (b % 8)) % 8;
+
+    let sumMod = sum % 8;
+
+    for (let i = -2; i <= 2; ++i) {
+      if ((sumMod + i) % 8 === signature) {
+        let ret = result + i;
+
+        if (ret > m)
+          ret = (result - m) + i; // prevent overflow
+
+        return ret
+      }
+    }
+  }
+
+  function mulMod(a, b, m) {
+    if (m === 0)
+      return 0
+
+    let prod = a * b;
+
+    if (prod < Number.MAX_SAFE_INTEGER)
+      return prod % m
+
+    let y = 0;
+    let result = a;
+
+    while (b > 1) {
+      if (b % 2 === 0) {
+        result = addMod(result, result, m);
+
+        b /= 2;
+      } else {
+        y = addMod(result, y, m);
+        result = addMod(result, result, m);
+
+        b = (b - 1) / 2;
+      }
+    }
+
+    return addMod(result, y, m)
+  }
+
+  function squareMod(b, m) {
+    // Computes (b * b % m)
+
+    return mulMod(b, b, m)
+  }
+
+  function expModLargeB(b, exponent, m) {
+    let y = 1;
+
+    while (exponent > 1) {
+      if (exponent % 2 === 0) {
+        b = squareMod(b, m);
+
+        exponent /= 2;
+      } else {
+        y = mulMod(y, b, m);
+        b = squareMod(b, m);
+
+        exponent = (exponent - 1) / 2;
+      }
+    }
+
+    return mulMod(b, y, m)
+  }
+
+  function expMod(b, exponent, m) {
+    if (exponent === 0)
+      return 1
+
+    if (b >= unsafeToSquare || m >= unsafeToSquare) {
+      return expModLargeB(b, exponent, m)
+    }
+
+    let y = 1;
+
+    while (exponent > 1) {
+      if (exponent % 2 === 0) {
+        b *= b;
+        b %= m;
+
+        exponent /= 2;
+      } else {
+        y *= b;
+        b *= b;
+
+        y %= m;
+        b %= m;
+
+        exponent = (exponent - 1) / 2;
+      }
+    }
+
+    return (b * y) % m
+  }
+
+  function _isPrimeTrialDivision(p) {
+    let sqrtP = Math.ceil(Math.sqrt(p));
+
+    for (let i = 23; i <= sqrtP + 1; i += 2) {
+      if (p % i === 0)
+        return false
+    }
+
+    return true
+  }
+
+  function _isProbablePrimeMillerRabin(p, base=2) {
+    let pm1 = p - 1;
+    let pm1div = pm1;
+    let d, r = 0;
+
+    while (true) {
+      if (pm1div % 2 === 0) {
+        pm1div /= 2;
+
+        r++;
+      } else {
+        d = pm1div;
+        break
+      }
+    }
+
+    let x = expMod(base, d, p);
+
+    if (x === 1 || x === pm1)
+      return true
+
+    for (let i = 0; i < r - 1; ++i) {
+      x = squareMod(x, p);
+
+      if (x === pm1)
+        return true
+    }
+
+    return false
+  }
+
+  function isPerfectSquare(p) {
+    let h = p & 0xF;
+
+    if (h > 9)
+      return false
+
+    if (h !== 2 && h !== 3 && h !== 5 && h !== 6 && h !== 7 && h !== 8) {
+      let t = Math.floor(Math.sqrt(p) + 0.5);
+      return t * t === p
+    }
+
+    return false
+  }
+
+  function _isPrimeLarge(p) {
+    let bases;
+
+    if (p < 2047)
+      bases = [2];
+    else if (p < 1373653)
+      bases = [2, 3];
+    else if (p < 9080191)
+      bases = [31, 73];
+    else if (p < 25326001)
+      bases = [2, 3, 5];
+    else if (p < 3215031751)
+      bases = [2, 3, 5, 7];
+    else if (p < 4759123141)
+      bases = [2, 7, 61];
+    else if (p < 1122004669633)
+      bases = [2, 13, 23, 1662803];
+    else if (p < 2152302898747)
+      bases = [2, 3, 5, 7, 11];
+    else if (p < 3474749660383)
+      bases = [2, 3, 5, 7, 11, 13];
+    else if (p < 341550071728321)
+      bases = [2, 3, 5, 7, 11, 13, 17];
+    else
+      bases = [2, 3, 5, 7, 11, 13, 17, 19, 23];
+
+
+    return bases.every(base => _isProbablePrimeMillerRabin(p, base))
+  }
+
+  let smallPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223];
+
+  function isPrime(p) {
+    if (!Number.isInteger(p) || p < 2)
+      return false
+
+    // Test for small primes
+    for (let i = 0; i < smallPrimes.length; ++i) {
+      let prime = smallPrimes[i];
+
+      if (p === prime)
+        return true
+      if (p % prime === 0)
+        return false
+    }
+
+    if (p < 150) {
+      return _isPrimeTrialDivision(p)
+    } else {
+      return _isPrimeLarge(p)
+    }
+  }
+
+  function pollardBrent(n) {
+    let y = getRandomInt(1, n-1), c = getRandomInt(1, n-1), m = getRandomInt(1, n-1);
+    let g = 1, r = 1, q = 1, x, ys;
+
+    while (g === 1) {
+      x = y;
+
+      for (let i = 0; i < r; ++i) {
+        y = addMod(squareMod(y, n), c, n);
+      }
+
+      let k = 0;
+      while (k < r && g === 1) {
+        ys = y;
+
+        let iMax = Math.min(m, r-k);
+
+        for (let i = 0; i < iMax; ++i) {
+          y = addMod(squareMod(y, n), c, n);
+
+          q = mulMod(q, Math.abs(x - y), n);
+        }
+
+        g = gcd(q, n);
+        k += m;
+      }
+
+      r *= 2;
+    }
+
+    if (g === n) {
+      while (true) {
+        ys = addMod(squareMod(ys, n), c, n);
+        g = gcd(Math.abs(x - ys), n);
+
+        if (g > 1)
+          break
+      }
+    }
+
+    return g
+  }
+
+  function factor(n) {
+    if (Math.abs(n) > Number.MAX_SAFE_INTEGER)
+      throw new Error("Number to factor is too large to be represented by a JS Number")
+
+    n = Math.floor(n);
+
+    if (n === 0)
+      return [0]
+    if (n === 1)
+      return [1]
+
+    let factors = [];
+
+    if (n < 0) {
+      factors.push(-1);
+      n = -n;
+    }
+
+    for (let i = 0; i < smallPrimes.length; ++i) {
+      let prime = smallPrimes[i];
+
+      while (true) {
+        if (n % prime === 0) {
+          factors.push(prime);
+
+          n /= prime;
+        } else {
+          break
+        }
+      }
+
+      if (n === 1)
+        break
+    }
+
+    if (n === 1)
+      return factors
+
+    while (true) {
+      let factor = pollardBrent(n);
+
+      if (n === factor) {
+        factors.push(factor);
+
+        break
+      } else {
+        n /= factor;
+
+        factors.push(factor);
+      }
+    }
+
+    factors.sort((a, b) => a - b);
+
+    return factors
+  }
+
+  function distinctFactors(n) {
+    return Array.from(new Set(factor(n)))
+  }
+
+  function eulerPhi(n) {
+    let factors = distinctFactors(n);
+
+    let prod = 1;
+
+    prod *= n;
+
+    for (let i = 0; i < factors.length; ++i) {
+      let factor = factors[i];
+
+      // This order of evaluation prevents overflow
+      prod /= factor;
+      prod *= factor - 1;
+    }
+
+    return prod
+  }
+
+  function eratosthenes(n) {
+    // Eratosthenes algorithm to find all primes under n
+    let array = [], upperLimit = Math.sqrt(n), output = [];
+
+    // Make an array from 2 to (n - 1)
+    for (let i = 0; i < n; i++) {
+      array.push(true);
+    }
+
+    // Remove multiples of primes starting from 2, 3, 5,...
+    for (let i = 2; i <= upperLimit; i++) {
+      if (array[i]) {
+        for (var j = i * i; j < n; j += i) {
+          array[j] = false;
+        }
+      }
+    }
+
+    // All array[i] set to true are primes
+    for (let i = 2; i < n; i++) {
+      if (array[i]) {
+        output.push(i);
+      }
+    }
+
+    return output;
+  }
+
+  function eratosthenesWithPi(n) {
+    let array = new Uint8Array(n), upperLimit = Math.ceil(Math.sqrt(n)), output = [];
+    let pi = [0, 0];
+
+    array.fill(1);
+
+    for (let i = 2; i <= upperLimit; i++) {
+      if (array[i] === 1) {
+        let iSquared = i * i;
+
+        for (let j = iSquared; j < n; j += i) {
+          array[j] = 0;
+        }
+      }
+    }
+
+    let cnt = 0;
+
+    for (let i = 2; i < n; i++) {
+      if (array[i] === 1) {
+        output.push(i);
+        cnt++;
+      }
+
+      pi.push(cnt);
+    }
+
+    return {primes: output, pi: new Uint32Array(pi)}
+  }
+
+  const DEFAULT_BLOCK_SIZE = 1e5;
+
+  const phiMemo = [];
+  let primes = [];
+
+  function Phi(m, b) {
+    if (b === 0)
+      return m
+    if (m === 0)
+      return 0
+
+    if (m >= 800) {
+      return Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1)
+    }
+
+    let t = b * 800 + m;
+
+    if (!phiMemo[t]) {
+      phiMemo[t] = Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1);
+    }
+
+    return phiMemo[t]
+  }
+
+  const smallValues = [0, 0, 1, 2, 2, 3];
+  let piValues;
+
+  function computeEratosthenes(top) {
+    let res = eratosthenesWithPi(top + 1);
+
+    primes = new Uint32Array(res.primes);
+    piValues = res.pi;
+  }
+
+  computeEratosthenes(1000);
+
+  function primeCountingFunction(x) {
+    if (x > 1e10)
+      return li(x)
+
+    if (x < 6)
+      return smallValues[x]
+    if (x < piValues.length)
+      return piValues[x]
+
+    // The square root of x
+    let root2 = Math.floor(Math.sqrt(x));
+    let root3 = Math.floor(x ** (1/3));
+
+    let top = Math.floor(x / root3) + 1;
+
+    if (top + 1 >= primes.length) {
+      computeEratosthenes(top);
+    }
+
+    let a = piValues[root3 + 1], b = piValues[root2 + 1];
+
+    let sum = 0;
+
+    for (let i = a; i < b; ++i) {
+      let p = primes[i];
+
+      sum += piValues[Math.floor(x / p)] + 1;
+    }
+
+    let primeCnt = b - a;
+
+    sum -= primeCnt * (piValues[primes[a]] - 1);
+    sum -= primeCnt * (primeCnt + 1) / 2;
+
+    let phi = Phi(x, a);
+
+    return phi + a - 1 - sum
+  }
+
+  let sieveArray, piArray;
+
+  const potPrimeIndices = new Uint8Array([0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]);
+  const indicesLength = 30;
+
+  function meisselLehmerExtended(x) {
+    if (x < 1000)
+      return primeCountingFunction(x)
+
+    // The square root of x
+    let root2 = Math.floor(Math.sqrt(x));
+    let root3 = Math.floor(x ** (1/3));
+
+    let top = root3 + 2;
+
+    if (top >= primes.length) {
+      let res = eratosthenesWithPi(top + 2);
+
+      primes = res.primes;
+      piValues = res.pi;
+    }
+
+    let a = piValues[root3 + 1], b = piValues[root2 + 1];
+
+    let BLOCK_SIZE = Math.max(a + 1, DEFAULT_BLOCK_SIZE);
+
+    if (!sieveArray || BLOCK_SIZE > sieveArray.length) {
+      sieveArray = new Uint8Array(BLOCK_SIZE);
+      piArray = new ((1.01 * li(x) < 4.2e9) ? Uint32Array : Array) (BLOCK_SIZE);
+    }
+
+    let ai = root3 + 1;
+    let bi = Math.ceil(x / root3) + 1;
+    let egg = root2 + 1;
+    let primeCnt = piValues[ai - 1], offset = ai;
+    let sum = 0;
+    let requiredHorses = [];
+
+    while (true) {
+      if (offset >= bi) {
+        break
+      }
+
+      if (offset + BLOCK_SIZE >= bi) {
+        BLOCK_SIZE = bi - offset;
+      }
+
+      let start = mod(-offset, 30);
+
+      sieveArray.fill(0);
+
+      for (let i = 0; i < indicesLength; ++i) {
+        let index = potPrimeIndices[i];
+
+        if (start >= i) {
+          if (index)
+            sieveArray[start - i] = 1;
+        } else {
+          break
+        }
+      }
+
+      const maxI = sieveArray.length - indicesLength - start;
+
+      let i = 0;
+
+      for (; i < maxI; i += indicesLength) {
+        let index = start + i;
+
+        sieveArray.set(potPrimeIndices, index);
+      }
+
+      sieveArray.set(potPrimeIndices.subarray(0, (sieveArray.length % indicesLength) - start), start + i);
+
+      for (let i = 3; i < a; ++i) {
+        let p = primes[i];
+
+        let cow = offset % p;
+
+        let m = 0;
+
+        if (cow === 0)
+          m = offset;
+        else
+          m = offset - cow + p;
+
+        for (let j = 0; j < BLOCK_SIZE; j += p) {
+          let potP = j + m;
+
+          if (potP !== p) {
+            sieveArray[potP - offset] = 0;
+          }
+        }
+      }
+
+      for (let i = 0; i < BLOCK_SIZE; ++i) {
+        if (sieveArray[i] === 1) {
+          let p = i + offset;
+
+          primeCnt++;
+
+          if (ai <= p && p < egg) {
+            sum += 1 - primeCnt;
+            requiredHorses.push(Math.floor(x / p));
+          }
+        }
+
+        piArray[i] = primeCnt;
+      }
+
+      for (let i = requiredHorses.length - 1; i >= 0; --i) {
+        let pop = requiredHorses[i];
+
+        if (pop < offset + BLOCK_SIZE) {
+          sum += piArray[pop - offset];
+        } else {
+          break
+        }
+
+        requiredHorses.pop();
+      }
+
+      offset += BLOCK_SIZE;
+    }
+
+    return Phi(x, a) + a - 1 - sum
+  }
+
+  const PI2 = 2 * Math.PI;
+
+  function Cl2(theta, threshold=1e-15) {
+    if (theta === 0)
+      return 0
+
+    theta = mod(theta, PI2);
+
+    let sum1 = 3 - Math.log(Math.abs(theta) * (1 - (theta / (PI2)) ** 2));
+    let sum2 = 2 * Math.PI / theta * Math.log((PI2 + theta) / (2 * Math.PI - theta));
+    let sum = 0;
+    let prod = 1;
+    let base = (theta / (2 * Math.PI)) ** 2;
+
+    for (let n = 1; n < 20; ++n) {
+      prod *= base;
+
+      let component = (zeta(2 * n) - 1) / (n * (2 * n + 1)) * prod;
+
+      sum += component;
+
+      if (component < threshold) {
+        break
+      }
+    }
+
+    return (sum1 - sum2 + sum) * theta
+  }
+
+  function integratePolygamma(z) {
+    const steps = 50;
+    let sum = 0;
+
+    for (let i = 0; i <= steps; ++i) {
+      if ( i === 0 )
+        continue
+
+      let x = i / steps * z;
+
+      sum += x * digamma(x);
+    }
+
+    return sum / (steps + 1) * z
+  }
+
+  function lnBarnesG(z) {
+    z--;
+
+    return -(z-1)*(z-2)/2 + (z - 1) / 2 * Math.log(2 * Math.PI) + integratePolygamma(z-1)
+  }
+
+  function barnesG(z) {
+    return Math.exp(lnBarnesG(z))
+  }
+
+  const Beta = (a,b) => {
+    if (a < 0 || b < 0)
+      return gamma(a) * gamma(b) / gamma(a + b)
+    return Math.exp(ln_gamma(a) + ln_gamma(b) - ln_gamma(a + b))
+  };
+
+  const piecewise$1 = (val1, cond, ...args) => {
+    if (cond)
+      return val1
+    if (args.length === 0) {
+      if (cond === undefined)
+        return val1
+      else
+        return 0
+    }
+
+    return piecewise$1(...args)
+  };
+
+  const cchain = (val1, comparison, val2, ...args) => {
+    switch (comparison) {
+      case "<":
+        if (val1 >= val2)
+          return false
+        break
+      case ">":
+        if (val1 <= val2)
+          return false
+        break
+      case "<=":
+        if (val1 > val2)
+          return false
+        break
+      case ">=":
+        if (val1 < val2)
+          return false
+        break
+      case "==":
+        if (val1 !== val2)
+          return false
+        break
+      case "!=":
+        if (val1 === val2)
+          return false
+        break
+    }
+
+    if (args.length === 0)
+      return true
+    else
+      return cchain(val2, ...args)
+  };
+
+  const ExtraFunctions = {
+    Sqrt: Math.sqrt,
+    Cbrt: Math.cbrt,
+    Log2: Math.log2,
+    Log10: Math.log10,
+    Ln: Math.log,
+    LogB: (b, v) => {
+      return Math.log(v) / Math.log(b)
+    },
+    Factorial: (a) => {
+      return ExtraFunctions.Gamma(a + 1)
+    },
+    Gamma: (a) => {
+      return gamma(a)
+    },
+    LnGamma: (a) => {
+      return ln_gamma(a)
+    },
+    Digamma: (a) => {
+      return digamma(a)
+    },
+    Trigamma: (a) => {
+      return trigamma(a)
+    },
+    Polygamma: (n, a) => {
+      return polygamma(n, a)
+    },
+    Arccot: (z) => {
+      let t = Math.atan(1 / z);
+
+      if (t < 0) {
+        t += Math.PI;
+      }
+
+      return t
+    },
+    PowRational: (x, p, q) => {
+      // Calculates x ^ (p / q), where p and q are integers
+
+      if (p === 0) {
+        return 1
+      }
+
+      let GCD = gcd(p, q);
+
+      if (GCD !== 1) {
+        p /= GCD;
+        q /= GCD;
+      }
+
+      if (x >= 0) {
+        return Math.pow(x, p / q)
+      } else {
+        if (mod(q, 2) === 0)
+          return NaN
+
+        let ret = Math.pow(-x, p / q);
+        if (mod(p, 2) === 0) {
+          return ret
+        } else {
+          return -ret
+        }
+      }
+    },
+    Pow: (x, r) => {
+      return Math.pow(x, r)
+    },
+    Im: (x) => {
+      return 0
+    },
+    Re: (x) => {
+      return x
+    },
+    Mod: (n, m) => {
+      return ((n % m) + m) % m
+    },
+    Piecewise: piecewise$1,
+    CChain: cchain,
+    Cmp: {
+      LessThan: (a, b) => a < b,
+      GreaterThan: (a, b) => a > b,
+      LessEqualThan: (a, b) => a <= b,
+      GreaterEqualThan: (a, b) => a >= b,
+      Equal: (a,b) => a === b,
+      NotEqual: (a,b) => a !== b
+    },
+    Logic: {
+      And: (a, b) => a && b,
+      Or: (a, b) => a || b
+    },
+    Floor: Math.floor,
+    Ceil: Math.ceil,
+    Zeta: zeta,
+    Eta: eta,
+    Frac: (x) => x - Math.floor(x),
+    Sign: Math.sign,
+    Round: Math.round,
+    Trunc: Math.trunc,
+    IsFinite: isFinite,
+    Ei: ei,
+    Li: li,
+    Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
+    NormSinc: (x) => ExtraFunctions.Sinc(x * Math.PI),
+    Si: Si,
+    Ci: Ci,
+    Erf: erf,
+    Erfc: erfc,
+    Gcd: (a, b) => gcd(Math.abs(a), Math.abs(b)),
+    Lcm: (a, b) => a * b / ExtraFunctions.Gcd(a, b),
+    FresnelS: S,
+    FresnelC: C$1,
+    InverseErf: inverseErf,
+    InverseErfc: inverseErfc,
+    ProductLog: productLog,
+    ProductLogBranched: productLogBranched,
+    EllipticE: ellipticEModulus,
+    EllipticK: ellipticKModulus,
+    EllipticPi: ellipticPi,
+    Agm: agm,
+    Abs: Math.abs,
+    PrimeCount: (n) => {
+      if (n <= 1) {
+        return 0
+      }
+
+      return eratosthenes(n+1).length
+    },
+    Cl2: Cl2,
+    BarnesG: barnesG,
+    Beta: Beta,
+    Exp: Math.exp
+  };
+
+  const RealFunctions = {...BasicFunctions, ...ExtraFunctions};
+
+  // This class represents an interval [min, max]. If defMin=defMax=true, the interval is defined for all x. If defMin=false
+  // and defMax=true, then the interval may be defined for all x. If defMin=defMax=false, the interval is undefined for
+  // all x. For example, sqrt([-2,-1]) would have defMin=defMax=false
+  class RealInterval {
+    constructor (min = 0, max = min, defMin = true, defMax = true) {
+      this.min = min;
+      this.max = max;
+      this.defMin = defMin;
+      this.defMax = defMax;
+    }
+
+    /**
+     * Returns whether the interval can be represented as a single number; does it contain only one number.
+     * @returns {boolean}
+     */
+    isExact () {
+      return this.min === this.max
+    }
+
+    /**
+     * Returns whether the interval is a set of intervals, aka false
+     * @returns {boolean}
+     */
+    isSet () {
+      return false
+    }
+
+    /**
+     * Print out the interval nicely for analysis
+     * @returns {string}
+     */
+    prettyPrint () {
+      return `(${this.min}, ${this.max}), <${this.defMin}, ${this.defMax}>`
+    }
+
+    /**
+     * Clone the interval
+     * @returns {RealInterval}
+     */
+    clone () {
+      return new RealInterval(this.min, this.max, this.defMin, this.defMax)
+    }
+
+    /**
+     * Whether x is contained within the interval.
+     * @param x
+     */
+    contains (x) {
+      return this.min <= x && x <= this.max
+    }
+
+    intersects (i) {
+      if (i.isSet()) {
+        return getIntervals(i).some(int => this.intersects(int))
+      } else {
+        return i.contains(this.min) || i.contains(this.max) || this.contains(i.min)
+      }
+    }
+
+    equals(i1) {
+      return (this.min === i1.min && this.max === i1.max && this.defMin === i1.defMin && this.defMax === i1.defMax)
+    }
+
+    static get One () {
+      return constructIntervalFromFloat(1)
+    }
+
+    static get Yes () {
+      return new RealInterval(1, 1, true, true)
+    }
+
+    static get Yesnt () {
+      return new RealInterval(0, 1, true, true)
+    }
+
+    static get No () {
+      return new RealInterval(0, 0, true, false)
+    }
+
+    static fromNumber(d, correctRounding=true) {
+      if (correctRounding && typeof d === "string") {
+        // We can check whether d is exactly representable as a float
+        // TODO make more general
+
+        let f = parseFloat(d);
+
+        if (f === parseInt(d)) {
+          correctRounding = false;
+
+          d = f;
+        }
+      }
+
+      if (correctRounding)
+        return constructIntervalFromFloat(d)
+      else
+        return new RealInterval(d, d, true, true)
+    }
+  }
+
+  /**
+   * Convert an Interval or an IntervalSet into a list of intervals
+   * @param i
+   * @returns {Array}
+   */
+  function getIntervals (i) {
+    if (i.isSet()) {
+      return i.intervals
+    } else {
+      return [i]
+    }
+  }
+
+  /**
+   * Represents a set of RealIntervals
+   */
+  class RealIntervalSet {
+    constructor (intervals = []) {
+      this.intervals = intervals;
+    }
+
+    get min () {
+      return Math.min.apply(null, this.intervals.map(interval => interval.min))
+    }
+
+    get max () {
+      return Math.max.apply(null, this.intervals.map(interval => interval.max))
+    }
+
+    get defMin () {
+      return !!Math.min.apply(null, this.intervals.map(interval => interval.defMin))
+    }
+
+    get defMax () {
+      return !!Math.max.apply(null, this.intervals.map(interval => interval.defMax))
+    }
+
+    isSet () {
+      return true
+    }
+
+    isExact () {
+      return this.min === this.max
+    }
+
+    contains (x) {
+      return this.intervals.some(i => i.contains(x))
+    }
+
+    intersects (i) {
+      return this.intervals.some(interval => interval.intersects(i))
+    }
+  }
+
+  function applyTuples (callback, intervals) {
+    switch (intervals.length) {
+      case 0:
+        return
+      case 1:
+        intervals[0].forEach(callback);
+        break
+      case 2:
+        let int1 = intervals[0];
+        let int2 = intervals[1];
+
+        int1.forEach(i1 => {
+          int2.forEach(i2 => {
+            callback(i1, i2);
+          });
+        });
+        break
+      default:
+        let remainingIntervals = intervals.slice(1);
+        intervals[0].forEach(int => {
+          applyTuples((...args) => {
+            callback(int, ...args);
+          }, remainingIntervals);
+        });
+    }
+  }
+
+  function wrapIntervalSetFunction (func, intervalArgCount=func.length) {
+    return function (...intervals) {
+      let isSet = false;
+      let extraParams = intervals.slice(intervalArgCount);
+
+      for (let i = 0; i < intervalArgCount; ++i) {
+        let interval = intervals[i];
+
+        if (interval.isSet()) {
+          isSet = true;
+          break
+        }
+      }
+
+      if (isSet) {
+        const retIntervals = [];
+
+        const obtainedIntervals = intervals.slice(0, intervalArgCount).map(getIntervals);
+
+        applyTuples((...ints) => {
+          const result = func(...ints, ...extraParams);
+
+          const intervals = getIntervals(result);
+
+          for (let i = 0; i < intervals.length; ++i) {
+            retIntervals.push(intervals[i]);
+          }
+        }, obtainedIntervals);
+
+        return new RealIntervalSet(retIntervals)
+      } else {
+        return func(...intervals)
+      }
+    }
+  }
+
+  const floatStore = new Float64Array(1);
+
+  const intView = new Uint32Array(floatStore.buffer);
+
+  let correctRounding = true;
+
+  const roundUpCorrectRounding = (x) => {
+    if (x === Infinity) {
+      return Infinity
+    }
+    if (x === -Infinity) {
+      return -Number.MAX_VALUE
+    }
+    if (x === 0) {
+      return Number.MIN_VALUE
+    }
+    if (isNaN(x)) {
+      return NaN
+    }
+
+    if (x < 0) {
+      return -roundDownCorrectRounding(-x)
+    }
+
+    floatStore[0] = x;
+
+    let leastSignificantGroup = ++intView[0];
+
+    if (leastSignificantGroup === 0) {
+      ++intView[1];
+    }
+
+    return floatStore[0]
+  };
+
+  const roundDownCorrectRounding = (x) => {
+    if (x === Infinity) {
+      return Number.MAX_VALUE
+    }
+    if (x === -Infinity) {
+      return -Infinity
+    }
+    if (x === 0) {
+      return -Number.MIN_VALUE
+    }
+    if (isNaN(x)) {
+      return NaN
+    }
+
+    if (x < 0) {
+      return -roundUpCorrectRounding(-x)
+    }
+
+    floatStore[0] = x;
+
+    let leastSignificantGroup = --intView[0];
+
+    if (leastSignificantGroup === -1) {
+      --intView[1];
+    }
+
+    return floatStore[0]
+  };
+
+  exports.roundUp = roundUpCorrectRounding;
+  exports.roundDown = roundDownCorrectRounding;
+
+  const identity = (x) => x;
+
+  function toggleCorrectRounding(v) {
+    if (v === correctRounding)
+      return
+
+    if (v) {
+      exports.roundUp = roundUpCorrectRounding;
+      exports.roundDown = roundDownCorrectRounding;
+    } else {
+      exports.roundUp = exports.roundDown = identity;
+    }
+  }
+
+  function constructIntervalFromFloat (f) {
+    return new RealInterval(exports.roundDown(f), exports.roundUp(f))
+  }
+
+  const _Add = (int1, int2) => {
+    return new RealInterval(exports.roundDown(int1.min + int2.min), exports.roundUp(int1.max + int2.max), int1.defMin && int2.defMin, int1.defMax && int2.defMax)
+  };
+
+  const _Subtract = (int1, int2) => {
+    return new RealInterval(exports.roundDown(int2.min - int1.max), exports.roundUp(int2.max - int1.min), int1.defMin && int2.defMin, int1.defMax && int2.defMax)
+  };
+
+  const _Multiply = (i1, i2) => {
+    let prod1 = i1.min * i2.min;
+    let prod2 = i1.min * i2.max;
+    let prod3 = i1.max * i2.min;
+    let prod4 = i1.max * i2.max;
+
+    return new RealInterval(exports.roundDown(Math.min(prod1, prod2, prod3, prod4)),
+      exports.roundUp(Math.max(prod1, prod2, prod3, prod4)),
+      i1.defMin && i2.defMin, i1.defMax && i2.defMax)
+  };
+
+  const _Reciprocal = (i1) => {
+    let min = i1.min;
+    let max = i1.max;
+
+    let defMin = i1.defMin, defMax = i1.defMax;
+
+    if (0 < min || max < 0) {
+      let valMin = 1 / min;
+      let valMax = 1 / max;
+
+      return new RealInterval(exports.roundDown(Math.min(valMin, valMax)), exports.roundUp(Math.max(valMin, valMax)), defMin, defMax)
+    } else {
+      // 0 contained in the interval
+
+      let interval1 = new RealInterval(-Infinity, exports.roundUp(1 / min), defMin, defMax);
+      let interval2 = new RealInterval(exports.roundDown(1 / max), Infinity, defMin, defMax);
+
+      return new RealIntervalSet([interval1, interval2])
+    }
+  };
+
+  const _Divide = (i1, i2) => {
+    return Multiply$2(i1, _Reciprocal(i2))
+  };
+
+  const _Abs = (i1) => {
+    let min = i1.min;
+    let max = i1.max;
+
+    let abs1 = Math.abs(min);
+    let abs2 = Math.abs(max);
+
+    let absMax = exports.roundUp(Math.max(abs1, abs2));
+
+    if (max < 0 || 0 < min) {
+      // 0 not in range
+      let absMin = exports.roundDown(Math.min(abs1, abs2));
+
+      return new RealInterval(absMin, absMax, i1.defMin, i1.defMax)
+    } else {
+      return new RealInterval(0, absMax, i1.defMin, i1.defMax)
+    }
+  };
+
+  function int_pow(b, n) {
+    let prod = 1;
+    for (let i = 0; i < n; ++i) {
+      prod *= b;
+    }
+    return prod
+  }
+
+  const _PowN = (i1, n) => {
+    if (n === 0) {
+      return new RealInterval(1, 1, i1.defMin, i1.defMax)
+    } else if (n === 1) {
+      // identity function
+      return i1.clone()
+    } else if (n === -1) {
+      return _Reciprocal(i1)
+    }
+
+    if (n > 1) {
+      // Positive integers
+      // if even, then there is a turning point at x = 0. If odd, monotonically increasing
+      // always continuous and well-defined
+
+      let min = i1.min;
+      let max = i1.max;
+
+      let minPowed, maxPowed;
+
+      if (n === 2) {
+        minPowed = min * min;
+        maxPowed = max * max;
+      } else if (n === 3) {
+        minPowed = exports.roundDown(min * min) * min;
+        maxPowed = exports.roundUp(max * max) * max;
+      } else if (n < 60) {
+        minPowed = int_pow(min, n);
+        maxPowed = int_pow(max, n);
+      } else {
+        minPowed = Math.pow(min, n);
+        maxPowed = Math.pow(max, n);
+      }
+
+      let defMin = i1.defMin;
+      let defMax = i1.defMax;
+
+      if (n % 2 === 0) {
+        // if n is even
+
+        let maxValue = exports.roundUp(Math.max(minPowed, maxPowed));
+
+        if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
+          return new RealInterval(0, maxValue, defMin, defMax)
+        } else {
+          // if 0 is not included, then it's [min(min^n, max^n), max(min^n, max^n)]
+          let minValue = exports.roundDown(Math.min(minPowed, maxPowed));
+
+          return new RealInterval(minValue, maxValue, defMin, defMax)
+        }
+      } else {
+        // Monotonically increasing, so it's [min^n, max^n]
+
+        return new RealInterval(minPowed, maxPowed, defMin, defMax)
+      }
+    } else {
+      // Negative integers, utilize reciprocal function
+      return Reciprocal(_PowN(i1, -n))
+    }
+  };
+
+  // r is a real number
+  function _PowR(i1, r) {
+    let min = i1.min;
+    let max = i1.max;
+
+    if (max < 0) {
+      // Function is totally undefined
+      return new RealInterval(NaN, NaN, false, false)
+    } else if (min < 0) {
+      // 0 included in range, so the function is partially undefined
+      let defMin = false;
+      let defMax = i1.defMax;
+
+      let bound = Math.pow(max, r);
+
+      if (r < 0) {
+        // Monotonically decreasing, infinite maximum, max^r minimum
+
+        return new RealInterval(exports.roundDown(bound), Infinity, defMin, defMax)
+      } else {
+        // Monotonically increasing, 0 minimum, max^r maximum
+
+        return new RealInterval(0, exports.roundUp(bound), defMin, defMax)
+      }
+    } else {
+      // function is totally defined and continuous
+
+      let minPowed = Math.pow(min, r);
+      let maxPowed = Math.pow(max, r);
+
+      let minValue = Math.min(minPowed, maxPowed);
+      let maxValue = Math.max(minPowed, maxPowed);
+
+      return new RealInterval(exports.roundDown(minValue), exports.roundUp(maxValue), i1.defMin, i1.defMax)
+    }
+  }
+
+  function _Sqrt(i1) {
+    return _PowR(i1, 1/2)
+  }
+
+  function _Cbrt(i1) {
+    return _PowRational(i1, 1, 3)
+  }
+
+  function _PowRational(i1, p, q) {
+    // Assuming p and q are reduced
+
+    if (p === 0) {
+      return _PowN(i1, 0)
+    }
+
+    let r = p / q;
+
+    if (q % 2 === 0) {
+      // If the denominator is even then we can treat it like a real number
+      return _PowR(i1, r)
+    }
+
+    let min = i1.min, max = i1.max;
+
+    let absMinPowed = Math.pow(Math.abs(min), r);
+    let absMaxPowed = Math.pow(Math.abs(max), r);
+
+    // continuous and well-defined everywhere
+
+    let defMin = i1.defMin;
+    let defMax = i1.defMax;
+
+    let minAttained = Math.min(absMinPowed, absMaxPowed);
+    let maxAttained = Math.max(absMinPowed, absMaxPowed);
+
+    if (!(p & 1) && min < 0) {
+      minAttained *= -1;
+    }
+
+    minAttained = exports.roundDown(minAttained);
+    maxAttained = exports.roundUp(maxAttained);
+
+    if (p % 2 === 0) {
+      if (p > 0) {
+        // p / q with even, positive p and odd q
+        // Continuous
+
+        if (min < 0 && 0 < max) {
+          // if 0 contained, then the minimum attained value is 0
+
+          return new RealInterval(0, maxAttained, defMin, defMax)
+        } else {
+          return new RealInterval(minAttained, maxAttained, defMin, defMax)
+        }
+
+      } else {
+        // p / q with even, negative p and odd q
+        // Discontinuous at x = 0
+
+        if (min < 0 && 0 < max) {
+          // if 0 contained, then the maximum attained value is Infinity and the function is discontinuous
+
+          return new RealInterval(minAttained, Infinity, defMin, defMax)
+        } else {
+          // Totally continuous and monotonic
+          return new RealInterval(minAttained, maxAttained, defMin, defMax)
+        }
+      }
+    } else {
+      if (p > 0) {
+        // p / q with odd, positive p and odd q
+        // Continuous, monotonically increasing everywhere
+
+        return new RealInterval(minAttained, maxAttained, defMin, defMax)
+      } else {
+        // p / q with odd, negative p and odd q
+        // Always decreasing, discontinuous at x = 0
+
+        if (min < 0 && 0 < max) {
+          let interval1 = new Interval(-Infinity, exports.roundUp(minAttained), defMin, defMax);
+          let interval2 = new Interval(exports.roundDown(maxAttained), Infinity, defMin, defMax);
+
+          return new RealIntervalSet([interval1, interval2])
+        }
+      }
+    }
+  }
+
+  // Note that the base comes AFTER the interval!
+  function _PowB(i1, b) {
+    if (i1.isExact()) {
+      let ret = Math.pow(b, i1.min);
+
+      return new RealInterval(exports.roundDown(ret), exports.roundUp(ret), i1.defMin, i1.defMax)
+    }
+
+    if (b < 0) {
+      // TODO add strange branching
+      return new RealInterval(NaN, NaN, false, false)
+    } else if (b === 0) {
+      return new RealInterval(0, 0, i1.defMin, i1.defMax)
+    } else if (b === 1) {
+      return new RealInterval(1, 1, i1.defMin, i1.defMax)
+    } else {
+      // continuous, monotonic, always defined
+      let minPowed = Math.pow(b, i1.min);
+      let maxPowed = Math.pow(b, i1.max);
+
+      let minValue = Math.min(minPowed, maxPowed);
+      let maxValue = Math.max(minPowed, maxPowed);
+
+      return new RealInterval(exports.roundDown(minValue), exports.roundUp(maxValue), i1.defMin, i1.defMax)
+    }
+  }
+
+  function cmpZero(min, max) {
+    if (min >= 0) {
+      return 1
+    } else if (max > 0) {
+      return 0
+    } else {
+      return -1
+    }
+  }
+
+  function ignoreNaNMin(...args) {
+    let min = Infinity;
+    for (let i = 0; i < args.length; ++i) {
+      let val = args[i];
+
+      if (val < min) {
+        min = val;
+      }
+    }
+
+    return min
+  }
+
+  function ignoreNaNMax(...args) {
+    let max = -Infinity;
+    for (let i = 0; i < args.length; ++i) {
+      let val = args[i];
+
+      if (val > max) {
+        max = val;
+      }
+    }
+
+    return max
+  }
+
+  function _Pow(i1, i2) {
+    if (i2.isExact()) {
+      if (Number.isInteger(i2.min)) {
+        return _PowN(i1, i2.min)
+      } else {
+        return _PowR(i1, i2.min)
+      }
+    }
+
+    if (i1.isExact()) {
+      return _PowB(i1.min, i2)
+    }
+
+    let i1min = i1.min, i1max = i1.max, i2min = i2.min, i2max = i2.max;
+
+    // This is a rather complex algorithm, so I must document it!!
+    // We wish to find the intervals of the set [i1min, i1max] ^ [i2min, i2max].
+    // We should treat the exponent as a real number, not as a rational number (since that case is
+    // the dominion of POW_RATIONAL). That means that there are two branches for negative base.
+    // We split up the cases depending on the position of i1, i2 relative to 0.
+
+    let i1Pos = cmpZero(i1min, i1max);
+
+    let powMinMin = Math.pow(i1min, i2min);
+    let powMinMax = Math.pow(i1min, i2max);
+    let powMaxMin = Math.pow(i1max, i2min);
+    let powMaxMax = Math.pow(i1max, i2max);
+
+    let defMin = i1.defMin && i2.defMin;
+    let defMax = i1.defMax && i2.defMax;
+
+    let endpointMinAttained = exports.roundDown(ignoreNaNMin(powMinMin, powMinMax, powMaxMin, powMaxMax));
+    let endpointMaxAttained = exports.roundUp(ignoreNaNMax(powMinMin, powMinMax, powMaxMin, powMaxMax));
+
+    // Nine cases
+    if (i1Pos === 1) {
+      // In these three cases, everything is continuous and monotonic and thus defined by the endpoints
+
+      return new RealInterval(endpointMinAttained, endpointMaxAttained, defMin, defMax)
+    } else if (i1Pos === 0) {
+      // Discontinuities due to branching involved
+      // Recurse into two subcases
+
+      let int1 = _Pow(new RealInterval(0, i1max, i1.defMin, i1.defMax), i2);
+      let int2 = _Pow(new RealInterval(i1min, 0, i1.defMin, i1.defMax), i2);
+
+      return new RealIntervalSet([int1, ...getIntervals(int2)])
+    } else if (i1Pos === -1) {
+      let powMinMin = Math.pow(Math.abs(i1min), i2min);
+      let powMinMax = Math.pow(Math.abs(i1min), i2max);
+      let powMaxMin = Math.pow(Math.abs(i1max), i2min);
+      let powMaxMax = Math.pow(Math.abs(i1max), i2max);
+
+      let minAttained = exports.roundDown(Math.min(powMinMin, powMinMax, powMaxMin, powMaxMax));
+      let maxAttained = exports.roundUp(Math.max(powMinMin, powMinMax, powMaxMin, powMaxMax));
+
+      // Not continuous over any interval
+      let int1 = new RealInterval(-maxAttained, -minAttained, false, defMax);
+      let int2 = new RealInterval(minAttained, maxAttained, false, defMax);
+
+      return new RealIntervalSet([int1, int2])
+    }
+  }
+
+  function Min(i1, i2, ...args) {
+    if (args.length > 0) {
+      return Min(i1, Min(i2, ...args))
+    }
+
+    let min = Math.min(i1.min, i2.min);
+    let max = Math.min(i1.max, i2.max);
+    let defMin = i1.defMin && i2.defMin;
+    let defMax = i1.defMax && i2.defMax;
+
+    return new RealInterval(min, max, defMin, defMax)
+  }
+
+  function Max(i1, i2, ...args) {
+    if (args.length > 0) {
+      return Max(i1, Max(i2, ...args))
+    }
+
+    let min = Math.max(i1.min, i2.min);
+    let max = Math.max(i1.max, i2.max);
+    let defMin = i1.defMin && i2.defMin;
+    let defMax = i1.defMax && i2.defMax;
+
+    return new RealInterval(min, max, defMin, defMax)
+  }
+
+  function LessThan(i1, i2) {
+    let ret;
+
+    if (i1.max < i2.min) {
+      ret = RealInterval.Yes;
+    } else if (i2.max < i1.min) {
+      ret = RealInterval.No;
+    } else {
+      ret = RealInterval.Yesnt;
+    }
+
+    ret.defMin = i1.defMin && i2.defMin;
+    ret.defMax = i1.defMax && i2.defMax;
+
+    return ret
+  }
+
+  function GreaterThan(i1, i2) {
+    return LessThan(i2, i1)
+  }
+
+  function LessEqualThan(i1, i2) {
+    let ret;
+
+    if (i1.max <= i2.min) {
+      ret = RealInterval.Yes;
+    } else if (i2.max < i1.min) {
+      ret = RealInterval.No;
+    } else {
+      ret = RealInterval.Yesnt;
+    }
+
+    ret.defMin = i1.defMin && i2.defMin;
+    ret.defMax = i1.defMax && i2.defMax;
+
+    return ret
+  }
+
+  function GreaterEqualThan(i1, i2) {
+    return LessEqualThan(i2, i1)
+  }
+
+  function Equal(i1, i2) {
+    let ret;
+
+    if (i1.isExact() && i2.isExact()) {
+      if (i1.min === i2.min)
+        ret = RealInterval.Yes;
+      else
+        ret = RealInterval.No;
+    } else if (i1.intersects(i2)) {
+      ret = RealInterval.Yesnt;
+    } else {
+      ret = RealInterval.No;
+    }
+
+    ret.defMin = i1.defMin && i2.defMin;
+    ret.defMax = i1.defMax && i2.defMax;
+
+    return ret
+  }
+
+  function invertBooleanInterval(i) {
+    if (i.min === 0 && i.max === 0) {
+      return new RealInterval(1, 1, i.defMin, i.defMax)
+    } else if (i.max === 1 && i.max === 1) {
+      return new RealInterval(0, 0, i.defMin, i.defMax)
+    } else {
+      return new RealInterval(0, 1, i.defMin, i.defMax)
+    }
+  }
+
+  function NotEqual(i1, i2) {
+    return invertBooleanInterval(Equal(i1, i2))
+  }
+
+  function Re$1(i1) {
+    return i1
+  }
+
+  const Cmp = {LessThan, LessEqualThan, GreaterThan, GreaterEqualThan, Equal, NotEqual};
+
+  const Add$2 = wrapIntervalSetFunction(_Add);
+  const Subtract$2 = wrapIntervalSetFunction(_Subtract);
+  const Multiply$2 = wrapIntervalSetFunction(_Multiply);
+  const Divide$2 = wrapIntervalSetFunction(_Divide);
+  const Reciprocal = wrapIntervalSetFunction(_Reciprocal);
+  const Abs$1 = wrapIntervalSetFunction(_Abs);
+  const PowN = wrapIntervalSetFunction(_PowN, 1);
+  const PowR = wrapIntervalSetFunction(_PowN, 1);
+  const PowRational = wrapIntervalSetFunction(_PowRational, 1);
+  const PowB = wrapIntervalSetFunction(_PowB, 1);
+  const Pow = wrapIntervalSetFunction(_Pow);
+  const Sqrt = wrapIntervalSetFunction(_Sqrt);
+  const Cbrt = wrapIntervalSetFunction(_Cbrt);
+
+  var BasicArithmeticFunctions$1 = /*#__PURE__*/Object.freeze({
+    Min: Min,
+    Max: Max,
+    Re: Re$1,
+    Cmp: Cmp,
+    Add: Add$2,
+    Subtract: Subtract$2,
+    Multiply: Multiply$2,
+    Divide: Divide$2,
+    Reciprocal: Reciprocal,
+    Abs: Abs$1,
+    PowN: PowN,
+    PowR: PowR,
+    PowRational: PowRational,
+    PowB: PowB,
+    Pow: Pow,
+    Sqrt: Sqrt,
+    Cbrt: Cbrt
+  });
+
+  // Frankly, I don't know how this code works. I wrote it a long time ago
+  function _Sin(i1) {
+    let min = i1.min, max = i1.max;
+
+    if (min === max) {
+      let sin = Math.sin(min);
+
+      return new RealInterval(exports.roundDown(sin), exports.roundUp(sin), i1.defMin, i1.defMax)
+    }
+
+    if (max - min >= 2 * Math.PI) { // If the length is more than a full period, return [-1, 1]
+      return new RealInterval(-1, 1, i1.defMin, i1.defMax)
+    }
+
+    let a_rem_2p = mod(i1.min, 2 * Math.PI);
+    let b_rem_2p = mod(i1.max, 2 * Math.PI);
+
+    let min_rem = Math.min(a_rem_2p, b_rem_2p);
+    let max_rem = Math.max(a_rem_2p, b_rem_2p);
+
+    let contains_1 = (min_rem < Math.PI / 2) && (max_rem > Math.PI / 2);
+    let contains_n1 = (min_rem < 3 * Math.PI / 2 && max_rem > 3 * Math.PI / 2);
+
+    if (b_rem_2p < a_rem_2p) {
+      contains_1 = !contains_1;
+      contains_n1 = !contains_n1;
+    }
+
+    if (contains_1 && contains_n1)
+      return new RealInterval(-1, 1, i1.defMin, i1.defMax)
+
+    let sa = Math.sin(a_rem_2p), sb = Math.sin(b_rem_2p);
+    return new RealInterval(contains_n1 ? -1 : exports.roundDown(Math.min(sa, sb)), contains_1 ? 1 : exports.roundUp(Math.max(sa, sb)),
+      i1.defMin, i1.defMax);
+  }
+
+  const PI_OVER_TWO = RealInterval.fromNumber(Math.PI / 2);
+
+  function _Cos(i1) {
+    return Sin$1(Add$2(i1, PI_OVER_TWO))
+  }
+
+  function _Tan(i1) {
+    return Divide$2(_Sin(i1), _Cos(i1))
+  }
+
+  function _Exp(i1) {
+    let min = i1.min;
+    let max = i1.max;
+
+    let expMin = exports.roundDown(Math.exp(min));
+    let expMax = exports.roundUp(Math.exp(max));
+
+    return new RealInterval(expMin, expMax, i1.defMin, i1.defMax)
+  }
+
+  const Sin$1 = wrapIntervalSetFunction(_Sin);
+  const Exp = wrapIntervalSetFunction(_Exp);
+  const Tan$1 = wrapIntervalSetFunction(_Tan);
+
+  var TrigFunctions = /*#__PURE__*/Object.freeze({
+    Sin: Sin$1,
+    Exp: Exp,
+    Tan: Tan$1
+  });
+
+  const RealIntervalFunctions = {
+    ...BasicArithmeticFunctions$1, ...TrigFunctions
+  };
+
+  /**
+   * Returns e^(i theta) for real theta.
+   * @param theta {number}
+   * @returns {Complex} cis(theta)
+   */
+  const Cis = (theta) => {
+    // For real theta
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+
+    return new Complex$1(c, s)
+  };
+
+  /**
+   * Returns e^z for complex z.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Exp$1 = (z) => {
+    let magnitude = Math.exp(z.re);
+
+    let angle = z.im;
+
+    return Cis(angle).scale(magnitude)
+  };
+
+  /**
+   * Return the principal value of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @returns {Complex}
+   */
+  const Pow$1 = (z, w) => {
+    return Exp$1(Multiply(w, new Complex$1(Math.log(z.magnitude()), z.arg())))
+  };
+
+  /**
+   * Multivalued version of z^w.
+   * @param z {Complex}
+   * @param w {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowBranched = (z, w, branch=0) => {
+    return Multiply(Pow$1(z, w), Exp$1(Multiply(Complex$1.I, w.scale(2 * Math.PI * branch))))
+  };
+
+  /**
+   * z^r, where r is a real number.
+   * @param z {Complex}
+   * @param r {number}
+   * @returns {Complex}
+   */
+  const PowR$1 = (z, r) => {
+    return Pow$1(z, new Complex$1(r))
+  };
+
+  const PowZ = (r, z) => {
+    if (r === 0)
+      return new Complex$1(0)
+
+    return Exp$1(Multiply(z, new Complex$1(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
+  };
+
+  /**
+   * z^r, where r is a real number, branched.
+   * @param z {Complex}
+   * @param r {number}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const PowRBranched = (z, r, branch=0) => {
+    return PowBranched(z, new Complex$1(r), branch)
+  };
+
+  /**
+   * Returns z^n, where n is a positive integer
+   * @param z {Complex} The base of the exponentiation.
+   * @param n {number} Positive integer, exponent.
+   * @returns {Complex}
+   */
+  const PowN$1 = (z, n) => {
+    if (n === 0) {
+      return new Complex$1(1, 0)
+    } else if (n === 1) {
+      return z.clone()
+    } else if (n === -1) {
+      return z.conj().scale(1 / z.magnitudeSquared())
+    } else if (n === 2) {
+      return Multiply(z, z)
+    }
+
+    let mag = z.magnitude();
+    let angle = z.arg();
+
+    let newMag = Math.pow(mag, n);
+    let newAngle = angle * n;
+
+    return Cis(newAngle).scale(newMag)
+  };
+
+  /**
+   * Returns the principal value of sqrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sqrt$1 = (z) => {
+    // Handle real z specially
+    if (Math.abs(z.im) < 1e-17) {
+      let r = z.re;
+
+      if (r >= 0) {
+        return new Complex$1(Math.sqrt(r))
+      } else {
+        return new Complex$1(0, Math.sqrt(-r))
+      }
+    }
+
+    let r = z.magnitude();
+
+    let zR = Add(z, new Complex$1(r)).normalize();
+
+    return zR.scale(Math.sqrt(r))
+  };
+
+  /**
+   * Branched version of Sqrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const SqrtBranched = (z, branch=0) => {
+    if (branch % 2 === 0) {
+      return Sqrt$1(z)
+    } else {
+      return Multiply(new Complex$1(-1, 0), Sqrt$1(z))
+    }
+  };
+
+  /**
+   * Principal value of cbrt(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Cbrt$1 = (z) => {
+    return PowR$1(z, 1/3)
+  };
+
+  /**
+   * Multivalued version of Cbrt(z).
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const CbrtBranched = (z, branch=0) => {
+    return PowRBranched(z, 1/3, branch)
+  };
+
+  var PowFunctions = /*#__PURE__*/Object.freeze({
+    Pow: Pow$1,
+    PowBranched: PowBranched,
+    PowR: PowR$1,
+    PowZ: PowZ,
+    PowRBranched: PowRBranched,
+    PowN: PowN$1,
+    Sqrt: Sqrt$1,
+    SqrtBranched: SqrtBranched,
+    Cbrt: Cbrt$1,
+    CbrtBranched: CbrtBranched
+  });
+
+  // sin(a+bi) = sin a cosh b + i cos a sinh b
+  const Sin$2 = (z) => {
+    let a = z.re, b = z.im;
+    let sinA = Math.sin(a);
+    let cosA = Math.cos(a);
+
+    let sinhB = Math.sinh(b);
+    let coshB = Math.sqrt(1 + sinhB * sinhB);
+
+    return new Complex$1(sinA * coshB, cosA * sinhB)
+  };
+
+  // cos(a+bi) = cos a cosh b - i sin a sinh b
+  const Cos$1 = (z) => {
+    let a = z.re, b = z.im;
+    let sinA = Math.sin(a);
+    let cosA = Math.cos(a);
+
+    let sinhB = Math.sinh(b);
+    let coshB = Math.sqrt(1 + sinhB * sinhB);
+
+    return new Complex$1(cosA * coshB, -sinA * sinhB)
+  };
+
+  // tan(a+bi) = (tan a + i tanh b) / (1 - i tan a tanh b)
+  const Tan$2 = (z) => {
+    let a = z.re, b = z.im;
+
+    let tanA = Math.tan(a);
+    let tanhB = Math.tanh(b);
+
+    return Divide(new Complex$1(tanA, tanhB), new Complex$1(1, -tanA * tanhB))
+  };
+
+  // sec(a+bi) = 1 / cos(a+bi)
+  const Sec$1 = (z) => {
+    return Divide(Complex$1.One, Cos$1(z))
+  };
+
+  // csc(a+bi) = 1 / sin(a+bi)
+  const Csc$1 = (z) => {
+    return Divide(Complex$1.One, Sin$2(z))
+  };
+
+  // sec(a+bi) = 1 / cos(a+bi)
+  const Cot$1 = (z) => {
+    return Divide(Complex$1.One, Tan$2(z))
+  };
+
+  var TrigFunctions$1 = /*#__PURE__*/Object.freeze({
+    Sin: Sin$2,
+    Cos: Cos$1,
+    Tan: Tan$2,
+    Sec: Sec$1,
+    Csc: Csc$1,
+    Cot: Cot$1
+  });
+
+  /**
+   * Returns ln(z), where ln is the natural logarithm.
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Ln$1 = (z) => {
+    let mag = Math.log(z.magnitude());
+    let theta = z.arg();
+
+    return new Complex$1(mag, theta)
+  };
+
+  /**
+   * The multivalued version of ln(z). In other words, if ln(z) is the principal value of ln(z), it returns
+   * ln(z) + 2 * pi * i * branch, where branch is an integer.
+   * @param z {Complex}
+   * @param branch {number}
+   * @returns {Complex}
+   */
+  const LnBranched = (z, branch=0) => {
+    return Add(Ln$1(z), Complex$1.I.scale(2 * Math.PI * branch))
+  };
+
+  /* Alias for Ln */
+  const Log$1 = Ln$1;
+
+  /* Alias for LnBranched */
+  const LogBranched = LnBranched;
+
+  // Constants
+  const LN10 = Math.log(10);
+  const LN2 = Math.log(2);
+
+  /**
+   * log10(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10$1 = (z) => {
+    return Ln$1(z).scale(1 / LN10)
+  };
+
+  /**
+   * log10(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log10Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN10)
+  };
+
+  /**
+   * log2(z) (principal value)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2$1 = (z) => {
+    return Ln$1(z).scale(1 / LN2)
+  };
+
+  /**
+   * log2(z) (branched)
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Log2Branched = (z, branch=0) => {
+    return LnBranched(z, branch).scale(1 / LN2)
+  };
+
+  /**
+   * Log base b of z
+   * @param b {Complex}
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const LogB = (b, z) => {
+    if (b.equals(z))
+      return Complex$1.One
+
+    return Divide(Ln$1(z), Ln$1(b))
+  };
+
+  /**
+   * Log base b of z, multivalued
+   * @param b {Complex}
+   * @param z {Complex}
+   * @param branch {number} Integer, which branch to evaluate
+   * @returns {Complex}
+   */
+  const LogBBranched = (b, z, branch=0) => {
+    if (branch === 0 && b.equals(z))
+      return Complex$1.One
+
+    return Divide(LnBranched(z, branch), LnBranched(b, branch))
+  };
+
+  var LnFunctions = /*#__PURE__*/Object.freeze({
+    Ln: Ln$1,
+    LnBranched: LnBranched,
+    Log: Log$1,
+    LogBranched: LogBranched,
+    Log10: Log10$1,
+    Log10Branched: Log10Branched,
+    Log2: Log2$1,
+    Log2Branched: Log2Branched,
+    LogB: LogB,
+    LogBBranched: LogBBranched
+  });
+
+  /**
+   * Returns sinh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sinh$1 = (z) => {
+    let a = z.re, b = z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex$1(sinhA * cosB, coshA * sinB)
+  };
+
+  /**
+   * Returns cosh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Cosh$1 = (z) => {
+    let a = z.re, b = z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex$1(coshA * cosB, sinhA * sinB)
+  };
+
+  /**
+   * Returns tanh(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Tanh$1 = (z) => {
+    let a = 2 * z.re, b = 2 * z.im;
+
+    let sinhA = Math.sinh(a);
+    let coshA = Math.sqrt(1 + sinhA * sinhA);
+
+    let sinB = Math.sin(b);
+    let cosB = Math.cos(b);
+
+    return new Complex$1(sinhA, sinB).scale(1 / (coshA + cosB))
+  };
+
+  /**
+   * Returns sech(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Sech$1 = (z) => {
+    return Divide(Complex$1.One, Cosh$1(z))
+  };
+
+  /**
+   * Returns csch(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Csch$1 = (z) => {
+    return Divide(Complex$1.One, Sinh$1(z))
+  };
+
+  /**
+   * Returns coth(z).
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  const Coth$1 = (z) => {
+    return Divide(Complex$1.One, Tanh$1(z))
+  };
+
+  var HyperbolicTrigFunctions = /*#__PURE__*/Object.freeze({
+    Sinh: Sinh$1,
+    Cosh: Cosh$1,
+    Tanh: Tanh$1,
+    Sech: Sech$1,
+    Csch: Csch$1,
+    Coth: Coth$1
+  });
+
+  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
+  const Arcsin$1 = (z) => Multiply(Complex$1.I.scale(-1), // -i
+    Ln$1(Add(Multiply(Complex$1.I, z),                              // i * z
+      Sqrt$1(Subtract(Complex$1.One, Multiply(z, z))))));            // sqrt(1 - z^2
+
+  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
+  const Arccos$1 = (z) => Add(new Complex$1(Math.PI / 2), // pi / 2
+    Multiply(Complex$1.I, Ln$1(Add(Multiply(Complex$1.I, z),           // i * ln(iz
+      Sqrt$1(Subtract(Complex$1.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
+
+  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
+  const Arctan$1 = (z) => Multiply(Complex$1.I.scale(1/2),  // i / 2
+    Ln$1(Divide(Add(Complex$1.I, z), Subtract(Complex$1.I, z))));      // ln( (i+z) / (1-z) )
+
+  // arcsec(z) = arccos(1 / z)
+  const Arcsec$1 = (z) => Arccos$1(Divide(Complex$1.One, z));
+
+  // arccsc(z) = arcsin(1 / z)
+  const Arccsc$1 = (z) => Arcsin$1(Divide(Complex$1.One, z));
+
+  // arccot(z) = pi / 2 - arctan(z)
+  const Arccot = (z) => Subtract(new Complex$1(Math.PI / 2), Arctan$1(z));
+
+  // Branched variants of the inverse trig functions
+  const ArcsinBranched = (z, branch=0) => {
+    return Add(Arcsin$1(z), new Complex$1(2 * Math.PI * branch))
+  };
+
+  const ArccosBranched = (z, branch=0) => {
+    return Add(Arccos$1(z), new Complex$1(2 * Math.PI * branch))
+  };
+
+  const ArctanBranched = (z, branch=0) =>
+    Add(Arctan$1(z), new Complex$1(Math.PI * branch));
+
+  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex$1.One, z), branch);
+
+  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex$1.One, z), branch);
+
+  const ArccotBranched = (z, branch=0) =>
+    Subtract(new Complex$1(Math.PI / 2), ArctanBranched(z, -branch));
+
+  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
+    Arcsin: Arcsin$1,
+    Arccos: Arccos$1,
+    Arctan: Arctan$1,
+    Arcsec: Arcsec$1,
+    Arccsc: Arccsc$1,
+    Arccot: Arccot,
+    ArcsinBranched: ArcsinBranched,
+    ArccosBranched: ArccosBranched,
+    ArctanBranched: ArctanBranched,
+    ArcsecBranched: ArcsecBranched,
+    ArccscBranched: ArccscBranched,
+    ArccotBranched: ArccotBranched
+  });
+
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const Arcsinh$1 = (z) => Ln$1(Add(z, Sqrt$1(Add(Multiply(z, z), Complex$1.One))));
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const Arccosh$1 = (z) => Ln$1(Add(z, Multiply(Sqrt$1(Add(z, Complex$1.One)), Sqrt$1(Subtract(z, Complex$1.One)))));
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const Arctanh$1 = (z) => Ln$1(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z))).scale(1/2);
+
+  const Arcsech$1 = (z) => Arccosh$1(Divide(Complex$1.One, z));
+
+  // arccsch(z) = arcsinh(1/z)
+  const Arccsch$1 = (z) => Arcsinh$1(Divide(Complex$1.One, z));
+
+  // arccoth(z) = arctanh(1/z)
+  const Arccoth$1 = (z) => Arctanh$1(Divide(Complex$1.One, z));
+
+  // Branched variants of the normal functions
+  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
+  const ArcsinhBranched = (z, branch=0) =>
+    LnBranched(Add(z, Sqrt$1(Add(Multiply(z, z), Complex$1.One))), branch);
+
+  // arccosh(z) = ln(z + sqrt(z^2 - 1))
+  const ArccoshBranched = (z, branch=0) =>
+    LnBranched(Add(z, Multiply(Sqrt$1(Add(z, Complex$1.One)), Sqrt$1(Subtract(z, Complex$1.One)))), branch);
+
+  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
+  const ArctanhBranched = (z, branch=0) =>
+    LnBranched(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z)), branch).scale(1/2);
+
+  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex$1.One, z), branch);
+
+  // arccsch(z) = arcsinh(1/z)
+  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex$1.One, z), branch);
+
+  // arccoth(z) = arctanh(1/z)
+  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex$1.One, z), branch);
+
+  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
+    Arcsinh: Arcsinh$1,
+    Arccosh: Arccosh$1,
+    Arctanh: Arctanh$1,
+    Arcsech: Arcsech$1,
+    Arccsch: Arccsch$1,
+    Arccoth: Arccoth$1,
+    ArcsinhBranched: ArcsinhBranched,
+    ArccoshBranched: ArccoshBranched,
+    ArctanhBranched: ArctanhBranched,
+    ArcsechBranched: ArcsechBranched,
+    ArccschBranched: ArccschBranched,
+    ArccothBranched: ArccothBranched
+  });
+
+  function Gamma(z) {
+    if (z.re < 1/2) {
+      // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
+      // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
+
+      return Divide(new Complex$1(Math.PI), Multiply(Sin$2(z.scale(Math.PI)), Gamma(Subtract(Complex$1.One, z))))
+    }
+
+    if (Math.abs(z.im) < 1e-17) {
+      return new Complex$1(gamma(z.re))
+    }
+
+    // We use the Lanczos approximation for the factorial function.
+    z.re -= 1;
+    let x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
+
+    let newZ = z.clone();
+    let re, im, mag2;
+
+    for (let i = 1; i < LANCZOS_COEFFICIENTS.length; ++i) {
+      let coeff = LANCZOS_COEFFICIENTS[i];
+
+      newZ.re += 1;
+
+      re = newZ.re * coeff;
+      im = -newZ.im * coeff;
+
+      mag2 = newZ.magnitudeSquared();
+
+      re /= mag2;
+      im /= mag2;
+
+      x.re += re;
+      x.im += im;
+    }
+
+    let t = z.clone();
+    t.re += LANCZOS_COEFFICIENTS.length - 1.5;
+
+    return Multiply(new Complex$1(Math.sqrt(2 * Math.PI)),
+      Multiply(x, Multiply(
+        Pow$1(t, Add(z, new Complex$1(0.5))),
+        Exp$1(t.scale(-1)))))
+  }
+
+  /**
+   * Evaluates the digamma function of z.
+   * @param z {Complex}
+   * @return {Complex}
+   */
+  function Digamma(z) {
+    if (z.re < 0.5) {
+      // psi(1-x) - psi(x) = pi cot(pi x)
+      // psi(x) = psi(1-x) - pi cot (pi x)
+
+      return Subtract(Digamma(Subtract(Complex$1.One, z)), Cot$1(z.scale(Math.PI)).scale(Math.PI))
+    } else if (z.re < 15) {
+      // psi(x+1) = psi(x) + 1/x
+      // psi(x) = psi(x+1) - 1/x
+
+      let sum = new Complex$1(0);
+      let one = Complex$1.One;
+
+      while (z.re < 15) {
+        let component = Divide(one, z);
+
+        z.re += 1;
+
+        sum.re += component.re;
+        sum.im += component.im;
+      }
+
+      return Subtract(Digamma(z), sum)
+    }
+
+    let egg = new Complex$1(1);
+    let sum = Ln$1(z);
+
+    for (let n = 1; n < 15; ++n) {
+      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
+
+      egg = Divide(Multiply(egg, new Complex$1(((n-1) ? (n-1) : 1))), Add(z, new Complex$1(n - 1)));
+
+      sum.re -= coeff * egg.re;
+      sum.im -= coeff * egg.im;
+    }
+
+    return sum
+  }
+
+  let coeffs = [[1, 1], [2, 1 / 2], [3, 1 / 6], [5, 1 / 30], [7, 1 / 42], [9, 1 / 30], [11, 5 / 66], [13, 691 / 2730], [15, 7 / 6]];
+
+  /**
+   *
+   * @param z
+   * @returns {Complex}
+   */
+  function Trigamma(z) {
+    if (Math.abs(z.im) < 1e-17)
+      return new Complex$1(trigamma(z.re))
+
+    if (z.re < 0.5) {
+      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
+      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
+
+      return Subtract(Divide(new Complex$1(Math.PI * Math.PI), PowN$1(Sin$2(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex$1.One, z)))
+    } else if (z.re < 20) {
+      // psi_1(z+1) = psi_1(z) - 1/z^2
+      // psi_1(z) = psi_1(z+1) + 1/z^2
+
+      let sum = new Complex$1(0);
+
+      while (z.re < 20) {
+        let component = PowN$1(z, -2);
+
+        z.re += 1;
+
+        sum.re += component.re;
+        sum.im += component.im;
+      }
+
+      return Add(Trigamma(z), sum)
+    }
+
+    let sum = new Complex$1(0);
+
+    for (let coeffPair of coeffs) {
+      let pow = coeffPair[0];
+      let coeff = coeffPair[1];
+
+      let part = Multiply(new Complex$1(coeff), PowN$1(z, -pow));
+
+      sum.re += part.re;
+      sum.im += part.im;
+    }
+
+    return sum
+  }
+
+  /**
+   * Returns polygamma(m, z), where polygamma is the mth logarithmic derivative of the gamma function.
+   * @param m {number}
+   * @param z {Complex}
+   * @returns {Complex}
+   */
+  function Polygamma(m, z) {
+    if (m < 0)
+      return new Complex$1(NaN, NaN)
+    if (m % 1 !== 0)
+      return new Complex$1(NaN, NaN)
+
+    if (m === 0)
+      return Digamma(z)
+    else if (m === 1)
+      return Trigamma(z)
+
+    let sign = (m % 2 === 0) ? -1 : 1;
+    let numPoly = getPolygammaNumeratorPolynomial(m);
+
+    if (z < 0.5) {
+      if (z % 1 === 0)
+        return new Complex$1(Infinity)
+
+      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
+      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
+
+      return Multiply(new Complex$1(-1), Divide(numPoly.evaluateComplex(Cos$1(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
+        (PowN$1(Sin$2(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex$1.One, z))))
+    } else if (z < 8) {
+      // Recurrence relation
+      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
+
+      return Add(Polygamma(m, z+1), Divide(new Complex$1(sign * gamma(m + 1)), PowN$1(z, m+1)))
+    }
+
+    // Series representation
+
+    let sum = new Complex$1(0);
+
+    for (let i = 0; i < 200; ++i) {
+      let component = Divide(Complex$1.One, PowN$1(Add(z, new Complex$1(i)), m + 1));
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Multiply(new Complex$1(sign * gamma(m + 1)), sum)
+  }
+
+  const logPi = Math.log(Math.PI);
+  const logSqrt2Pi = Math.log(2 * Math.PI) / 2;
+
+  function LnGamma (z) {
+    if (Math.abs(z.im) < 1e-17) {
+      return new Complex$1(ln_gamma(z.re))
+    }
+
+    if (z.re < 0.5) {
+      // Compute via reflection formula
+      let reflected = LnGamma(Subtract(Complex$1.One, z));
+
+      return Subtract(Subtract(new Complex$1(logPi), Ln$1(Sin$2(Multiply(new Complex$1(Math.PI), z)))), reflected)
+    } else {
+      z.re -= 1;
+
+      const g = 7;
+
+      var x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
+
+      for (var i = 1; i < g + 2; i++) {
+        let component = Divide(new Complex$1(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex$1(i)));
+
+        x.re += component.re;
+        x.im += component.im;
+      }
+
+      var t = Add(z, new Complex$1(g + 0.5));
+
+      return Add(new Complex$1(logSqrt2Pi), Add(Subtract(Multiply(Ln$1(t), Add(z, new Complex$1(0.5))), t), Ln$1(x)))
+    }
+  }
+
+  let ZETA_COEFFS$1 = zeta.coeffs;
+  let ZETA_N$1 = zeta.n;
+
+  function Chi(s) {
+    let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex$1(1))));
+
+    let sine = Sin$2(s.scale(Math.PI / 2));
+
+    let gamma = Gamma(Subtract(new Complex$1(1), s));
+
+    return Multiply(powers, Multiply(sine, gamma))
+  }
+
+  function RiemannSiegel(z) {
+    let t = z.im;
+    let m = 10;
+
+    let chiS = Chi(z);
+
+    let sum = new Complex$1(0);
+
+    let mZ = z.scale(-1);
+
+    for (let n = 1; n <= m; ++n) {
+      let component = PowZ(n, mZ);
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    let secondSum = new Complex$1(0);
+
+    let oneMz = Subtract(z, new Complex$1(1));
+
+    for (let n = 1; n <= m; ++n) {
+      let component = PowZ(n, oneMz);
+
+      secondSum.re += component.re;
+      secondSum.im += component.im;
+    }
+
+    secondSum = Multiply(chiS, secondSum);
+
+    return Add(sum, secondSum)
+  }
+
+  // Implementation of the riemann zeta function for complex numbers
+
+  function Zeta(z) {
+    if (Math.abs(z.im) < 1e-17)
+      return new Complex$1(zeta(z.re))
+
+    if (z.re < 0.5) {
+      // Reflection formula
+
+      return Multiply(Chi(z), Zeta(Subtract(new Complex$1(1), z)))
+    }
+
+    if (0 <= z.re && z.re <= 1 && Math.abs(z.im) > 48.005150881167159727942472749427) {
+      return RiemannSiegel(z)
+    }
+
+    // series time
+
+    let seriesSum = new Complex$1(0);
+
+    let sign = new Complex$1(1);
+
+    for (let k = 0; k < ZETA_N$1; ++k) {
+      let component = Divide(sign, PowZ(k + 1, z)).scale(ZETA_COEFFS$1[k + 1]);
+
+      seriesSum.re += component.re;
+      seriesSum.im += component.im;
+
+      sign.re *= -1;
+    }
+
+    return Divide(seriesSum, Multiply(new Complex$1(ZETA_COEFFS$1[0]), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z)))))
+  }
+
+  // Dirichlet eta function
+  function Eta(z) {
+    return Multiply(Zeta(z), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z))))
+  }
+
+  const Sinc = (x) => {
+    if (x.re === 0 && x.im === 0)
+      return new Complex(1)
+
+    return Divide(Sin$2(x), x)
+  };
+
+  const NormSinc = (x) => {
+    return Sinc(x.scale(Math.PI))
+  };
+
+  var MiscSpecial = /*#__PURE__*/Object.freeze({
+    Sinc: Sinc,
+    NormSinc: NormSinc
+  });
+
+  const Ei = (z) => {
+    if (z.im < 1e-17)
+      return new Complex$1(ei(z.re))
+
+    let sum = new Complex$1(0);
+    let accum = new Complex$1(1);
+
+    let terms = Math.min(Math.max(4 * z.magnitudeSquared() ** 0.375, 8), 100);
+
+    for (let n = 1; n < terms; ++n) {
+      accum = Multiply(accum, z.scale(1/n));
+
+      let component = accum.scale(getEiCoeff(n));
+
+      accum.re *= -0.5;
+      accum.im *= -0.5;
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Add(new Complex$1(eulerGamma), Add(Ln$1(z), Multiply(Exp$1(z.scale(0.5)), sum)))
+  };
+
+  const Li = (z) => {
+    return Ei(Ln$1(z))
+  };
+
+  var ExpIntegrals = /*#__PURE__*/Object.freeze({
+    Ei: Ei,
+    Li: Li
+  });
+
+  function Si$1(z) {
+    throw new Error("unimplemented")
+  }
+
+  function Ci$1(z) {
+    throw new Error("unimplemented")``
+  }
+
+  var TrigIntegrals = /*#__PURE__*/Object.freeze({
+    Si: Si$1,
+    Ci: Ci$1
+  });
+
+  function fk(k, x, y, cosXY, sinXY) {
+    return 2 * x * (1 - cosXY * Math.cosh(k * y)) + k * sinXY * Math.sinh(k * y)
+  }
+
+  function gk(k, x, y, cosXY, sinXY) {
+    return 2 * x * sinXY * Math.cosh(k * y) + k * cosXY * Math.sinh(k * y)
+  }
+
+  function ErfSubcall(x, y) {
+
+    let xy2 = 2 * x * y;
+    let cosxy2 = Math.cos(xy2);
+    let sinxy2 = Math.sin(xy2);
+
+    let expX2 = Math.exp(- x * x);
+
+    let cmp1 = new Complex$1(erf(x));
+    let cmp2 = new Complex$1(1 - cosxy2, sinxy2).scale(expX2 / (2 * Math.PI * x));
+
+    let sum = new Complex$1(0);
+    let terms = Math.min(Math.max(10 * Math.abs(y), 10), 100);
+
+    for (let k = 1; k < terms; ++k) {
+      let component = new Complex$1(fk(k, x, y, cosxy2, sinxy2), gk(k, x, y, cosxy2, sinxy2)).scale(Math.exp(- k * k / 4) / (k * k + 4 * x * x));
+
+      sum.re += component.re;
+      sum.im += component.im;
+    }
+
+    return Add(cmp1, Add(cmp2, sum.scale(2 / Math.PI * expX2)))
+  }
+
+  function Erf(z) {
+    if (z.im < 1e-17)
+      return new Complex$1(erf(z.re))
+
+    let x = z.re, y = z.im;
+
+    return ErfSubcall(x, y)
+  }
+
+  function Erfc(z) {
+    return Erf(Subtract(new Complex$1(1), z))
+  }
+
+  var Erfs = /*#__PURE__*/Object.freeze({
+    Erf: Erf,
+    Erfc: Erfc
+  });
+
+  /**
+   * Complex functions!
+   */
+  const ComplexFunctions = Object.freeze({
+    ...BasicArithmeticFunctions, ...PowFunctions, Exp: Exp$1, Cis, ...TrigFunctions$1, ...LnFunctions,
+    ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
+    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta, Eta, ...MiscSpecial, ...ExpIntegrals, ...TrigIntegrals, ...Erfs
+  });
+
+  class ComplexInterval {
+    constructor(reMin, reMax, imMin, imMax, defMin=true, defMax=true) {
+      this.reMin = reMin;
+      this.reMax = reMax;
+      this.imMin = imMin;
+      this.imMax = imMax;
+      this.defMin = defMin;
+      this.defMax = defMax;
+    }
+  }
+
+  const Construct$1 = (reMin, reMax, imMin, imMax) => {
+    return new ComplexInterval(reMin, reMax, imMin, imMax)
+  };
+
+  const Add$3 = (int1, int2) => {
+    return new ComplexInterval(int1.reMin, int1.reMax, int2.imMin, int2.imMax, int1.defMin || int2.defMin, int1.defMax && int2.defMax)
+  };
+
+  var BasicArithmeticFunctions$2 = /*#__PURE__*/Object.freeze({
+    Construct: Construct$1,
+    Add: Add$3
+  });
+
+  const ComplexIntervalFunctions = {
+    ...BasicArithmeticFunctions$2
+  };
+
   // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
   const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
@@ -6204,11 +9684,37 @@ void main() {
     }
   }
 
+  function retrieveEvaluationFunction(str) {
+    let fName = str.split('.').pop();
+
+    const realFunctions = RealFunctions;
+    const realIntervalFunctions = RealIntervalFunctions;
+    const complexFunctions = ComplexFunctions;
+    const complexIntervalFunctions = ComplexIntervalFunctions;
+
+    if (str.includes("RealFunctions"))
+      return realFunctions[fName]
+    if (str.includes("RealIntervalFunctions"))
+      return realIntervalFunctions[fName]
+    if (str.includes("ComplexFunctions"))
+      return complexFunctions[fName]
+    if (str.includes("ComplexIntervalFunctions"))
+      return complexIntervalFunctions[fName]
+
+  }
+
   class OperatorDefinition {
     constructor(params={}) {
       this.returns = params.returns || "real";
 
       throwInvalidType(this.returns);
+
+      if (params.latexFunc)
+        this.latexFunc = params.latexFunc;
+
+      this.latexOperator = params.latexOperator;
+      this.latexType = params.latexType;
+      this.latexPrecedence = params.latexPrecedence;
 
       let evaluate = params.evaluate;
 
@@ -6216,6 +9722,34 @@ void main() {
         this.evaluate = evaluate;
       else
         this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate;
+
+      this.evaluateFunc = params.evaluateFunc ? params.evaluateFunc : retrieveEvaluationFunction(this.evaluate);
+
+      try {
+        const evaluateInterval = this.evaluate.replace(/Functions/g, "IntervalFunctions");
+
+        this.evaluateIntervalFunc = params.evaluateIntervalFunc ? params.evaluateIntervalFunc : retrieveEvaluationFunction(evaluateInterval);
+
+        this.evaluateInterval = evaluateInterval;
+      } catch (e) {
+
+      }
+
+      if (params.evaluateInterval) {
+        this.evaluateInterval = params.evaluateInterval;
+      }
+
+      if (!params.noGraphemePrefix) {
+        const evaluateInterval = this.evaluateInterval;
+
+        this.evaluateInterval = ((isWorker || evaluateInterval.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluateInterval;
+      }
+    }
+
+    latex(nodes, options={}) {
+      if (this.latexFunc) {
+        return this.latexFunc(nodes, options)
+      }
     }
   }
 
@@ -6285,6 +9819,7 @@ void main() {
         signature: sig,
         returns: this.returns,
         evaluate: this.evaluate,
+        evaluateInterval: this.evaluateInterval,
         desc: this.desc
       })
     }
@@ -6336,12 +9871,6 @@ void main() {
         returns: 'complex',
         evaluate: "Typecasts.RealToComplex"
       })
-    ],
-    'real_interval': [
-      new TypecastDefinition({
-        returns: 'complex_interval',
-        evaluate: "Typecasts.RealIntervalToComplexInterval"
-      })
     ]
   };
 
@@ -6376,19 +9905,31 @@ void main() {
         signature: ["int", "int"],
         returns: "int",
         evaluate: "RealFunctions.Multiply",
-        desc: "Returns the product of two integers."
+        intervalEvaluate: "RealIntervalFunctions.Multiply",
+        desc: "Returns the product of two integers.",
+        latexOperator: String.raw`\cdot`,
+        latexType: "infix",
+        latexPrecedence: 2
       }),
       new NormalDefinition({
         signature: ["real", "real"],
         returns: "real",
         evaluate: "RealFunctions.Multiply",
-        desc: "Returns the product of two real numbers."
+        intervalEvaluate: "RealIntervalFunctions.Multiply",
+        desc: "Returns the product of two real numbers.",
+        latexOperator: String.raw`\cdot`,
+        latexType: "infix",
+        latexPrecedence: 2
       }),
       new NormalDefinition({
         signature: ["complex", "complex"],
         returns: "complex",
         evaluate: "ComplexFunctions.Multiply",
-        desc: "Returns the product of two complex numbers."
+        intervalEvaluate: "ComplexIntervalFunctions.Multiply",
+        desc: "Returns the product of two complex numbers.",
+        latexOperator: String.raw`\cdot`,
+        latexType: "infix",
+        latexPrecedence: 2
       })
     ],
     '+': [
@@ -7136,7 +10677,36 @@ void main() {
       new NormalDefinition({
         signature: ["real"],
         returns: "complex",
-        evaluate: "ComplexFunctions.Cis"
+        evaluate: "ComplexFunctions.Cis",
+        desc: "Returns cos(theta) + i sin(theta)."
+      })
+    ],
+    "Cl2": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Cl2",
+        desc: "Evaluates the Clausen function of x."
+      })
+    ],
+    "beta": [
+      new NormalDefinition({
+        signature: ["real", "real"],
+        returns: "real",
+        evaluate: "RealFunctions.Beta",
+        desc: "Evaluates the beta function at a,b."
+      })
+    ],
+    "exp": [
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.Exp"
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.Exp"
       })
     ]
   };
@@ -7191,6 +10761,13 @@ void main() {
 
       this.node.resolveTypes(this.getVariableTypesAsDict());
       this.evaluate = this.node.compile(this.getVariables());
+      this.evaluateInterval = null;
+
+      try {
+        this.evaluateInterval = this.node.compileInterval(this.getVariables());
+      } catch (e) {
+
+      }
 
       const returnType = this.node.returnType;
 
@@ -7200,7 +10777,10 @@ void main() {
       this.definition = new NormalDefinition({
         signature: this.getSignature(),
         returns: returnType,
-        evaluate: "Functions." + this.name + '.evaluate'
+        evaluate: "Functions." + this.name + '.evaluate',
+        evaluateFunc: this.evaluate,
+        evaluateInterval: "Functions." + this.name + ".evaluateInterval",
+        evaluateIntervalFunc: this.evaluateInterval
       });
       this.returnType = returnType;
 
@@ -7246,6 +10826,14 @@ void main() {
       return this.children[0]._getCompileText(exportedVariables)
     }
 
+    _getIntervalCompileText(exportedVariables=['x']) {
+      return this.children[0]._getIntervalCompileText(exportedVariables)
+    }
+
+    evaluate(scope) {
+      return this.children[0].evaluate(scope)
+    }
+
     applyAll (func, depth = 0, childrenFirst=false) {
       if (!childrenFirst)
         func(this, depth);
@@ -7260,7 +10848,7 @@ void main() {
         func(this, depth);
     }
 
-    compile(exportedVariables) {
+    compile(exportedVariables=[]) {
       if (!this.returnType) {
         throw new Error("Need to call resolveTypes before compiling node.")
       }
@@ -7270,7 +10858,7 @@ void main() {
       return new Function(...exportedVariables, "return " + compileText)
     }
 
-    compileInterval(exportedVariables) {
+    compileInterval(exportedVariables=[]) {
       if (!this.returnType) {
         throw new Error("Need to call resolveTypes before compiling node.")
       }
@@ -7286,10 +10874,6 @@ void main() {
       return new Function(...exportedVariables, "return " + compileText)
     }
 
-    derivative(variable) {
-      return this.children[0].derivative(variable)
-    }
-
     clone () {
       return new ASTNode({
         children: this.children.map(child => child.clone()),
@@ -7297,17 +10881,8 @@ void main() {
       })
     }
 
-    getDependencies() {
-      let varDependencies = new Set();
-      let funcDependencies = new Set();
-
-      this.applyAll(child => {
-        if (child instanceof VariableNode) {
-          varDependencies.add(child.name);
-        } else if (child instanceof OperatorNode) {
-          funcDependencies.add();
-        }
-      });
+    getTreeText() {
+      return this.getText() + ' -> ' + this.returnType
     }
 
     getText () {
@@ -7332,10 +10907,6 @@ void main() {
       return latex
     }
 
-    needsParentheses () {
-      return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
-    }
-
     resolveTypes(givenTypes) {
       this.children.forEach(child => child.resolveTypes(givenTypes));
 
@@ -7348,6 +10919,34 @@ void main() {
           child.children.forEach(subchild => subchild.parent = child);
         }
       });
+    }
+
+    equals(node) {
+      if (this.returnType !== node.returnType)
+        return false
+
+      for (let i = 0; i < this.children.length; ++i) {
+        if (!this.children[i].equals(node.children[i]))
+          return false
+      }
+
+      return true
+    }
+
+    substitute(node, expr) {
+      this.applyAll((n) => {
+        const children = n.children;
+
+        for (let i = 0; i < children.length; ++i) {
+          const child = children[i];
+
+          if (child.equals(node)) {
+            children[i] = expr.clone();
+          }
+        }
+      }, 0, true);
+
+      this.setParents();
     }
 
     toJSON () {
@@ -7363,16 +10962,6 @@ void main() {
     }
   }
 
-  const greek = ['alpha', 'beta', 'gamma', 'Gamma', 'delta', 'Delta', 'epsilon', 'zeta', 'eta', 'theta', 'Theta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi', 'rho', 'Rho', 'sigma', 'Sigma', 'tau', 'phi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega'];
-
-  function substituteGreekLetters (string) {
-    if (greek.includes(string)) {
-      return '\\' + string
-    }
-
-    return string
-  }
-
   class VariableNode extends ASTNode {
     constructor (params = {}) {
       super();
@@ -7384,6 +10973,14 @@ void main() {
       this.name = name;
     }
 
+    evaluate(scope) {
+      const value = scope[this.name];
+
+      if (value !== undefined) {
+        return value
+      }
+    }
+
     _getCompileText(exportedVariables) {
       if (comparisonOperators.includes(this.name))
         return `"${this.name}"`
@@ -7393,15 +10990,21 @@ void main() {
         return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
     }
 
-    clone () {
-      return new VariableNode({ name: this.name })
+    _getIntervalCompileText (exportedVariables = ['x']) {
+      if (comparisonOperators.includes(this.name))
+        return `"${this.name}"`
+      if (exportedVariables.includes(this.name))
+        return this.name
+      else
+        return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
     }
 
-    derivative(variable) {
-      if (this.name === variable)
-        return new ConstantNode({value: 1})
-      else
-        return new ConstantNode({value: 0})
+    clone () {
+      let node = new VariableNode({ name: this.name });
+
+      node.returnType = this.returnType;
+
+      return node
     }
 
     getText () {
@@ -7412,24 +11015,8 @@ void main() {
       return false
     }
 
-    latex () {
-      if (comparisonOperators.includes(this.name)) {
-        switch (this.name) {
-          case '>':
-          case '<':
-            return this.name
-          case '>=':
-            return '\\geq '
-          case '<=':
-            return '\\leq '
-          case '==':
-            return '='
-          case '!=':
-            return '\\neq '
-        }
-      }
-
-      return substituteGreekLetters(this.name)
+    equals(node) {
+      return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
     }
 
     resolveTypes(typeInfo) {
@@ -7447,7 +11034,7 @@ void main() {
           throw new Error("UserDefinedVariable " + this.name + " is defined but has unknown type. Please properly define the variable.")
         }
       } else {
-        throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
+        this.returnType = "real"; //throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
       }
 
     }
@@ -7524,10 +11111,31 @@ void main() {
       }).join(',') + ")"
     }
 
+    _getIntervalCompileText(exportedVariables) {
+      if (!this.definition)
+        throw new Error("huh")
+
+      const definition = this.definition;
+
+      return this.definition.evaluateInterval + "(" + this.children.map((child, index) => {
+        let text = child._getIntervalCompileText(exportedVariables);
+
+        if (child.returnType !== definition.signature[index]) {
+          let func = getCastingFunction(child.returnType, definition.signature[index]);
+
+          text = func + '(' + text + ')';
+        }
+
+        return text
+      }).join(',') + ")"
+    }
+
     clone () {
       let node = new OperatorNode({ operator: this.operator });
 
       node.children = this.children.map(child => child.clone());
+      node.definition = this.definition;
+      node.returnType = this.returnType;
 
       return node
     }
@@ -7540,12 +11148,20 @@ void main() {
       return this.definition.derivative(variable, ...this.children)
     }
 
+    evaluate(scope) {
+      return this.definition.evaluateFunc(...this.children.map(child => child.evaluate(scope)))
+    }
+
     getText () {
       return this.operator
     }
 
     latex () {
       return getLatex(this)
+    }
+
+    equals(node) {
+      return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
     }
 
     resolveTypes(typeInfo={}) {
@@ -7604,7 +11220,7 @@ void main() {
 
   class ConstantNode extends ASTNode {
     constructor (params = {}) {
-      super();
+      super(params);
 
       const {
         value = 0,
@@ -7621,6 +11237,23 @@ void main() {
       return this.value
     }
 
+    _getIntervalCompileText() {
+      switch (this.returnType) {
+        case "bool":
+          let int = this.value | 0;
+
+          return "new Grapheme.RealInterval(" + int + "," + int + ")"
+        case "real":
+        case "int":
+          return "new Grapheme.RealInterval(" + this.value + "," + this.value + ")"
+        case "complex":
+            const re = this.value.re;
+            const im = this.value.im;
+
+            return `new Grapheme.ComplexInterval(${re}, ${re}, ${im}, ${im})`
+      }
+    }
+
     clone () {
       return new ConstantNode({
         value: this.value,
@@ -7632,6 +11265,10 @@ void main() {
 
     getText () {
       return this.invisible ? '' : this.text
+    }
+
+    evaluate() {
+      return this.value
     }
 
     isConstant () {
@@ -7656,6 +11293,10 @@ void main() {
         returnType: this.returnType,
         type: 'constant'
       }
+    }
+
+    equals(node) {
+      return node.value === this.value && super.equals(node)
     }
 
     type () {
@@ -8075,7 +11716,7 @@ void main() {
     return root
   }
 
-  function parseString(string) {
+  function parseString(string, types={}) {
     check_parens_balanced(string);
 
     let tokens = [];
@@ -8086,7 +11727,12 @@ void main() {
 
     check_valid(string, tokens);
 
-    return parse_tokens(tokens)
+    let node = parse_tokens(tokens).children[0];
+
+    node.resolveTypes(types);
+    node.setParents();
+
+    return node
   }
 
   const Variables = {};
@@ -8229,13 +11875,97 @@ void main() {
       let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y2;
       let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y1;
 
-      if (this.plottingMode === "rough") {
-        let points = width * this.quality;
+      let forceNormalPlot = false;
 
-        vertices = sample_1d(x1, x2, this.function, points);
-      } else {
-        vertices = adaptively_sample_1d(x1, x2, this.function,
-          width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth);
+      try {
+        if (this.plottingMode === "rough") {
+          let points = width * this.quality;
+
+          vertices = sample_1d(x1, x2, this.function, points);
+        } else if (this.plottingMode === "interval") {
+          let intervalFunc = getFunction(this.functionName).evaluateInterval;
+          if (!intervalFunc)
+            forceNormalPlot = true;
+
+          let points = width * Math.max(this.quality, 1);
+          let space = (x2 - x1) / (2 * points);
+          let prevY = 0;
+
+          for (let i = -1; i <= points; ++i) {
+            let x = i / points * (x2 - x1) + x1;
+            let minX = x - space, maxX = x + space;
+
+            let interval = intervalFunc(new RealInterval(minX, maxX));
+
+            if (!interval.defMax || isNaN(interval.min) || isNaN(interval.max)) {
+              vertices.push(NaN, NaN);
+              prevY = NaN;
+            } else {
+              let intervals = getIntervals(interval);
+
+              if (intervals.length === 0)
+                continue
+
+              let closestIntervalI = -1;
+              let dist = Infinity;
+              let cow = 0;
+
+              intervals.forEach((int, i) => {
+                let distMx = Math.abs(int.max - prevY);
+                let distMn = Math.abs(int.min - prevY);
+
+                if (distMx < dist) {
+                  cow=0;
+                  dist = distMx;
+                  closestIntervalI = i;
+                }
+
+                if (distMn < dist) {
+                  cow=1;
+                  dist=distMn;
+                  closestIntervalI = i;
+                }
+              });
+
+              if (closestIntervalI !== -1) {
+                let firstInterval = intervals[closestIntervalI];
+
+                let min = bound(firstInterval.min);
+                let max = bound(firstInterval.max);
+
+                if (cow === 0) {
+                  vertices.push(minX, max);
+
+                  vertices.push(maxX, min);
+                  prevY = min;
+                } else {
+                  vertices.push(minX, min);
+
+                  vertices.push(maxX, max);
+                  prevY = max;
+                }
+              }
+
+              intervals.forEach((int, i) => {
+                if (i === closestIntervalI)
+                  return
+
+                let max = bound(int.max);
+
+                vertices.push(NaN, NaN, x, bound(int.min), x, max, NaN, NaN);
+
+                prevY = max;
+              });
+            }
+          }
+        }
+
+        if (this.plottingMode === "fine" || forceNormalPlot) {
+          vertices = adaptively_sample_1d(x1, x2, this.function,
+            width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth);
+        }
+      } catch (e) {
+        console.log(e);
       }
 
       if (this.plottingAxis !== 'x') {
@@ -9615,3816 +13345,6 @@ void main() {
     return [n, d]
   }
 
-  // An interval is defined as a series of six values, namely two floating point values, two booleans for domain tracking, and two booleans for continuity tracking.
-
-  class Interval {
-    constructor(min, max, defMin=true, defMax=true, contMin=true, contMax=true) {
-      this.min = min;
-      this.max = max;
-      this.defMin = defMin;
-      this.defMax = defMax;
-      this.contMin = contMin;
-      this.contMax = contMax;
-    }
-
-    isExact() {
-      return this.min === this.max
-    }
-
-    isSet() {
-      return false
-    }
-
-    pretty() {
-      return `(${this.min}, ${this.max}), <${this.defMin}, ${this.defMax}>, <${this.contMin}, ${this.contMax}>`
-    }
-
-    clone() {
-      return new Interval(this.min, this.max, this.defMin, this.defMax, this.contMin, this.contMax)
-    }
-
-    contains(x) {
-      return this.min <= x && x <= this.max
-    }
-
-    containsNeighborhoodOf(x) {
-      return this.min < x && x < this.max
-    }
-
-    intersects(i) {
-      if (i.isSet()) {
-        return getIntervals(i).some(interval => this.intersects(interval))
-      } else {
-        return (i.contains(this.min) || i.contains(this.max) || this.contains(i.min))
-      }
-    }
-  }
-
-  class IntervalSet {
-    constructor(intervals=[]) {
-      this.intervals = intervals;
-    }
-
-    get min() {
-      return Math.min.apply(null, this.intervals.map(interval => interval.min))
-    }
-
-    get max() {
-      return Math.max.apply(null, this.intervals.map(interval => interval.max))
-    }
-
-    get defMin() {
-      return !!Math.min.apply(null, this.intervals.map(interval => interval.defMin))
-    }
-
-    get defMax() {
-      return !!Math.max.apply(null, this.intervals.map(interval => interval.defMax))
-    }
-
-    get contMin() {
-      return !!Math.min.apply(null, this.intervals.map(interval => interval.contMin))
-    }
-
-    get contMax() {
-      return !!Math.max.apply(null, this.intervals.map(interval => interval.contMax))
-    }
-
-    mergeIntervals() {
-
-    }
-
-    isSet() {
-      return true
-    }
-
-    isExact() {
-      return this.min === this.max
-    }
-
-    contains(x) {
-      return this.intervals.some(i => i.contains(x))
-    }
-
-    containsNeighborhoodOf(x) {
-      return this.intervals.some(i => i.containsNeighborhoodOf(x))
-    }
-
-    intersects(i) {
-      return this.intervals.some(interval => interval.intersects(i))
-    }
-  }
-
-  function getIntervals(i) {
-    if (i.isSet()) {
-      return i.intervals
-    } else {
-      return [i]
-    }
-  }
-
-  function ADD(i1, i2) {
-    let isSet1 = i1.isSet();
-    let isSet2 = i2.isSet();
-
-    if (isSet1 || isSet2) {
-      let left = getIntervals(i1);
-      let right = getIntervals(i2);
-
-      let intervals = [];
-
-      left.forEach(i => {
-        right.forEach(j => {
-          intervals.push(ADD(i, j));
-        });
-      });
-
-      return new IntervalSet(intervals)
-    } else {
-      return new Interval(i1.min + i2.min, i1.max + i2.max,
-        i1.defMin && i2.defMin, i1.defMax && i2.defMax,
-        i1.contMin && i2.contMin, i1.contMax && i2.contMax)
-    }
-  }
-
-  function MULTIPLY(i1, i2) {
-    let isSet1 = i1.isSet();
-    let isSet2 = i2.isSet();
-
-    if (isSet1 || isSet2) {
-      let left = getIntervals(i1);
-      let right = getIntervals(i2);
-
-      let intervals = [];
-
-      left.forEach(i => {
-        right.forEach(j => {
-          intervals.push(MULTIPLY(i, j));
-        });
-      });
-
-      return new IntervalSet(intervals)
-    } else {
-      let prod1 = i1.min * i2.min;
-      let prod2 = i1.min * i2.max;
-      let prod3 = i1.max * i2.min;
-      let prod4 = i1.max * i2.max;
-
-      return new Interval(Math.min(prod1, prod2, prod3, prod4),
-        Math.max(prod1, prod2, prod3, prod4),
-        i1.defMin && i2.defMin, i1.defMax && i2.defMax,
-        i1.contMin && i2.contMin, i1.contMax && i2.contMax)
-    }
-  }
-
-  function SUBTRACT(i1, i2) {
-    let isSet1 = i1.isSet();
-    let isSet2 = i2.isSet();
-
-    if (isSet1 || isSet2) {
-      let left = getIntervals(i1);
-      let right = getIntervals(i2);
-
-      let intervals = [];
-
-      left.forEach(i => {
-        right.forEach(j => {
-          intervals.push(SUBTRACT(i, j));
-        });
-      });
-
-      return new IntervalSet(intervals)
-    } else {
-      return new Interval(i1.min - i2.max, i1.max - i2.min,
-        i1.defMin && i2.defMin, i1.defMax && i2.defMax,
-        i1.contMin && i2.contMin, i1.contMax && i2.contMax)
-    }
-  }
-
-  function DIVIDE(i1, i2) {
-    let isSet1 = i1.isSet();
-    let isSet2 = i2.isSet();
-
-    if (isSet1 || isSet2) {
-      let left = getIntervals(i1);
-      let right = getIntervals(i2);
-
-      let intervals = [];
-
-      left.forEach(i => {
-        right.forEach(j => {
-          getIntervals(DIVIDE(i, j)).forEach(k => intervals.push(k));
-        });
-      });
-
-      return new IntervalSet(intervals)
-    } else {
-      return MULTIPLY(i1, RECIPROCAL(i2))
-    }
-  }
-
-  function RECIPROCAL(i1) {
-    let isSet = i1.isSet();
-
-    if (isSet) {
-      let intervals = [];
-
-      i1.intervals.forEach(interval => getIntervals(RECIPROCAL(interval)).forEach(i => intervals.push(i)));
-
-      return new IntervalSet(intervals)
-    } else {
-      let min = i1.min;
-      let max = i1.max;
-
-      let defMin = i1.defMin, defMax = i1.defMax, contMin = i1.contMin, contMax = i1.contMax;
-
-      if (0 < min || max < 0) {
-        let valMin = 1 / min;
-        let valMax = 1 / max;
-
-        return new Interval(Math.min(valMin, valMax), Math.max(valMin, valMax), defMin, defMax, contMin, contMax)
-      } else if (max === 0) {
-        return new Interval(-Infinity, 1 / min, defMin, defMax, contMin, contMax)
-      } else if (min === 0) {
-        return new Interval(1 / max, Infinity, defMin, defMax, contMin, contMax)
-      } else {
-        // 0 contained in the interval
-
-        let interval1 = new Interval(-Infinity, 1 / min, defMin, defMax, contMin, contMax);
-        let interval2 = new Interval(1 / max, Infinity, defMin, defMax, contMin, contMax);
-
-        return new IntervalSet([interval1, interval2])
-      }
-    }
-  }
-
-  function CONST(a) {
-    return new Interval(a, a)
-  }
-
-  function int_pow(b, n) {
-    let prod = 1;
-    for (let i = 0; i < n; ++i) {
-      prod *= b;
-    }
-    return prod
-  }
-
-  // N is an integer
-  function POW_N(i1, n) {
-    let isSet = i1.isSet();
-
-    if (isSet) {
-      let intervals = [];
-
-      i1.intervals.forEach(interval => getIntervals(POW_N(interval, n)).forEach(i => intervals.push(i)));
-
-      return new IntervalSet(intervals)
-    } else {
-      // x^0 = 1
-      if (n === 0) {
-        return new Interval(1, 1, i1.defMin, i1.defMax, true, true)
-      } else if (n === 1) {
-        // identity function
-        return i1.clone()
-      } else if (n === -1) {
-        return RECIPROCAL(i1)
-      }
-
-      if (n > 1) {
-        // Positive integers
-        // if even, then there is a turning point at x = 0. If odd, monotonically increasing
-        // always continuous and well-defined
-
-        let min = i1.min;
-        let max = i1.max;
-
-        let minPowed, maxPowed;
-
-        if (n === 2) {
-          minPowed = min * min;
-          maxPowed = max * max;
-        } else if (n === 3) {
-          minPowed = min * min * min;
-          maxPowed = max * max * max;
-        } else {
-          minPowed = int_pow(min, n);
-          maxPowed = int_pow(max, n);
-        }
-
-        let defMin = i1.defMin;
-        let defMax = i1.defMax;
-        let contMin = i1.contMin;
-        let contMax = i1.contMax;
-
-        if (!(n & 1)) {
-          let maxValue = Math.max(minPowed, maxPowed);
-          if (min <= 0 && 0 <= max) { // if 0 is included, then it's just [0, max(min^n, max^n)]
-            return new Interval(0, maxValue, defMin, defMax, contMin, contMax)
-          } else {
-            // if 0 is not included, then it's [min(min^n, max^n), max(min^n, max^n)]
-            let minValue = Math.min(minPowed, maxPowed);
-
-            return new Interval(minValue, maxValue, defMin, defMax, contMin, contMax)
-          }
-        } else {
-          // Monotonically increasing, so it's [min^n, max^n]
-
-          return new Interval(minPowed, maxPowed, defMin, defMax, contMin, contMax)
-        }
-      } else {
-        // Negative integers, utilize reciprocal function
-        return RECIPROCAL(POW_N(i1, -n))
-      }
-    }
-  }
-
-  // r is a real number
-  function POW_R(i1, r) {
-    let min = i1.min;
-    let max = i1.max;
-
-    if (max < 0) {
-      // UserDefinedFunction is totally undefined
-      return new Interval(0, 0, false, false, i1.contMin, i1.contMax)
-    } else if (min < 0) {
-      // 0 included in range, so the function is partially undefined
-      let defMin = false;
-      let defMax = i1.defMax;
-      let contMin = i1.contMin;
-      let contMax = i1.contMax;
-
-      let bound = Math.pow(max, r);
-
-      if (r < 0) {
-        // Monotonically decreasing, infinite maximum, max^r minimum
-
-        return new Interval(bound, Infinity, defMin, defMax, contMin, contMax)
-      } else {
-        // Monotonically increasing, 0 minimum, max^r maximum
-
-        return new Interval(0, bound, defMin, defMax, contMin, contMax)
-      }
-    } else {
-      // function is totally defined and continuous
-
-      let minPowed = Math.pow(min, r);
-      let maxPowed = Math.pow(max, r);
-
-      let minValue = Math.min(minPowed, maxPowed);
-      let maxValue = Math.max(minPowed, maxPowed);
-
-      return new Interval(minValue, maxValue, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-  }
-
-  function SQRT(i1) {
-    if (i1.isSet()) {
-      let intervals = [];
-
-      i1.intervals.forEach(interval => getIntervals(SQRT(interval)).forEach(i => intervals.push(i)));
-
-      return new IntervalSet(intervals)
-    } else {
-      return POW_R(i1, 1/2)
-    }
-  }
-
-  function CBRT(i1) {
-    if (i1.isSet()) {
-      let intervals = [];
-
-      i1.intervals.forEach(interval => getIntervals(CBRT(interval)).forEach(i => intervals.push(i)));
-
-      return new IntervalSet(intervals)
-    } else {
-      return POW_RATIONAL(i1, 1, 3)
-    }
-  }
-
-  function POW_RATIONAL(i1, p, q) {
-    if (i1.isSet()) {
-      let intervals = [];
-
-      i1.intervals.forEach(interval => getIntervals(POW_RATIONAL(interval, p, q)).forEach(i => intervals.push(i)));
-
-      return new IntervalSet(intervals)
-    } else {
-      // Assuming p and q are reduced
-
-      if (p === 0) {
-        return POW_N(i1, 0)
-      }
-
-      if (!(q & 1)) {
-        // If the denominator is even then we can treat it like a real number
-        return POW_R(i1, p / q)
-      }
-
-      let min = i1.min, max = i1.max;
-      let r = p / q;
-      let absMinPowed = Math.pow(Math.abs(min), r);
-      let absMaxPowed = Math.pow(Math.abs(max), r);
-
-      // continuous and well-defined everywhere
-
-      let defMin = i1.defMin;
-      let defMax = i1.defMax;
-      let contMin = i1.contMin;
-      let contMax = i1.contMax;
-
-      let minAttained = Math.min(absMinPowed, absMaxPowed);
-      let maxAttained = Math.max(absMinPowed, absMaxPowed);
-
-      if (!(p & 1) && min < 0) {
-        minAttained *= -1;
-      }
-
-      if (!(p & 1)) {
-        if (p > 0) {
-          // p / q with even, positive p and odd q
-          // Continuous
-
-          if (min < 0 && 0 < max) {
-            // if 0 contained, then the minimum attained value is 0
-
-            return new Interval(0, maxAttained, defMin, defMax, contMin, contMax)
-          } else {
-            return new Interval(minAttained, maxAttained, defMin, defMax, contMin, contMax)
-          }
-
-        } else {
-          {
-            // Totally continuous and monotonic
-            return new Interval(minAttained, maxAttained, defMin, defMax, contMin, contMax)
-          }
-        }
-      } else {
-        if (p > 0) {
-          // p / q with odd, positive p and odd q
-          // Continuous, monotonically increasing everywhere
-
-          console.log(minAttained, maxAttained);
-
-          return new Interval(minAttained, maxAttained, defMin, defMax, contMin, contMax)
-        } else {
-          // p / q with odd, negative p and odd q
-          // Always decreasing, discontinuous at x = 0
-
-          if (min < 0 && 0 < max) {
-            let interval1 = new Interval(-Infinity, minAttained, defMin, defMax, contMin, contMax);
-            let interval2 = new Interval(maxAttained, Infinity, defMin, defMax, contMin, contMax);
-
-            return new IntervalSet([interval1, interval2])
-          }
-        }
-      }
-    }
-  }
-
-  function POW_B(b, i1) {
-    if (i1.isExact()) {
-      let ret = Math.pow(b, i1.min);
-
-      return new Interval(ret, ret, i1.defMin, i1.defMax, true, true)
-    }
-
-    if (b < 0) {
-      // TODO add strange branching
-      return new Interval(0, 0, false, false, true, true)
-    } else if (b === 0) {
-      return new Interval(0, 0, i1.defMin, i1.defMax, true, true)
-    } else if (b === 1) {
-      return new Interval(1, 1, i1.defMin, i1.defMax, true, true)
-    } else {
-      // continuous, monotonic, always defined
-      let minPowed = Math.pow(b, i1.min);
-      let maxPowed = Math.pow(b, i1.max);
-
-      let minValue = Math.min(minPowed, maxPowed);
-      let maxValue = Math.max(minPowed, maxPowed);
-
-      return new Interval(minValue, maxValue, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-  }
-
-  function cmpZero(min, max) {
-    if (min >= 0) {
-      return 1
-    } else if (max > 0) {
-      return 0
-    } else {
-      return -1
-    }
-  }
-
-  function ignoreNaNMin(...args) {
-    let min = Infinity;
-    for (let i = 0; i < args.length; ++i) {
-      let val = args[i];
-
-      if (val < min) {
-        min = val;
-      }
-    }
-
-    return min
-  }
-
-  function ignoreNaNMax(...args) {
-    let max = -Infinity;
-    for (let i = 0; i < args.length; ++i) {
-      let val = args[i];
-
-      if (val > max) {
-        max = val;
-      }
-    }
-
-    return max
-  }
-
-  function POW(i1, i2) {
-    let isSet = i1.isSet() || i2.isSet();
-
-    if (isSet) {
-      let left = getIntervals(i1);
-      let right = getIntervals(i2);
-
-      let intervals = [];
-
-      left.forEach(i => {
-        right.forEach(j => {
-          getIntervals(POW(i, j)).forEach(k => intervals.push(k));
-        });
-      });
-
-      return new IntervalSet(intervals)
-    } else {
-      if (i2.isExact()) {
-        if (Number.isInteger(i2.min)) {
-          return POW_N(i1, i2.min)
-        } else {
-          return POW_R(i1, i2.min)
-        }
-      }
-
-      if (i1.isExact()) {
-        return POW_B(i1.min, i2)
-      }
-
-      let i1min = i1.min, i1max = i1.max, i2min = i2.min, i2max = i2.max;
-
-      // This is a rather complex algorithm, so I must document it!!
-      // We wish to find the intervals of the set [i1min, i1max] ^ [i2min, i2max].
-      // We should treat the exponent as a real number, not as a rational number (since that case is
-      // the dominion of POW_RATIONAL). That means that there are two branches for negative base.
-      // We split up the cases depending on the position of i1, i2 relative to 0.
-
-      let i1Pos = cmpZero(i1min, i1max);
-
-      let powMinMin = Math.pow(i1min, i2min);
-      let powMinMax = Math.pow(i1min, i2max);
-      let powMaxMin = Math.pow(i1max, i2min);
-      let powMaxMax = Math.pow(i1max, i2max);
-
-      let defMin = i1.defMin && i2.defMin;
-      let defMax = i1.defMax && i2.defMax;
-      let contMin = i1.contMin && i2.contMin;
-      let contMax = i1.contMax && i2.contMax;
-
-      let endpointMinAttained = ignoreNaNMin(powMinMin, powMinMax, powMaxMin, powMaxMax);
-      let endpointMaxAttained = ignoreNaNMax(powMinMin, powMinMax, powMaxMin, powMaxMax);
-
-      // Nine cases
-      if (i1Pos === 1) {
-        // In these three cases, everything is continuous and monotonic and thus defined by the endpoints
-
-        return new Interval(endpointMinAttained, endpointMaxAttained, defMin, defMax, contMin, contMax)
-      } else if (i1Pos === 0) {
-        // Discontinuities due to branching involved
-        // Recurse into two subcases
-
-        let int1 = POW(new Interval(0, i1max, i1.defMin, i1.defMax, i1.contMin, i1.contMax), i2);
-        let int2 = POW(new Interval(i1min, 0, i1.defMin, i1.defMax, i1.contMin, i1.contMax), i2);
-
-        return new IntervalSet([int1, ...int2.intervals])
-      } else if (i1Pos === -1) {
-        let powMinMin = Math.pow(Math.abs(i1min), i2min);
-        let powMinMax = Math.pow(Math.abs(i1min), i2max);
-        let powMaxMin = Math.pow(Math.abs(i1max), i2min);
-        let powMaxMax = Math.pow(Math.abs(i1max), i2max);
-
-
-        let minAttained = Math.min(powMinMin, powMinMax, powMaxMin, powMaxMax);
-        let maxAttained = Math.max(powMinMin, powMinMax, powMaxMin, powMaxMax);
-
-        // Not continuous over any interval
-        let int1 = new Interval(-maxAttained, -minAttained, false, defMax, false, false);
-        let int2 = new Interval(minAttained, maxAttained, false, defMax, false, false);
-
-        return new IntervalSet([int1, int2])
-      }
-    }
-  }
-
-  function MAX(i1, i2, ...args) {
-    if (args.length > 0) {
-      return MAX(i1, MAX(i2, ...args))
-    }
-
-    let min = Math.max(i1.min, i2.min);
-    let max = Math.max(i1.max, i2.max);
-    let defMin = i1.defMin && i2.defMin;
-    let defMax = i1.defMax && i2.defMax;
-    let contMin = i1.contMin && i2.contMin;
-    let contMax = i1.contMax || i2.contMax;
-
-    return new Interval(min, max, defMin, defMax, contMin, contMax)
-  }
-
-  function MIN(i1, i2, ...args) {
-    if (args.length > 0) {
-      return MIN(i1, MIN(i2, ...args))
-    }
-
-    let min = Math.min(i1.min, i2.min);
-    let max = Math.min(i1.max, i2.max);
-    let defMin = i1.defMin && i2.defMin;
-    let defMax = i1.defMax && i2.defMax;
-    let contMin = i1.contMin && i2.contMin;
-    let contMax = i1.contMax || i2.contMax;
-
-    return new Interval(min, max, defMin, defMax, contMin, contMax)
-  }
-
-  const YES = new Interval(1, 1);
-  const YESNT = new Interval(0, 1);
-  const NO = new Interval(0, 0);
-
-  function invertBooleanInterval(i) {
-    if (i.min === 0 && i.max === 0) {
-      return new Interval(1, 1, i.defMin, i.defMax, i.contMin, i.contMax)
-    } else if (i.max === 1 && i.max === 1) {
-      return new Interval(0, 0, i.defMin, i.defMax, i.contMin, i.contMax)
-    } else {
-      return new Interval(0, 1, i.defMin, i.defMax, i.contMin, i.contMax)
-    }
-  }
-
-  function LESS_THAN(i1, i2) {
-    let ret;
-    if (i1.max < i2.min) {
-      ret = YES.clone();
-    } else if (i2.max < i1.min) {
-      ret = NO.clone();
-    } else {
-      ret = YESNT.clone();
-    }
-
-    ret.defMin = i1.defMin && i2.defMin;
-    ret.defMax = i1.defMax && i2.defMax;
-    ret.contMin = i1.contMin && i2.contMin;
-    ret.contMax = i1.contMax || i2.contMax;
-
-    return ret
-  }
-
-  function GREATER_THAN(i1, i2) {
-    return LESS_THAN(i2, i1)
-  }
-
-  function LESS_EQUAL_THAN(i1, i2) {
-    let ret;
-    if (i1.max <= i2.min) {
-      ret = YES.clone();
-    } else if (i2.max <= i1.min) {
-      ret = NO.clone();
-    } else {
-      ret = YESNT.clone();
-    }
-
-    ret.defMin = i1.defMin && i2.defMin;
-    ret.defMax = i1.defMax && i2.defMax;
-    ret.contMin = i1.contMin && i2.contMin;
-    ret.contMax = i1.contMax || i2.contMax;
-
-    return ret
-  }
-
-  function GREATER_EQUAL_THAN(i1, i2) {
-    return LESS_EQUAL_THAN(i2, i1)
-  }
-
-  function EQUAL(i1, i2) {
-    let ret;
-
-    if (i1.isExact() && i2.isExact()) {
-      if (i1.min === i2.min) {
-        ret = YES.clone();
-      } else {
-        ret = NO.clone();
-      }
-    }
-
-    if (i1.intersects(i2)) {
-      ret = YESNT.clone();
-    } else {
-      ret = NO.clone();
-    }
-
-    ret.defMin = i1.defMin && i2.defMin;
-    ret.defMax = i1.defMax && i2.defMax;
-    ret.contMin = i1.contMin && i2.contMin;
-    ret.contMax = i1.contMax || i2.contMax;
-
-    return ret
-  }
-
-  function NOT_EQUAL(i1, i2) {
-    return invertBooleanInterval(EQUAL(i1, i2))
-  }
-
-  function IFELSE(i1, cond, i2) {
-    if (cond.min === 1) {
-      return i1
-    } else if (cond.min === 0 && cond.max === 1) {
-      return new IntervalSet([i1, i2])
-    } else {
-      return i2
-    }
-  }
-
-  function PIECEWISE(cond, i1, ...args) {
-    if (!i1)
-      return cond
-    if (!cond)
-      return new Interval(0, 0, true, true, true, true)
-    if (cond.min === 1) {
-      return i1
-    } else if (cond.max === 0) {
-      return PIECEWISE(...args)
-    } else {
-      // yesnt
-      return new IntervalSet([i1, ...getIntervals(PIECEWISE(...args))])
-    }
-  }
-
-  const GAMMA_MIN_X = 1.4616321449683623412626595423257213284681962040064463512959884085987864403538018102430749927337255;
-  const GAMMA_MIN_Y = 0.8856031944108887002788159005825887332079515336699034488712001659;
-
-  function GAMMA(i1) {
-    if (i1.min < 0) {
-      return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
-    }
-
-    let y1 = gamma(i1.min), y2 = gamma(i1.max);
-    let min = Math.min(y1, y2);
-    let max = Math.max(y1, y2);
-
-    if (i1.max < GAMMA_MIN_X) {
-
-      return new Interval(min, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    } else if (i1.min < GAMMA_MIN_X && GAMMA_MIN_X < i1.max) {
-      return new Interval(GAMMA_MIN_Y, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    } else {
-      return new Interval(min, max, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-  }
-
-  function DIGAMMA(i1) {
-    let min = i1.min, max = i1.max;
-
-    if (min > 0) {
-      let minVal = digamma(min);
-      let maxVal = digamma(max);
-
-      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-
-    let minInt = Math.floor(min), maxInt = Math.ceil(max);
-    let intDiff = maxInt - minInt;
-
-    if (intDiff === 0) {
-      // Then min === max
-
-      return new Interval(0, 0, false, false, i1.contMin, i1.contMax)
-    }
-
-    let minVal = digamma(min);
-    let maxVal = digamma(max);
-
-    if (intDiff === 1) {
-      // Monotonically increasing
-      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-
-    return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
-  }
-
-  function TRIGAMMA(i1) {
-    let min = i1.min, max = i1.max;
-
-    if (max < 0)
-      return new Interval(8.8, Infinity, false, i1.defMax, false, i1.contMax)
-    if (min < 0) {
-      return new Interval(0, Infinity, false, i1.defMax, false, i1.contMax)
-    } else {
-      let minVal = trigamma(max), maxVal = trigamma(min);
-      return new Interval(minVal, maxVal, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-  }
-
-  function POLYGAMMA(n, i1) {
-    return new Interval(-Infinity, Infinity, false, i1.defMax, false, i1.contMax)
-  }
-
-  // Frankly, I don't know how this code works. I wrote it a long time ago
-  function SIN(i1) {
-    let min = i1.min, max = i1.max;
-
-    if (max - min >= 2 * Math.PI) { // If the length is more than a full period, return [-1, 1]
-      return new Interval(-1, 1, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-
-    let a_rem_2p = mod(i1.min, 2 * Math.PI);
-    let b_rem_2p = mod(i1.max, 2 * Math.PI);
-
-    let min_rem = Math.min(a_rem_2p, b_rem_2p);
-    let max_rem = Math.max(a_rem_2p, b_rem_2p);
-
-    let contains_1 = (min_rem < Math.PI / 2) && (max_rem > Math.PI / 2);
-    let contains_n1 = (min_rem < 3 * Math.PI / 2 && max_rem > 3 * Math.PI / 2);
-
-    if (b_rem_2p < a_rem_2p) {
-      contains_1 = !contains_1;
-      contains_n1 = !contains_n1;
-    }
-
-    if (contains_1 && contains_n1)
-      return new Interval(-1, 1, i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-
-    let sa = Math.sin(a_rem_2p), sb = Math.sin(b_rem_2p);
-    return new Interval(contains_n1 ? -1 : Math.min(sa, sb), contains_1 ? 1 : Math.max(sa, sb),
-      i1.defMin, i1.defMax, i1.contMin, i1.contMax);
-  }
-
-  const PI_OVER_TWO = CONST(Math.PI / 2);
-  const ONE = CONST(1);
-
-  function COS(i1) {
-    return SIN(ADD(i1, PI_OVER_TWO))
-  }
-
-  function TAN(i1) {
-    return DIVIDE(SIN(i1), COS(i1))
-  }
-
-  function SEC(i1) {
-    return DIVIDE(ONE, COS(i1))
-  }
-
-  function CSC(i1) {
-    return DIVIDE(ONE, SIN(i1))
-  }
-
-  function COT(i1) {
-    return DIVIDE(COS(i1), SIN(i1))
-  }
-
-  function ASIN(i1) {
-    if (i1.max < -1 || i1.min > 1) {
-      return new Interval(0, 0, false, false, true, true)
-    }
-
-    if (i1.max <= 1 && i1.min >= -1) { // Defined everywhere
-      return new Interval(Math.asin(i1.min), Math.asin(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-
-    let tmp = i1.clone();
-    tmp.max = Math.min(1, tmp.max);
-    tmp.min = Math.max(-1, tmp.min);
-
-    let res = ASIN(tmp);
-    res.defMin = false;
-
-    return res
-  }
-
-  const NEGATIVE_ONE = CONST(-1);
-
-  function ACOS(i1) {
-    return ADD(ASIN(MULTIPLY(i1, NEGATIVE_ONE)), PI_OVER_TWO)
-  }
-
-  function ASEC(i1) {
-    return ACOS(RECIPROCAL(i1))
-  }
-
-  function ACSC(i1) {
-    return ASIN(RECIPROCAL(i1))
-  }
-
-  function ACOT(i1) {
-    // Monotonically decreasing everywhere
-    return new Interval(ExtraFunctions.Arccot(i1.max), ExtraFunctions.Arccot(i1.min), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function SINH(i1) {
-    // Monotonically increasing everywhere
-    return new Interval(Math.sinh(i1.min), Math.sinh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function COSH(i1) {
-    // Flips direction at (x, y) = (0, 1)
-    let val1 = Math.cosh(i1.min), val2 = Math.cosh(i1.max);
-
-    if (i1.min <= 0 && 0 <= i1.max) {
-      // if 0 is contained
-      return new Interval(1, Math.max(val1, val2), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-    }
-
-    return new Interval(Math.min(val1, val2), Math.max(val1, val2), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function TANH(i1) {
-    // Monotonically increasing everywhere
-    return new Interval(Math.tanh(i1.min), Math.tanh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function SECH(i1) {
-    return RECIPROCAL(COSH(i1))
-  }
-
-  function CSCH(i1) {
-    return RECIPROCAL(SINH(i1))
-  }
-
-  function COTH(i1) {
-    return RECIPROCAL(TANH(i1))
-  }
-
-  function ASINH(i1) {
-    // Monotonically increasing
-    return new Interval(Math.asinh(i1.min), Math.asinh(i1.max), i1.defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function ACOSH(i1) {
-    // Monotonically increasing, undefined for x < 1
-
-    if (i1.max < 1) {
-      return new Interval(0, 0, false, false, true, true)
-    }
-
-    let defMin = i1.min >= 1;
-
-    let min = i1.min;
-    if (!defMin)
-      min = 1;
-
-    return new Interval(Math.acosh(min), Math.acosh(i1.max), i1.defMin && defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function ATANH(i1) {
-    // Monotonically increasing
-
-    let max = Math.min(i1.max, 1);
-    let min = Math.max(i1.min, -1);
-
-    let defMin = i1.max === max && i1.min === min;
-
-    return new Interval(Math.atanh(min), Math.atanh(max), i1.defMin && defMin, i1.defMax, i1.contMin, i1.contMax)
-  }
-
-  function ASECH(i1) {
-    // Monotonically decreasing
-
-    return ACOSH(RECIPROCAL(i1))
-  }
-
-  function ACSCH(i1) {
-    return ASINH(RECIPROCAL(i1))
-  }
-
-  function ACOTH(i1) {
-    return ATANH(RECIPROCAL(i1))
-  }
-
-  function CCHAIN(i1, compare, i2, ...args) {
-    if (!i2)
-      return YES.clone()
-
-    let res;
-    switch (compare) {
-      case "<":
-        res = LESS_THAN(i1, i2);
-        break
-      case ">":
-        res = GREATER_THAN(i1, i2);
-        break
-      case "<=":
-        res = LESS_EQUAL_THAN(i1, i2);
-        break
-      case ">=":
-        res = GREATER_EQUAL_THAN(i1, i2);
-        break
-      case "!=":
-        res = NOT_EQUAL(i1, i2);
-        break
-      case "==":
-        res = EQUAL(i1, i2);
-        break
-      default:
-        throw new Error("huh")
-    }
-
-    if (!res.max)
-      return NO.clone()
-
-    if (args.length > 0) {
-      let ret = CCHAIN(val2, ...args);
-
-      if (ret.min && res.min) {
-        return YES.clone()
-      } else if (!ret.max || !res.max) {
-        return NO.clone()
-      } else {
-        return YESNT.clone()
-      }
-    }
-  }
-
-
-  const IntervalFunctions = Object.freeze({
-    '+': ADD, '*': MULTIPLY, '/': DIVIDE, '-': SUBTRACT, '^': POW, 'pow_rational': POW_RATIONAL, 'sqrt': SQRT, 'cbrt': CBRT,
-    '<': LESS_THAN, '>': GREATER_THAN, '<=': LESS_EQUAL_THAN, '>=': GREATER_EQUAL_THAN, '==': EQUAL, '!=': NOT_EQUAL,
-    'gamma': GAMMA, 'digamma': DIGAMMA, 'trigamma': TRIGAMMA, 'polygamma': POLYGAMMA, 'sin': SIN, 'cos': COS, 'tan': TAN,
-    'cchain': CCHAIN, 'sec': SEC, 'csc': CSC, 'cot': COT, 'asin': ASIN, 'acos': ACOS, 'atan': TAN, 'asec': ASEC, 'acsc': ACSC,
-    'acot': ACOT, 'sinh': SINH, 'cosh': COSH, 'tanh': TANH, 'sech': SECH, 'csch': CSCH, 'coth': COTH, 'asinh': ASINH,
-    'acosh': ACOSH, 'atanh': ATANH, 'acsch': ACSCH, 'asech': ASECH, 'acoth': ACOTH, 'ifelse': IFELSE, 'piecewise': PIECEWISE,
-    'max': MAX, 'min': MIN
-  });
-
-  function generateContours2(func, curvatureFunc, xmin, xmax, ymin, ymax, searchDepth=7, renderingQuality=8, maxDepth=16) {
-    let polyline = [];
-
-    function add_contour_segment(x1, y1, x2, y2) {
-      polyline.push(x1, y1, x2, y2, NaN, NaN);
-    }
-
-    function create_tree(depth, xmin, xmax, ymin, ymax, fxy, fxY, fXY, fXy) {
-      let needs_subdivide = depth < searchDepth;
-
-      if (depth <= maxDepth && !needs_subdivide) {
-        let signxy = Math.sign(fxy);
-        let signxY = Math.sign(fxY);
-        let signXY = Math.sign(fXY);
-        let signXy = Math.sign(fXy);
-
-        // Search for contours
-        if (signxy !== signxY || signxY !== signXY || signXY !== signXy) {
-          let minDim = Math.min(xmax - xmin, ymax - ymin);
-          let radius = Math.abs(curvatureFunc((xmax + xmin) / 2, (ymax + ymin) / 2));
-
-          if (depth < maxDepth && radius < renderingQuality * minDim) {
-            // subdivide
-            needs_subdivide = true;
-          } else {
-            let side1 = signxy !== signxY;
-            let side2 = signxY !== signXY;
-            let side3 = signXY !== signXy;
-            let side4 = signXy !== signxy;
-
-            let side1x, side3x, side2y, side4y;
-            let side1y, side3y, side2x, side4x;
-
-            if (side1) {
-              let side1a = Math.abs(fxy);
-              let side1b = Math.abs(fxY);
-              let side1ratio = side1a / (side1a + side1b);
-              side1x = xmin;
-              side1y = ymin + side1ratio * (ymax - ymin);
-            }
-
-            if (side3) {
-              let side3a = Math.abs(fXy);
-              let side3b = Math.abs(fXY);
-              let side3ratio = side3a / (side3a + side3b);
-              side3x = xmax;
-              side3y = ymin + side3ratio * (ymax - ymin);
-            }
-
-            if (side2) {
-              let side2a = Math.abs(fxY);
-              let side2b = Math.abs(fXY);
-              let side2ratio = side2a / (side2a + side2b);
-              side2x = xmin + side2ratio * (xmax - xmin);
-              side2y = ymax;
-            }
-
-            if (side4) {
-              let side4a = Math.abs(fxy);
-              let side4b = Math.abs(fXy);
-              let side4ratio = side4a / (side4a + side4b);
-              side4x = xmin + side4ratio * (xmax - xmin);
-              side4y = ymin;
-            }
-
-            if (side1 && side2 && side3 && side4) {
-              // Saddle point
-
-              add_contour_segment(side1x, side1y, side3x, side3y);
-              add_contour_segment(side2x, side2y, side4x, side4y);
-
-              return
-            }
-
-            if (side1 && side3) {
-              add_contour_segment(side1x, side1y, side3x, side3y);
-              return
-            }
-
-            if (side2 && side4) {
-              add_contour_segment(side2x, side2y, side4x, side4y);
-              return
-            }
-
-            if (side1 && side2) {
-              add_contour_segment(side1x, side1y, side2x, side2y);
-            } else if (side2 && side3) {
-              add_contour_segment(side3x, side3y, side2x, side2y);
-            } else if (side3 && side4) {
-              add_contour_segment(side3x, side3y, side4x, side4y);
-            } else if (side4 && side1) {
-              add_contour_segment(side1x, side1y, side4x, side4y);
-            }
-          }
-        } else {
-          // no contour, return
-          return
-        }
-      }
-
-      if (needs_subdivide) {
-        // subdivide
-        let midX = (xmin + xmax) / 2;
-        let midY = (ymin + ymax) / 2;
-
-        let mxmyCorner = func(midX, midY);
-        let mxyCorner = func(midX, ymin);
-        let mxYCorner = func(midX, ymax);
-        let xmyCorner = func(xmin, midY);
-        let XmyCorner = func(xmax, midY);
-
-        create_tree(depth + 1, xmin, midX, ymin, midY, fxy, xmyCorner, mxmyCorner, mxyCorner);
-        create_tree(depth + 1, xmin, midX, midY, ymax, xmyCorner, fxY, mxYCorner, mxmyCorner);
-        create_tree(depth + 1, midX, xmax, ymin, midY, mxyCorner, mxmyCorner, XmyCorner, fXy);
-        create_tree(depth + 1, midX, xmax, midY, ymax, mxmyCorner, mxYCorner, fXY, XmyCorner);
-      }
-    }
-
-    let xyCorner = func(xmin, ymin);
-    let xYCorner = func(xmin, ymax);
-    let XYCorner = func(xmax, ymax);
-    let XyCorner = func(xmax, ymin);
-
-    create_tree(0, xmin, xmax, ymin, ymax, xyCorner, xYCorner, XYCorner, XyCorner);
-
-    return polyline
-  }
-
-  /**
-   * Plots an equation of x and y of the form equation(x,y) = 0.
-   */
-  class EquationPlot2D extends InteractiveElement {
-    constructor(params={}) {
-      super(params);
-
-      this.equation = parseString("x^2+y");
-
-      this.updateFunc();
-
-      const disp = this.displayedElement = new WebGLPolyline();
-
-      disp.pen.useNative = false;
-      disp.pen.endcap = "butt";
-      disp.pen.color = Colors.RED;
-
-      this.addEventListener("plotcoordschanged", () => this.markUpdate());
-    }
-
-    setEquation(text) {
-      if (typeof text === "string") {
-        this.equation = parseString(text);
-      } else if (text instanceof ASTNode) {
-        this.equation = text;
-      } else {
-        throw new Error("Given equation is not text or AST")
-      }
-
-      this.updateFunc();
-    }
-
-    updateLight(adaptThickness=false) {
-      if (!this.plot)
-        return
-
-      let transform = this.plot.transform;
-      let previousTransform = this.previousTransform;
-      let polyline = this.displayedElement;
-
-      adaptPolyline(polyline, previousTransform, transform, adaptThickness);
-
-      this.previousTransform = transform.clone();
-    }
-
-    updateFunc() {
-      let exportedVariables = ['x', 'y'];
-
-      let eqn = this.equation.compile(exportedVariables).func;
-      let interval = this.equation.compileInterval(exportedVariables).func;
-      //let real = this.equation.compileReal(exportedVariables)
-
-      let fxNode = this.equation.derivative('x');
-      let fyNode = this.equation.derivative('y');
-      let fxxNode = fxNode.derivative('x');
-      let fxyNode = fxNode.derivative('y');
-      let fyyNode = fyNode.derivative('y');
-
-      let fx = fxNode.compile(exportedVariables).func;
-      let fy = fyNode.compile(exportedVariables).func;
-      let fxx = fxxNode.compile(exportedVariables).func;
-      let fxy = fxyNode.compile(exportedVariables).func;
-      let fyy = fyyNode.compile(exportedVariables).func;
-
-      let curvatureFunc = (x, y) => {
-        let fxV = fx(x, y), fyV = fy(x, y), fxxV = fxx(x, y), fxyV = fxy(x,y), fyyV = fyy(x, y);
-        let fxVSq = fxV * fxV, fyVSq = fyV * fyV;
-
-        return (fxVSq + fyVSq) ** 1.5 / (fyVSq * fxxV - 2 * fxV * fyV * fxyV + fxVSq * fyyV)
-      };
-
-      this.compiledFunctions = {
-        eqn,
-        interval,
-        curvatureFunc
-      };
-    }
-
-    update(info) {
-      super.update();
-
-      if (this.plot) {
-        let coords = this.plot.transform.coords;
-        let vertices = generateContours2(this.compiledFunctions.eqn, this.compiledFunctions.curvatureFunc, coords.x1, coords.x2, coords.y1, coords.y2);
-
-        this.plot.transform.plotToPixelArr(vertices);
-
-        this.displayedElement.vertices = vertices;
-        this.displayedElement.update(info);
-
-        this.previousTransform = this.plot.transform.clone();
-      }
-    }
-
-    render(info) {
-      if (this.visible) {
-        const gl = info.universe.gl;
-        const box = info.plot.transform.box;
-
-        gl.enable(gl.SCISSOR_TEST);
-        gl.scissor(box.top_left.x * dpr,
-          box.top_left.y * dpr,
-          box.width * dpr,
-          box.height * dpr);
-
-        this.displayedElement.render(info);
-
-        gl.disable(gl.SCISSOR_TEST);
-      }
-    }
-  }
-
-  // Takes in a function of arity 2, as well as (x1, y1, x2, y2) the box to plot in and xDivide yDivide, the number of
-  // times to divide in each direction
-  function intervalEqFindBoxes(func, x1, y1, x2, y2, xDivide, yDivide) {
-    let rectangles = [];
-
-    while (true) {
-      if (xDivide === 0 && yDivide === 0) {
-        break
-      }
-
-      // mode 0 means divide into four, mode 1 means divide along x, mode 2 means divide along y
-      let dividingMode = 0;
-
-      if (yDivide > xDivide) {
-        dividingMode = 2;
-        ++xDivide;
-      } else if (yDivide < xDivide) {
-        dividingMode = 1;
-        ++yDivide;
-      }
-
-      --xDivide;
-      --yDivide;
-
-      let new_rectangles = [];
-
-      for (let i = 0; i < rectangles.length; i += 4) {
-        let x1 = rectangles[i], y1 = rectangles[i+1], x2 = rectangles[i+2], y2 = rectangles[i+3];
-        if (dividingMode === 0) {
-          let xm = (x1 + x2) / 2;
-          let ym = (y1 + y2) / 2;
-
-          let xInt1 = new Interval(x1, xm);
-          let xInt2 = new Interval(xm, x2);
-          let yInt1 = new Interval(y1, ym);
-          let yInt2 = new Interval(ym, y2);
-
-          if (func(xInt1, yInt1).contains(0)) {
-            new_rectangles.push(x1, xm, y1, ym);
-          }
-
-          if (func(xInt1, yInt2).contains(0)) {
-            new_rectangles.push(x1, xm, ym, y2);
-          }
-
-          if (func(xInt2, yInt2).contains(0)) {
-            new_rectangles.push(xm, x2, ym, y2);
-          }
-
-          if (func(xInt2, yInt1).contains(0)) {
-            new_rectangles.push(xm, x2, y1, ym);
-          }
-        } else if (dividingMode === 1) {
-          let xm = (x1 + x2) / 2;
-
-          let xInt1 = new Interval(x1, xm);
-          let xInt2 = new Interval(xm, x2);
-
-          let yInt = new Interval(y1, y2);
-
-          if (func(xInt1, yInt).contains(0)) {
-            new_rectangles.push(x1, xm, y1, y2);
-          }
-
-          if (func(xInt2, yInt).contains(0)) {
-            new_rectangles.push(xm, x2, y1, y2);
-          }
-        } else if (dividingMode === 2) {
-          let ym = (y1 + y2) / 2;
-
-          let yInt1 = new Interval(y1, ym);
-          let yInt2 = new Interval(ym, y2);
-
-          let xInt = new Interval(x1, x2);
-
-          if (func(xInt, yInt1).contains(0)) {
-            new_rectangles.push(x1, x2, y1, ym);
-          }
-
-          if (func(xInt, yInt2).contains(0)) {
-            new_rectangles.push(x1, x2, ym, y2);
-          }
-        }
-      }
-
-      rectangles = new_rectangles;
-    }
-
-    return rectangles
-  }
-
-  /**
-   * Returns e^(i theta) for real theta.
-   * @param theta {number}
-   * @returns {Complex} cis(theta)
-   */
-  const Cis = (theta) => {
-    // For real theta
-    let c = Math.cos(theta);
-    let s = Math.sin(theta);
-
-    return new Complex$1(c, s)
-  };
-
-  /**
-   * Returns e^z for complex z.
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Exp = (z) => {
-    let magnitude = Math.exp(z.re);
-
-    let angle = z.im;
-
-    return Cis(angle).scale(magnitude)
-  };
-
-  /**
-   * Return the principal value of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @returns {Complex}
-   */
-  const Pow = (z, w) => {
-    return Exp(Multiply(w, new Complex$1(Math.log(z.magnitude()), z.arg())))
-  };
-
-  /**
-   * Multivalued version of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const PowBranched = (z, w, branch=0) => {
-    return Multiply(Pow(z, w), Exp(Multiply(Complex$1.I, w.scale(2 * Math.PI * branch))))
-  };
-
-  /**
-   * z^r, where r is a real number.
-   * @param z {Complex}
-   * @param r {number}
-   * @returns {Complex}
-   */
-  const PowR = (z, r) => {
-    return Pow(z, new Complex$1(r))
-  };
-
-  const PowZ = (r, z) => {
-    if (r === 0)
-      return new Complex$1(0)
-
-    return Exp(Multiply(z, new Complex$1(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
-  };
-
-  /**
-   * z^r, where r is a real number, branched.
-   * @param z {Complex}
-   * @param r {number}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const PowRBranched = (z, r, branch=0) => {
-    return PowBranched(z, new Complex$1(r), branch)
-  };
-
-  /**
-   * Returns z^n, where n is a positive integer
-   * @param z {Complex} The base of the exponentiation.
-   * @param n {number} Positive integer, exponent.
-   * @returns {Complex}
-   */
-  const PowN = (z, n) => {
-    if (n === 0) {
-      return new Complex$1(1, 0)
-    } else if (n === 1) {
-      return z.clone()
-    } else if (n === -1) {
-      return z.conj().scale(1 / z.magnitudeSquared())
-    } else if (n === 2) {
-      return Multiply(z, z)
-    }
-
-    let mag = z.magnitude();
-    let angle = z.arg();
-
-    let newMag = Math.pow(mag, n);
-    let newAngle = angle * n;
-
-    return Cis(newAngle).scale(newMag)
-  };
-
-  /**
-   * Returns the principal value of sqrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Sqrt = (z) => {
-    // Handle real z specially
-    if (Math.abs(z.im) < 1e-17) {
-      let r = z.re;
-
-      if (r >= 0) {
-        return new Complex$1(Math.sqrt(r))
-      } else {
-        return new Complex$1(0, Math.sqrt(-r))
-      }
-    }
-
-    let r = z.magnitude();
-
-    let zR = Add(z, new Complex$1(r)).normalize();
-
-    return zR.scale(Math.sqrt(r))
-  };
-
-  /**
-   * Branched version of Sqrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const SqrtBranched = (z, branch=0) => {
-    if (branch % 2 === 0) {
-      return Sqrt(z)
-    } else {
-      return Multiply(new Complex$1(-1, 0), Sqrt(z))
-    }
-  };
-
-  /**
-   * Principal value of cbrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Cbrt = (z) => {
-    return PowR(z, 1/3)
-  };
-
-  /**
-   * Multivalued version of Cbrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const CbrtBranched = (z, branch=0) => {
-    return PowRBranched(z, 1/3, branch)
-  };
-
-  var PowFunctions = /*#__PURE__*/Object.freeze({
-    Pow: Pow,
-    PowBranched: PowBranched,
-    PowR: PowR,
-    PowZ: PowZ,
-    PowRBranched: PowRBranched,
-    PowN: PowN,
-    Sqrt: Sqrt,
-    SqrtBranched: SqrtBranched,
-    Cbrt: Cbrt,
-    CbrtBranched: CbrtBranched
-  });
-
-  // sin(a+bi) = sin a cosh b + i cos a sinh b
-  const Sin = (z) => {
-    let a = z.re, b = z.im;
-    let sinA = Math.sin(a);
-    let cosA = Math.cos(a);
-
-    let sinhB = Math.sinh(b);
-    let coshB = Math.sqrt(1 + sinhB * sinhB);
-
-    return new Complex$1(sinA * coshB, cosA * sinhB)
-  };
-
-  // cos(a+bi) = cos a cosh b - i sin a sinh b
-  const Cos = (z) => {
-    let a = z.re, b = z.im;
-    let sinA = Math.sin(a);
-    let cosA = Math.cos(a);
-
-    let sinhB = Math.sinh(b);
-    let coshB = Math.sqrt(1 + sinhB * sinhB);
-
-    return new Complex$1(cosA * coshB, -sinA * sinhB)
-  };
-
-  // tan(a+bi) = (tan a + i tanh b) / (1 - i tan a tanh b)
-  const Tan = (z) => {
-    let a = z.re, b = z.im;
-
-    let tanA = Math.tan(a);
-    let tanhB = Math.tanh(b);
-
-    return Divide(new Complex$1(tanA, tanhB), new Complex$1(1, -tanA * tanhB))
-  };
-
-  // sec(a+bi) = 1 / cos(a+bi)
-  const Sec = (z) => {
-    return Divide(Complex$1.One, Cos(z))
-  };
-
-  // csc(a+bi) = 1 / sin(a+bi)
-  const Csc = (z) => {
-    return Divide(Complex$1.One, Sin(z))
-  };
-
-  // sec(a+bi) = 1 / cos(a+bi)
-  const Cot = (z) => {
-    return Divide(Complex$1.One, Tan(z))
-  };
-
-  var TrigFunctions = /*#__PURE__*/Object.freeze({
-    Sin: Sin,
-    Cos: Cos,
-    Tan: Tan,
-    Sec: Sec,
-    Csc: Csc,
-    Cot: Cot
-  });
-
-  /**
-   * Returns ln(z), where ln is the natural logarithm.
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Ln = (z) => {
-    let mag = Math.log(z.magnitude());
-    let theta = z.arg();
-
-    return new Complex$1(mag, theta)
-  };
-
-  /**
-   * The multivalued version of ln(z). In other words, if ln(z) is the principal value of ln(z), it returns
-   * ln(z) + 2 * pi * i * branch, where branch is an integer.
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-  const LnBranched = (z, branch=0) => {
-    return Add(Ln(z), Complex$1.I.scale(2 * Math.PI * branch))
-  };
-
-  /* Alias for Ln */
-  const Log = Ln;
-
-  /* Alias for LnBranched */
-  const LogBranched = LnBranched;
-
-  // Constants
-  const LN10 = Math.log(10);
-  const LN2 = Math.log(2);
-
-  /**
-   * log10(z) (principal value)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log10 = (z) => {
-    return Ln(z).scale(1 / LN10)
-  };
-
-  /**
-   * log10(z) (branched)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log10Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN10)
-  };
-
-  /**
-   * log2(z) (principal value)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log2 = (z) => {
-    return Ln(z).scale(1 / LN2)
-  };
-
-  /**
-   * log2(z) (branched)
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Log2Branched = (z, branch=0) => {
-    return LnBranched(z, branch).scale(1 / LN2)
-  };
-
-  /**
-   * Log base b of z
-   * @param b {Complex}
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const LogB = (b, z) => {
-    if (b.equals(z))
-      return Complex$1.One
-
-    return Divide(Ln(z), Ln(b))
-  };
-
-  /**
-   * Log base b of z, multivalued
-   * @param b {Complex}
-   * @param z {Complex}
-   * @param branch {number} Integer, which branch to evaluate
-   * @returns {Complex}
-   */
-  const LogBBranched = (b, z, branch=0) => {
-    if (branch === 0 && b.equals(z))
-      return Complex$1.One
-
-    return Divide(LnBranched(z, branch), LnBranched(b, branch))
-  };
-
-  var LnFunctions = /*#__PURE__*/Object.freeze({
-    Ln: Ln,
-    LnBranched: LnBranched,
-    Log: Log,
-    LogBranched: LogBranched,
-    Log10: Log10,
-    Log10Branched: Log10Branched,
-    Log2: Log2,
-    Log2Branched: Log2Branched,
-    LogB: LogB,
-    LogBBranched: LogBBranched
-  });
-
-  /**
-   * Returns sinh(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Sinh = (z) => {
-    let a = z.re, b = z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex$1(sinhA * cosB, coshA * sinB)
-  };
-
-  /**
-   * Returns cosh(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Cosh = (z) => {
-    let a = z.re, b = z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex$1(coshA * cosB, sinhA * sinB)
-  };
-
-  /**
-   * Returns tanh(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Tanh = (z) => {
-    let a = 2 * z.re, b = 2 * z.im;
-
-    let sinhA = Math.sinh(a);
-    let coshA = Math.sqrt(1 + sinhA * sinhA);
-
-    let sinB = Math.sin(b);
-    let cosB = Math.cos(b);
-
-    return new Complex$1(sinhA, sinB).scale(1 / (coshA + cosB))
-  };
-
-  /**
-   * Returns sech(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Sech = (z) => {
-    return Divide(Complex$1.One, Cosh(z))
-  };
-
-  /**
-   * Returns csch(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Csch = (z) => {
-    return Divide(Complex$1.One, Sinh(z))
-  };
-
-  /**
-   * Returns coth(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  const Coth = (z) => {
-    return Divide(Complex$1.One, Tanh(z))
-  };
-
-  var HyperbolicTrigFunctions = /*#__PURE__*/Object.freeze({
-    Sinh: Sinh,
-    Cosh: Cosh,
-    Tanh: Tanh,
-    Sech: Sech,
-    Csch: Csch,
-    Coth: Coth
-  });
-
-  // arcsin(z) = -i * ln(i * z + sqrt(1 - z^2))
-  const Arcsin = (z) => Multiply(Complex$1.I.scale(-1), // -i
-    Ln(Add(Multiply(Complex$1.I, z),                              // i * z
-      Sqrt(Subtract(Complex$1.One, Multiply(z, z))))));            // sqrt(1 - z^2
-
-  // arccos(z) = pi/2 + i * ln(i * z + sqrt(1 - z^2))
-  const Arccos = (z) => Add(new Complex$1(Math.PI / 2), // pi / 2
-    Multiply(Complex$1.I, Ln(Add(Multiply(Complex$1.I, z),           // i * ln(iz
-      Sqrt(Subtract(Complex$1.One, Multiply(z, z)))))));            // + sqrt(1 - z^2)
-
-  // arctan(z) = i/2 * ln( (i+z) / (1-z) )
-  const Arctan = (z) => Multiply(Complex$1.I.scale(1/2),  // i / 2
-    Ln(Divide(Add(Complex$1.I, z), Subtract(Complex$1.I, z))));      // ln( (i+z) / (1-z) )
-
-  // arcsec(z) = arccos(1 / z)
-  const Arcsec = (z) => Arccos(Divide(Complex$1.One, z));
-
-  // arccsc(z) = arcsin(1 / z)
-  const Arccsc = (z) => Arcsin(Divide(Complex$1.One, z));
-
-  // arccot(z) = pi / 2 - arctan(z)
-  const Arccot = (z) => Subtract(new Complex$1(Math.PI / 2), Arctan(z));
-
-  // Branched variants of the inverse trig functions
-  const ArcsinBranched = (z, branch=0) => {
-    return Add(Arcsin(z), new Complex$1(2 * Math.PI * branch))
-  };
-
-  const ArccosBranched = (z, branch=0) => {
-    return Add(Arccos(z), new Complex$1(2 * Math.PI * branch))
-  };
-
-  const ArctanBranched = (z, branch=0) =>
-    Add(Arctan(z), new Complex$1(Math.PI * branch));
-
-  const ArcsecBranched = (z, branch=0) => ArccosBranched(Divide(Complex$1.One, z), branch);
-
-  const ArccscBranched = (z, branch=0) => ArcsinBranched(Divide(Complex$1.One, z), branch);
-
-  const ArccotBranched = (z, branch=0) =>
-    Subtract(new Complex$1(Math.PI / 2), ArctanBranched(z, -branch));
-
-  var InverseTrigFunctions = /*#__PURE__*/Object.freeze({
-    Arcsin: Arcsin,
-    Arccos: Arccos,
-    Arctan: Arctan,
-    Arcsec: Arcsec,
-    Arccsc: Arccsc,
-    Arccot: Arccot,
-    ArcsinBranched: ArcsinBranched,
-    ArccosBranched: ArccosBranched,
-    ArctanBranched: ArctanBranched,
-    ArcsecBranched: ArcsecBranched,
-    ArccscBranched: ArccscBranched,
-    ArccotBranched: ArccotBranched
-  });
-
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const Arcsinh = (z) => Ln(Add(z, Sqrt(Add(Multiply(z, z), Complex$1.One))));
-
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const Arccosh = (z) => Ln(Add(z, Multiply(Sqrt(Add(z, Complex$1.One)), Sqrt(Subtract(z, Complex$1.One)))));
-
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const Arctanh = (z) => Ln(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z))).scale(1/2);
-
-  const Arcsech = (z) => Arccosh(Divide(Complex$1.One, z));
-
-  // arccsch(z) = arcsinh(1/z)
-  const Arccsch = (z) => Arcsinh(Divide(Complex$1.One, z));
-
-  // arccoth(z) = arctanh(1/z)
-  const Arccoth = (z) => Arctanh(Divide(Complex$1.One, z));
-
-  // Branched variants of the normal functions
-  // arcsinh(z) = ln(z + sqrt(z^2 + 1))
-  const ArcsinhBranched = (z, branch=0) =>
-    LnBranched(Add(z, Sqrt(Add(Multiply(z, z), Complex$1.One))), branch);
-
-  // arccosh(z) = ln(z + sqrt(z^2 - 1))
-  const ArccoshBranched = (z, branch=0) =>
-    LnBranched(Add(z, Multiply(Sqrt(Add(z, Complex$1.One)), Sqrt(Subtract(z, Complex$1.One)))), branch);
-
-  // arctanh(z) = 1/2 * ln( (1+z) / (1-z) )
-  const ArctanhBranched = (z, branch=0) =>
-    LnBranched(Divide(Add(Complex$1.One, z), Subtract(Complex$1.One, z)), branch).scale(1/2);
-
-  const ArcsechBranched = (z, branch=0) => ArccoshBranched(Divide(Complex$1.One, z), branch);
-
-  // arccsch(z) = arcsinh(1/z)
-  const ArccschBranched = (z, branch=0) => ArcsinhBranched(Divide(Complex$1.One, z), branch);
-
-  // arccoth(z) = arctanh(1/z)
-  const ArccothBranched = (z, branch=0) => ArctanhBranched(Divide(Complex$1.One, z), branch);
-
-  var InverseHyperbolicFunctions = /*#__PURE__*/Object.freeze({
-    Arcsinh: Arcsinh,
-    Arccosh: Arccosh,
-    Arctanh: Arctanh,
-    Arcsech: Arcsech,
-    Arccsch: Arccsch,
-    Arccoth: Arccoth,
-    ArcsinhBranched: ArcsinhBranched,
-    ArccoshBranched: ArccoshBranched,
-    ArctanhBranched: ArctanhBranched,
-    ArcsechBranched: ArcsechBranched,
-    ArccschBranched: ArccschBranched,
-    ArccothBranched: ArccothBranched
-  });
-
-  function Gamma(z) {
-    if (z.re < 1/2) {
-      // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
-      // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
-
-      return Divide(new Complex$1(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex$1.One, z))))
-    }
-
-    if (Math.abs(z.im) < 1e-17) {
-      return new Complex$1(gamma$1(z.re))
-    }
-
-    // We use the Lanczos approximation for the factorial function.
-    z.re -= 1;
-    let x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
-
-    let newZ = z.clone();
-    let re, im, mag2;
-
-    for (let i = 1; i < LANCZOS_COEFFICIENTS.length; ++i) {
-      let coeff = LANCZOS_COEFFICIENTS[i];
-
-      newZ.re += 1;
-
-      re = newZ.re * coeff;
-      im = -newZ.im * coeff;
-
-      mag2 = newZ.magnitudeSquared();
-
-      re /= mag2;
-      im /= mag2;
-
-      x.re += re;
-      x.im += im;
-    }
-
-    let t = z.clone();
-    t.re += LANCZOS_COEFFICIENTS.length - 1.5;
-
-    return Multiply(new Complex$1(Math.sqrt(2 * Math.PI)),
-      Multiply(x, Multiply(
-        Pow(t, Add(z, new Complex$1(0.5))),
-        Exp(t.scale(-1)))))
-  }
-
-  /**
-   * Evaluates the digamma function of z.
-   * @param z {Complex}
-   * @return {Complex}
-   */
-  function Digamma(z) {
-    if (z.re < 0.5) {
-      // psi(1-x) - psi(x) = pi cot(pi x)
-      // psi(x) = psi(1-x) - pi cot (pi x)
-
-      return Subtract(Digamma(Subtract(Complex$1.One, z)), Cot(z.scale(Math.PI)).scale(Math.PI))
-    } else if (z.re < 15) {
-      // psi(x+1) = psi(x) + 1/x
-      // psi(x) = psi(x+1) - 1/x
-
-      let sum = new Complex$1(0);
-      let one = Complex$1.One;
-
-      while (z.re < 15) {
-        let component = Divide(one, z);
-
-        z.re += 1;
-
-        sum.re += component.re;
-        sum.im += component.im;
-      }
-
-      return Subtract(Digamma(z), sum)
-    }
-
-    let egg = new Complex$1(1);
-    let sum = Ln(z);
-
-    for (let n = 1; n < 15; ++n) {
-      let coeff = Math.abs(GREGORY_COEFFICIENTS[n]);
-
-      egg = Divide(Multiply(egg, new Complex$1(((n-1) ? (n-1) : 1))), Add(z, new Complex$1(n - 1)));
-
-      sum.re -= coeff * egg.re;
-      sum.im -= coeff * egg.im;
-    }
-
-    return sum
-  }
-
-  let coeffs = [[1, 1], [2, 1 / 2], [3, 1 / 6], [5, 1 / 30], [7, 1 / 42], [9, 1 / 30], [11, 5 / 66], [13, 691 / 2730], [15, 7 / 6]];
-
-  /**
-   *
-   * @param z
-   * @returns {Complex}
-   */
-  function Trigamma(z) {
-    if (Math.abs(z.im) < 1e-17)
-      return new Complex$1(trigamma(z.re))
-
-    if (z.re < 0.5) {
-      // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
-      // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
-
-      return Subtract(Divide(new Complex$1(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex$1.One, z)))
-    } else if (z.re < 20) {
-      // psi_1(z+1) = psi_1(z) - 1/z^2
-      // psi_1(z) = psi_1(z+1) + 1/z^2
-
-      let sum = new Complex$1(0);
-
-      while (z.re < 20) {
-        let component = PowN(z, -2);
-
-        z.re += 1;
-
-        sum.re += component.re;
-        sum.im += component.im;
-      }
-
-      return Add(Trigamma(z), sum)
-    }
-
-    let sum = new Complex$1(0);
-
-    for (let coeffPair of coeffs) {
-      let pow = coeffPair[0];
-      let coeff = coeffPair[1];
-
-      let part = Multiply(new Complex$1(coeff), PowN(z, -pow));
-
-      sum.re += part.re;
-      sum.im += part.im;
-    }
-
-    return sum
-  }
-
-  /**
-   * Returns polygamma(m, z), where polygamma is the mth logarithmic derivative of the gamma function.
-   * @param m {number}
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-  function Polygamma(m, z) {
-    if (m < 0)
-      return new Complex$1(NaN, NaN)
-    if (m % 1 !== 0)
-      return new Complex$1(NaN, NaN)
-
-    if (m === 0)
-      return Digamma(z)
-    else if (m === 1)
-      return Trigamma(z)
-
-    let sign = (m % 2 === 0) ? -1 : 1;
-    let numPoly = getPolygammaNumeratorPolynomial(m);
-
-    if (z < 0.5) {
-      if (z % 1 === 0)
-        return new Complex$1(Infinity)
-
-      // Reflection formula, see https://en.wikipedia.org/wiki/Polygamma_function#Reflection_relation
-      // psi_m(z) = pi ^ (m+1) * numPoly(cos(pi z)) / (sin ^ (m+1) (pi z)) + (-1)^(m+1) psi_m(1-z)
-
-      return Multiply(new Complex$1(-1), Divide(numPoly.evaluateComplex(Cos(z.scale(Math.PI))).scale(Math.pow(Math.PI, m + 1)),
-        (PowN(Sin(z.scale(Math.PI)), m+1)) + sign * Polygamma(m, Subtract(Complex$1.One, z))))
-    } else if (z < 8) {
-      // Recurrence relation
-      // psi_m(z) = psi_m(z+1) + (-1)^(m+1) * m! / z^(m+1)
-
-      return Add(Polygamma(m, z+1), Divide(new Complex$1(sign * gamma$1(m + 1)), PowN(z, m+1)))
-    }
-
-    // Series representation
-
-    let sum = new Complex$1(0);
-
-    for (let i = 0; i < 200; ++i) {
-      let component = Divide(Complex$1.One, PowN(Add(z, new Complex$1(i)), m + 1));
-      sum.re += component.re;
-      sum.im += component.im;
-    }
-
-    return Multiply(new Complex$1(sign * gamma$1(m + 1)), sum)
-  }
-
-  const logPi = Math.log(Math.PI);
-  const logSqrt2Pi = Math.log(2 * Math.PI) / 2;
-
-  function LnGamma (z) {
-    if (Math.abs(z.im) < 1e-17) {
-      return new Complex$1(ln_gamma(z.re))
-    }
-
-    if (z.re < 0.5) {
-      // Compute via reflection formula
-      let reflected = LnGamma(Subtract(Complex$1.One, z));
-
-      return Subtract(Subtract(new Complex$1(logPi), Ln(Sin(Multiply(new Complex$1(Math.PI), z)))), reflected)
-    } else {
-      z.re -= 1;
-
-      const g = 7;
-
-      var x = new Complex$1(LANCZOS_COEFFICIENTS[0]);
-
-      for (var i = 1; i < g + 2; i++) {
-        let component = Divide(new Complex$1(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex$1(i)));
-
-        x.re += component.re;
-        x.im += component.im;
-      }
-
-      var t = Add(z, new Complex$1(g + 0.5));
-
-      return Add(new Complex$1(logSqrt2Pi), Add(Subtract(Multiply(Ln(t), Add(z, new Complex$1(0.5))), t), Ln(x)))
-    }
-  }
-
-  const ZETA_N = 30;
-  const ZETA_COEFFS = [];
-
-  for (let k = 0; k <= ZETA_N; ++k) {
-    let value = 0;
-
-    for (let j = k; j <= ZETA_N; ++j) {
-      value += gamma$1(ZETA_N + j - 1) * 4 ** j / gamma$1(ZETA_N - j) / gamma$1(2 * j);
-    }
-
-    value *= ZETA_N;
-
-    ZETA_COEFFS.push(value);
-  }
-
-  function zeta(r) {
-    if (r === 1)
-      return Infinity
-
-    if (r % 2 === 0 && r < 0)
-      return 0
-
-    if (r < 0.5) {
-      // zeta(s) = 2 ^ s * pi ^ (s - 1) * sin( pi * s / 2 ) * gamma( 1 - s ) * zeta( 1 - s )
-
-      return 2 ** r * Math.PI ** (r - 1) * Math.sin(Math.PI * r / 2) * gamma$1(1 - r) * zeta(1 - r)
-    }
-
-    if (r === 0.5) {
-      return -1.4603545088095868
-    }
-
-    let seriesSum = 0;
-    let sign = 1;
-
-    for (let k = 0; k < ZETA_N; ++k) {
-      seriesSum += sign * ZETA_COEFFS[k+1] / ((k+1) ** r);
-
-      sign *= -1;
-    }
-
-    return seriesSum / (ZETA_COEFFS[0] * (1 - 2 ** (1 - r)))
-  }
-
-  function eta(r) {
-    return (1 - 2 ** (1 - r)) * zeta(r)
-  }
-
-  zeta.coeffs = ZETA_COEFFS;
-  zeta.n = ZETA_N;
-
-  let ZETA_COEFFS$1 = zeta.coeffs;
-  let ZETA_N$1 = zeta.n;
-
-  function Chi(s) {
-    let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex$1(1))));
-
-    let sine = Sin(s.scale(Math.PI / 2));
-
-    let gamma = Gamma(Subtract(new Complex$1(1), s));
-
-    return Multiply(powers, Multiply(sine, gamma))
-  }
-
-  function RiemannSiegel(z) {
-    let t = z.im;
-    let m = 10;
-
-    let chiS = Chi(z);
-
-    let sum = new Complex$1(0);
-
-    let mZ = z.scale(-1);
-
-    for (let n = 1; n <= m; ++n) {
-      let component = PowZ(n, mZ);
-
-      sum.re += component.re;
-      sum.im += component.im;
-    }
-
-    let secondSum = new Complex$1(0);
-
-    let oneMz = Subtract(z, new Complex$1(1));
-
-    for (let n = 1; n <= m; ++n) {
-      let component = PowZ(n, oneMz);
-
-      secondSum.re += component.re;
-      secondSum.im += component.im;
-    }
-
-    secondSum = Multiply(chiS, secondSum);
-
-    return Add(sum, secondSum)
-  }
-
-  // Implementation of the riemann zeta function for complex numbers
-
-  function Zeta(z) {
-    if (Math.abs(z.im) < 1e-17)
-      return new Complex$1(zeta(z.re))
-
-    if (z.re < 0.5) {
-      // Reflection formula
-
-      return Multiply(Chi(z), Zeta(Subtract(new Complex$1(1), z)))
-    }
-
-    if (0 <= z.re && z.re <= 1 && Math.abs(z.im) > 48.005150881167159727942472749427) {
-      return RiemannSiegel(z)
-    }
-
-    // series time
-
-    let seriesSum = new Complex$1(0);
-
-    let sign = new Complex$1(1);
-
-    for (let k = 0; k < ZETA_N$1; ++k) {
-      let component = Divide(sign, PowZ(k + 1, z)).scale(ZETA_COEFFS$1[k + 1]);
-
-      seriesSum.re += component.re;
-      seriesSum.im += component.im;
-
-      sign.re *= -1;
-    }
-
-    return Divide(seriesSum, Multiply(new Complex$1(ZETA_COEFFS$1[0]), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z)))))
-  }
-
-  // Dirichlet eta function
-  function Eta(z) {
-    return Multiply(Zeta(z), Subtract(new Complex$1(1), PowZ(2, Subtract(new Complex$1(1), z))))
-  }
-
-  const Sinc = (x) => {
-    if (x.re === 0 && x.im === 0)
-      return new Complex(1)
-
-    return Divide(Sin(x), x)
-  };
-
-  const NormSinc = (x) => {
-    return Sinc(x.scale(Math.PI))
-  };
-
-  var MiscSpecial = /*#__PURE__*/Object.freeze({
-    Sinc: Sinc,
-    NormSinc: NormSinc
-  });
-
-  const EI_COEFFS = [];
-
-  function getEiCoeff(n) {
-    for (let i = EI_COEFFS.length; i <= n; ++i) {
-      let sum = 0;
-
-      for (let k = 0; k <= Math.floor((n - 1) / 2); ++k) {
-        sum += 1 / (2 * k + 1);
-      }
-
-      EI_COEFFS[i] = sum;
-    }
-
-    return EI_COEFFS[n]
-  }
-
-  function E1(x) {
-    if (x === 0)
-      return Infinity
-    // see https://www.sciencedirect.com/science/article/pii/S0022169499001845?via%3Dihub
-    if (x > 0) {
-      const q = 20 / 47 * x ** xPow;
-      const h = 1 / (1 + x * Math.sqrt(x)) + hInf * q / (1 + q);
-
-      return Math.exp(-x) / (G + (1 - G) * Math.exp(-x / (1 - G))) * Math.log(1 + G / x - (1 - G) / (h + b * x) ** 2)
-    } else {
-      return -ei(-x)
-    }
-  }
-
-  const G = Math.exp(-eulerGamma);
-  const b = Math.sqrt(2 * (1 - G) / (G * (2 - G)));
-  const hInf = (1-G) * (G * G - 6 * G + 12) / (3 * G * (2 - G) ** 2 * b);
-  const xPow = Math.sqrt(31 / 26);
-
-  // The exponential integral Ei(x).
-  // E1(z) = euler_gamma + ln(z) + exp(z / 2) * sum((-1)^(n-1) x^n / (n! 2^(n-1)) * sum(1 / (2k + 1) for k in [0, floor((n-1)/2)]) for n in [1, infinity])
-  function ei(x) {
-    if (x === 0)
-      return -Infinity
-
-    if (x < 0) {
-      return -E1(-x)
-    } else {
-      let sum = 0;
-
-      let z = 1, component = 0;
-
-      let terms = Math.min(100, Math.max(4 * x ** 0.75, 8));
-
-      for (let n = 1; n < terms; ++n) {
-        z *= x / n;
-
-        component = z * getEiCoeff(n);
-
-        z *= -1 / 2;
-
-        sum += component;
-      }
-
-      return eulerGamma + Math.log(x) + Math.exp(x / 2) * sum
-    }
-  }
-
-  // The logarithmic integral li(x).
-  function li(x) {
-    return ei(Math.log(x))
-  }
-
-  const Ei = (z) => {
-    if (z.im < 1e-17)
-      return new Complex$1(ei(z.re))
-
-    let sum = new Complex$1(0);
-    let accum = new Complex$1(1);
-
-    let terms = Math.min(Math.max(4 * z.magnitudeSquared() ** 0.375, 8), 100);
-
-    for (let n = 1; n < terms; ++n) {
-      accum = Multiply(accum, z.scale(1/n));
-
-      let component = accum.scale(getEiCoeff(n));
-
-      accum.re *= -0.5;
-      accum.im *= -0.5;
-
-      sum.re += component.re;
-      sum.im += component.im;
-    }
-
-    return Add(new Complex$1(eulerGamma), Add(Ln(z), Multiply(Exp(z.scale(0.5)), sum)))
-  };
-
-  const Li = (z) => {
-    return Ei(Ln(z))
-  };
-
-  var ExpIntegrals = /*#__PURE__*/Object.freeze({
-    Ei: Ei,
-    Li: Li
-  });
-
-  function Si(z) {
-    throw new Error("unimplemented")
-  }
-
-  function Ci(z) {
-    throw new Error("unimplemented")``
-  }
-
-  var TrigIntegrals = /*#__PURE__*/Object.freeze({
-    Si: Si,
-    Ci: Ci
-  });
-
-  const p = 0.3275911;
-  const ERF_POLY = new SingleVariablePolynomial([0, 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429]);
-
-  function erf(x) {
-    if (x === 0)
-      return 0
-    if (x < 0)
-      return -erf(-x)
-
-    let t = 1 / (1 + p * x);
-
-    return 1 - ERF_POLY.evaluate(t) * Math.exp(- x * x)
-  }
-
-  function erfc(x) {
-    return 1 - erf(x)
-  }
-
-  function fmaf(x, y, a) {
-    return x * y + a
-  }
-
-
-  // Credit to https://stackoverflow.com/questions/27229371/inverse-error-function-in-c
-  function inverseErf(x) {
-    if (x === 0)
-      return 0
-
-    let p = 0, r = 0, t = 0;
-    t = - x * x + 1;
-    t = Math.log(t);
-
-    if (Math.abs(t) > 6.125) { // maximum ulp error = 2.35793
-      p = 3.03697567e-10; //  0x1.4deb44p-32
-      p = fmaf (p, t,  2.93243101e-8); //  0x1.f7c9aep-26
-      p = fmaf (p, t,  1.22150334e-6); //  0x1.47e512p-20
-      p = fmaf (p, t,  2.84108955e-5); //  0x1.dca7dep-16
-      p = fmaf (p, t,  3.93552968e-4); //  0x1.9cab92p-12
-      p = fmaf (p, t,  3.02698812e-3); //  0x1.8cc0dep-9
-      p = fmaf (p, t,  4.83185798e-3); //  0x1.3ca920p-8
-      p = fmaf (p, t, -2.64646143e-1); // -0x1.0eff66p-2
-      p = fmaf (p, t,  8.40016484e-1); //  0x1.ae16a4p-1
-    } else { // maximum ulp error = 2.35456
-      p =              5.43877832e-9;  //  0x1.75c000p-28
-      p = fmaf (p, t,  1.43286059e-7); //  0x1.33b458p-23
-      p = fmaf (p, t,  1.22775396e-6); //  0x1.49929cp-20
-      p = fmaf (p, t,  1.12962631e-7); //  0x1.e52bbap-24
-      p = fmaf (p, t, -5.61531961e-5); // -0x1.d70c12p-15
-      p = fmaf (p, t, -1.47697705e-4); // -0x1.35be9ap-13
-      p = fmaf (p, t,  2.31468701e-3); //  0x1.2f6402p-9
-      p = fmaf (p, t,  1.15392562e-2); //  0x1.7a1e4cp-7
-      p = fmaf (p, t, -2.32015476e-1); // -0x1.db2aeep-3
-      p = fmaf (p, t,  8.86226892e-1); //  0x1.c5bf88p-1
-    }
-
-    r = x * p;
-
-    return r;
-
-  }
-
-  function inverseErfc(x) {
-    return inverseErf(1 - x)
-  }
-
-  function fk(k, x, y, cosXY, sinXY) {
-    return 2 * x * (1 - cosXY * Math.cosh(k * y)) + k * sinXY * Math.sinh(k * y)
-  }
-
-  function gk(k, x, y, cosXY, sinXY) {
-    return 2 * x * sinXY * Math.cosh(k * y) + k * cosXY * Math.sinh(k * y)
-  }
-
-  function ErfSubcall(x, y) {
-
-    let xy2 = 2 * x * y;
-    let cosxy2 = Math.cos(xy2);
-    let sinxy2 = Math.sin(xy2);
-
-    let expX2 = Math.exp(- x * x);
-
-    let cmp1 = new Complex$1(erf(x));
-    let cmp2 = new Complex$1(1 - cosxy2, sinxy2).scale(expX2 / (2 * Math.PI * x));
-
-    let sum = new Complex$1(0);
-    let terms = Math.min(Math.max(10 * Math.abs(y), 10), 100);
-
-    for (let k = 1; k < terms; ++k) {
-      let component = new Complex$1(fk(k, x, y, cosxy2, sinxy2), gk(k, x, y, cosxy2, sinxy2)).scale(Math.exp(- k * k / 4) / (k * k + 4 * x * x));
-
-      sum.re += component.re;
-      sum.im += component.im;
-    }
-
-    return Add(cmp1, Add(cmp2, sum.scale(2 / Math.PI * expX2)))
-  }
-
-  function Erf(z) {
-    if (z.im < 1e-17)
-      return new Complex$1(erf(z.re))
-
-    let x = z.re, y = z.im;
-
-    return ErfSubcall(x, y)
-  }
-
-  function Erfc(z) {
-    return Erf(Subtract(new Complex$1(1), z))
-  }
-
-  var Erfs = /*#__PURE__*/Object.freeze({
-    Erf: Erf,
-    Erfc: Erfc
-  });
-
-  /**
-   * Complex functions!
-   */
-  const ComplexFunctions = Object.freeze({
-    ...BasicArithmeticFunctions, ...PowFunctions, Exp, Cis, ...TrigFunctions, ...LnFunctions,
-    ...HyperbolicTrigFunctions, ...InverseTrigFunctions, ...InverseHyperbolicFunctions,
-    Gamma, Digamma, Trigamma, Polygamma, LnGamma, Zeta, Eta, ...MiscSpecial, ...ExpIntegrals, ...TrigIntegrals, ...Erfs
-  });
-
-  const Multiply$1 = (a, b) => a * b;
-
-  const Add$1 = (a, b) => a + b;
-
-  const Subtract$1 = (a, b) => a - b;
-
-  const Divide$1 = (a, b) => a / b;
-
-  const Ln$1 = Math.log;
-
-  const Log$1 = Ln$1;
-
-  const Log2$1 = Math.log2;
-
-  const Log10$1 = Math.log10;
-
-  const Sin$1 = Math.sin;
-
-  const Cos$1 = Math.cos;
-
-  const Tan$1 = Math.tan;
-
-  const Sec$1 = x => 1 / Math.cos(x);
-
-  const Csc$1 = x => 1 / Math.sin(x);
-
-  const Cot$1 = x => 1 / Math.tan(x);
-
-  const Arcsin$1 = Math.asin;
-
-  const Arccos$1 = Math.acos;
-
-  const Arctan$1 = Math.atan;
-
-  const Arcsec$1 = x => Math.acos(1 / x);
-
-  const Arccsc$1 = x => Math.asin(1 / x);
-
-  const Sinh$1 = Math.sinh;
-
-  const Cosh$1 = Math.cosh;
-
-  const Tanh$1 = Math.tanh;
-
-  const Sech$1 = x => 1 / Math.cosh(x);
-
-  const Csch$1 = x => 1 / Math.sinh(x);
-
-  const Coth$1 = x => 1 / Math.tanh(x);
-
-  const Arcsinh$1 = Math.asinh;
-
-  const Arccosh$1 = Math.acosh;
-
-  const Arctanh$1 = Math.atanh;
-
-  const Arcsech$1 = x => Math.acosh( 1 / x);
-
-  const Arccsch$1 = x => Math.asinh(1 / x);
-
-  const Arccoth$1 = x => Math.atanh(1 / x);
-
-  var BasicFunctions = /*#__PURE__*/Object.freeze({
-    Multiply: Multiply$1,
-    Add: Add$1,
-    Subtract: Subtract$1,
-    Divide: Divide$1,
-    Ln: Ln$1,
-    Log: Log$1,
-    Log2: Log2$1,
-    Log10: Log10$1,
-    Sin: Sin$1,
-    Cos: Cos$1,
-    Tan: Tan$1,
-    Sec: Sec$1,
-    Csc: Csc$1,
-    Cot: Cot$1,
-    Arcsin: Arcsin$1,
-    Arccos: Arccos$1,
-    Arctan: Arctan$1,
-    Arcsec: Arcsec$1,
-    Arccsc: Arccsc$1,
-    Sinh: Sinh$1,
-    Cosh: Cosh$1,
-    Tanh: Tanh$1,
-    Sech: Sech$1,
-    Csch: Csch$1,
-    Coth: Coth$1,
-    Arcsinh: Arcsinh$1,
-    Arccosh: Arccosh$1,
-    Arctanh: Arctanh$1,
-    Arcsech: Arcsech$1,
-    Arccsch: Arccsch$1,
-    Arccoth: Arccoth$1
-  });
-
-  let SiP1 = new SingleVariablePolynomial([1, -4.54393409816329991e-2, 1.15457225751016682e-3, -1.41018536821330254e-5, 9.43280809438713025e-8, -3.53201978997168357e-10, 7.08240282274875911e-12, -6.05338212010422477e-16]);
-  let SiQ1 = new SingleVariablePolynomial([1, 1.01162145739225565e-2, 4.99175116169755106e-5, 1.55654986308745614e-7, 3.28067571055789734e-10, 4.5049097575386581e-13, 3.21107051193712168e-16]);
-  let CiP1 = new SingleVariablePolynomial([-0.25, 7.51851524438898291e-3, -1.27528342240267686e-4, 1.05297363846239184e-6, -4.68889508144848019e-9, 1.06480802891189243e-11, -9.93728488857585407e-15]);
-  let CiQ1 = new SingleVariablePolynomial([1, 1.1592605689110735e-2, 6.72126800814254432e-5, 2.55533277086129636e-7, 6.97071295760958946e-10, 1.38536352772778619e-12, 1.89106054713059759e-15, 1.39759616731376855e-18]);
-  let FP1 = new SingleVariablePolynomial([1, 7.44437068161936700618e2, 1.96396372895146869801e5, 2.37750310125431834034e7, 1.43073403821274636888e9, 4.33736238870432522765e10, 6.40533830574022022911e11, 4.20968180571076940208e12, 1.00795182980368574617e13, 4.94816688199951963482e12, 4.94701168645415959931e11]);
-  let FQ1 = new SingleVariablePolynomial([1, 7.46437068161927678031e2, 1.97865247031583951450e5, 2.41535670165126845144e7, 1.47478952192985464958e9, 4.58595115847765779830e10, 7.08501308149515401563e11, 5.06084464593475076774e12, 1.43468549171581016479e13, 1.11535493509914254097e13]);
-  let GP1 = new SingleVariablePolynomial([1, 8.1359520115168615e2, 2.35239181626478200e5, 3.12557570795778731e7, 2.06297595146763354e9, 6.83052205423625007e10, 1.09049528450362786e12, 7.57664583257834349e12, 1.81004487464664575e13, 6.43291613143049485e12,
-    -1.36517137670871689e12]);
-  let GQ1 = new SingleVariablePolynomial([1, 8.19595201151451564e2, 2.40036752835578777e5, 3.26026661647090822e7, 2.23355543278099360e9, 7.87465017341829930e10, 1.39866710696414565e12, 1.17164723371736605e13, 4.01839087307656620e13, 3.99653257887490811e13]);
-
-
-  function f(x) {
-    let recip = 1 / x;
-    let recipSq = recip * recip;
-
-    return recip * FP1.evaluate(recipSq) / FQ1.evaluate(recipSq)
-  }
-
-  function g$1(x) {
-    let recipSq = 1 / (x * x);
-
-    return recipSq * GP1.evaluate(recipSq) / GQ1.evaluate(recipSq)
-  }
-
-  function Si$1(x) {
-    if (x === 0)
-      return 0
-
-    if (x < 0)
-      return -Si$1(-x)
-
-    if (x <= 4) {
-      // PADE APPROXIMANT
-
-      let xSq = x * x;
-
-      return x * SiP1.evaluate(xSq) / SiQ1.evaluate(xSq)
-    } else {
-      return Math.PI / 2 - f(x) * Math.cos(x) - g$1(x) * Math.sin(x)
-    }
-  }
-
-  function Ci$1(x) {
-    if (x === 0)
-      return -Infinity
-
-    if (x < 0)
-      return Ci$1(-x)
-
-    if (x <= 4) {
-      // PADE APPROXIMANT
-      let xSq = x * x;
-
-      return eulerGamma + Math.log(x) + xSq * CiP1.evaluate(xSq) / CiQ1.evaluate(xSq)
-    } else {
-      return f(x) * Math.sin(x) - g$1(x) * Math.cos(x)
-    }
-  }
-
-  const sqrtPi2 = Math.sqrt(Math.PI / 2);
-  const sqrt2Pi = Math.sqrt(2 * Math.PI);
-  const sqrt8Pi = Math.sqrt(8 * Math.PI);
-
-  function LargeS(x) {
-    let xSq = x * x;
-    return sqrtPi2 * (Math.sign(x) / 2 - (Math.cos(xSq) / (x * sqrt2Pi) + Math.sin(xSq) / (x * xSq * sqrt8Pi)))
-  }
-
-  function LargeC(x) {
-    let xSq = x * x;
-    return sqrtPi2 * (Math.sign(x) / 2 + (Math.sin(xSq) / (x * sqrt2Pi) + Math.cos(xSq) / (x * xSq * sqrt8Pi)))
-  }
-
-  function SmallS(x) {
-    let sum = 0;
-
-    let z = x * x * x;
-    let xPow = z * x;
-
-    for (let n = 0; n < 50; ++n) {
-      if (n !== 0)
-        z /= 2 * n * (2 * n + 1);
-
-      let component = z / (4 * n + 3);
-
-      sum += component;
-
-      z *= xPow;
-
-      z *= -1;
-
-      if (Math.abs(component) < 1e-6)
-        break
-    }
-
-    return sum
-  }
-
-  function SmallC(x) {
-    let sum = 0;
-
-    let z = x;
-    let xPow = x * x * x * x;
-
-    for (let n = 0; n < 50; ++n) {
-      if (n !== 0)
-        z /= 2 * n * (2 * n - 1);
-
-      let component = z / (4 * n + 1);
-
-      sum += component;
-
-      z *= xPow;
-
-      z *= -1;
-
-      if (Math.abs(component) < 1e-6)
-        break
-    }
-
-    return sum
-  }
-
-  function S(x) {
-    if (Math.abs(x) > 5)
-      return LargeS(x)
-    return SmallS(x)
-  }
-
-  function C$1(x) {
-    if (Math.abs(x) > 5)
-      return LargeC(x)
-    return SmallC(x)
-  }
-
-  function seriesEval(r) {
-    const c = [
-      -1.0,
-      2.331643981597124203363536062168,
-      -1.812187885639363490240191647568,
-      1.936631114492359755363277457668,
-      -2.353551201881614516821543561516,
-      3.066858901050631912893148922704,
-      -4.175335600258177138854984177460,
-      5.858023729874774148815053846119,
-      -8.401032217523977370984161688514,
-      12.250753501314460424,
-      -18.100697012472442755,
-      27.029044799010561650];
-
-    const t_8 = c[8] + r * (c[9] + r * (c[10] + r * c[11]));
-    const t_5 = c[5] + r * (c[6] + r * (c[7] + r * t_8));
-    const t_1 = c[1] + r * (c[2] + r * (c[3] + r * (c[4] + r * t_5)));
-    return c[0] + r * t_1;
-  }
-
-  function approxProductLog(x) {
-    if (x > 1) {
-      let logX = Math.log(x);
-
-      return logX - Math.log(logX)
-    }
-
-    return 0
-  }
-
-  function approxProductLogM1(x) {
-    if (x < -1.0e-6) {
-      // Calculate via series
-
-      let q = x - RECIP_E;
-
-      let r = - Math.sqrt(q);
-
-      return seriesEval(r)
-    } else {
-      // Calculate via logs
-
-      let L1 = Math.log(-x);
-      let L2 = Math.log(-L1);
-
-      return L1 - L2 + L2 / L1
-    }
-  }
-
-  function halley(x, w, iters=8) {
-    for (let i = 0; i < 8; ++i) {
-      let eW = Math.exp(w);
-
-      w = w - (w * eW - x) / (eW * (w + 1) - (w + 2) * (w * eW - x) / (2 * w + 2));
-    }
-
-    return w
-  }
-
-  const RECIP_E = -1 / Math.exp(1);
-
-  function productLog(x) {
-
-    if (x < RECIP_E)
-      return NaN
-
-    // see https://mathworld.wolfram.com/LambertW-Function.html
-      let w = approxProductLog(x);
-
-      // Compute via Halley's method
-
-    return halley(x, w)
-  }
-
-  function productLogBranched(k, x) {
-    if (k === 0)
-      return productLog(x)
-    else if (k === -1) {
-      if (x === 0)
-        return Infinity
-
-      if (RECIP_E <= x && x < 0) {
-        let w = approxProductLogM1(x);
-
-        return halley(x, w)
-      }
-
-      return NaN
-    }
-
-    return NaN
-  }
-
-  // Arithmetic geometric mean
-
-  const MAX_ITERS = 20;
-
-  // Credit to Rosetta Code
-  function agm(a0, g0, tolerance=1e-17) {
-    let an = a0, gn = g0;
-    let i = 0;
-
-    while (Math.abs(an - gn) > tolerance && i < MAX_ITERS) {
-      i++;
-
-      let tmp = an;
-      an = (an + gn) / 2;
-      gn = Math.sqrt(tmp * gn);
-    }
-    return an;
-  }
-
-  agm.MAX_ITERS = MAX_ITERS;
-
-  function pochhammer(q, n) {
-    if (n === 0)
-      return 1
-    if (n === 1)
-      return q
-
-    let prod = 1;
-    for (let i = 0; i < n; ++i) {
-      prod *= q;
-      q++;
-    }
-
-    return prod
-  }
-
-  function hypergeometric(a, b, c, z, terms=40) {
-    let prod = 1;
-    let sum = 0;
-
-    if (Number.isInteger(c) && c <= 0)
-      return NaN
-
-    for (let n = 0; n < terms; ++n) {
-      sum += prod;
-
-      prod *= a * b;
-      prod /= c;
-
-      a++;
-      b++;
-      c++;
-
-      prod /= n + 1;
-
-      prod *= z;
-    }
-
-    return sum
-  }
-
-  function ellipticK(m) {
-    const absM = Math.abs(m);
-
-    if (m > 1)
-      return NaN
-
-    if (absM === 1)
-      return Infinity
-
-    return Math.PI / 2 / agm(1, Math.sqrt(1 - m))
-  }
-
-  // See https://dlmf.nist.gov/19.8
-  function ellipticE(m, tolerance=1e-15) {
-    if (m > 1)
-      return NaN
-    else if (m === 1)
-      return 1
-
-    if (m > 0) {
-      let an = 1, gn = Math.sqrt(1 - m);
-      let cn = Math.sqrt(Math.abs(an * an - gn * gn));
-      let i = 0;
-      let sum = 0;
-
-      do {
-        sum += (2 ** (i - 1)) * cn * cn;
-
-        i++;
-
-        let tmp = an;
-        an = (an + gn) / 2;
-        gn = Math.sqrt(tmp * gn);
-
-        cn = cn * cn / (4 * an);
-      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
-
-      return Math.PI / (2 * an) * (1 - sum);
-    } else if (m === 0) {
-      return Math.PI / 2
-    } else {
-      // Note that E(-m) = sqrt(m+1) * E(m / (m+1))
-
-      let nM = -m;
-
-      return Math.sqrt(nM + 1) * ellipticE(nM / (nM + 1), tolerance)
-    }
-  }
-
-  // Doesn't work yet
-  function ellipticPi(n, m, tolerance=1e-15) {
-    if (m > 1)
-      return NaN
-    else if (m === 1)
-      return Infinity
-
-    if (m > 0) {
-      let an = 1, gn = Math.sqrt(1 - m);
-      let pn = 1 - n;
-      let Qn = 1;
-      let i = 0;
-      let sum = 0;
-
-      do {
-        sum += Qn;
-
-        i++;
-
-        let tmp = an;
-        an = (an + gn) / 2;
-        gn = Math.sqrt(tmp * gn);
-
-        let pn2 = pn * pn;
-        let angn = an * gn;
-
-        let en = (pn2 - angn) / (pn2 + angn);
-
-        pn = (pn2 + angn) / (2 * pn);
-
-        Qn = 0.5 * Qn * en;
-
-      } while (Math.abs(an - gn) > tolerance && i < agm.MAX_ITERS)
-
-      return Math.PI / (4 * an) * (2 + n / (1 - n) * sum);
-    } else if (m === 0) {
-      return Math.PI / (2 * Math.sqrt(1 - n))
-    } else {
-      // Note that Pi(n, -m) = 1 / ((1 - n) * sqrt(m + 1)) * Pi(n / (n-1) | m / (m+1))
-
-      let nM = -m;
-
-      return 1 / ((1 - n) * Math.sqrt(nM + 1) * ellipticPi(n / (n - 1), nM / (nM + 1)))
-    }
-  }
-
-  function ellipsePerimeter(a, b) {
-    return 4 * a * ellipticE(1 - b * b / (a * a))
-  }
-
-  function ellipticEModulus(m) {
-    return ellipticE(m * m)
-  }
-
-  function ellipticKModulus(m) {
-    return ellipticK(m * m)
-  }
-
-  let unsafeToSquare = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
-
-  function addMod(a, b, m) {
-    // Returns (a + b) % m
-
-    let sum = a + b;
-
-    let result = sum % m;
-
-    if (sum < Number.MAX_SAFE_INTEGER)
-      return result
-
-    let signature = ((a % 8) + (b % 8)) % 8;
-
-    let sumMod = sum % 8;
-
-    for (let i = -2; i <= 2; ++i) {
-      if ((sumMod + i) % 8 === signature) {
-        let ret = result + i;
-
-        if (ret > m)
-          ret = (result - m) + i; // prevent overflow
-
-        return ret
-      }
-    }
-  }
-
-  function mulMod(a, b, m) {
-    if (m === 0)
-      return 0
-
-    let prod = a * b;
-
-    if (prod < Number.MAX_SAFE_INTEGER)
-      return prod % m
-
-    let y = 0;
-    let result = a;
-
-    while (b > 1) {
-      if (b % 2 === 0) {
-        result = addMod(result, result, m);
-
-        b /= 2;
-      } else {
-        y = addMod(result, y, m);
-        result = addMod(result, result, m);
-
-        b = (b - 1) / 2;
-      }
-    }
-
-    return addMod(result, y, m)
-  }
-
-  function squareMod(b, m) {
-    // Computes (b * b % m)
-
-    return mulMod(b, b, m)
-  }
-
-  function expModLargeB(b, exponent, m) {
-    let y = 1;
-
-    while (exponent > 1) {
-      if (exponent % 2 === 0) {
-        b = squareMod(b, m);
-
-        exponent /= 2;
-      } else {
-        y = mulMod(y, b, m);
-        b = squareMod(b, m);
-
-        exponent = (exponent - 1) / 2;
-      }
-    }
-
-    return mulMod(b, y, m)
-  }
-
-  function expMod(b, exponent, m) {
-    if (exponent === 0)
-      return 1
-
-    if (b >= unsafeToSquare || m >= unsafeToSquare) {
-      return expModLargeB(b, exponent, m)
-    }
-
-    let y = 1;
-
-    while (exponent > 1) {
-      if (exponent % 2 === 0) {
-        b *= b;
-        b %= m;
-
-        exponent /= 2;
-      } else {
-        y *= b;
-        b *= b;
-
-        y %= m;
-        b %= m;
-
-        exponent = (exponent - 1) / 2;
-      }
-    }
-
-    return (b * y) % m
-  }
-
-  function _isPrimeTrialDivision(p) {
-    let sqrtP = Math.ceil(Math.sqrt(p));
-
-    for (let i = 23; i <= sqrtP + 1; i += 2) {
-      if (p % i === 0)
-        return false
-    }
-
-    return true
-  }
-
-  function _isProbablePrimeMillerRabin(p, base=2) {
-    let pm1 = p - 1;
-    let pm1div = pm1;
-    let d, r = 0;
-
-    while (true) {
-      if (pm1div % 2 === 0) {
-        pm1div /= 2;
-
-        r++;
-      } else {
-        d = pm1div;
-        break
-      }
-    }
-
-    let x = expMod(base, d, p);
-
-    if (x === 1 || x === pm1)
-      return true
-
-    for (let i = 0; i < r - 1; ++i) {
-      x = squareMod(x, p);
-
-      if (x === pm1)
-        return true
-    }
-
-    return false
-  }
-
-  function isPerfectSquare(p) {
-    let h = p & 0xF;
-
-    if (h > 9)
-      return false
-
-    if (h !== 2 && h !== 3 && h !== 5 && h !== 6 && h !== 7 && h !== 8) {
-      let t = Math.floor(Math.sqrt(p) + 0.5);
-      return t * t === p
-    }
-
-    return false
-  }
-
-  function _isPrimeLarge(p) {
-    let bases;
-
-    if (p < 2047)
-      bases = [2];
-    else if (p < 1373653)
-      bases = [2, 3];
-    else if (p < 9080191)
-      bases = [31, 73];
-    else if (p < 25326001)
-      bases = [2, 3, 5];
-    else if (p < 3215031751)
-      bases = [2, 3, 5, 7];
-    else if (p < 4759123141)
-      bases = [2, 7, 61];
-    else if (p < 1122004669633)
-      bases = [2, 13, 23, 1662803];
-    else if (p < 2152302898747)
-      bases = [2, 3, 5, 7, 11];
-    else if (p < 3474749660383)
-      bases = [2, 3, 5, 7, 11, 13];
-    else if (p < 341550071728321)
-      bases = [2, 3, 5, 7, 11, 13, 17];
-    else
-      bases = [2, 3, 5, 7, 11, 13, 17, 19, 23];
-
-
-    return bases.every(base => _isProbablePrimeMillerRabin(p, base))
-  }
-
-  let smallPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223];
-
-  function isPrime(p) {
-    if (!Number.isInteger(p) || p < 2)
-      return false
-
-    // Test for small primes
-    for (let i = 0; i < smallPrimes.length; ++i) {
-      let prime = smallPrimes[i];
-
-      if (p === prime)
-        return true
-      if (p % prime === 0)
-        return false
-    }
-
-    if (p < 150) {
-      return _isPrimeTrialDivision(p)
-    } else {
-      return _isPrimeLarge(p)
-    }
-  }
-
-  function pollardBrent(n) {
-    let y = getRandomInt(1, n-1), c = getRandomInt(1, n-1), m = getRandomInt(1, n-1);
-    let g = 1, r = 1, q = 1, x, ys;
-
-    while (g === 1) {
-      x = y;
-
-      for (let i = 0; i < r; ++i) {
-        y = addMod(squareMod(y, n), c, n);
-      }
-
-      let k = 0;
-      while (k < r && g === 1) {
-        ys = y;
-
-        let iMax = Math.min(m, r-k);
-
-        for (let i = 0; i < iMax; ++i) {
-          y = addMod(squareMod(y, n), c, n);
-
-          q = mulMod(q, Math.abs(x - y), n);
-        }
-
-        g = gcd(q, n);
-        k += m;
-      }
-
-      r *= 2;
-    }
-
-    if (g === n) {
-      while (true) {
-        ys = addMod(squareMod(ys, n), c, n);
-        g = gcd(Math.abs(x - ys), n);
-
-        if (g > 1)
-          break
-      }
-    }
-
-    return g
-  }
-
-  function factor(n) {
-    if (Math.abs(n) > Number.MAX_SAFE_INTEGER)
-      throw new Error("Number to factor is too large to be represented by a JS Number")
-
-    n = Math.floor(n);
-
-    if (n === 0)
-      return [0]
-    if (n === 1)
-      return [1]
-
-    let factors = [];
-
-    if (n < 0) {
-      factors.push(-1);
-      n = -n;
-    }
-
-    for (let i = 0; i < smallPrimes.length; ++i) {
-      let prime = smallPrimes[i];
-
-      while (true) {
-        if (n % prime === 0) {
-          factors.push(prime);
-
-          n /= prime;
-        } else {
-          break
-        }
-      }
-
-      if (n === 1)
-        break
-    }
-
-    if (n === 1)
-      return factors
-
-    while (true) {
-      let factor = pollardBrent(n);
-
-      if (n === factor) {
-        factors.push(factor);
-
-        break
-      } else {
-        n /= factor;
-
-        factors.push(factor);
-      }
-    }
-
-    factors.sort((a, b) => a - b);
-
-    return factors
-  }
-
-  function distinctFactors(n) {
-    return Array.from(new Set(factor(n)))
-  }
-
-  function eulerPhi(n) {
-    let factors = distinctFactors(n);
-
-    let prod = 1;
-
-    prod *= n;
-
-    for (let i = 0; i < factors.length; ++i) {
-      let factor = factors[i];
-
-      // This order of evaluation prevents overflow
-      prod /= factor;
-      prod *= factor - 1;
-    }
-
-    return prod
-  }
-
-  function eratosthenes(n) {
-    // Eratosthenes algorithm to find all primes under n
-    let array = [], upperLimit = Math.sqrt(n), output = [];
-
-    // Make an array from 2 to (n - 1)
-    for (let i = 0; i < n; i++) {
-      array.push(true);
-    }
-
-    // Remove multiples of primes starting from 2, 3, 5,...
-    for (let i = 2; i <= upperLimit; i++) {
-      if (array[i]) {
-        for (var j = i * i; j < n; j += i) {
-          array[j] = false;
-        }
-      }
-    }
-
-    // All array[i] set to true are primes
-    for (let i = 2; i < n; i++) {
-      if (array[i]) {
-        output.push(i);
-      }
-    }
-
-    return output;
-  }
-
-  function eratosthenesWithPi(n) {
-    let array = new Uint8Array(n), upperLimit = Math.ceil(Math.sqrt(n)), output = [];
-    let pi = [0, 0];
-
-    array.fill(1);
-
-    for (let i = 2; i <= upperLimit; i++) {
-      if (array[i] === 1) {
-        let iSquared = i * i;
-
-        for (let j = iSquared; j < n; j += i) {
-          array[j] = 0;
-        }
-      }
-    }
-
-    let cnt = 0;
-
-    for (let i = 2; i < n; i++) {
-      if (array[i] === 1) {
-        output.push(i);
-        cnt++;
-      }
-
-      pi.push(cnt);
-    }
-
-    return {primes: output, pi: new Uint32Array(pi)}
-  }
-
-  const DEFAULT_BLOCK_SIZE = 1e5;
-
-  const phiMemo = [];
-  let primes = [];
-
-  function Phi(m, b) {
-    if (b === 0)
-      return m
-    if (m === 0)
-      return 0
-
-    if (m >= 800) {
-      return Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1)
-    }
-
-    let t = b * 800 + m;
-
-    if (!phiMemo[t]) {
-      phiMemo[t] = Phi(m, b - 1) - Phi(Math.floor(m / primes[b - 1]), b - 1);
-    }
-
-    return phiMemo[t]
-  }
-
-  const smallValues = [0, 0, 1, 2, 2, 3];
-  let piValues;
-
-  function computeEratosthenes(top) {
-    let res = eratosthenesWithPi(top + 1);
-
-    primes = new Uint32Array(res.primes);
-    piValues = res.pi;
-  }
-
-  computeEratosthenes(1000);
-
-  function primeCountingFunction(x) {
-    if (x > 1e10)
-      return li(x)
-
-    if (x < 6)
-      return smallValues[x]
-    if (x < piValues.length)
-      return piValues[x]
-
-    // The square root of x
-    let root2 = Math.floor(Math.sqrt(x));
-    let root3 = Math.floor(x ** (1/3));
-
-    let top = Math.floor(x / root3) + 1;
-
-    if (top + 1 >= primes.length) {
-      computeEratosthenes(top);
-    }
-
-    let a = piValues[root3 + 1], b = piValues[root2 + 1];
-
-    let sum = 0;
-
-    for (let i = a; i < b; ++i) {
-      let p = primes[i];
-
-      sum += piValues[Math.floor(x / p)] + 1;
-    }
-
-    let primeCnt = b - a;
-
-    sum -= primeCnt * (piValues[primes[a]] - 1);
-    sum -= primeCnt * (primeCnt + 1) / 2;
-
-    let phi = Phi(x, a);
-
-    return phi + a - 1 - sum
-  }
-
-  let sieveArray, piArray;
-
-  const potPrimeIndices = new Uint8Array([0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]);
-  const indicesLength = 30;
-
-  function meisselLehmerExtended(x) {
-    if (x < 1000)
-      return primeCountingFunction(x)
-
-    // The square root of x
-    let root2 = Math.floor(Math.sqrt(x));
-    let root3 = Math.floor(x ** (1/3));
-
-    let top = root3 + 2;
-
-    if (top >= primes.length) {
-      let res = eratosthenesWithPi(top + 2);
-
-      primes = res.primes;
-      piValues = res.pi;
-    }
-
-    let a = piValues[root3 + 1], b = piValues[root2 + 1];
-
-    let BLOCK_SIZE = Math.max(a + 1, DEFAULT_BLOCK_SIZE);
-
-    if (!sieveArray || BLOCK_SIZE > sieveArray.length) {
-      sieveArray = new Uint8Array(BLOCK_SIZE);
-      piArray = new ((1.01 * li(x) < 4.2e9) ? Uint32Array : Array) (BLOCK_SIZE);
-    }
-
-    let ai = root3 + 1;
-    let bi = Math.ceil(x / root3) + 1;
-    let egg = root2 + 1;
-    let primeCnt = piValues[ai - 1], offset = ai;
-    let sum = 0;
-    let requiredHorses = [];
-
-    while (true) {
-      if (offset >= bi) {
-        break
-      }
-
-      if (offset + BLOCK_SIZE >= bi) {
-        BLOCK_SIZE = bi - offset;
-      }
-
-      let start = mod(-offset, 30);
-
-      sieveArray.fill(0);
-
-      for (let i = 0; i < indicesLength; ++i) {
-        let index = potPrimeIndices[i];
-
-        if (start >= i) {
-          if (index)
-            sieveArray[start - i] = 1;
-        } else {
-          break
-        }
-      }
-
-      const maxI = sieveArray.length - indicesLength - start;
-
-      let i = 0;
-
-      for (; i < maxI; i += indicesLength) {
-        let index = start + i;
-
-        sieveArray.set(potPrimeIndices, index);
-      }
-
-      sieveArray.set(potPrimeIndices.subarray(0, (sieveArray.length % indicesLength) - start), start + i);
-
-      for (let i = 3; i < a; ++i) {
-        let p = primes[i];
-
-        let cow = offset % p;
-
-        let m = 0;
-
-        if (cow === 0)
-          m = offset;
-        else
-          m = offset - cow + p;
-
-        for (let j = 0; j < BLOCK_SIZE; j += p) {
-          let potP = j + m;
-
-          if (potP !== p) {
-            sieveArray[potP - offset] = 0;
-          }
-        }
-      }
-
-      for (let i = 0; i < BLOCK_SIZE; ++i) {
-        if (sieveArray[i] === 1) {
-          let p = i + offset;
-
-          primeCnt++;
-
-          if (ai <= p && p < egg) {
-            sum += 1 - primeCnt;
-            requiredHorses.push(Math.floor(x / p));
-          }
-        }
-
-        piArray[i] = primeCnt;
-      }
-
-      for (let i = requiredHorses.length - 1; i >= 0; --i) {
-        let pop = requiredHorses[i];
-
-        if (pop < offset + BLOCK_SIZE) {
-          sum += piArray[pop - offset];
-        } else {
-          break
-        }
-
-        requiredHorses.pop();
-      }
-
-      offset += BLOCK_SIZE;
-    }
-
-    return Phi(x, a) + a - 1 - sum
-  }
-
-  const piecewise$1 = (val1, cond, ...args) => {
-    if (cond)
-      return val1
-    if (args.length === 0) {
-      if (cond === undefined)
-        return val1
-      else
-        return 0
-    }
-
-    return piecewise$1(...args)
-  };
-
-  const cchain = (val1, comparison, val2, ...args) => {
-    switch (comparison) {
-      case "<":
-        if (val1 >= val2)
-          return false
-        break
-      case ">":
-        if (val1 <= val2)
-          return false
-        break
-      case "<=":
-        if (val1 > val2)
-          return false
-        break
-      case ">=":
-        if (val1 < val2)
-          return false
-        break
-      case "==":
-        if (val1 !== val2)
-          return false
-        break
-      case "!=":
-        if (val1 === val2)
-          return false
-        break
-    }
-
-    if (args.length === 0)
-      return true
-    else
-      return cchain(val2, ...args)
-  };
-
-  const ExtraFunctions$1 = {
-    Sqrt: Math.sqrt,
-    Cbrt: Math.cbrt,
-    Log2: Math.log2,
-    Log10: Math.log10,
-    Ln: Math.log,
-    LogB: (b, v) => {
-      return Math.log(v) / Math.log(b)
-    },
-    Factorial: (a) => {
-      return ExtraFunctions$1.Gamma(a + 1)
-    },
-    Gamma: (a) => {
-      return gamma$1(a)
-    },
-    LnGamma: (a) => {
-      return ln_gamma(a)
-    },
-    Digamma: (a) => {
-      return digamma(a)
-    },
-    Trigamma: (a) => {
-      return trigamma(a)
-    },
-    Polygamma: (n, a) => {
-      return polygamma(n, a)
-    },
-    Arccot: (z) => {
-      let t = Math.atan(1 / z);
-
-      if (t < 0) {
-        t += Math.PI;
-      }
-
-      return t
-    },
-    PowRational: (x, p, q) => {
-      // Calculates x ^ (p / q), where p and q are integers
-
-      if (p === 0) {
-        return 1
-      }
-
-      let GCD = gcd(p, q);
-
-      if (GCD !== 1) {
-        p /= GCD;
-        q /= GCD;
-      }
-
-      if (x >= 0) {
-        return Math.pow(x, p / q)
-      } else {
-        if (mod(q, 2) === 0)
-          return NaN
-
-        let ret = Math.pow(-x, p / q);
-        if (mod(p, 2) === 0) {
-          return ret
-        } else {
-          return -ret
-        }
-      }
-    },
-    Pow: (x, r) => {
-      return Math.pow(x, r)
-    },
-    Im: (x) => {
-      return 0
-    },
-    Re: (x) => {
-      return x
-    },
-    Mod: (n, m) => {
-      return ((n % m) + m) % m
-    },
-    Piecewise: piecewise$1,
-    CChain: cchain,
-    Cmp: {
-      LessThan: (a, b) => a < b,
-      GreaterThan: (a, b) => a > b,
-      LessEqualThan: (a, b) => a <= b,
-      GreaterEqualThan: (a, b) => a >= b,
-      Equal: (a,b) => a === b,
-      NotEqual: (a,b) => a !== b
-    },
-    Logic: {
-      And: (a, b) => a && b,
-      Or: (a, b) => a || b
-    },
-    Floor: Math.floor,
-    Ceil: Math.ceil,
-    Zeta: zeta,
-    Eta: eta,
-    Frac: (x) => x - Math.floor(x),
-    Sign: Math.sign,
-    Round: Math.round,
-    Trunc: Math.trunc,
-    IsFinite: isFinite,
-    Ei: ei,
-    Li: li,
-    Sinc: (x) => x === 0 ? 1 : Math.sin(x) / x,
-    NormSinc: (x) => ExtraFunctions$1.Sinc(x * Math.PI),
-    Si: Si$1,
-    Ci: Ci$1,
-    Erf: erf,
-    Erfc: erfc,
-    Gcd: (a, b) => gcd(Math.abs(a), Math.abs(b)),
-    Lcm: (a, b) => a * b / ExtraFunctions$1.Gcd(a, b),
-    FresnelS: S,
-    FresnelC: C$1,
-    InverseErf: inverseErf,
-    InverseErfc: inverseErfc,
-    ProductLog: productLog,
-    ProductLogBranched: productLogBranched,
-    EllipticE: ellipticEModulus,
-    EllipticK: ellipticKModulus,
-    EllipticPi: ellipticPi,
-    Agm: agm,
-    Abs: Math.abs,
-    PrimeCount: (n) => {
-      if (n <= 1) {
-        return 0
-      }
-
-      return eratosthenes(n+1).length
-    }
-  };
-
-  const RealFunctions = {...BasicFunctions, ...ExtraFunctions$1};
-
-  class ComplexInterval {
-    constructor(reMin, reMax, imMin, imMax) {
-      this.reMin = reMin;
-      this.reMax = reMax;
-      this.imMin = imMin;
-      this.imMax = imMax;
-    }
-  }
-
   const Typecasts$1 = {
     RealToComplex: (r) => new Complex$1(r),
     RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
@@ -13654,58 +13574,16 @@ void main() {
     }
   }
 
-  const MAX_BERNOULLI = 1e4;
-
-  const BERNOULLI_N_NUMBERS = new Float64Array(MAX_BERNOULLI);
-  let BERNOULLI_N_INDEX = 0;
-
-  function computeBernoulli(index) {
-    for (let i = BERNOULLI_N_INDEX; i <= index; ++i) {
-      let value = i === 0 ? 1 : 0;
-
-      for (let j = 0; j < i; ++j) {
-        value -= nCr(i, j) * BERNOULLI_N_NUMBERS[j] / (i - j + 1);
-      }
-
-      BERNOULLI_N_NUMBERS[i] = value;
-    }
-
-    BERNOULLI_N_INDEX = index + 1;
-  }
-
-  function bernoulliN(n) {
-    if (n > MAX_BERNOULLI) {
-      // Okay, that's a bit much
-      throw new Error("Excessive n")
-    }
-
-    if (n < BERNOULLI_N_INDEX)
-      return BERNOULLI_N_NUMBERS[n]
-
-    computeBernoulli(n);
-
-    return BERNOULLI_N_NUMBERS[n]
-  }
-
-  function bernoulliP(n) {
-    if (n === 1)
-      return 0.5
-
-    return bernoulliN(n)
-  }
-
-  const bernoulli = bernoulliP;
-
   const BooleanFunctions = {
     And: (a, b) => a && b,
     Or: (a, b) => a || b
   };
 
-  const Add$2 = (v1, v2) => {
+  const Add$4 = (v1, v2) => {
     return new Vec2(v1.x + v2.x, v1.y + v2.y)
   };
 
-  const Subtract$2 = (v1, v2) => {
+  const Subtract$3 = (v1, v2) => {
     return new Vec2(v1.x - v2.x, v1.y - v2.y)
   };
 
@@ -13713,7 +13591,7 @@ void main() {
     return v1.x * v2.x + v1.y * v2.y
   };
 
-  const Construct$1 = (x, y) => {
+  const Construct$2 = (x, y) => {
     return new Vec2(x, y)
   };
 
@@ -13722,10 +13600,10 @@ void main() {
   };
 
   var BasicArithmetic = /*#__PURE__*/Object.freeze({
-    Add: Add$2,
-    Subtract: Subtract$2,
+    Add: Add$4,
+    Subtract: Subtract$3,
     Dot: Dot,
-    Construct: Construct$1,
+    Construct: Construct$2,
     FromComplex: FromComplex
   });
 
@@ -13799,6 +13677,13 @@ void main() {
     }
   }
 
+  const IntervalTypecasts = {
+    Identity: (x) => x,
+    RealToComplex: (int) => {
+      return new ComplexInterval(int.min, int.max, 0, 0, int.defMin, int.defMax)
+    }
+  };
+
   function readDataset(file) {
     return fetch(file)
   }
@@ -13850,11 +13735,12 @@ void main() {
   exports.Colors = Colors;
   exports.Complex = Complex$1;
   exports.ComplexFunctions = ComplexFunctions;
+  exports.ComplexInterval = ComplexInterval;
+  exports.ComplexIntervalFunctions = ComplexIntervalFunctions;
   exports.ConstantNode = ConstantNode;
   exports.ConwaysGameOfLifeElement = ConwaysGameOfLifeElement;
   exports.Dataset2D = Dataset2D;
   exports.DefaultUniverse = DefaultUniverse;
-  exports.EquationPlot2D = EquationPlot2D;
   exports.FresnelC = C$1;
   exports.FresnelS = S;
   exports.FunctionPlot2D = FunctionPlot2D;
@@ -13868,9 +13754,7 @@ void main() {
   exports.INTEGER_FACTORIALS = INTEGER_FACTORIALS;
   exports.InteractiveFunctionPlot2D = InteractiveFunctionPlot2D;
   exports.Interpolations = Interpolations;
-  exports.Interval = Interval;
-  exports.IntervalFunctions = IntervalFunctions;
-  exports.IntervalSet = IntervalSet;
+  exports.IntervalTypecasts = IntervalTypecasts;
   exports.LANCZOS_COEFFICIENTS = LANCZOS_COEFFICIENTS;
   exports.Label2D = Label2D;
   exports.LabeledPoint = LabeledPoint;
@@ -13885,6 +13769,9 @@ void main() {
   exports.RESERVED_FUNCTIONS = RESERVED_FUNCTIONS;
   exports.RESERVED_VARIABLES = RESERVED_VARIABLES;
   exports.RealFunctions = RealFunctions;
+  exports.RealInterval = RealInterval;
+  exports.RealIntervalFunctions = RealIntervalFunctions;
+  exports.RealIntervalSet = RealIntervalSet;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
   exports.Typecasts = Typecasts$1;
@@ -13928,10 +13815,11 @@ void main() {
   exports.factorial = factorial;
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
-  exports.gamma = gamma$1;
+  exports.gamma = gamma;
   exports.getDashedPolyline = getDashedPolyline;
   exports.getEiCoeff = getEiCoeff;
   exports.getFunction = getFunction;
+  exports.getIntervals = getIntervals;
   exports.getLineIntersection = getLineIntersection;
   exports.getPolygammaNumeratorPolynomial = getPolygammaNumeratorPolynomial;
   exports.getVariable = getVariable;
@@ -13940,7 +13828,6 @@ void main() {
   exports.hypergeometric = hypergeometric;
   exports.interpolate = interpolate;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
-  exports.intervalEqFindBoxes = intervalEqFindBoxes;
   exports.inverseErf = inverseErf;
   exports.inverseErfc = inverseErfc;
   exports.isPerfectSquare = isPerfectSquare;
@@ -13949,6 +13836,7 @@ void main() {
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
   exports.ln_gamma = ln_gamma;
+  exports.lowerIncompleteGamma = lowerIncompleteGamma;
   exports.mulMod = mulMod;
   exports.nextPowerOfTwo = nextPowerOfTwo;
   exports.parseString = parseString;
@@ -13964,11 +13852,14 @@ void main() {
   exports.sample_parametric_1d = sample_parametric_1d;
   exports.squareMod = squareMod;
   exports.testFunctionAccuracy = testFunctionAccuracy;
+  exports.toggleCorrectRounding = toggleCorrectRounding;
   exports.tokenizer = tokenizer;
   exports.trigamma = trigamma;
   exports.undefineFunction = undefineFunction;
   exports.undefineVariable = undefineVariable;
+  exports.upperIncompleteGamma = upperIncompleteGamma;
   exports.utils = utils;
+  exports.wrapIntervalSetFunction = wrapIntervalSetFunction;
   exports.zeta = zeta;
 
   return exports;

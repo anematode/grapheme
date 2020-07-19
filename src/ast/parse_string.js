@@ -417,7 +417,7 @@ function parse_tokens(tokens) {
   return root
 }
 
-function parseString(string) {
+function parseString(string, types={}) {
   check_parens_balanced(string)
 
   let tokens = []
@@ -428,7 +428,12 @@ function parseString(string) {
 
   check_valid(string, tokens)
 
-  return parse_tokens(tokens)
+  let node = parse_tokens(tokens).children[0]
+
+  node.resolveTypes(types)
+  node.setParents()
+
+  return node
 }
 
 export {parseString, tokenizer}

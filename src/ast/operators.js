@@ -1,4 +1,8 @@
 import { levenshtein, isWorker } from "../core/utils"
+import { RealFunctions } from '../math/real/functions'
+import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
+import { ComplexFunctions } from '../math/complex/functions'
+import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
 
 // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
@@ -24,11 +28,38 @@ function throwInvalidType(typename) {
   }
 }
 
+function retrieveEvaluationFunction(str) {
+  let fName = str.split('.').pop()
+
+  const realFunctions = RealFunctions
+  const realIntervalFunctions = RealIntervalFunctions
+  const complexFunctions = ComplexFunctions
+  const complexIntervalFunctions = ComplexIntervalFunctions
+  const intervalTypecasts = IntervalTypecasts
+
+  if (str.includes("RealFunctions"))
+    return realFunctions[fName]
+  if (str.includes("RealIntervalFunctions"))
+    return realIntervalFunctions[fName]
+  if (str.includes("ComplexFunctions"))
+    return complexFunctions[fName]
+  if (str.includes("ComplexIntervalFunctions"))
+    return complexIntervalFunctions[fName]
+
+}
+
 class OperatorDefinition {
   constructor(params={}) {
     this.returns = params.returns || "real"
 
     throwInvalidType(this.returns)
+
+    if (params.latexFunc)
+      this.latexFunc = params.latexFunc
+
+    this.latexOperator = params.latexOperator
+    this.latexType = params.latexType
+    this.latexPrecedence = params.latexPrecedence
 
     let evaluate = params.evaluate
 
@@ -36,6 +67,34 @@ class OperatorDefinition {
       this.evaluate = evaluate
     else
       this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate
+
+    this.evaluateFunc = params.evaluateFunc ? params.evaluateFunc : retrieveEvaluationFunction(this.evaluate)
+
+    try {
+      const evaluateInterval = this.evaluate.replace(/Functions/g, "IntervalFunctions")
+
+      this.evaluateIntervalFunc = params.evaluateIntervalFunc ? params.evaluateIntervalFunc : retrieveEvaluationFunction(evaluateInterval)
+
+      this.evaluateInterval = evaluateInterval
+    } catch (e) {
+
+    }
+
+    if (params.evaluateInterval) {
+      this.evaluateInterval = params.evaluateInterval
+    }
+
+    if (!params.noGraphemePrefix) {
+      const evaluateInterval = this.evaluateInterval
+
+      this.evaluateInterval = ((isWorker || evaluateInterval.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluateInterval
+    }
+  }
+
+  latex(nodes, options={}) {
+    if (this.latexFunc) {
+      return this.latexFunc(nodes, options)
+    }
   }
 }
 
@@ -105,6 +164,7 @@ class VariadicDefinition extends OperatorDefinition {
       signature: sig,
       returns: this.returns,
       evaluate: this.evaluate,
+      evaluateInterval: this.evaluateInterval,
       desc: this.desc
     })
   }
@@ -156,12 +216,6 @@ const Typecasts = {
       returns: 'complex',
       evaluate: "Typecasts.RealToComplex"
     })
-  ],
-  'real_interval': [
-    new TypecastDefinition({
-      returns: 'complex_interval',
-      evaluate: "Typecasts.RealIntervalToComplexInterval"
-    })
   ]
 }
 
@@ -196,19 +250,31 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Multiply",
-      desc: "Returns the product of two integers."
+      intervalEvaluate: "RealIntervalFunctions.Multiply",
+      desc: "Returns the product of two integers.",
+      latexOperator: String.raw`\cdot`,
+      latexType: "infix",
+      latexPrecedence: 2
     }),
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Multiply",
-      desc: "Returns the product of two real numbers."
+      intervalEvaluate: "RealIntervalFunctions.Multiply",
+      desc: "Returns the product of two real numbers.",
+      latexOperator: String.raw`\cdot`,
+      latexType: "infix",
+      latexPrecedence: 2
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Multiply",
-      desc: "Returns the product of two complex numbers."
+      intervalEvaluate: "ComplexIntervalFunctions.Multiply",
+      desc: "Returns the product of two complex numbers.",
+      latexOperator: String.raw`\cdot`,
+      latexType: "infix",
+      latexPrecedence: 2
     })
   ],
   '+': [
@@ -956,7 +1022,36 @@ const Operators = {
     new NormalDefinition({
       signature: ["real"],
       returns: "complex",
-      evaluate: "ComplexFunctions.Cis"
+      evaluate: "ComplexFunctions.Cis",
+      desc: "Returns cos(theta) + i sin(theta)."
+    })
+  ],
+  "Cl2": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Cl2",
+      desc: "Evaluates the Clausen function of x."
+    })
+  ],
+  "beta": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.Beta",
+      desc: "Evaluates the beta function at a,b."
+    })
+  ],
+  "exp": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.Exp"
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.Exp"
     })
   ]
 }

@@ -7,6 +7,7 @@ import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
 import { getFunctionName } from '../core/utils'
 import { defineFunction, getFunction, undefineFunction } from '../ast/user_defined'
+import { getIntervals, RealInterval } from '../math/real_interval/interval'
 
 // Allowed plotting modes:
 // rough = linear sample, no refinement
@@ -98,13 +99,97 @@ class FunctionPlot2D extends InteractiveElement {
     let x1 = this.plottingAxis === 'x' ? coords.x1 : coords.y2
     let x2 = this.plottingAxis === 'x' ? coords.x2 : coords.y1
 
-    if (this.plottingMode === "rough") {
-      let points = width * this.quality
+    let forceNormalPlot = false
 
-      vertices = sample_1d(x1, x2, this.function, points)
-    } else {
-      vertices = adaptively_sample_1d(x1, x2, this.function,
-        width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth)
+    try {
+      if (this.plottingMode === "rough") {
+        let points = width * this.quality
+
+        vertices = sample_1d(x1, x2, this.function, points)
+      } else if (this.plottingMode === "interval") {
+        let intervalFunc = getFunction(this.functionName).evaluateInterval
+        if (!intervalFunc)
+          forceNormalPlot = true
+
+        let points = width * Math.max(this.quality, 1)
+        let space = (x2 - x1) / (2 * points)
+        let prevY = 0
+
+        for (let i = -1; i <= points; ++i) {
+          let x = i / points * (x2 - x1) + x1
+          let minX = x - space, maxX = x + space
+
+          let interval = intervalFunc(new RealInterval(minX, maxX))
+
+          if (!interval.defMax || isNaN(interval.min) || isNaN(interval.max)) {
+            vertices.push(NaN, NaN)
+            prevY = NaN
+          } else {
+            let intervals = getIntervals(interval)
+
+            if (intervals.length === 0)
+              continue
+
+            let closestIntervalI = -1
+            let dist = Infinity
+            let cow = 0
+
+            intervals.forEach((int, i) => {
+              let distMx = Math.abs(int.max - prevY)
+              let distMn = Math.abs(int.min - prevY)
+
+              if (distMx < dist) {
+                cow=0
+                dist = distMx
+                closestIntervalI = i
+              }
+
+              if (distMn < dist) {
+                cow=1
+                dist=distMn
+                closestIntervalI = i
+              }
+            })
+
+            if (closestIntervalI !== -1) {
+              let firstInterval = intervals[closestIntervalI]
+
+              let min = utils.bound(firstInterval.min)
+              let max = utils.bound(firstInterval.max)
+
+              if (cow === 0) {
+                vertices.push(minX, max)
+
+                vertices.push(maxX, min)
+                prevY = min
+              } else {
+                vertices.push(minX, min)
+
+                vertices.push(maxX, max)
+                prevY = max
+              }
+            }
+
+            intervals.forEach((int, i) => {
+              if (i === closestIntervalI)
+                return
+
+              let max = utils.bound(int.max)
+
+              vertices.push(NaN, NaN, x, utils.bound(int.min), x, max, NaN, NaN)
+
+              prevY = max
+            })
+          }
+        }
+      }
+
+      if (this.plottingMode === "fine" || forceNormalPlot) {
+        vertices = adaptively_sample_1d(x1, x2, this.function,
+          width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth)
+      }
+    } catch (e) {
+      console.log(e)
     }
 
     if (this.plottingAxis !== 'x') {

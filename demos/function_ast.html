@@ -13,7 +13,8 @@
 
 <body>
 
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.css" integrity="sha384-bsHo4/LA+lkZv61JspMDQB9QP1TtO4IgOf2yYS+J6VdAYLVyx1c3XKcsHh0Vy8Ws" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.js" integrity="sha384-4z8mjH4yIpuK9dIQGR1JwbrfYsStrNK6MP+2Enhue4eyo0XlBDXOIPc8b6ZU0ajz" crossorigin="anonymous"></script>
 <script src="../build/grapheme.js"></script>
 
 <script>
@@ -43,9 +44,22 @@
     plot.setSize(window.innerWidth, window.innerHeight);
   }
 
+  const fromNumber = Grapheme.RealInterval.fromNumber
+
+  let int1 = fromNumber("2")
+  let int2 = fromNumber("2")
+
+
+
+  function updateLatex() {
+
+  }
+  document.getElementById()
+
 </script>
 
 <input style="position:absolute; top: 10px; left: 10px" type="text" value="" oninput="tree.root=Grapheme.parseString(this.value); tree.markUpdate()"/>
+<div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
 
 </body>
 

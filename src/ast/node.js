@@ -30,6 +30,14 @@ class ASTNode {
     return this.children[0]._getCompileText(exportedVariables)
   }
 
+  _getIntervalCompileText(exportedVariables=['x']) {
+    return this.children[0]._getIntervalCompileText(exportedVariables)
+  }
+
+  evaluate(scope) {
+    return this.children[0].evaluate(scope)
+  }
+
   applyAll (func, depth = 0, childrenFirst=false) {
     if (!childrenFirst)
       func(this, depth)
@@ -44,7 +52,7 @@ class ASTNode {
       func(this, depth)
   }
 
-  compile(exportedVariables) {
+  compile(exportedVariables=[]) {
     if (!this.returnType) {
       throw new Error("Need to call resolveTypes before compiling node.")
     }
@@ -54,7 +62,7 @@ class ASTNode {
     return new Function(...exportedVariables, "return " + compileText)
   }
 
-  compileInterval(exportedVariables) {
+  compileInterval(exportedVariables=[]) {
     if (!this.returnType) {
       throw new Error("Need to call resolveTypes before compiling node.")
     }
@@ -70,10 +78,6 @@ class ASTNode {
     return new Function(...exportedVariables, "return " + compileText)
   }
 
-  derivative(variable) {
-    return this.children[0].derivative(variable)
-  }
-
   clone () {
     return new ASTNode({
       children: this.children.map(child => child.clone()),
@@ -81,17 +85,8 @@ class ASTNode {
     })
   }
 
-  getDependencies() {
-    let varDependencies = new Set()
-    let funcDependencies = new Set()
-
-    this.applyAll(child => {
-      if (child instanceof VariableNode) {
-        varDependencies.add(child.name)
-      } else if (child instanceof OperatorNode) {
-        funcDependencies.add()
-      }
-    })
+  getTreeText() {
+    return this.getText() + ' -> ' + this.returnType
   }
 
   getText () {
@@ -116,10 +111,6 @@ class ASTNode {
     return latex
   }
 
-  needsParentheses () {
-    return !(this.children.length <= 1 && (!this.children[0] || !this.children[0].hasChildren()))
-  }
-
   resolveTypes(givenTypes) {
     this.children.forEach(child => child.resolveTypes(givenTypes))
 
@@ -132,6 +123,34 @@ class ASTNode {
         child.children.forEach(subchild => subchild.parent = child)
       }
     })
+  }
+
+  equals(node) {
+    if (this.returnType !== node.returnType)
+      return false
+
+    for (let i = 0; i < this.children.length; ++i) {
+      if (!this.children[i].equals(node.children[i]))
+        return false
+    }
+
+    return true
+  }
+
+  substitute(node, expr) {
+    this.applyAll((n) => {
+      const children = n.children
+
+      for (let i = 0; i < children.length; ++i) {
+        const child = children[i]
+
+        if (child.equals(node)) {
+          children[i] = expr.clone()
+        }
+      }
+    }, 0, true)
+
+    this.setParents()
   }
 
   toJSON () {
@@ -168,6 +187,14 @@ class VariableNode extends ASTNode {
     this.name = name
   }
 
+  evaluate(scope) {
+    const value = scope[this.name]
+
+    if (value !== undefined) {
+      return value
+    }
+  }
+
   _getCompileText(exportedVariables) {
     if (comparisonOperators.includes(this.name))
       return `"${this.name}"`
@@ -177,15 +204,21 @@ class VariableNode extends ASTNode {
       return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
   }
 
-  clone () {
-    return new VariableNode({ name: this.name })
+  _getIntervalCompileText (exportedVariables = ['x']) {
+    if (comparisonOperators.includes(this.name))
+      return `"${this.name}"`
+    if (exportedVariables.includes(this.name))
+      return this.name
+    else
+      return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
   }
 
-  derivative(variable) {
-    if (this.name === variable)
-      return new ConstantNode({value: 1})
-    else
-      return new ConstantNode({value: 0})
+  clone () {
+    let node = new VariableNode({ name: this.name })
+
+    node.returnType = this.returnType
+
+    return node
   }
 
   getText () {
@@ -196,24 +229,8 @@ class VariableNode extends ASTNode {
     return false
   }
 
-  latex () {
-    if (comparisonOperators.includes(this.name)) {
-      switch (this.name) {
-        case '>':
-        case '<':
-          return this.name
-        case '>=':
-          return '\\geq '
-        case '<=':
-          return '\\leq '
-        case '==':
-          return '='
-        case '!=':
-          return '\\neq '
-      }
-    }
-
-    return substituteGreekLetters(this.name)
+  equals(node) {
+    return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
   }
 
   resolveTypes(typeInfo) {
@@ -231,7 +248,7 @@ class VariableNode extends ASTNode {
         throw new Error("UserDefinedVariable " + this.name + " is defined but has unknown type. Please properly define the variable.")
       }
     } else {
-      throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
+      this.returnType = "real" //throw new Error("Cannot resolve variable " + this.name + ". Please define it.")
     }
 
   }
@@ -308,10 +325,31 @@ class OperatorNode extends ASTNode {
     }).join(',') + ")"
   }
 
+  _getIntervalCompileText(exportedVariables) {
+    if (!this.definition)
+      throw new Error("huh")
+
+    const definition = this.definition
+
+    return this.definition.evaluateInterval + "(" + this.children.map((child, index) => {
+      let text = child._getIntervalCompileText(exportedVariables)
+
+      if (child.returnType !== definition.signature[index]) {
+        let func = getCastingFunction(child.returnType, definition.signature[index])
+
+        text = func + '(' + text + ')'
+      }
+
+      return text
+    }).join(',') + ")"
+  }
+
   clone () {
     let node = new OperatorNode({ operator: this.operator })
 
     node.children = this.children.map(child => child.clone())
+    node.definition = this.definition
+    node.returnType = this.returnType
 
     return node
   }
@@ -324,12 +362,20 @@ class OperatorNode extends ASTNode {
     return this.definition.derivative(variable, ...this.children)
   }
 
+  evaluate(scope) {
+    return this.definition.evaluateFunc(...this.children.map(child => child.evaluate(scope)))
+  }
+
   getText () {
     return this.operator
   }
 
   latex () {
     return getLatex(this)
+  }
+
+  equals(node) {
+    return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
   }
 
   resolveTypes(typeInfo={}) {
@@ -388,7 +434,7 @@ class OperatorNode extends ASTNode {
 
 class ConstantNode extends ASTNode {
   constructor (params = {}) {
-    super()
+    super(params)
 
     const {
       value = 0,
@@ -405,6 +451,23 @@ class ConstantNode extends ASTNode {
     return this.value
   }
 
+  _getIntervalCompileText() {
+    switch (this.returnType) {
+      case "bool":
+        let int = this.value | 0
+
+        return "new Grapheme.RealInterval(" + int + "," + int + ")"
+      case "real":
+      case "int":
+        return "new Grapheme.RealInterval(" + this.value + "," + this.value + ")"
+      case "complex":
+          const re = this.value.re
+          const im = this.value.im
+
+          return `new Grapheme.ComplexInterval(${re}, ${re}, ${im}, ${im})`
+    }
+  }
+
   clone () {
     return new ConstantNode({
       value: this.value,
@@ -416,6 +479,10 @@ class ConstantNode extends ASTNode {
 
   getText () {
     return this.invisible ? '' : this.text
+  }
+
+  evaluate() {
+    return this.value
   }
 
   isConstant () {
@@ -440,6 +507,10 @@ class ConstantNode extends ASTNode {
       returnType: this.returnType,
       type: 'constant'
     }
+  }
+
+  equals(node) {
+    return node.value === this.value && super.equals(node)
   }
 
   type () {

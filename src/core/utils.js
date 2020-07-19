@@ -470,6 +470,10 @@ function nCr(n, k) {
 
 const eulerGamma = 0.57721566490153286060
 
+function bound(x) {
+  return Math.max(Math.min(x, 1e5), -1e5)
+}
+
 export {
   benchmark,
   gcd,
@@ -507,5 +511,6 @@ export {
   getRandomInt,
   nCrFloat,
   nCr,
-  eulerGamma
+  eulerGamma,
+  bound
 }

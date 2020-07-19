@@ -18,11 +18,13 @@ class TreeElement extends GraphemeElement {
 
     this.label_style = new Label2DStyle({shadowSize: 5, shadowColor: Colors.WHITE})
     this.getTextOfNode = (node) => {
-      return node.getText()
+      return node.getTreeText()
     }
 
     this.vertices = []
     this.labels = []
+
+    this.addEventListener("plotcoordschanged", () => this.markUpdate())
   }
 
   update(info) {

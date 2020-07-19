@@ -381,4 +381,12 @@ function factorial(z) {
   return gamma(z + 1)
 }
 
-export { gamma, polygamma, ln_gamma, digamma, trigamma, getPolygammaNumeratorPolynomial, GREGORY_COEFFICIENTS, LANCZOS_COEFFICIENTS, INTEGER_FACTORIALS, factorial }
+function upperIncompleteGamma(a, z) {
+
+}
+
+function lowerIncompleteGamma(a, z) {
+
+}
+
+export { upperIncompleteGamma, lowerIncompleteGamma, gamma, polygamma, ln_gamma, digamma, trigamma, getPolygammaNumeratorPolynomial, GREGORY_COEFFICIENTS, LANCZOS_COEFFICIENTS, INTEGER_FACTORIALS, factorial }

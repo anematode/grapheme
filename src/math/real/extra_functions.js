@@ -10,6 +10,9 @@ import { productLog, productLogBranched } from '../product_log'
 import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
 import { agm } from '../agm'
 import { eratosthenes } from '../primes'
+import { Cl2 } from '../clausen'
+import { barnesG } from '../barnes_g'
+import { Beta } from '../beta'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -184,7 +187,11 @@ const ExtraFunctions = {
     }
 
     return eratosthenes(n+1).length
-  }
+  },
+  Cl2: Cl2,
+  BarnesG: barnesG,
+  Beta: Beta,
+  Exp: Math.exp
 }
 
 export default ExtraFunctions

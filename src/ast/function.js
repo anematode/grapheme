@@ -50,6 +50,13 @@ class UserDefinedFunction {
 
     this.node.resolveTypes(this.getVariableTypesAsDict())
     this.evaluate = this.node.compile(this.getVariables())
+    this.evaluateInterval = null
+
+    try {
+      this.evaluateInterval = this.node.compileInterval(this.getVariables())
+    } catch (e) {
+
+    }
 
     const returnType = this.node.returnType
 
@@ -59,7 +66,10 @@ class UserDefinedFunction {
     this.definition = new NormalDefinition({
       signature: this.getSignature(),
       returns: returnType,
-      evaluate: "Functions." + this.name + '.evaluate'
+      evaluate: "Functions." + this.name + '.evaluate',
+      evaluateFunc: this.evaluate,
+      evaluateInterval: "Functions." + this.name + ".evaluateInterval",
+      evaluateIntervalFunc: this.evaluateInterval
     })
     this.returnType = returnType
 

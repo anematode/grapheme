@@ -1,6 +1,7 @@
 
 // Computes the Riemann zeta function of a real number r.
-import { gamma } from './gamma_function'
+import { gamma, ln_gamma } from './gamma_function'
+import { bernoulli } from './bernoulli'
 
 const ZETA_N = 30
 const ZETA_COEFFS = []
@@ -23,6 +24,17 @@ function zeta(r) {
 
   if (r % 2 === 0 && r < 0)
     return 0
+
+  if (r % 2 === 0 && r > 1) {
+    if (r > 100)
+      return 1
+
+    let prod1 = ((r / 2 + 1) % 2 === 0 ? 1 : -1) * bernoulli(r)
+
+    let lnProd2 = Math.log(2 * Math.PI) * r - Math.log(2) - ln_gamma(r + 1)
+
+    return prod1 * Math.exp(lnProd2)
+  }
 
   if (r < 0.5) {
     // zeta(s) = 2 ^ s * pi ^ (s - 1) * sin( pi * s / 2 ) * gamma( 1 - s ) * zeta( 1 - s )
