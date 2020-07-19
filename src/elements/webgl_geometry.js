@@ -34,6 +34,21 @@ class Simple2DWebGLGeometry extends WebGLElement {
     this.needsBufferCopy = true
   }
 
+  removeInfinities() {
+    const vertices = this.vertices
+
+    if (!vertices)
+      return
+
+    for (let i = 0; i < vertices.length; ++i) {
+      if (vertices[i] > 1e6) {
+        vertices[i] = 1e6
+      } else if (vertices[i] < -1e6) {
+        vertices[i] = -1e6
+      }
+    }
+  }
+
   get glVertices() {
     return this.vertices
   }
@@ -41,6 +56,7 @@ class Simple2DWebGLGeometry extends WebGLElement {
   set glVertices(verts) {
     this.vertices = verts
 
+    this.removeInfinities()
     this.needsBufferCopy = true
   }
 
