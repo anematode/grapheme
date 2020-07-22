@@ -11,8 +11,9 @@ import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
 import { agm } from '../agm'
 import { eratosthenes } from '../primes'
 import { Cl2 } from '../clausen'
-import { barnesG } from '../barnes_g'
+import { barnesG, KFunction, lnBarnesG, lnKFunction } from '../barnes_g'
 import { Beta } from '../beta'
+import { besselJ } from '../bessel'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -190,8 +191,12 @@ const ExtraFunctions = {
   },
   Cl2: Cl2,
   BarnesG: barnesG,
+  LnBarnesG: lnBarnesG,
   Beta: Beta,
-  Exp: Math.exp
+  Exp: Math.exp,
+  KFunction: KFunction,
+  LnKFunction: lnKFunction,
+  BesselJ: besselJ
 }
 
 export default ExtraFunctions

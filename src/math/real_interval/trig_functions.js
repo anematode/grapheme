@@ -60,16 +60,27 @@ function _Cot(i1) {
   return Divide(_Cos(i1), _Sin(i1))
 }
 
-function _Exp(i1) {
-  let min = i1.min
-  let max = i1.max
-
-  let expMin = roundDown(Math.exp(min))
-  let expMax = roundUp(Math.exp(max))
-
-  return new RealInterval(expMin, expMax, i1.defMin, i1.defMax)
+function _Sinh(i1) {
+  return new RealInterval(roundDown(Math.sinh(i1.min)), roundUp(Math.sinh(i1.max)), i1.defMin, i1.defMax)
 }
 
+function _Cosh(i1) {
+  let coshiMin = Math.cosh(i1.min), coshiMax = Math.cosh(i1.max)
+  let max = Math.max(coshiMin, coshiMax)
+
+  if (i1.min < 0 && i1.max > 0) {
+    return new RealInterval(1, roundUp(max), i1.defMin, i1.defMax)
+  }
+
+  let min = Math.min(coshiMin, coshiMax)
+
+  return new RealInterval()
+}
+
+
 export const Sin = wrapIntervalSetFunction(_Sin)
-export const Exp = wrapIntervalSetFunction(_Exp)
+export const Cos = wrapIntervalSetFunction(_Cos)
 export const Tan = wrapIntervalSetFunction(_Tan)
+export const Sec = wrapIntervalSetFunction(_Sec)
+export const Csc = wrapIntervalSetFunction(_Csc)
+export const Cot = wrapIntervalSetFunction(_Cot)

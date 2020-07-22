@@ -11,6 +11,9 @@ function Cl2(theta, threshold=1e-15) {
 
   theta = mod(theta, PI2)
 
+  if (theta < 1e-18)
+    return 0
+
   let sum1 = 3 - Math.log(Math.abs(theta) * (1 - (theta / (PI2)) ** 2))
   let sum2 = 2 * Math.PI / theta * Math.log((PI2 + theta) / (2 * Math.PI - theta))
   let sum = 0

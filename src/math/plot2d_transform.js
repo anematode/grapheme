@@ -46,6 +46,11 @@ class Plot2DTransform {
     }
   }
 
+  // If we are zoomed in too far, this function will zoom in/out until the
+  preventExcessiveZoom() {
+
+  }
+
   getAspect() {
     // ratio between y axis and x axis
 
@@ -80,7 +85,7 @@ class Plot2DTransform {
     }
   }
 
-  zoomOn(factor, v = new Vec2(0,0), ...args) {
+  zoomOn(factor, v = new Vec2(this.coords.cx, this.coords.cy), ...args) {
     if (this.allowScrolling) {
       let pixel_s = this.plotToPixel(v)
 

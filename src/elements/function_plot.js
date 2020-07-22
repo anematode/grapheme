@@ -121,7 +121,7 @@ class FunctionPlot2D extends InteractiveElement {
 
           let interval = intervalFunc(new RealInterval(minX, maxX))
 
-          if (!interval.defMax || isNaN(interval.min) || isNaN(interval.max)) {
+          if (!interval.defMax) {
             vertices.push(NaN, NaN)
             prevY = NaN
           } else {
@@ -154,8 +154,8 @@ class FunctionPlot2D extends InteractiveElement {
             if (closestIntervalI !== -1) {
               let firstInterval = intervals[closestIntervalI]
 
-              let min = utils.bound(firstInterval.min)
-              let max = utils.bound(firstInterval.max)
+              let min = firstInterval.min
+              let max = firstInterval.max
 
               if (cow === 0) {
                 vertices.push(minX, max)
@@ -174,13 +174,17 @@ class FunctionPlot2D extends InteractiveElement {
               if (i === closestIntervalI)
                 return
 
-              let max = utils.bound(int.max)
+              let max = int.max
 
-              vertices.push(NaN, NaN, x, utils.bound(int.min), x, max, NaN, NaN)
+              vertices.push(NaN, NaN, x, int.min, x, max, NaN, NaN)
 
               prevY = max
             })
           }
+        }
+
+        for (let i = 0; i < vertices.length; ++i) {
+          vertices[i] = utils.bound(vertices[i])
         }
       }
 
@@ -189,7 +193,7 @@ class FunctionPlot2D extends InteractiveElement {
           width * this.quality, transform.getAspect(), this.plottingAxis === 'x' ? coords.height / box.height : coords.width / box.width, this.maxDepth)
       }
     } catch (e) {
-      console.log(e)
+
     }
 
     if (this.plottingAxis !== 'x') {
@@ -230,6 +234,8 @@ class FunctionPlot2D extends InteractiveElement {
       this.polyline.destroy()
 
     undefineFunction(this.functionName)
+
+    super.destroy()
   }
 }
 

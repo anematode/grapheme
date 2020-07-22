@@ -210,7 +210,7 @@ class VariableNode extends ASTNode {
     if (exportedVariables.includes(this.name))
       return this.name
     else
-      return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
+      return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".intervalValue"
   }
 
   clone () {

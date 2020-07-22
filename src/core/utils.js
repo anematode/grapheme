@@ -470,7 +470,7 @@ function nCr(n, k) {
 
 const eulerGamma = 0.57721566490153286060
 
-let boundC = 1e152
+let boundC = 1e30
 
 function bound(x) {
   return Math.max(Math.min(x, boundC), -boundC)

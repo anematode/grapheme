@@ -1,6 +1,7 @@
 
 import { RealInterval, roundDown, roundUp, wrapIntervalSetFunction, RealIntervalSet, getIntervals } from './interval'
-import { DIGAMMA_ZEROES, gamma } from '../gamma_function'
+import { DIGAMMA_ZEROES, gamma, ln_gamma } from '../gamma_function'
+import { Ln } from './log'
 
 const FIRST_ZERO = 1.461632144963766
 
@@ -9,12 +10,12 @@ function _Gamma(int) {
     let ints1 = _Gamma(new RealInterval(0, int.max, int.defMin, int.defMax))
     let ints2 = _Gamma(new RealInterval(int.min, 0, int.defMin, int.defMax))
 
-    return getIntervals(ints1).concat(getIntervals(ints2))
+    return new RealIntervalSet(getIntervals(ints1).concat(getIntervals(ints2)))
   }
 
   if (int.min > FIRST_ZERO) {
     return new RealInterval(gamma(int.min), gamma(int.max), int.defMin, int.defMax)
-  } else if (int.min > 0) {
+  } else if (int.min >= 0) {
     if (int.max < FIRST_ZERO) {
       let gMin = gamma(int.min), gMax = gamma(int.max)
 
@@ -30,7 +31,6 @@ function _Gamma(int) {
     }
   } else {
     let minAsymptote = Math.floor(int.min)
-
 
     let zeroI = 1000+minAsymptote
     let zero
@@ -71,13 +71,17 @@ function _Gamma(int) {
     } else {
       if (int.max > nextZero)
         max = gammaAtNextZero
-      else
-        max = gamma(int.max)
+      else {
+        if (int.max === 0)
+          max = -Infinity
+        else
+          max = gamma(int.max)
+      }
     }
 
     let rMin = Math.min(min, max), rMax = Math.max(min, max)
 
-    if (int.max < Math.floor(nextZero) ) {
+    if (int.max <= Math.floor(nextZero) ) {
       return new RealInterval(roundDown(rMin), roundUp(rMax), int.defMin, int.defMax)
     } else {
       return new RealIntervalSet([
@@ -88,4 +92,27 @@ function _Gamma(int) {
   }
 }
 
+function _LnGamma(int) {
+  if (int.max < 0) {
+    return Ln(Gamma(int))
+  }
+
+  if (int.min < 0 && int.max > 0) {
+    return _LnGamma(new RealInterval(0, int.max, int.defMin, int.defMax))
+  }
+
+  if (int.min > FIRST_ZERO) {
+    return new RealInterval(roundDown(ln_gamma(int.min)), roundUp(ln_gamma(int.max)), int.defMin, int.defMax)
+  } else if (int.min >= 0) {
+    if (int.max < FIRST_ZERO) {
+      return new RealInterval(roundDown(ln_gamma(int.max)), roundUp(ln_gamma(int.min)), int.defMin, int.defMax)
+    } else {
+      return new RealInterval(ln_gamma(FIRST_ZERO), roundUp(Math.max(ln_gamma(int.max), ln_gamma(int.min))), int.defMin, int.defMax)
+    }
+  }
+
+  return new RealInterval(NaN, NaN, false, false)
+}
+
 export const Gamma = wrapIntervalSetFunction(_Gamma)
+export const LnGamma = wrapIntervalSetFunction(_LnGamma)

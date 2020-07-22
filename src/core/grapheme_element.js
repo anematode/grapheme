@@ -91,9 +91,7 @@ class GraphemeElement {
     // Destroy all children
     this.children.forEach((child) => child.destroy())
 
-    // Remove this element from its parent
-    if (this.parent)
-      this.parent.remove(this)
+    this.remove()
 
     // Set plot to null (modifying all children as well)
     this.setPlot(null)
@@ -135,6 +133,10 @@ class GraphemeElement {
    * @param elements Parameter pack, elements to remove
    */
   remove (element, ...elements) {
+    if (!element) {
+      return this.parent.remove(this)
+    }
+
     utils.checkType(element, GraphemeElement)
 
     if (this.hasChild(element, false)) {

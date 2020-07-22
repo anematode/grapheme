@@ -99,23 +99,23 @@ function* tokenizer(string) {
         break
       }
 
-      match = string.match(operator_regex)
-
-      if (match) {
-        yield {
-          type: "operator",
-          op: match[0],
-          index: i
-        }
-        break
-      }
-
       match = string.match(constant_regex)
 
       if (match) {
         yield {
           type: "constant",
           value: match[0],
+          index: i
+        }
+        break
+      }
+
+      match = string.match(operator_regex)
+
+      if (match) {
+        yield {
+          type: "operator",
+          op: match[0],
           index: i
         }
         break
@@ -176,8 +176,9 @@ function check_valid(string, tokens) {
     let token2 = tokens[i+1]
 
     if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
-      (!(token2.op === '-' && token2.op === '+') || i === tokens.length - 2))
+      (!(token2.op === '-' || token2.op === '+') || i === tokens.length - 2)) {
       get_angry_at(string, token2.index, "No consecutive operators/commas")
+    }
     if (token1.paren === "(" && token2.paren === ")")
       get_angry_at(string, token2.index, "No empty parentheses")
     if (token1.paren === "[" && token2.paren === "]")

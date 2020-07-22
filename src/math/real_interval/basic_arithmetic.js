@@ -5,7 +5,7 @@ const _Add = (int1, int2) => {
 }
 
 const _Subtract = (int1, int2) => {
-  return new RealInterval(roundDown(int2.min - int1.max), roundUp(int2.max - int1.min), int1.defMin && int2.defMin, int1.defMax && int2.defMax)
+  return new RealInterval(roundDown(int1.min - int2.max), roundUp(int1.max - int2.min), int1.defMin && int2.defMin, int1.defMax && int2.defMax)
 }
 
 const _Multiply = (i1, i2) => {
@@ -330,7 +330,7 @@ function _Pow(i1, i2) {
   }
 
   if (i1.isExact()) {
-    return _PowB(i1.min, i2)
+    return _PowB(i2, i1.min)
   }
 
   let i1min = i1.min, i1max = i1.max, i2min = i2.min, i2max = i2.max

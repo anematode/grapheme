@@ -604,7 +604,7 @@ const Operators = {
     new VariadicDefinition({
       initialSignature: ["real"],
       repeatingSignature: ["int", "real"],
-      returns: "real",
+      returns: "bool",
       evaluate: "RealFunctions.CChain",
       desc: "Used internally to describe comparison chains (e.x. 0 < a < b < 1)"
     })
@@ -1052,6 +1052,48 @@ const Operators = {
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Exp"
+    })
+  ],
+  "ln_gamma": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.LnGamma"
+    })
+  ],
+  "barnes_G": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.BarnesG"
+    })
+  ],
+  "ln_barnes_G": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.LnBarnesG"
+    })
+  ],
+  "K_function": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.KFunction"
+    })
+  ],
+  "ln_K_function": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.LnKFunction"
+    })
+  ],
+  "bessel_J": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselJ"
     })
   ]
 }

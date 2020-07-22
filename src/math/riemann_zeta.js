@@ -62,7 +62,16 @@ function eta(r) {
   return (1 - 2 ** (1 - r)) * zeta(r)
 }
 
+function hurwitzZeta(s, v) {
+  let sum = v**(1-s) / (s-1)
+  let innerSum = 0
+
+  for (let n = 0; n < 100; ++n) {
+
+  }
+}
+
 zeta.coeffs = ZETA_COEFFS
 zeta.n = ZETA_N
 
-export { zeta, eta }
+export { zeta, eta, hurwitzZeta}

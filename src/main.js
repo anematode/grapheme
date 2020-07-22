@@ -53,5 +53,7 @@ export * from "./math/complex_interval/interval_functions"
 export * from "./math/real_interval/interval"
 export * from "./math/complex_interval/interval"
 export * from "./math/complex_interval/typecasts"
+export * from "./math/barnes_g"
+export * from "./math/jsbi"
 
 export * from "../tests/real_functions/test_function_accuracy"

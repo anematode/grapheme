@@ -85,11 +85,8 @@ class UserDefinedVariable extends UserDefinedFunction {
   update() {
     super.update()
 
-    this.usable = false
-
     this.value = this.evaluate()
-
-    this.usable = true
+    this.intervalValue = this.evaluateInterval()
   }
 }
 
