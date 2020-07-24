@@ -11882,6 +11882,11 @@ void main() {
   }
 
   function getVariableLatex(str) {
+    let booleanOp = inequalityOperatorSymbols[str];
+
+    if (booleanOp)
+      return booleanOp
+
     let components = str.split('_');
 
     components = components.map(str => {
