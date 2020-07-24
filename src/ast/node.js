@@ -5,7 +5,13 @@
 import * as utils from '../core/utils'
 import { StandardLabelFunction } from '../elements/gridlines'
 import { Functions, getVariable } from './user_defined'
-import { castableInto, castableIntoMultiple, getCastingFunction, Operators } from './operators'
+import {
+  castableInto,
+  castableIntoMultiple,
+  getCastingFunction,
+  Operators,
+  retrieveEvaluationFunction
+} from './operators'
 import { isWorker } from '../core/utils'
 import { LatexMethods } from './latex'
 
@@ -33,6 +39,25 @@ class ASTNode {
 
   _getIntervalCompileText(exportedVariables=['x']) {
     return this.children[0]._getIntervalCompileText(exportedVariables)
+  }
+
+  getDependencies() {
+    let funcs = new Set()
+    let vars = new Set()
+
+    this.applyAll((node) => {
+      if (node instanceof OperatorNode) {
+        funcs.add(node.operator)
+      } else if (node instanceof VariableNode) {
+        vars.add(node.name)
+      }
+    })
+
+    funcs = Array.from(funcs).sort()
+    vars = Array.from(vars).sort()
+
+
+    return {funcs, vars}
   }
 
   evaluate(scope) {
@@ -190,6 +215,10 @@ class VariableNode extends ASTNode {
     if (value !== undefined) {
       return value
     }
+
+    let globalVar = Grapheme.Variables[this.name]
+
+    return globalVar.value
   }
 
   _getCompileText(exportedVariables) {
@@ -364,7 +393,17 @@ class OperatorNode extends ASTNode {
   }
 
   evaluate(scope) {
-    return this.definition.evaluateFunc(...this.children.map(child => child.evaluate(scope)))
+    const children = this.children
+    let params = this.children.map(child => child.evaluate(scope))
+    const definition = this.definition, sig = definition.signature
+
+    params.forEach((param, i) => {
+      if (sig[i] !== children[i].returnType) {
+        params[i] = (retrieveEvaluationFunction(getCastingFunction(children[i].returnType, sig[i])))(param)
+      }
+    })
+
+    return this.definition.evaluateFunc(...params)
   }
 
   getText () {

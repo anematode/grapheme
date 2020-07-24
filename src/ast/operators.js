@@ -4,6 +4,7 @@ import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
 import { ComplexFunctions } from '../math/complex/functions'
 import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
 import { LatexMethods } from './latex'
+import { IntervalTypecasts } from '../math/complex_interval/typecasts'
 
 // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
@@ -27,26 +28,6 @@ function throwInvalidType(typename) {
 
     throw new Error(`Unrecognized type ${typename}; valid types are ${TYPES.join(', ')}. ${didYouMean}`)
   }
-}
-
-function retrieveEvaluationFunction(str) {
-  let fName = str.split('.').pop()
-
-  const realFunctions = RealFunctions
-  const realIntervalFunctions = RealIntervalFunctions
-  const complexFunctions = ComplexFunctions
-  const complexIntervalFunctions = ComplexIntervalFunctions
-  const intervalTypecasts = IntervalTypecasts
-
-  if (str.includes("RealFunctions"))
-    return realFunctions[fName]
-  if (str.includes("RealIntervalFunctions"))
-    return realIntervalFunctions[fName]
-  if (str.includes("ComplexFunctions"))
-    return complexFunctions[fName]
-  if (str.includes("ComplexIntervalFunctions"))
-    return complexIntervalFunctions[fName]
-
 }
 
 class OperatorDefinition {
@@ -225,6 +206,28 @@ for (let type in Typecasts) {
   if (Typecasts.hasOwnProperty(type)) {
     SummarizedTypecasts[type] = Typecasts[type].map(cast => cast.returns)
   }
+}
+
+import { Typecasts as eggs } from '../math/typecasts'
+
+function retrieveEvaluationFunction(str) {
+  let fName = str.split('.').pop()
+
+  const realFunctions = RealFunctions
+  const realIntervalFunctions = RealIntervalFunctions
+  const complexFunctions = ComplexFunctions
+  const complexIntervalFunctions = ComplexIntervalFunctions
+
+  if (str.includes("RealFunctions"))
+    return realFunctions[fName]
+  if (str.includes("RealIntervalFunctions"))
+    return realIntervalFunctions[fName]
+  if (str.includes("ComplexFunctions"))
+    return complexFunctions[fName]
+  if (str.includes("ComplexIntervalFunctions"))
+    return complexIntervalFunctions[fName]
+  if (str.includes("Typecasts"))
+    return eggs[fName]
 }
 
 function constructTrigDefinitions(name, funcName) {
@@ -1254,4 +1257,4 @@ const Operators = {
   ]
 }
 
-export { Typecasts, Operators, castableInto, castableIntoMultiple, getCastingFunction, NormalDefinition }
+export { Typecasts, Operators, castableInto, castableIntoMultiple, getCastingFunction, NormalDefinition, retrieveEvaluationFunction }

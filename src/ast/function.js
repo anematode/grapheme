@@ -1,3 +1,10 @@
+/**
+ * This file defines classes UserDefinedFunction and UserDefinedVariable, which represent functions and variables to be
+ * defined by the user. They are constructed with a name, a node/string which is the expression, and optionally, a list
+ * of exported variables which the function can be evaluated at with f.evaluate(...). The list of exported variables can
+ * include type information which will be
+ */
+
 import { NormalDefinition } from './operators'
 
 function processExportedVariables(exportedVariables) {

@@ -11266,6 +11266,25 @@ void main() {
       return this.children[0]._getIntervalCompileText(exportedVariables)
     }
 
+    getDependencies() {
+      let funcs = new Set();
+      let vars = new Set();
+
+      this.applyAll((node) => {
+        if (node instanceof OperatorNode) {
+          funcs.add(node.operator);
+        } else if (node instanceof VariableNode) {
+          vars.add(node.name);
+        }
+      });
+
+      funcs = Array.from(funcs).sort();
+      vars = Array.from(vars).sort();
+
+
+      return {funcs, vars}
+    }
+
     evaluate(scope) {
       return this.children[0].evaluate(scope)
     }
@@ -11411,6 +11430,10 @@ void main() {
       if (value !== undefined) {
         return value
       }
+
+      let globalVar = Grapheme.Variables[this.name];
+
+      return globalVar.value
     }
 
     _getCompileText(exportedVariables) {
@@ -11585,7 +11608,17 @@ void main() {
     }
 
     evaluate(scope) {
-      return this.definition.evaluateFunc(...this.children.map(child => child.evaluate(scope)))
+      const children = this.children;
+      let params = this.children.map(child => child.evaluate(scope));
+      const definition = this.definition, sig = definition.signature;
+
+      params.forEach((param, i) => {
+        if (sig[i] !== children[i].returnType) {
+          params[i] = (retrieveEvaluationFunction(getCastingFunction(children[i].returnType, sig[i])))(param);
+        }
+      });
+
+      return this.definition.evaluateFunc(...params)
     }
 
     getText () {
@@ -11885,7 +11918,7 @@ void main() {
     let booleanOp = inequalityOperatorSymbols[str];
 
     if (booleanOp)
-      return booleanOp
+      return booleanOp + ' '
 
     let components = str.split('_');
 
@@ -12029,6 +12062,20 @@ void main() {
     logicLatex
   };
 
+  const IntervalTypecasts = {
+    Identity: (x) => x,
+    RealToComplex: (int) => {
+      return new ComplexInterval(int.min, int.max, 0, 0, int.defMin, int.defMax)
+    }
+  };
+
+  const Typecasts = {
+    RealToComplex: (r) => new Complex$1(r),
+    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
+    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
+    Identity: (r) => r
+  };
+
   // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
   const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
@@ -12051,25 +12098,6 @@ void main() {
 
       throw new Error(`Unrecognized type ${typename}; valid types are ${TYPES.join(', ')}. ${didYouMean}`)
     }
-  }
-
-  function retrieveEvaluationFunction(str) {
-    let fName = str.split('.').pop();
-
-    const realFunctions = RealFunctions;
-    const realIntervalFunctions = RealIntervalFunctions;
-    const complexFunctions = ComplexFunctions;
-    const complexIntervalFunctions = ComplexIntervalFunctions;
-
-    if (str.includes("RealFunctions"))
-      return realFunctions[fName]
-    if (str.includes("RealIntervalFunctions"))
-      return realIntervalFunctions[fName]
-    if (str.includes("ComplexFunctions"))
-      return complexFunctions[fName]
-    if (str.includes("ComplexIntervalFunctions"))
-      return complexIntervalFunctions[fName]
-
   }
 
   class OperatorDefinition {
@@ -12209,7 +12237,7 @@ void main() {
     if (!castableInto(from, into))
       throw new Error("Cannot cast from type " + from + " into " + into + ".")
 
-    let casts = Typecasts[from];
+    let casts = Typecasts$1[from];
 
     for (let cast of casts) {
       if (cast.returns === into)
@@ -12223,7 +12251,7 @@ void main() {
     }
   }
 
-  const Typecasts = {
+  const Typecasts$1 = {
     'int': [
       new TypecastDefinition({
         returns: 'real',
@@ -12244,10 +12272,30 @@ void main() {
 
   const SummarizedTypecasts = {};
 
-  for (let type in Typecasts) {
-    if (Typecasts.hasOwnProperty(type)) {
-      SummarizedTypecasts[type] = Typecasts[type].map(cast => cast.returns);
+  for (let type in Typecasts$1) {
+    if (Typecasts$1.hasOwnProperty(type)) {
+      SummarizedTypecasts[type] = Typecasts$1[type].map(cast => cast.returns);
     }
+  }
+
+  function retrieveEvaluationFunction(str) {
+    let fName = str.split('.').pop();
+
+    const realFunctions = RealFunctions;
+    const realIntervalFunctions = RealIntervalFunctions;
+    const complexFunctions = ComplexFunctions;
+    const complexIntervalFunctions = ComplexIntervalFunctions;
+
+    if (str.includes("RealFunctions"))
+      return realFunctions[fName]
+    if (str.includes("RealIntervalFunctions"))
+      return realIntervalFunctions[fName]
+    if (str.includes("ComplexFunctions"))
+      return complexFunctions[fName]
+    if (str.includes("ComplexIntervalFunctions"))
+      return complexIntervalFunctions[fName]
+    if (str.includes("Typecasts"))
+      return Typecasts[fName]
   }
 
   function constructTrigDefinitions(name, funcName) {
@@ -13277,6 +13325,13 @@ void main() {
     ]
   };
 
+  /**
+   * This file defines classes UserDefinedFunction and UserDefinedVariable, which represent functions and variables to be
+   * defined by the user. They are constructed with a name, a node/string which is the expression, and optionally, a list
+   * of exported variables which the function can be evaluated at with f.evaluate(...). The list of exported variables can
+   * include type information which will be
+   */
+
   function processExportedVariables(exportedVariables) {
     if (typeof exportedVariables === "string")
       return [[exportedVariables, "real"]]
@@ -13817,7 +13872,7 @@ void main() {
     return Variables[variableName] = new UserDefinedVariable(variableName, node)
   }
 
-  function defineFunction(funcName, node, exportedVariables=[["x", "real"]]) {
+  function defineFunction(funcName, node, exportedVariables) {
     if (Functions[funcName])
       undefineFunction(funcName);
     if (RESERVED_FUNCTIONS.includes(funcName))
@@ -13825,6 +13880,9 @@ void main() {
 
     if (typeof node === 'string')
       node = parseString(node);
+
+    if (!exportedVariables)
+      exportedVariables = node.getDependencies().vars;
 
     return Functions[funcName] = new UserDefinedFunction(funcName, node, exportedVariables)
   }
@@ -15415,13 +15473,6 @@ void main() {
     return [n, d]
   }
 
-  const Typecasts$1 = {
-    RealToComplex: (r) => new Complex$1(r),
-    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
-    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
-    Identity: (r) => r
-  };
-
   class BeastJob extends Promise {
     constructor(beast, id, progressCallback=null) {
       if (beast instanceof Function) {
@@ -15746,13 +15797,6 @@ void main() {
       this.polyline.destroy();
     }
   }
-
-  const IntervalTypecasts = {
-    Identity: (x) => x,
-    RealToComplex: (int) => {
-      return new ComplexInterval(int.min, int.max, 0, 0, int.defMin, int.defMax)
-    }
-  };
 
   // Copyright 2018 Google Inc.
   //
@@ -17743,8 +17787,10 @@ void main() {
   exports.Label2D = Label2D;
   exports.LabeledPoint = LabeledPoint;
   exports.LatexMethods = LatexMethods;
+  exports.NormalDefinition = NormalDefinition;
   exports.OperatorNode = OperatorNode;
   exports.OperatorSynonyms = OperatorSynonyms;
+  exports.Operators = Operators;
   exports.ParametricPlot2D = ParametricPlot2D;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
@@ -17759,7 +17805,7 @@ void main() {
   exports.RealIntervalSet = RealIntervalSet;
   exports.StandardLabelFunction = StandardLabelFunction;
   exports.TreeElement = TreeElement;
-  exports.Typecasts = Typecasts$1;
+  exports.Typecasts = Typecasts;
   exports.Universe = GraphemeUniverse;
   exports.VariableNode = VariableNode;
   exports.Variables = Variables;
@@ -17781,6 +17827,8 @@ void main() {
   exports.besselY = besselY;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
+  exports.castableInto = castableInto;
+  exports.castableIntoMultiple = castableIntoMultiple;
   exports.defineFunction = defineFunction;
   exports.defineVariable = defineVariable;
   exports.digamma = digamma;
@@ -17804,6 +17852,7 @@ void main() {
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
   exports.gamma = gamma;
+  exports.getCastingFunction = getCastingFunction;
   exports.getDashedPolyline = getDashedPolyline;
   exports.getEiCoeff = getEiCoeff;
   exports.getFunction = getFunction;
@@ -17839,6 +17888,7 @@ void main() {
   exports.polygamma = polygamma;
   exports.primeCountingFunction = meisselLehmerExtended;
   exports.regularPolygonGlyph = regularPolygonGlyph;
+  exports.retrieveEvaluationFunction = retrieveEvaluationFunction;
   exports.rgb = rgb;
   exports.rgba = rgba;
   exports.sample_1d = sample_1d;

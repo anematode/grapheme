@@ -20,7 +20,7 @@ function defineVariable(variableName, node) {
   return Variables[variableName] = new UserDefinedVariable(variableName, node)
 }
 
-function defineFunction(funcName, node, exportedVariables=[["x", "real"]]) {
+function defineFunction(funcName, node, exportedVariables) {
   if (Functions[funcName])
     undefineFunction(funcName)
   if (RESERVED_FUNCTIONS.includes(funcName))
@@ -28,6 +28,9 @@ function defineFunction(funcName, node, exportedVariables=[["x", "real"]]) {
 
   if (typeof node === 'string')
     node = parseString(node)
+
+  if (!exportedVariables)
+    exportedVariables = node.getDependencies().vars
 
   return Functions[funcName] = new UserDefinedFunction(funcName, node, exportedVariables)
 }
