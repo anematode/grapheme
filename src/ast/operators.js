@@ -3,6 +3,7 @@ import { RealFunctions } from '../math/real/functions'
 import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
 import { ComplexFunctions } from '../math/complex/functions'
 import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
+import { LatexMethods } from './latex'
 
 // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
 
@@ -54,12 +55,10 @@ class OperatorDefinition {
 
     throwInvalidType(this.returns)
 
-    if (params.latexFunc)
-      this.latexFunc = params.latexFunc
-
-    this.latexOperator = params.latexOperator
-    this.latexType = params.latexType
-    this.latexPrecedence = params.latexPrecedence
+    if (params.latex)
+      this.latex = params.latex
+    else
+      this.latex = () => { throw new Error("unimplemented") }
 
     let evaluate = params.evaluate
 
@@ -165,7 +164,8 @@ class VariadicDefinition extends OperatorDefinition {
       returns: this.returns,
       evaluate: this.evaluate,
       evaluateInterval: this.evaluateInterval,
-      desc: this.desc
+      desc: this.desc,
+      latex: this.latex
     })
   }
 }
@@ -228,18 +228,23 @@ for (let type in Typecasts) {
 }
 
 function constructTrigDefinitions(name, funcName) {
+
+  let latex = LatexMethods.genFunctionLatex(funcName.toLowerCase())
+
   return [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions." + funcName,
-      desc: "Returns the " + name + " of the real number x."
+      desc: "Returns the " + name + " of the real number x.",
+      latex
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions." + funcName,
-      desc: "Returns the " + name + " of the complex number z."
+      desc: "Returns the " + name + " of the complex number z.",
+      latex
     })
   ]
 }
@@ -252,29 +257,21 @@ const Operators = {
       evaluate: "RealFunctions.Multiply",
       intervalEvaluate: "RealIntervalFunctions.Multiply",
       desc: "Returns the product of two integers.",
-      latexOperator: String.raw`\cdot`,
-      latexType: "infix",
-      latexPrecedence: 2
+      latex: LatexMethods.multiplicationLatex
     }),
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Multiply",
-      intervalEvaluate: "RealIntervalFunctions.Multiply",
       desc: "Returns the product of two real numbers.",
-      latexOperator: String.raw`\cdot`,
-      latexType: "infix",
-      latexPrecedence: 2
+      latex: LatexMethods.multiplicationLatex
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Multiply",
-      intervalEvaluate: "ComplexIntervalFunctions.Multiply",
       desc: "Returns the product of two complex numbers.",
-      latexOperator: String.raw`\cdot`,
-      latexType: "infix",
-      latexPrecedence: 2
+      latex: LatexMethods.multiplicationLatex
     })
   ],
   '+': [
@@ -282,25 +279,29 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Add",
-      desc: "Returns the sum of two integers."
+      desc: "Returns the sum of two integers.",
+      latex: LatexMethods.additionLatex
     }),
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Add",
-      desc: "Returns the sum of two real numbers."
+      desc: "Returns the sum of two real numbers.",
+      latex: LatexMethods.additionLatex
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Add",
-      desc: "Returns the sum of two complex numbers."
+      desc: "Returns the sum of two complex numbers.",
+      latex: LatexMethods.additionLatex
     }),
     new NormalDefinition({
       signature: ["vec2", "vec2"],
       returns: "vec2",
       evaluate: "VectorFunctions.Add",
-      desc: "Returns the sum of two 2-dimensional vectors."
+      desc: "Returns the sum of two 2-dimensional vectors.",
+      latex: LatexMethods.additionLatex
     })
   ],
   '-': [
@@ -308,25 +309,29 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Subtract",
-      desc: "Returns the difference of two integers."
+      desc: "Returns the difference of two integers.",
+      latex: LatexMethods.subtractionLatex
     }),
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Subtract",
-      desc: "Returns the difference of two real numbers."
+      desc: "Returns the difference of two real numbers.",
+      latex: LatexMethods.subtractionLatex
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Subtract",
-      desc: "Returns the difference of two complex numbers."
+      desc: "Returns the difference of two complex numbers.",
+      latex: LatexMethods.subtractionLatex
     }),
     new NormalDefinition({
       signature: ["vec2", "vec2"],
       returns: "vec2",
       evaluate: "VectorFunctions.Subtract",
-      desc: "Returns the sum of two 2-dimensional vectors."
+      desc: "Returns the sum of two 2-dimensional vectors.",
+      latex: LatexMethods.subtractionLatex
     })
   ],
   '/': [
@@ -334,13 +339,15 @@ const Operators = {
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Divide",
-      desc: "Returns the quotient of two real numbers."
+      desc: "Returns the quotient of two real numbers.",
+      latex: LatexMethods.divisionLatex
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Divide",
-      desc: "Returns the quotient of two real numbers."
+      desc: "Returns the quotient of two real numbers.",
+      latex: LatexMethods.divisionLatex
     })
   ],
   "complex": [
@@ -386,13 +393,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Im",
-      desc: "Im(r) returns the imaginary part of r, i.e. 0."
+      desc: "Im(r) returns the imaginary part of r, i.e. 0.",
+      latex: LatexMethods.genFunctionLatex("Im")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "real",
       evaluate: "ComplexFunctions.Im",
-      desc: "Im(z) returns the imaginary part of z."
+      desc: "Im(z) returns the imaginary part of z.",
+      latex: LatexMethods.genFunctionLatex("Im")
     })
   ],
   "Re": [
@@ -400,13 +409,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Re",
-      desc: "Re(r) returns the real part of r, i.e. r."
+      desc: "Re(r) returns the real part of r, i.e. r.",
+      latex: LatexMethods.genFunctionLatex("Re")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "real",
       evaluate: "ComplexFunctions.Re",
-      desc: "Re(z) returns the real part of z."
+      desc: "Re(z) returns the real part of z.",
+      latex: LatexMethods.genFunctionLatex("Re")
     })
   ],
   "gamma": [
@@ -414,13 +425,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Gamma",
-      desc: "Evaluates the gamma function at r."
+      desc: "Evaluates the gamma function at r.",
+      latex: LatexMethods.genFunctionLatex("\\Gamma")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Gamma",
-      desc: "Evaluates the gamma function at z."
+      desc: "Evaluates the gamma function at z.",
+      latex: LatexMethods.genFunctionLatex("\\Gamma")
     })
   ],
   '^': [
@@ -428,20 +441,15 @@ const Operators = {
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Pow",
-      desc: "Evaluates a^b, undefined for negative b. If you want to evaluate something like a^(1/5), use pow_rational(a, 1, 5)."
+      desc: "Evaluates a^b, undefined for negative b. If you want to evaluate something like a^(1/5), use pow_rational(a, 1, 5).",
+      latex: LatexMethods.exponentiationLatex
     }),
     new NormalDefinition({
       signature: ["complex", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Pow",
-      desc: "Returns the principal value of z^w."
-    })
-  ],
-  "pow_rational": [
-    new NormalDefinition({
-      signature: ["real", "int", "int"],
-      returns: "real",
-      evaluate: "RealFunctions.PowRational"
+      desc: "Returns the principal value of z^w.",
+      latex: LatexMethods.exponentiationLatex
     })
   ],
   "digamma": [
@@ -449,13 +457,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Digamma",
-      desc: "Evaluates the digamma function at r."
+      desc: "Evaluates the digamma function at r.",
+      latex: LatexMethods.genFunctionLatex("\\psi^{(0})")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Digamma",
-      desc: "Evaluates the digamma function at z."
+      desc: "Evaluates the digamma function at z.",
+      latex: LatexMethods.genFunctionLatex("\\psi^{(0})")
     })
   ],
   "trigamma": [
@@ -463,13 +473,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Trigamma",
-      desc: "Evaluates the trigamma function at r."
+      desc: "Evaluates the trigamma function at r.",
+      latex: LatexMethods.genFunctionLatex("\\psi^{(1})")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Trigamma",
-      desc: "Evaluates the trigamma function at z."
+      desc: "Evaluates the trigamma function at z.",
+      latex: LatexMethods.genFunctionLatex("\\psi^{(1})")
     })
   ],
   "polygamma": [
@@ -477,13 +489,15 @@ const Operators = {
       signature: ["int", "real"],
       returns: "real",
       evaluate: "RealFunctions.Polygamma",
-      desc: "polygamma(n, r) evaluates the nth polygamma function at r."
+      desc: "polygamma(n, r) evaluates the nth polygamma function at r.",
+      latex: LatexMethods.polygammaLatex
     }),
     new NormalDefinition({
       signature: ["int", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Polygamma",
-      desc: "polygamma(n, z) evaluates the nth polygamma function at z."
+      desc: "polygamma(n, z) evaluates the nth polygamma function at z.",
+      latex: LatexMethods.polygammaLatex
     })
   ],
   "sqrt": [
@@ -491,13 +505,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Sqrt",
-      desc: "sqrt(r) returns the square root of r. NaN if r < 0."
+      desc: "sqrt(r) returns the square root of r. NaN if r < 0.",
+      latex: LatexMethods.sqrtLatex
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Sqrt",
-      desc: "sqrt(z) returns the principal branch of the square root of z."
+      desc: "sqrt(z) returns the principal branch of the square root of z.",
+      latex: LatexMethods.sqrtLatex
     })
   ],
   "cbrt": [
@@ -505,13 +521,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Cbrt",
-      desc: "cbrt(r) returns the cube root of r. NaN if r < 0."
+      desc: "cbrt(r) returns the cube root of r. NaN if r < 0.",
+      latex: LatexMethods.cbrtLatex
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Cbrt",
-      desc: "cbrt(z) returns the principal branch of the cube root of z."
+      desc: "cbrt(z) returns the principal branch of the cube root of z.",
+      latex: LatexMethods.cbrtLatex
     })
   ],
   "ln": [
@@ -519,13 +537,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Ln",
-      desc: "ln(r) returns the natural logarithm of r. NaN if r < 0."
+      desc: "ln(r) returns the natural logarithm of r. NaN if r < 0.",
+      latex: LatexMethods.genFunctionLatex("ln")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Ln",
-      desc: "ln(z) returns the principal value of the natural logarithm of z."
+      desc: "ln(z) returns the principal value of the natural logarithm of z.",
+      latex: LatexMethods.genFunctionLatex("ln")
     })
   ],
   "log10": [
@@ -533,13 +553,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Log10",
-      desc: "log10(r) returns the base-10 logarithm of r. NaN if r < 0."
+      desc: "log10(r) returns the base-10 logarithm of r. NaN if r < 0.",
+      latex: LatexMethods.genFunctionLatex("log_{10}")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Log10",
-      desc: "log10(z) returns the principal value of base-10 logarithm of z."
+      desc: "log10(z) returns the principal value of base-10 logarithm of z.",
+      latex: LatexMethods.genFunctionLatex("log_{10}")
     })
   ],
   "log2": [
@@ -547,13 +569,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Log2",
-      desc: "log2(r) returns the base-2 logarithm of r. NaN if r < 0."
+      desc: "log2(r) returns the base-2 logarithm of r. NaN if r < 0.",
+      latex: LatexMethods.genFunctionLatex("log_{2}")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Log2",
-      desc: "log2(z) returns the principal value of base-2 logarithm of z."
+      desc: "log2(z) returns the principal value of base-2 logarithm of z.",
+      latex: LatexMethods.genFunctionLatex("log_{2}")
     })
   ],
   "piecewise": [
@@ -562,28 +586,32 @@ const Operators = {
       repeatingSignature: ["real", "bool"],
       returns: "real",
       evaluate: "RealFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise."
+      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise.",
+      latex: LatexMethods.piecewiseLatex
     }),
     new VariadicDefinition({
       initialSignature: ["real"],
       repeatingSignature: ["bool", "real"],
       returns: "real",
       evaluate: "RealFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise."
+      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise.",
+      latex: LatexMethods.piecewiseLatex
     }),
     new VariadicDefinition({
       initialSignature: [],
       repeatingSignature: ["complex", "bool"],
       returns: "complex",
       evaluate: "ComplexFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise."
+      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise.",
+      latex: LatexMethods.piecewiseLatex
     }),
     new VariadicDefinition({
       initialSignature: ["complex"],
       repeatingSignature: ["bool", "complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise."
+      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise.",
+      latex: LatexMethods.piecewiseLatex
     }),
   ],
   "ifelse": [
@@ -591,13 +619,15 @@ const Operators = {
       signature: ["real", "bool", "real"],
       returns: "real",
       evaluate: "RealFunctions.Piecewise",
-      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise"
+      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise",
+      latex: LatexMethods.piecewiseLatex
     }),
     new NormalDefinition({
       signature: ["complex", "bool", "complex"],
       returns: "real",
       evaluate: "RealFunctions.Piecewise",
-      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise"
+      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise",
+      latex: LatexMethods.piecewiseLatex
     })
   ],
   "cchain": [
@@ -606,7 +636,8 @@ const Operators = {
       repeatingSignature: ["int", "real"],
       returns: "bool",
       evaluate: "RealFunctions.CChain",
-      desc: "Used internally to describe comparison chains (e.x. 0 < a < b < 1)"
+      desc: "Used internally to describe comparison chains (e.x. 0 < a < b < 1)",
+      latex: LatexMethods.cchainLatex
     })
   ],
   "<": [
@@ -614,7 +645,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.LessThan",
-      desc: "Returns a < b."
+      desc: "Returns a < b.",
+      latex: LatexMethods.cmpLatex['<']
     })
   ],
   ">": [
@@ -622,7 +654,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.GreaterThan",
-      desc: "Returns a > b."
+      desc: "Returns a > b.",
+      latex: LatexMethods.cmpLatex['>']
     })
   ],
   "<=": [
@@ -630,7 +663,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.LessEqualThan",
-      desc: "Returns a <= b."
+      desc: "Returns a <= b.",
+      latex: LatexMethods.cmpLatex['<=']
     })
   ],
   ">=": [
@@ -638,7 +672,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.GreaterEqualThan",
-      desc: "Returns a >= b."
+      desc: "Returns a >= b.",
+      latex: LatexMethods.cmpLatex['>=']
     })
   ],
   "==": [
@@ -646,7 +681,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.Equal",
-      desc: "Returns a == b."
+      desc: "Returns a == b.",
+      latex: LatexMethods.cmpLatex['==']
     })
   ],
   "!=": [
@@ -654,7 +690,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "bool",
       evaluate: "RealFunctions.Cmp.NotEqual",
-      desc: "Returns a != b."
+      desc: "Returns a != b.",
+      latex: LatexMethods.cmpLatex['!=']
     })
   ],
   "euler_phi": [
@@ -662,7 +699,8 @@ const Operators = {
       signature: ["int"],
       returns: "int",
       evaluate: "eulerPhi",
-      desc: "Returns Euler's totient function evaluated at an integer n."
+      desc: "Returns Euler's totient function evaluated at an integer n.",
+      latex: LatexMethods.genFunctionLatex('\\phi')
     })
   ],
   "floor": [
@@ -670,7 +708,8 @@ const Operators = {
       signature: ["real"],
       returns: "int",
       evaluate: "RealFunctions.Floor",
-      desc: "Returns the floor of a real number r."
+      desc: "Returns the floor of a real number r.",
+      latex: LatexMethods.floorLatex
     })
   ],
   "ceil": [
@@ -678,7 +717,8 @@ const Operators = {
       signature: ["real"],
       returns: "int",
       evaluate: "RealFunctions.Ceil",
-      desc: "Returns the ceiling of a real number r."
+      desc: "Returns the ceiling of a real number r.",
+      latex: LatexMethods.ceilLatex
     })
   ],
   "riemann_zeta": [
@@ -686,13 +726,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Zeta",
-      desc: "Returns the Riemann zeta function of a real number r."
+      desc: "Returns the Riemann zeta function of a real number r.",
+      latex: LatexMethods.genFunctionLatex("\\zeta")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Zeta",
-      desc: "Returns the Riemann zeta function of a complex number r."
+      desc: "Returns the Riemann zeta function of a complex number r.",
+      latex: LatexMethods.genFunctionLatex("\\zeta")
     })
   ],
   "dirichlet_eta": [
@@ -700,13 +742,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Eta",
-      desc: "Returns the Dirichlet eta function of a real number r."
+      desc: "Returns the Dirichlet eta function of a real number r.",
+      latex: LatexMethods.genFunctionLatex("\\eta")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Eta",
-      desc: "Returns the Dirichlet eta function of a complex number r."
+      desc: "Returns the Dirichlet eta function of a complex number r.",
+      latex: LatexMethods.genFunctionLatex("\\eta")
     })
   ],
   "mod": [
@@ -714,13 +758,15 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Mod",
-      desc: "Returns a modulo b."
+      desc: "Returns a modulo b.",
+      latex: LatexMethods.genFunctionLatex("mod")
     }),
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Mod",
-      desc: "Returns a modulo b."
+      desc: "Returns a modulo b.",
+      latex: LatexMethods.genFunctionLatex("mod")
     })
   ],
   "frac": [
@@ -728,7 +774,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Frac",
-      desc: "Returns the fractional part of x."
+      desc: "Returns the fractional part of x.",
+      latex: LatexMethods.fractionalPartLatex
     })
   ],
   "sign": [
@@ -736,7 +783,8 @@ const Operators = {
       signature: ["real"],
       returns: "int",
       evaluate: "RealFunctions.Sign",
-      desc: "Returns the sign of x: 1 if x > 0, 0 if x == 0 and -1 otherwise."
+      desc: "Returns the sign of x: 1 if x > 0, 0 if x == 0 and -1 otherwise.",
+      latex: LatexMethods.genFunctionLatex("sgn")
     })
   ],
   "round": [
@@ -744,7 +792,8 @@ const Operators = {
       signature: ["real"],
       returns: "int",
       evaluate: "RealFunctions.Round",
-      desc: "Returns the nearest integer to x. Note that if |x| > " + Number.MAX_SAFE_INTEGER + " this may not be accurate."
+      desc: "Returns the nearest integer to x. Note that if |x| > " + Number.MAX_SAFE_INTEGER + " this may not be accurate.",
+      latex: LatexMethods.genFunctionLatex("round")
     })
   ],
   "trunc": [
@@ -752,7 +801,8 @@ const Operators = {
       signature: ["real"],
       returns: "int",
       evaluate: "RealFunctions.Trunc",
-      desc: "Removes the fractional part of x."
+      desc: "Removes the fractional part of x.",
+      latex: LatexMethods.genFunctionLatex("trunc")
     })
   ],
   "is_finite": [
@@ -760,13 +810,15 @@ const Operators = {
       signature: ["real"],
       returns: "bool",
       evaluate: "RealFunctions.IsFinite",
-      desc: "Returns true if the number is finite and false if it is -Infinity, Infinity, or NaN"
+      desc: "Returns true if the number is finite and false if it is -Infinity, Infinity, or NaN",
+      latex: LatexMethods.genFunctionLatex("isFinite")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "bool",
       evaluate: "ComplexFunctions.IsFinite",
-      desc: "Returns true if the number is finite and false if it is undefined or infinite"
+      desc: "Returns true if the number is finite and false if it is undefined or infinite",
+      latex: LatexMethods.genFunctionLatex("isFinite")
     })
   ],
   "not": [
@@ -775,7 +827,8 @@ const Operators = {
       returns: "bool",
       evaluate: "!",
       noGraphemePrefix: true,
-      desc: "Returns the logical negation of b."
+      desc: "Returns the logical negation of b.",
+      latex: LatexMethods.logicLatex.not
     })
   ],
   "and": [
@@ -783,7 +836,8 @@ const Operators = {
       signature: ["bool", "bool"],
       returns: "bool",
       evaluate: "BooleanFunctions.And",
-      desc: "Returns true if a and b are true, and false otherwise."
+      desc: "Returns true if a and b are true, and false otherwise.",
+      latex: LatexMethods.logicLatex.and
     })
   ],
   "or": [
@@ -791,7 +845,8 @@ const Operators = {
       signature: ["bool", "bool"],
       returns: "bool",
       evaluate: "BooleanFunctions.Or",
-      desc: "Returns true if a or b are true, and false otherwise."
+      desc: "Returns true if a or b are true, and false otherwise.",
+      latex: LatexMethods.logicLatex.or
     })
   ],
   "Ei": [
@@ -799,13 +854,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Ei",
-      desc: "Returns the exponential integral of x."
+      desc: "Returns the exponential integral of x.",
+      latex: LatexMethods.genFunctionLatex("Ei")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Ei",
-      desc: "Returns the exponential integral of z."
+      desc: "Returns the exponential integral of z.",
+      latex: LatexMethods.genFunctionLatex("Ei")
     })
   ],
   "li": [
@@ -813,13 +870,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Li",
-      desc: "Returns the logarithmic integral of x."
+      desc: "Returns the logarithmic integral of x.",
+      latex: LatexMethods.genFunctionLatex("li")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Li",
-      desc: "Returns the logarithmic integral of z."
+      desc: "Returns the logarithmic integral of z.",
+      latex: LatexMethods.genFunctionLatex("li")
     })
   ],
   "sinc": [
@@ -827,13 +886,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Sinc",
-      desc: "Returns the sinc function of x."
+      desc: "Returns the sinc function of x.",
+      latex: LatexMethods.genFunctionLatex("sinc")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Sinc",
-      desc: "Returns the sinc function of x."
+      desc: "Returns the sinc function of x.",
+      latex: LatexMethods.genFunctionLatex("sinc")
     })
   ],
   "Si": [
@@ -841,7 +902,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Si",
-      desc: "Returns the sine integral of x."
+      desc: "Returns the sine integral of x.",
+      latex: LatexMethods.genFunctionLatex("Si")
     })
   ],
   "Ci": [
@@ -849,7 +911,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Ci",
-      desc: "Returns the cosine integral of x."
+      desc: "Returns the cosine integral of x.",
+      latex: LatexMethods.genFunctionLatex("Ci")
     })
   ],
   "erf": [
@@ -857,13 +920,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Erf",
-      desc: "Returns the error function of x."
+      desc: "Returns the error function of x.",
+      latex: LatexMethods.genFunctionLatex("erf")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Erf",
-      desc: "Returns the error function of z."
+      desc: "Returns the error function of z.",
+      latex: LatexMethods.genFunctionLatex("erf")
     })
   ],
   "erfc": [
@@ -871,13 +936,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Erfc",
-      desc: "Returns the complementary error function of x."
+      desc: "Returns the complementary error function of x.",
+      latex: LatexMethods.genFunctionLatex("erfc")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
       evaluate: "ComplexFunctions.Erfc",
-      desc: "Returns the complementary error function of z."
+      desc: "Returns the complementary error function of z.",
+      latex: LatexMethods.genFunctionLatex("erfc")
     })
   ],
   "inverse_erf": [
@@ -885,7 +952,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.InverseErf",
-      desc: "Returns the inverse error function of x."
+      desc: "Returns the inverse error function of x.",
+      latex: LatexMethods.genFunctionLatex("erf^{-1}")
     })
   ],
   "inverse_erfc": [
@@ -893,7 +961,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.InverseErfc",
-      desc: "Returns the inverse complementary error function of x."
+      desc: "Returns the inverse complementary error function of x.",
+      latex: LatexMethods.genFunctionLatex("erfc^{-1}")
     })
   ],
   "gcd": [
@@ -901,7 +970,8 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Gcd",
-      desc: "Returns the greatest common divisor of a and b."
+      desc: "Returns the greatest common divisor of a and b.",
+      latex: LatexMethods.genFunctionLatex("gcd")
     })
   ],
   "lcm": [
@@ -909,7 +979,8 @@ const Operators = {
       signature: ["int", "int"],
       returns: "int",
       evaluate: "RealFunctions.Lcm",
-      desc: "Returns the least common multiple of a and b."
+      desc: "Returns the least common multiple of a and b.",
+      latex: LatexMethods.genFunctionLatex("lcm")
     })
   ],
   "fresnel_S": [
@@ -917,7 +988,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.FresnelS",
-      desc: "Return the integral from 0 to x of sin(x^2)."
+      desc: "Return the integral from 0 to x of sin(x^2).",
+      latex: LatexMethods.genFunctionLatex("S")
     })
   ],
   "fresnel_C": [
@@ -925,7 +997,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.FresnelC",
-      desc: "Return the integral from 0 to x of cos(x^2)."
+      desc: "Return the integral from 0 to x of cos(x^2).",
+      latex: LatexMethods.genFunctionLatex("C")
     })
   ],
   "product_log": [
@@ -933,13 +1006,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.ProductLog",
-      desc: "Return the principal branch of the product log of x (also known as the Lambert W function or W0(x))."
+      desc: "Return the principal branch of the product log of x (also known as the Lambert W function or W0(x)).",
+      latex: LatexMethods.genFunctionLatex("W_0")
     }),
     new NormalDefinition({
       signature: ["int", "real"],
       returns: "real",
       evaluate: "RealFunctions.ProductLogBranched",
-      desc: "Return the nth branch of the product log of x (also known as the Lambert W function or W0(x)). n can be 0 or -1."
+      desc: "Return the nth branch of the product log of x (also known as the Lambert W function or W0(x)). n can be 0 or -1.",
+      latex: LatexMethods.genFunctionSubscriptLatex("W")
     })
   ],
   "elliptic_K": [
@@ -947,7 +1022,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.EllipticK",
-      desc: "Return the complete elliptic integral K(m) with parameter m = k^2."
+      desc: "Return the complete elliptic integral K(m) with parameter m = k^2.",
+      latex: LatexMethods.genFunctionLatex("K")
     })
   ],
   "elliptic_E": [
@@ -955,7 +1031,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.EllipticE",
-      desc: "Return the complete elliptic integral E(m) with parameter m = k^2."
+      desc: "Return the complete elliptic integral E(m) with parameter m = k^2.",
+      latex: LatexMethods.genFunctionLatex("E")
     })
   ],
   "agm": [
@@ -963,7 +1040,8 @@ const Operators = {
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Agm",
-      desc: "Return the arithmetic geometric mean of a and b."
+      desc: "Return the arithmetic geometric mean of a and b.",
+      latex: LatexMethods.genFunctionLatex("agm")
     })
   ],
   "abs": [
@@ -971,13 +1049,15 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Abs",
-      desc: "Return the absolute value of r."
+      desc: "Return the absolute value of r.",
+      latex: LatexMethods.absoluteValueLatex
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "real",
       evaluate: "ComplexFunctions.Abs",
-      desc: "Return the magnitude of z."
+      desc: "Return the magnitude of z.",
+      latex: LatexMethods.absoluteValueLatex
     })
   ],
   "vec2": [
@@ -1015,7 +1095,8 @@ const Operators = {
       signature: ["int"],
       returns: "int",
       evaluate: "RealFunctions.PrimeCount",
-      desc: "Find the number of primes below n."
+      desc: "Find the number of primes below n.",
+      latex: LatexMethods.genFunctionLatex("\\pi")
     })
   ],
   "cis": [
@@ -1023,7 +1104,8 @@ const Operators = {
       signature: ["real"],
       returns: "complex",
       evaluate: "ComplexFunctions.Cis",
-      desc: "Returns cos(theta) + i sin(theta)."
+      desc: "Returns cos(theta) + i sin(theta).",
+      latex: LatexMethods.genFunctionLatex("cis")
     })
   ],
   "Cl2": [
@@ -1031,7 +1113,8 @@ const Operators = {
       signature: ["real"],
       returns: "real",
       evaluate: "RealFunctions.Cl2",
-      desc: "Evaluates the Clausen function of x."
+      desc: "Evaluates the Clausen function of x.",
+      latex: LatexMethods.genFunctionLatex("Cl_2")
     })
   ],
   "beta": [
@@ -1039,61 +1122,134 @@ const Operators = {
       signature: ["real", "real"],
       returns: "real",
       evaluate: "RealFunctions.Beta",
-      desc: "Evaluates the beta function at a,b."
+      desc: "Evaluates the beta function at a,b.",
+      latex: LatexMethods.genFunctionLatex("B")
     })
   ],
   "exp": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.Exp"
+      evaluate: "RealFunctions.Exp",
+      latex: LatexMethods.genFunctionLatex("exp")
     }),
     new NormalDefinition({
       signature: ["complex"],
       returns: "complex",
-      evaluate: "ComplexFunctions.Exp"
+      evaluate: "ComplexFunctions.Exp",
+      latex: LatexMethods.genFunctionLatex("exp")
     })
   ],
   "ln_gamma": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.LnGamma"
+      evaluate: "RealFunctions.LnGamma",
+      latex: LatexMethods.genFunctionLatex("\\ln \\Gamma")
     })
   ],
   "barnes_G": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.BarnesG"
+      evaluate: "RealFunctions.BarnesG",
+      latex: LatexMethods.genFunctionLatex("G")
     })
   ],
   "ln_barnes_G": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.LnBarnesG"
+      evaluate: "RealFunctions.LnBarnesG",
+      latex: LatexMethods.genFunctionLatex("\\ln \\operatorname{G}")
     })
   ],
   "K_function": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.KFunction"
+      evaluate: "RealFunctions.KFunction",
+      latex: LatexMethods.genFunctionLatex("K")
     })
   ],
   "ln_K_function": [
     new NormalDefinition({
       signature: ["real"],
       returns: "real",
-      evaluate: "RealFunctions.LnKFunction"
+      evaluate: "RealFunctions.LnKFunction",
+      latex: LatexMethods.genFunctionLatex("\\ln \\operatorname{K}")
     })
   ],
   "bessel_J": [
     new NormalDefinition({
       signature: ["real", "real"],
       returns: "real",
-      evaluate: "RealFunctions.BesselJ"
+      evaluate: "RealFunctions.BesselJ",
+      latex: LatexMethods.genFunctionSubscriptLatex("J")
+    })
+  ],
+  "bessel_Y": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselY",
+      latex: LatexMethods.genFunctionSubscriptLatex("Y")
+    })
+  ],
+  "bessel_J0": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselJ0",
+      latex: LatexMethods.genFunctionLatex("J_0")
+    })
+  ],
+  "bessel_Y0": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselY0",
+      latex: LatexMethods.genFunctionLatex("Y_0")
+    })
+  ],
+  "bessel_J1": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselJ1",
+      latex: LatexMethods.genFunctionLatex("J_1")
+    })
+  ],
+  "bessel_Y1": [
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.BesselY1",
+      latex: LatexMethods.genFunctionLatex("Y_1")
+    })
+  ],
+  "spherical_bessel_J": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.SphericalBesselJ",
+      latex: LatexMethods.genFunctionSubscriptLatex("j")
+    })
+  ],
+  "spherical_bessel_Y": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.SphericalBesselY",
+      latex: LatexMethods.genFunctionSubscriptLatex("y")
+    })
+  ],
+  "polylog": [
+    new NormalDefinition({
+      signature: ["real", "real"],
+      returns: "real",
+      evaluate: "RealFunctions.Polylogarithm",
+      latex: LatexMethods.genFunctionSubscriptLatex("Li")
     })
   ]
 }

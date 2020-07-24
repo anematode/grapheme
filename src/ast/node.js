@@ -7,6 +7,7 @@ import { StandardLabelFunction } from '../elements/gridlines'
 import { Functions, getVariable } from './user_defined'
 import { castableInto, castableIntoMultiple, getCastingFunction, Operators } from './operators'
 import { isWorker } from '../core/utils'
+import { LatexMethods } from './latex'
 
 // List of operators (currently)
 // +, -, *, /, ^,
@@ -101,14 +102,10 @@ class ASTNode {
     return this.children.every(child => child.isConstant())
   }
 
-  latex (parens = true) {
+  latex (params={}) {
     let latex = this.children.map(child => child.latex()).join('')
 
-    if (parens) {
-      return String.raw`\left(${latex}\right)`
-    }
-
-    return latex
+    return String.raw`\left(${latex}\right)`
   }
 
   resolveTypes(givenTypes) {
@@ -211,6 +208,10 @@ class VariableNode extends ASTNode {
       return this.name
     else
       return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".intervalValue"
+  }
+
+  latex(params) {
+    return LatexMethods.getVariableLatex(this.name)
   }
 
   clone () {
@@ -370,8 +371,8 @@ class OperatorNode extends ASTNode {
     return this.operator
   }
 
-  latex () {
-    return getLatex(this)
+  latex (params) {
+    return this.definition.latex(this.children, params)
   }
 
   equals(node) {
@@ -478,7 +479,7 @@ class ConstantNode extends ASTNode {
   }
 
   getText () {
-    return this.invisible ? '' : this.text
+    return this.invisible ? '' : LatexMethods.getConstantLatex(this)
   }
 
   evaluate() {

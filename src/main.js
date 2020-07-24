@@ -55,5 +55,8 @@ export * from "./math/complex_interval/interval"
 export * from "./math/complex_interval/typecasts"
 export * from "./math/barnes_g"
 export * from "./math/jsbi"
+export * from "./math/bessel"
+export * from "./ast/latex"
+export * from "./other/katex"
 
 export * from "../tests/real_functions/test_function_accuracy"

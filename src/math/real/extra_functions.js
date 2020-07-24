@@ -13,7 +13,8 @@ import { eratosthenes } from '../primes'
 import { Cl2 } from '../clausen'
 import { barnesG, KFunction, lnBarnesG, lnKFunction } from '../barnes_g'
 import { Beta } from '../beta'
-import { besselJ } from '../bessel'
+import { besselJ, besselY, sphericalBesselJ, sphericalBesselY } from '../bessel'
+import { polylogarithm } from '../polylogarithm'
 
 const piecewise = (val1, cond, ...args) => {
   if (cond)
@@ -196,7 +197,15 @@ const ExtraFunctions = {
   Exp: Math.exp,
   KFunction: KFunction,
   LnKFunction: lnKFunction,
-  BesselJ: besselJ
+  BesselJ: besselJ,
+  BesselY: besselY,
+  BesselJ0: (z) => besselJ(0, z),
+  BesselJ1: (z) => besselJ(1, z),
+  BesselY0: (z) => besselY(0, z),
+  BesselY1: (z) => besselY(1, z),
+  SphericalBesselJ: sphericalBesselJ,
+  SphericalBesselY: sphericalBesselY,
+  Polylogarithm: polylogarithm
 }
 
 export default ExtraFunctions

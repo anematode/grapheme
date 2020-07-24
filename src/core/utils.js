@@ -125,23 +125,85 @@ function updateDPR () {
 // Periodically check whether the dpr has changed
 setInterval(updateDPR, 100)
 
-// Import the Grapheme CSS file for canvas styling
-function importGraphemeCSS () {
-  try {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.type = 'text/css'
-    link.href = '../build/grapheme.css' // oof, must change l8r
+function addStyle(styleString) {
+  const style = document.createElement('style');
+  style.textContent = styleString;
 
-    document.getElementsByTagName('HEAD')[0].appendChild(link)
-  } catch (e) {
-    console.error('Could not import Grapheme CSS')
-    throw e
-  }
+  window.addEventListener("load", () => document.head.append(style));
 }
 
-if (!isWorker)
+const graphemeCSS = `
+.grapheme-canvas {
+  z-index: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  touch-action: none;
+  -ms-touch-action: none;
+  overflow: hidden;
+}
+
+.grapheme-label {
+  position: absolute;
+}
+
+.grapheme-label-N {
+  transform: translate(-50%, -100%);
+}
+
+.grapheme-label-NW {
+  transform: translate(-100%, -100%);
+}
+
+.grapheme-label-NE {
+  transform: translate(0, -100%);
+}
+
+.grapheme-label-C {
+  transform: translate(-50%, -50%);
+}
+
+.grapheme-label-W {
+  transform: translate(-100%, -50%);
+}
+
+.grapheme-label-SW {
+  transform: translate(-100%, 0);
+}
+
+.grapheme-label-SE {
+
+}
+
+.grapheme-label-S {
+  transform: translate(-50%, 0);
+}
+
+.grapheme-label-E {
+  transform: translate(0, -50%);
+}
+`
+
+// Import the Grapheme CSS file for canvas styling
+function importGraphemeCSS () {
+  addStyle(graphemeCSS)
+}
+
+function importKatexCSS() {
+  window.addEventListener("load", () => {
+    let style = document.createElement("link")
+    style.setAttribute("rel", "stylesheet")
+    style.setAttribute("href", "https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css")
+
+    document.head.appendChild(style)
+  })
+}
+
+if (!isWorker) {
   importGraphemeCSS()
+  importKatexCSS()
+}
 
 // This function takes in a GL rendering context, a type of shader (fragment/vertex),
 // and the GLSL source code for that shader, then returns the compiled shader
