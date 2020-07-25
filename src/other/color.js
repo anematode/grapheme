@@ -55,20 +55,26 @@ class Color {
   clone() {
     return new Color(this)
   }
+
+  static rgb(r, g, b) {
+    return new Color({ r, g, b })
+  }
+
+  static rgba(r, g, b, a = 255) {
+    return new Color({
+      r, g, b, a
+    })
+  }
+
+  static fromCss(cssColorString) {
+
+  }
 }
+
+const rgb = Color.rgb
 
 // all colors represented as object {r: x, g: x, b: x, a: x}. 0 <= r,g,b,a <= 255,
 // not necessarily integers
-function rgb (r, g, b) {
-  return new Color({ r, g, b })
-}
-
-function rgba (r, g, b, a = 255) {
-  return new Color({
-    r, g, b, a
-  })
-}
-
 const Colors = {
 get LIGHTSALMON() { return rgb(255,160,122); },
 get SALMON() { return rgb(250,128,114); },
@@ -212,4 +218,4 @@ get MAROON() { return rgb(128,0,0); },
 get RANDOM() { var keys = Object.keys(Colors); return Colors[keys[ keys.length * Math.random() << 0]]; }
 }
 
-export { Color, rgb, rgba, Colors }
+export { Color, Colors }

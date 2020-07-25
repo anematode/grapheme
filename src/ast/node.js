@@ -33,7 +33,7 @@ const GraphemeSubset = {
   Typecasts
 }
 
-function compileFunction(compileText) {
+function compileFunction(compileText, exportedVariables) {
   return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
 }
 
@@ -102,7 +102,7 @@ class ASTNode {
 
     let compileText = this._getCompileText(exportedVariables)
 
-    return compileFunction(compileText)
+    return compileFunction(compileText, exportedVariables)
   }
 
   compileInterval(exportedVariables=[]) {
@@ -118,7 +118,7 @@ class ASTNode {
 
     let compileText = this._getIntervalCompileText(exportedVariables)
 
-    return compileFunction(compileText)
+    return compileFunction(compileText, exportedVariables)
   }
 
   clone () {

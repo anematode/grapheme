@@ -4423,20 +4423,26 @@ var Grapheme = (function (exports) {
     clone() {
       return new Color(this)
     }
+
+    static rgb(r, g, b) {
+      return new Color({ r, g, b })
+    }
+
+    static rgba(r, g, b, a = 255) {
+      return new Color({
+        r, g, b, a
+      })
+    }
+
+    static fromCss(cssColorString) {
+
+    }
   }
+
+  const rgb = Color.rgb;
 
   // all colors represented as object {r: x, g: x, b: x, a: x}. 0 <= r,g,b,a <= 255,
   // not necessarily integers
-  function rgb (r, g, b) {
-    return new Color({ r, g, b })
-  }
-
-  function rgba (r, g, b, a = 255) {
-    return new Color({
-      r, g, b, a
-    })
-  }
-
   const Colors = {
   get LIGHTSALMON() { return rgb(255,160,122); },
   get SALMON() { return rgb(250,128,114); },
@@ -11272,7 +11278,7 @@ void main() {
     Typecasts
   };
 
-  function compileFunction(compileText) {
+  function compileFunction(compileText, exportedVariables) {
     return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
   }
 
@@ -11341,7 +11347,7 @@ void main() {
 
       let compileText = this._getCompileText(exportedVariables);
 
-      return compileFunction(compileText)
+      return compileFunction(compileText, exportedVariables)
     }
 
     compileInterval(exportedVariables=[]) {
@@ -11357,7 +11363,7 @@ void main() {
 
       let compileText = this._getIntervalCompileText(exportedVariables);
 
-      return compileFunction(compileText)
+      return compileFunction(compileText, exportedVariables)
     }
 
     clone () {
@@ -17917,8 +17923,6 @@ void main() {
   exports.primeCountingFunction = meisselLehmerExtended;
   exports.regularPolygonGlyph = regularPolygonGlyph;
   exports.retrieveEvaluationFunction = retrieveEvaluationFunction;
-  exports.rgb = rgb;
-  exports.rgba = rgba;
   exports.sample_1d = sample_1d;
   exports.sample_parametric_1d = sample_parametric_1d;
   exports.sphericalBesselJ = sphericalBesselJ;
