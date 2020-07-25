@@ -4,7 +4,7 @@
 
 import * as utils from '../core/utils'
 import { StandardLabelFunction } from '../elements/gridlines'
-import { Functions, getVariable } from './user_defined'
+import { Functions, Variables, getVariable } from './user_defined'
 import {
   castableInto,
   castableIntoMultiple,
@@ -19,21 +19,30 @@ import { ComplexFunctions } from '../math/complex/functions'
 import { Typecasts } from '../math/typecasts'
 import { RealFunctions } from '../math/real/functions'
 import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
+import { RealInterval, RealIntervalSet } from '../math/real_interval/interval'
+import { ComplexInterval } from '../math/complex_interval/interval'
+import { Vec2 } from '../math/vec'
 
 // List of operators (currently)
 // +, -, *, /, ^,
 
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
-const GraphemeSubset = {
-  ComplexIntervalFunctions,
-  ComplexFunctions,
-  RealIntervalFunctions,
-  RealFunctions,
-  Typecasts
-}
-
 function compileFunction(compileText, exportedVariables) {
+  const GraphemeSubset = {
+    ComplexIntervalFunctions,
+    ComplexFunctions,
+    RealIntervalFunctions,
+    RealFunctions,
+    Typecasts,
+    RealInterval,
+    RealIntervalSet,
+    ComplexInterval,
+    Vec2,
+    Functions,
+    Variables
+  }
+  
   return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
 }
 
