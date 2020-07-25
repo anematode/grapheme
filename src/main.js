@@ -3,6 +3,7 @@ export * from "./core/grapheme_group"
 export * from "./math/bounding_box"
 export * from "./math/vec"
 export * from "./elements/label"
+export * from "./styles/label_style"
 export * from "./elements/gridlines"
 import * as utils from "./core/utils"
 export { utils }

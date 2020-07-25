@@ -701,7 +701,7 @@ const Operators = {
     new NormalDefinition({
       signature: ["int"],
       returns: "int",
-      evaluate: "eulerPhi",
+      evaluate: "RealFunctions.EulerPhi",
       desc: "Returns Euler's totient function evaluated at an integer n.",
       latex: LatexMethods.genFunctionLatex('\\phi')
     })

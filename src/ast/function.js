@@ -7,6 +7,8 @@
 
 import { NormalDefinition } from './operators'
 
+// Convert exportedVariables into a standard form that includes variable name and type information. For example,
+// 'x' is converted to [['x', "real"]], ['x', ['y', "complex"]] is converted to [['x', "real"], ['y', "complex"]]
 function processExportedVariables(exportedVariables) {
   if (typeof exportedVariables === "string")
     return [[exportedVariables, "real"]]

@@ -142,9 +142,7 @@ class Plot2D extends InteractiveCanvas {
     // If the mouse is down
     if (this.mouseDownPos) {
       // If drag is enabled
-      if (this.enableDrag)
-      // Move the location of the event to the original mouse down position
-      {
+      if (this.enableDrag) { // Move the location of the event to the original mouse down position
         this.transform._coincideDragPoints(this.mouseDownPos, evt.pos)
       }
 
@@ -161,6 +159,17 @@ class Plot2D extends InteractiveCanvas {
     // Mark the mouse as up
     this.mouseDownPos = null
     return true
+  }
+
+  /**
+   * Set the padding on all sides to p.
+   * @param p {number} The desired padding.
+   */
+  setPadding(p) {
+    this.padding.top = this.padding.right = this.padding.left = this.padding.bottom = p
+
+    this.calculateTransform()
+    this.transform.triggerPlotCoordsChanged()
   }
 
   /**

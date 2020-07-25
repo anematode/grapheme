@@ -4006,8 +4006,7 @@ var Grapheme = (function (exports) {
 
         this._centerOn(new Vec2(cx, cy));
 
-        if (this.plot)
-          this.plot.triggerEvent("plotcoordschanged");
+        this.triggerPlotCoordsChanged();
       }
     }
 
@@ -4020,6 +4019,11 @@ var Grapheme = (function (exports) {
       // ratio between y axis and x axis
 
       return this.box.height / this.box.width * this.coords.width / this.coords.height
+    }
+
+    triggerPlotCoordsChanged() {
+      if (this.plot)
+        this.plot.triggerEvent("plotcoordschanged");
     }
 
     _centerOn(v) {
@@ -4035,16 +4039,14 @@ var Grapheme = (function (exports) {
       }
 
       this.correctAspectRatio();
-      if (this.plot)
-        this.plot.triggerEvent("plotcoordschanged");
+      this.triggerPlotCoordsChanged();
     }
 
     translate(v, ...args) {
       if (v instanceof Vec2) {
         this.coords.top_left.add(v);
 
-        if (this.plot)
-          this.plot.triggerEvent("plotcoordschanged");
+        this.triggerPlotCoordsChanged();
       } else {
         this.translate(new Vec2(v, ...args));
       }
@@ -4057,17 +4059,17 @@ var Grapheme = (function (exports) {
         this.coords.width *= factor;
         this.coords.height *= factor;
 
-        this._internal_coincideDragPoints(v, pixel_s);
+        this._internalCoincideDragPoints(v, pixel_s);
       }
     }
 
-    _internal_coincideDragPoints(p1, p2) {
+    _internalCoincideDragPoints(p1, p2) {
       this.translate(this.pixelToPlot(p2).subtract(p1).scale(-1));
     }
 
     _coincideDragPoints(p1, p2) {
       if (this.allowDragging) {
-        this._internal_coincideDragPoints(p1, p2);
+        this._internalCoincideDragPoints(p1, p2);
       }
     }
 
@@ -4310,9 +4312,7 @@ var Grapheme = (function (exports) {
       // If the mouse is down
       if (this.mouseDownPos) {
         // If drag is enabled
-        if (this.enableDrag)
-        // Move the location of the event to the original mouse down position
-        {
+        if (this.enableDrag) { // Move the location of the event to the original mouse down position
           this.transform._coincideDragPoints(this.mouseDownPos, evt.pos);
         }
 
@@ -4329,6 +4329,17 @@ var Grapheme = (function (exports) {
       // Mark the mouse as up
       this.mouseDownPos = null;
       return true
+    }
+
+    /**
+     * Set the padding on all sides to p.
+     * @param p {number} The desired padding.
+     */
+    setPadding(p) {
+      this.padding.top = this.padding.right = this.padding.left = this.padding.bottom = p;
+
+      this.calculateTransform();
+      this.transform.triggerPlotCoordsChanged();
     }
 
     /**
@@ -9173,7 +9184,8 @@ void main() {
     BesselY1: (z) => besselY(1, z),
     SphericalBesselJ: sphericalBesselJ,
     SphericalBesselY: sphericalBesselY,
-    Polylogarithm: polylogarithm
+    Polylogarithm: polylogarithm,
+    EulerPhi: eulerPhi
   };
 
   const RealFunctions = {...BasicFunctions, ...ExtraFunctions};
@@ -12769,7 +12781,7 @@ void main() {
       new NormalDefinition({
         signature: ["int"],
         returns: "int",
-        evaluate: "eulerPhi",
+        evaluate: "RealFunctions.EulerPhi",
         desc: "Returns Euler's totient function evaluated at an integer n.",
         latex: LatexMethods.genFunctionLatex('\\phi')
       })
@@ -13332,6 +13344,8 @@ void main() {
    * include type information which will be
    */
 
+  // Convert exportedVariables into a standard form that includes variable name and type information. For example,
+  // 'x' is converted to [['x', "real"]], ['x', ['y', "complex"]] is converted to [['x', "real"], ['y', "complex"]]
   function processExportedVariables(exportedVariables) {
     if (typeof exportedVariables === "string")
       return [[exportedVariables, "real"]]
@@ -17752,6 +17766,7 @@ void main() {
 
   exports.ASTNode = ASTNode;
   exports.BasicLabel = BasicLabel;
+  exports.BasicLabelStyle = BasicLabelStyle;
   exports.Beast = Beast;
   exports.BeastJob = BeastJob;
   exports.BooleanFunctions = BooleanFunctions;
@@ -17785,6 +17800,7 @@ void main() {
   exports.KFunction = KFunction;
   exports.LANCZOS_COEFFICIENTS = LANCZOS_COEFFICIENTS;
   exports.Label2D = Label2D;
+  exports.Label2DStyle = Label2DStyle;
   exports.LabeledPoint = LabeledPoint;
   exports.LatexMethods = LatexMethods;
   exports.NormalDefinition = NormalDefinition;

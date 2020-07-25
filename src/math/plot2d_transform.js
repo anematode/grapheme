@@ -41,8 +41,7 @@ class Plot2DTransform {
 
       this._centerOn(new Vec2(cx, cy))
 
-      if (this.plot)
-        this.plot.triggerEvent("plotcoordschanged")
+      this.triggerPlotCoordsChanged()
     }
   }
 
@@ -55,6 +54,11 @@ class Plot2DTransform {
     // ratio between y axis and x axis
 
     return this.box.height / this.box.width * this.coords.width / this.coords.height
+  }
+
+  triggerPlotCoordsChanged() {
+    if (this.plot)
+      this.plot.triggerEvent("plotcoordschanged")
   }
 
   _centerOn(v) {
@@ -70,16 +74,14 @@ class Plot2DTransform {
     }
 
     this.correctAspectRatio()
-    if (this.plot)
-      this.plot.triggerEvent("plotcoordschanged")
+    this.triggerPlotCoordsChanged()
   }
 
   translate(v, ...args) {
     if (v instanceof Vec2) {
       this.coords.top_left.add(v)
 
-      if (this.plot)
-        this.plot.triggerEvent("plotcoordschanged")
+      this.triggerPlotCoordsChanged()
     } else {
       this.translate(new Vec2(v, ...args))
     }
@@ -92,17 +94,17 @@ class Plot2DTransform {
       this.coords.width *= factor
       this.coords.height *= factor
 
-      this._internal_coincideDragPoints(v, pixel_s)
+      this._internalCoincideDragPoints(v, pixel_s)
     }
   }
 
-  _internal_coincideDragPoints(p1, p2) {
+  _internalCoincideDragPoints(p1, p2) {
     this.translate(this.pixelToPlot(p2).subtract(p1).scale(-1))
   }
 
   _coincideDragPoints(p1, p2) {
     if (this.allowDragging) {
-      this._internal_coincideDragPoints(p1, p2)
+      this._internalCoincideDragPoints(p1, p2)
     }
   }
 

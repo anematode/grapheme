@@ -9,7 +9,7 @@ import { FresnelS, FresnelC } from '../fresnel'
 import { productLog, productLogBranched } from '../product_log'
 import { ellipticE, ellipticK, ellipticPi } from '../elliptic_integrals'
 import { agm } from '../agm'
-import { eratosthenes } from '../primes'
+import { eratosthenes, eulerPhi } from '../primes'
 import { Cl2 } from '../clausen'
 import { barnesG, KFunction, lnBarnesG, lnKFunction } from '../barnes_g'
 import { Beta } from '../beta'
@@ -205,7 +205,8 @@ const ExtraFunctions = {
   BesselY1: (z) => besselY(1, z),
   SphericalBesselJ: sphericalBesselJ,
   SphericalBesselY: sphericalBesselY,
-  Polylogarithm: polylogarithm
+  Polylogarithm: polylogarithm,
+  EulerPhi: eulerPhi
 }
 
 export default ExtraFunctions
