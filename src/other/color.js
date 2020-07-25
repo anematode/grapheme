@@ -59,6 +59,13 @@ class Color {
     return new Color(this)
   }
 
+  setFromColor(c) {
+    this.r = c.r
+    this.g = c.g
+    this.b = c.b
+    this.a = c.a
+  }
+
   static rgb (r, g, b) {
     return new Color({
       r,

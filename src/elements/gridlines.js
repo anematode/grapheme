@@ -7,8 +7,6 @@ import {Label2DStyle} from '../styles/label_style'
 import * as utils from "../core/utils"
 import { Vec2 } from "../math/vec"
 import { Colors } from '../other/color'
-import { SmartLabel } from './smart_label'
-import { BoundingBox } from '../math/bounding_box'
 
 /* Unicode characters for exponent signs */
 const exponent_reference = {
@@ -88,10 +86,10 @@ class Gridlines extends GraphemeElement {
     this.strategizer = GridlineStrategizers.Standard
     this.label_function = StandardLabelFunction
 
-    this.label_positions = ["dynamic"]
-    this.label_types = ["axis", "major"]
-    this.label_style = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE})
-    this.label_padding = 5
+    this.labelPositions = ["dynamic"]
+    this.labelTypes = ["axis", "major"]
+    this.labelStyle = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE})
+    this.labelPadding = 5
 
     this._labels = []
 
@@ -125,7 +123,7 @@ class Gridlines extends GraphemeElement {
     let polylines = this._polylines = {}
     let computed_label_styles = {}
 
-    let label_padding = this.label_padding
+    let label_padding = this.labelPadding
 
     const addLabel = (marker_pos, style, position) => {
       let label = new Label2D({style, text: this.label_function(marker_pos), position})
@@ -137,14 +135,14 @@ class Gridlines extends GraphemeElement {
       if (computed_label_styles[name]) {
         return computed_label_styles[name]
       } else {
-        let label_style = computed_label_styles[name] = new Label2DStyle(this.label_style)
+        let label_style = computed_label_styles[name] = new Label2DStyle(this.labelStyle)
 
         construct(label_style)
         return label_style
       }
     }
 
-    const dynamic = this.label_positions.includes("dynamic")
+    const dynamic = this.labelPositions.includes("dynamic")
 
     for (let marker of markers) {
       if (marker.dir === 'x') {
@@ -158,15 +156,15 @@ class Gridlines extends GraphemeElement {
 
         polyline.vertices.push(x_coord, sy, x_coord, ey, NaN, NaN)
 
-        if (this.label_types.includes(marker.type)) {
+        if (this.labelTypes.includes(marker.type)) {
           let axisPosition = transform.plotToPixelY(0)
           let axisInRange = (transform.box.y1 <= axisPosition && axisPosition <= transform.box.y2)
-          let axis = this.label_positions.includes("axis") || (dynamic && axisInRange)
+          let axis = this.labelPositions.includes("axis") || (dynamic && axisInRange)
 
-          let top = this.label_positions.includes("top")
-          let bottom = this.label_positions.includes("bottom")
-          let top_in = this.label_positions.includes("top-in") || (dynamic && axisPosition < transform.box.y1)
-          let bottom_in = this.label_positions.includes("bottom-in") || (dynamic && axisPosition > transform.box.y2)
+          let top = this.labelPositions.includes("top")
+          let bottom = this.labelPositions.includes("bottom")
+          let top_in = this.labelPositions.includes("top-in") || (dynamic && axisPosition < transform.box.y1)
+          let bottom_in = this.labelPositions.includes("bottom-in") || (dynamic && axisPosition > transform.box.y2)
 
           if (top) {
             let style = getLabelStyle("top", (style) => style.dir = "N")
@@ -222,15 +220,15 @@ class Gridlines extends GraphemeElement {
 
         polyline.vertices.push(sx, y_coord, ex, y_coord, NaN, NaN)
 
-        if (this.label_types.includes(marker.type)) {
+        if (this.labelTypes.includes(marker.type)) {
           let axisPosition = transform.plotToPixelX(0)
           let axisInRange = (transform.box.x1 <= axisPosition && axisPosition <= transform.box.x2)
-          let axis = this.label_positions.includes("axis") || (dynamic && axisInRange)
+          let axis = this.labelPositions.includes("axis") || (dynamic && axisInRange)
 
-          let left = this.label_positions.includes("left")
-          let right = this.label_positions.includes("right")
-          let left_in = this.label_positions.includes("left-in") || (dynamic && axisPosition < transform.box.x1)
-          let right_in = this.label_positions.includes("right-in") || (dynamic && axisPosition > transform.box.x2)
+          let left = this.labelPositions.includes("left")
+          let right = this.labelPositions.includes("right")
+          let left_in = this.labelPositions.includes("left-in") || (dynamic && axisPosition < transform.box.x1)
+          let right_in = this.labelPositions.includes("right-in") || (dynamic && axisPosition > transform.box.x2)
 
           if (left) {
             let style = getLabelStyle("left", (style) => style.dir = "W")

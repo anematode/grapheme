@@ -42,7 +42,7 @@ function compileFunction(compileText, exportedVariables) {
     Functions,
     Variables
   }
-  
+
   return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
 }
 

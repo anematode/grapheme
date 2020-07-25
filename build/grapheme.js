@@ -4427,6 +4427,13 @@ var Grapheme = (function (exports) {
       return new Color(this)
     }
 
+    setFromColor(c) {
+      this.r = c.r;
+      this.g = c.g;
+      this.b = c.b;
+      this.a = c.a;
+    }
+
     static rgb (r, g, b) {
       return new Color({
         r,
@@ -5902,147 +5909,6 @@ var Grapheme = (function (exports) {
     }
   };
 
-  const directionPrecedence = ["N", "S", "W", "E", "SW", "SE", "NW", "NE"];
-
-  /**
-   * Label which automatically figures out where to be placed to have the label shown well.
-   */
-  class SmartLabel extends Label2D {
-    constructor(params={}) {
-      super(params);
-
-      this.objectBox = null;
-      this.forceDir = null;
-      this.renderTop = true;
-    }
-
-    computeAnchorPoint(dir) {
-      const box = this.objectBox;
-
-      let y = 0;
-      let x = 0;
-
-      switch (dir) {
-        case "W": case "E":
-          y = 1;
-          break
-        case "NW": case "NE": case "N":
-          y = 0;
-          break
-        case "SW": case "SE": case "S":
-          y = 2;
-          break
-      }
-      switch (dir) {
-        case "NW": case "W": case "SW":
-          x = 0;
-          break
-        case "N": case "S":
-          x = 1;
-          break
-        case "NE": case "E": case "SE":
-          x = 2;
-          break
-      }
-
-      let pos_x = box.x1 + box.width * x / 2;
-      let pos_y = box.y1 + box.height * y / 2;
-
-      return {pos: new Vec2(pos_x, pos_y), reference_x: x, reference_y: y, pos_x, pos_y}
-    }
-
-    computeTranslatedBoundingBox(bbox, dir) {
-      if (!this.objectBox)
-        return
-
-      let bboxc = bbox.clone();
-
-      let anchorInfo = this.computeAnchorPoint(dir);
-
-      let x = 0, y = 0;
-
-      switch (anchorInfo.reference_x) {
-        case 0:
-          x = anchorInfo.pos_x - bbox.width;
-          break
-        case 1:
-          x = anchorInfo.pos_x - bbox.width / 2;
-          break
-        case 2:
-          x = anchorInfo.pos_x;
-          break
-      }
-
-      switch (anchorInfo.reference_y) {
-        case 0:
-          y = anchorInfo.pos_y - bbox.height;
-          break
-        case 1:
-          y = anchorInfo.pos_y - bbox.height / 2;
-          break
-        case 2:
-          y = anchorInfo.pos_y;
-          break
-      }
-
-      bboxc.top_left = new Vec2(x, y);
-
-      return bboxc
-    }
-
-    render(info, force=false) {
-
-      if (!this.objectBox)
-        return
-
-      const smartLabelManager = info.smartLabelManager;
-
-      if (this.renderTop && !force) {
-        smartLabelManager.renderTopLabel(this);
-        return
-      }
-
-      let bbox = this.boundingBoxNaive();
-
-
-      let dir = this.forceDir;
-      const sS = this.style.shadowSize;
-
-      if (!this.forceDir) {
-        let min_area = Infinity;
-
-        if (smartLabelManager && !this.forceDir) {
-          for (let direction of directionPrecedence) {
-            let bbox_computed = this.computeTranslatedBoundingBox(bbox, direction);
-
-            let area = smartLabelManager.getIntersectingArea(bbox_computed);
-
-            if (area <= min_area) {
-              dir = direction;
-              min_area = area;
-            }
-          }
-        }
-      }
-
-      let computed = this.computeTranslatedBoundingBox(bbox, dir).pad({
-        top: -sS,
-        bottom: -sS,
-        left: -sS,
-        right: -sS
-      });
-
-      let anchor_info = this.computeAnchorPoint(dir);
-
-      this.style.dir = dir;
-      this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y);
-
-      smartLabelManager.addBox(computed);
-
-      super.render(info);
-    }
-  }
-
   /* Unicode characters for exponent signs */
   const exponent_reference = {
     '-': String.fromCharCode(8315),
@@ -6121,10 +5987,10 @@ var Grapheme = (function (exports) {
       this.strategizer = GridlineStrategizers.Standard;
       this.label_function = StandardLabelFunction;
 
-      this.label_positions = ["dynamic"];
-      this.label_types = ["axis", "major"];
-      this.label_style = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE});
-      this.label_padding = 5;
+      this.labelPositions = ["dynamic"];
+      this.labelTypes = ["axis", "major"];
+      this.labelStyle = new Label2DStyle({fontSize: 14, shadowSize: 3, shadowColor: Colors.WHITE});
+      this.labelPadding = 5;
 
       this._labels = [];
 
@@ -6158,7 +6024,7 @@ var Grapheme = (function (exports) {
       let polylines = this._polylines = {};
       let computed_label_styles = {};
 
-      let label_padding = this.label_padding;
+      let label_padding = this.labelPadding;
 
       const addLabel = (marker_pos, style, position) => {
         let label = new Label2D({style, text: this.label_function(marker_pos), position});
@@ -6170,14 +6036,14 @@ var Grapheme = (function (exports) {
         if (computed_label_styles[name]) {
           return computed_label_styles[name]
         } else {
-          let label_style = computed_label_styles[name] = new Label2DStyle(this.label_style);
+          let label_style = computed_label_styles[name] = new Label2DStyle(this.labelStyle);
 
           construct(label_style);
           return label_style
         }
       };
 
-      const dynamic = this.label_positions.includes("dynamic");
+      const dynamic = this.labelPositions.includes("dynamic");
 
       for (let marker of markers) {
         if (marker.dir === 'x') {
@@ -6191,15 +6057,15 @@ var Grapheme = (function (exports) {
 
           polyline.vertices.push(x_coord, sy, x_coord, ey, NaN, NaN);
 
-          if (this.label_types.includes(marker.type)) {
+          if (this.labelTypes.includes(marker.type)) {
             let axisPosition = transform.plotToPixelY(0);
             let axisInRange = (transform.box.y1 <= axisPosition && axisPosition <= transform.box.y2);
-            let axis = this.label_positions.includes("axis") || (dynamic && axisInRange);
+            let axis = this.labelPositions.includes("axis") || (dynamic && axisInRange);
 
-            let top = this.label_positions.includes("top");
-            let bottom = this.label_positions.includes("bottom");
-            let top_in = this.label_positions.includes("top-in") || (dynamic && axisPosition < transform.box.y1);
-            let bottom_in = this.label_positions.includes("bottom-in") || (dynamic && axisPosition > transform.box.y2);
+            let top = this.labelPositions.includes("top");
+            let bottom = this.labelPositions.includes("bottom");
+            let top_in = this.labelPositions.includes("top-in") || (dynamic && axisPosition < transform.box.y1);
+            let bottom_in = this.labelPositions.includes("bottom-in") || (dynamic && axisPosition > transform.box.y2);
 
             if (top) {
               let style = getLabelStyle("top", (style) => style.dir = "N");
@@ -6255,15 +6121,15 @@ var Grapheme = (function (exports) {
 
           polyline.vertices.push(sx, y_coord, ex, y_coord, NaN, NaN);
 
-          if (this.label_types.includes(marker.type)) {
+          if (this.labelTypes.includes(marker.type)) {
             let axisPosition = transform.plotToPixelX(0);
             let axisInRange = (transform.box.x1 <= axisPosition && axisPosition <= transform.box.x2);
-            let axis = this.label_positions.includes("axis") || (dynamic && axisInRange);
+            let axis = this.labelPositions.includes("axis") || (dynamic && axisInRange);
 
-            let left = this.label_positions.includes("left");
-            let right = this.label_positions.includes("right");
-            let left_in = this.label_positions.includes("left-in") || (dynamic && axisPosition < transform.box.x1);
-            let right_in = this.label_positions.includes("right-in") || (dynamic && axisPosition > transform.box.x2);
+            let left = this.labelPositions.includes("left");
+            let right = this.labelPositions.includes("right");
+            let left_in = this.labelPositions.includes("left-in") || (dynamic && axisPosition < transform.box.x1);
+            let right_in = this.labelPositions.includes("right-in") || (dynamic && axisPosition > transform.box.x2);
 
             if (left) {
               let style = getLabelStyle("left", (style) => style.dir = "W");
@@ -11655,7 +11521,7 @@ void main() {
       Functions,
       Variables
     };
-    
+
     return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
   }
 
@@ -15677,6 +15543,147 @@ void main() {
       box.cy = cy;
 
       return box
+    }
+  }
+
+  const directionPrecedence = ["N", "S", "W", "E", "SW", "SE", "NW", "NE"];
+
+  /**
+   * Label which automatically figures out where to be placed to have the label shown well.
+   */
+  class SmartLabel extends Label2D {
+    constructor(params={}) {
+      super(params);
+
+      this.objectBox = null;
+      this.forceDir = null;
+      this.renderTop = true;
+    }
+
+    computeAnchorPoint(dir) {
+      const box = this.objectBox;
+
+      let y = 0;
+      let x = 0;
+
+      switch (dir) {
+        case "W": case "E":
+          y = 1;
+          break
+        case "NW": case "NE": case "N":
+          y = 0;
+          break
+        case "SW": case "SE": case "S":
+          y = 2;
+          break
+      }
+      switch (dir) {
+        case "NW": case "W": case "SW":
+          x = 0;
+          break
+        case "N": case "S":
+          x = 1;
+          break
+        case "NE": case "E": case "SE":
+          x = 2;
+          break
+      }
+
+      let pos_x = box.x1 + box.width * x / 2;
+      let pos_y = box.y1 + box.height * y / 2;
+
+      return {pos: new Vec2(pos_x, pos_y), reference_x: x, reference_y: y, pos_x, pos_y}
+    }
+
+    computeTranslatedBoundingBox(bbox, dir) {
+      if (!this.objectBox)
+        return
+
+      let bboxc = bbox.clone();
+
+      let anchorInfo = this.computeAnchorPoint(dir);
+
+      let x = 0, y = 0;
+
+      switch (anchorInfo.reference_x) {
+        case 0:
+          x = anchorInfo.pos_x - bbox.width;
+          break
+        case 1:
+          x = anchorInfo.pos_x - bbox.width / 2;
+          break
+        case 2:
+          x = anchorInfo.pos_x;
+          break
+      }
+
+      switch (anchorInfo.reference_y) {
+        case 0:
+          y = anchorInfo.pos_y - bbox.height;
+          break
+        case 1:
+          y = anchorInfo.pos_y - bbox.height / 2;
+          break
+        case 2:
+          y = anchorInfo.pos_y;
+          break
+      }
+
+      bboxc.top_left = new Vec2(x, y);
+
+      return bboxc
+    }
+
+    render(info, force=false) {
+
+      if (!this.objectBox)
+        return
+
+      const smartLabelManager = info.smartLabelManager;
+
+      if (this.renderTop && !force) {
+        smartLabelManager.renderTopLabel(this);
+        return
+      }
+
+      let bbox = this.boundingBoxNaive();
+
+
+      let dir = this.forceDir;
+      const sS = this.style.shadowSize;
+
+      if (!this.forceDir) {
+        let min_area = Infinity;
+
+        if (smartLabelManager && !this.forceDir) {
+          for (let direction of directionPrecedence) {
+            let bbox_computed = this.computeTranslatedBoundingBox(bbox, direction);
+
+            let area = smartLabelManager.getIntersectingArea(bbox_computed);
+
+            if (area <= min_area) {
+              dir = direction;
+              min_area = area;
+            }
+          }
+        }
+      }
+
+      let computed = this.computeTranslatedBoundingBox(bbox, dir).pad({
+        top: -sS,
+        bottom: -sS,
+        left: -sS,
+        right: -sS
+      });
+
+      let anchor_info = this.computeAnchorPoint(dir);
+
+      this.style.dir = dir;
+      this.position = new Vec2(anchor_info.pos_x, anchor_info.pos_y);
+
+      smartLabelManager.addBox(computed);
+
+      super.render(info);
     }
   }
 
