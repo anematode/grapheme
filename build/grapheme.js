@@ -11252,10 +11252,29 @@ void main() {
     ...BasicArithmeticFunctions$2
   };
 
+  const Typecasts = {
+    RealToComplex: (r) => new Complex$1(r),
+    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
+    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
+    Identity: (r) => r
+  };
+
   // List of operators (currently)
   // +, -, *, /, ^,
 
   const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
+
+  const GraphemeSubset = {
+    ComplexIntervalFunctions,
+    ComplexFunctions,
+    RealIntervalFunctions,
+    RealFunctions,
+    Typecasts
+  };
+
+  function compileFunction(compileText) {
+    return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
+  }
 
   class ASTNode {
     constructor (params = {}) {
@@ -11322,7 +11341,7 @@ void main() {
 
       let compileText = this._getCompileText(exportedVariables);
 
-      return new Function(...exportedVariables, "return " + compileText)
+      return compileFunction(compileText)
     }
 
     compileInterval(exportedVariables=[]) {
@@ -11338,7 +11357,7 @@ void main() {
 
       let compileText = this._getIntervalCompileText(exportedVariables);
 
-      return new Function(...exportedVariables, "return " + compileText)
+      return compileFunction(compileText)
     }
 
     clone () {
@@ -12079,13 +12098,6 @@ void main() {
     RealToComplex: (int) => {
       return new ComplexInterval(int.min, int.max, 0, 0, int.defMin, int.defMax)
     }
-  };
-
-  const Typecasts = {
-    RealToComplex: (r) => new Complex$1(r),
-    RealArrayToComplexArray: (arr) => arr.map(elem => new Complex$1(elem)),
-    RealIntervalToComplexInterval: (int) => new ComplexInterval(int.min, int.max, 0, 0),
-    Identity: (r) => r
   };
 
   // Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"

@@ -14,11 +14,28 @@ import {
 } from './operators'
 import { isWorker } from '../core/utils'
 import { LatexMethods } from './latex'
+import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
+import { ComplexFunctions } from '../math/complex/functions'
+import { Typecasts } from '../math/typecasts'
+import { RealFunctions } from '../math/real/functions'
+import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
 
 // List of operators (currently)
 // +, -, *, /, ^,
 
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
+
+const GraphemeSubset = {
+  ComplexIntervalFunctions,
+  ComplexFunctions,
+  RealIntervalFunctions,
+  RealFunctions,
+  Typecasts
+}
+
+function compileFunction(compileText) {
+  return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
+}
 
 class ASTNode {
   constructor (params = {}) {
@@ -85,7 +102,7 @@ class ASTNode {
 
     let compileText = this._getCompileText(exportedVariables)
 
-    return new Function(...exportedVariables, "return " + compileText)
+    return compileFunction(compileText)
   }
 
   compileInterval(exportedVariables=[]) {
@@ -101,7 +118,7 @@ class ASTNode {
 
     let compileText = this._getIntervalCompileText(exportedVariables)
 
-    return new Function(...exportedVariables, "return " + compileText)
+    return compileFunction(compileText)
   }
 
   clone () {
