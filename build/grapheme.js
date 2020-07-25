@@ -18201,10 +18201,8 @@ void main() {
   exports.Label2DStyle = Label2DStyle;
   exports.LabeledPoint = LabeledPoint;
   exports.LatexMethods = LatexMethods;
-  exports.NormalDefinition = NormalDefinition;
   exports.OperatorNode = OperatorNode;
   exports.OperatorSynonyms = OperatorSynonyms;
-  exports.Operators = Operators;
   exports.ParametricPlot2D = ParametricPlot2D;
   exports.Pen = Pen;
   exports.PieChart = PieChart;
@@ -18241,8 +18239,6 @@ void main() {
   exports.besselY = besselY;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
-  exports.castableInto = castableInto;
-  exports.castableIntoMultiple = castableIntoMultiple;
   exports.defineFunction = defineFunction;
   exports.defineVariable = defineVariable;
   exports.digamma = digamma;
@@ -18266,7 +18262,6 @@ void main() {
   exports.fastHypot = fastHypot;
   exports.find_roots = find_roots;
   exports.gamma = gamma;
-  exports.getCastingFunction = getCastingFunction;
   exports.getDashedPolyline = getDashedPolyline;
   exports.getEiCoeff = getEiCoeff;
   exports.getFunction = getFunction;
@@ -18302,7 +18297,6 @@ void main() {
   exports.polygamma = polygamma;
   exports.primeCountingFunction = meisselLehmerExtended;
   exports.regularPolygonGlyph = regularPolygonGlyph;
-  exports.retrieveEvaluationFunction = retrieveEvaluationFunction;
   exports.sample_1d = sample_1d;
   exports.sample_parametric_1d = sample_parametric_1d;
   exports.sphericalBesselJ = sphericalBesselJ;
