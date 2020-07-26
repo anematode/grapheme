@@ -3,7 +3,6 @@ import { InteractiveElement } from "../core/interactive_element"
 import { Colors } from '../other/color'
 import { adaptively_sample_1d, sample_1d } from '../math/function_plot_algorithm'
 import * as utils from "../core/utils"
-import { adaptPolyline } from '../math/adapt_polyline'
 import { WebGLPolyline } from './webgl_polyline'
 import { getFunctionName } from '../core/utils'
 import { defineFunction, getFunction, undefineFunction } from '../ast/user_defined'
@@ -50,14 +49,6 @@ class FunctionPlot2D extends InteractiveElement {
     if (!this.polyline)
       return false
     return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
-  }
-
-  updateLight(adaptThickness=true) {
-    let transform = this.plot.transform
-
-    this.previousTransform = transform.clone()
-
-    adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness)
   }
 
   setAxis(axis) {
