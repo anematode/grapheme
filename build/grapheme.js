@@ -15889,6 +15889,19 @@ void main() {
     return [n, d]
   }
 
+  defineVariable('i', parseString("complex(0, 1)"));
+  defineVariable('pi', parseString("3.141592653589793238"));
+  defineVariable('e', parseString("2.71828182845904523536"));
+  defineVariable('euler_gamma', parseString("0.57721566490153286060"));
+  defineVariable('<', parseString("1"));
+  defineVariable('>', parseString("1"));
+  defineVariable('<=', parseString("1"));
+  defineVariable('>=', parseString("1"));
+  defineVariable('!=', parseString("1"));
+  defineVariable('==', parseString("1"));
+
+  RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e');
+
   class BeastJob extends Promise {
     constructor(beast, id, progressCallback=null) {
       if (beast instanceof Function) {
@@ -18316,15 +18329,3 @@ void main() {
   return exports;
 
 }({}));
-Grapheme.defineVariable('i', Grapheme.parseString("complex(0, 1)"))
-Grapheme.defineVariable('pi', Grapheme.parseString("3.141592653589793238"))
-Grapheme.defineVariable('e', Grapheme.parseString("2.71828182845904523536"))
-Grapheme.defineVariable('euler_gamma', Grapheme.parseString("0.57721566490153286060"))
-Grapheme.defineVariable('<', Grapheme.parseString("1"))
-Grapheme.defineVariable('>', Grapheme.parseString("1"))
-Grapheme.defineVariable('<=', Grapheme.parseString("1"))
-Grapheme.defineVariable('>=', Grapheme.parseString("1"))
-Grapheme.defineVariable('!=', Grapheme.parseString("1"))
-Grapheme.defineVariable('==', Grapheme.parseString("1"))
-
-Grapheme.RESERVED_VARIABLES.push('i', 'x', 'y', 'z', 'pi', 'e')
