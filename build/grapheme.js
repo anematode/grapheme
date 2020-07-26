@@ -6321,6 +6321,14 @@
     if (dashPattern.length % 2 === 1) {
       // If the dash pattern is odd in length, concat it to itself
       dashPattern = dashPattern.concat(dashPattern);
+    } else {
+      dashPattern = dashPattern.slice();
+    }
+
+    for (let i = 0; i < dashPattern.length; ++i) {
+      if (dashPattern[i] === 0) {
+        dashPattern[i] = 1e-6; // dumb hack
+      }
     }
 
     let dashOffset = pen.dashOffset;
@@ -6369,13 +6377,14 @@
       let length = fastHypot(x2 - x1, y2 - y1);
       let i = currentIndex;
       let totalLen = 0, _;
+
       for (_ = 0; _ < MAX_VERTICES; _++) {
         let componentLen = dashPattern[i] - currentLesserOffset;
         let endingLen = componentLen + totalLen;
 
         let inDash = i % 2 === 0;
 
-        if (endingLen < length) {
+        if (endingLen <= length) {
           if (!inDash)
             result.push(NaN, NaN);
 
@@ -6630,7 +6639,7 @@
 
         v2l = fastHypot(v2x, v2y);
 
-        if (v2l < 0.001) {
+        if (v2l < 1e-8) {
           v2x = 1;
           v2y = 0;
         } else {
@@ -6668,7 +6677,7 @@
 
         v1l = v2l;
 
-        if (v1l < 0.001) {
+        if (v1l < 1e-8) {
           v1x = 1;
           v1y = 0;
         } else {
@@ -7507,46 +7516,6 @@ void main() {
     }
 
     return points
-  }
-
-  function adaptPolyline(polyline, oldTransform, newTransform, adaptThickness=true) {
-    let arr = polyline._internal_polyline._gl_triangle_strip_vertices;
-
-    let newland = oldTransform.getPixelToPlotTransform();
-    let harvey = newTransform.getPlotToPixelTransform();
-
-    let x_m = harvey.x_m * newland.x_m;
-    let x_b = harvey.x_m * newland.x_b + harvey.x_b;
-    let y_m = harvey.y_m * newland.y_m;
-    let y_b = harvey.y_m * newland.y_b + harvey.y_b;
-
-    let length = arr.length;
-
-    for (let i = 0; i < length; i += 2) {
-      arr[i] = x_m * arr[i] + x_b;
-      arr[i+1] = y_m * arr[i+1] + y_b;
-    }
-
-    let ratio = oldTransform.coords.width / newTransform.coords.width;
-
-    if (adaptThickness) {
-      for (let i = 0; i < arr.length; i += 4) {
-        let ax = arr[i];
-        let ay = arr[i + 1];
-        let bx = arr[i + 2];
-        let by = arr[i + 3];
-
-        let vx = (bx - ax) / 2 * (1 - ratio);
-        let vy = (by - ay) / 2 * (1 - ratio);
-
-        arr[i] = ax + vx;
-        arr[i + 1] = ay + vy;
-        arr[i + 2] = bx - vx;
-        arr[i + 3] = by - vy;
-      }
-    }
-
-    polyline._internal_polyline.needsBufferCopy = true;
   }
 
   const Multiply$1 = (a, b) => a * b;
@@ -14228,14 +14197,6 @@ void main() {
       if (!this.polyline)
         return false
       return this.polyline.distanceFrom(position) < this.polyline.pen.thickness * 2
-    }
-
-    updateLight(adaptThickness=true) {
-      let transform = this.plot.transform;
-
-      this.previousTransform = transform.clone();
-
-      adaptPolyline(this.polyline, this.previousTransform, transform, adaptThickness);
     }
 
     setAxis(axis) {

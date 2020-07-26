@@ -20,14 +20,6 @@ function* getDashedPolyline(vertices, pen, box, chunkSize=256000) {
   if (dashPattern.length % 2 === 1) {
     // If the dash pattern is odd in length, concat it to itself
     dashPattern = dashPattern.concat(dashPattern)
-  } else {
-    dashPattern = dashPattern.slice()
-  }
-
-  for (let i = 0; i < dashPattern.length; ++i) {
-    if (dashPattern[i] === 0) {
-      dashPattern[i] = 1e-6 // dumb hack
-    }
   }
 
   let dashOffset = pen.dashOffset
@@ -76,13 +68,14 @@ function* getDashedPolyline(vertices, pen, box, chunkSize=256000) {
     let length = fastHypot(x2 - x1, y2 - y1)
     let i = currentIndex
     let totalLen = 0, _
+
     for (_ = 0; _ < MAX_VERTICES; _++) {
       let componentLen = dashPattern[i] - currentLesserOffset
       let endingLen = componentLen + totalLen
 
       let inDash = i % 2 === 0
 
-      if (endingLen < length) {
+      if (endingLen <= length) {
         if (!inDash)
           result.push(NaN, NaN)
 
