@@ -1,5 +1,5 @@
-import { Element as GraphemeElement } from "../core/grapheme_element.js"
-import { PolylineElement } from "./polyline.js"
+import { Element as GraphemeElement } from "../core/grapheme_element"
+import { PolylineElement } from "./polyline"
 import {GridlineStrategizers} from '../other/gridline_strategizer'
 import { Pen } from '../styles/pen'
 import {Label2D} from './label'

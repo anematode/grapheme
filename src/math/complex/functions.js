@@ -3,7 +3,7 @@ import * as PowFunctions from "./pow"
 import * as TrigFunctions from "./trig_functions"
 import Exp from './exp'
 import Cis from './cis'
-import * as LnFunctions from "./log.js"
+import * as LnFunctions from "./log"
 import * as HyperbolicTrigFunctions from "./hyperbolic_trig_functions"
 import * as InverseTrigFunctions from "./inverse_trig"
 import * as InverseHyperbolicFunctions from "./inverse_hyperbolic"

@@ -4,7 +4,8 @@
   "description": "JavaScript graphing library",
   "main": "build/grapheme.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "http-server -a localhost -p 8000 --ext js"
   },
   "repository": {
     "type": "git",

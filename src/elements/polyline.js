@@ -1,4 +1,4 @@
-import {Element as GraphemeElement} from "../core/grapheme_element.js"
+import {Element as GraphemeElement} from "../core/grapheme_element"
 import { Pen } from '../styles/pen'
 import * as utils from "../core/utils"
 import * as GEOCALC from '../math/geometry_algorithms'

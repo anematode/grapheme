@@ -1,7 +1,5 @@
 import { InteractiveCanvas } from './interactive_canvas'
-import { Plot2DTransform } from '../math/plot2d_transform.js'
-import { BoundingBox } from '../math/bounding_box'
-import { Vec2 } from '../math/vec.js'
+import { Plot2DTransform } from '../math/plot2d_transform'
 import { DefaultUniverse } from './grapheme_universe'
 import { SmartLabelManager } from '../other/smart_label_manager'
 import * as utils from './utils'

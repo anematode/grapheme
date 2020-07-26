@@ -1,5 +1,5 @@
-import {Vec2} from "./vec.js"
-import * as utils from "../core/utils.js"
+import {Vec2} from "./vec"
+import * as utils from "../core/utils"
 
 export class BoundingBox {
   //_width;

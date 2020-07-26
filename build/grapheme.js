@@ -18196,6 +18196,7 @@ void main() {
   exports.DIGAMMA_ZEROES = DIGAMMA_ZEROES;
   exports.Dataset2D = Dataset2D;
   exports.DefaultUniverse = DefaultUniverse;
+  exports.Element = GraphemeElement;
   exports.FresnelC = C$1;
   exports.FresnelS = S;
   exports.FunctionPlot2D = FunctionPlot2D;

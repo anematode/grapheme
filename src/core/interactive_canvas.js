@@ -1,5 +1,5 @@
 import { Universe, DefaultUniverse } from './grapheme_universe'
-import { Canvas as GraphemeCanvas } from './grapheme_canvas.js'
+import { Canvas as GraphemeCanvas } from './grapheme_canvas'
 import { Keyboard } from './keyboard'
 import { Vec2 } from '../math/vec'
 
