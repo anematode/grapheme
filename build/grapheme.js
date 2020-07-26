@@ -3209,7 +3209,7 @@
       this.sortChildren();
 
       // Render all children
-      this.children.forEach((child) => child.render(info));
+      this.children.forEach((child) => child.visible && child.render(info));
     }
 
     /**
@@ -3603,21 +3603,23 @@
         labelManager.removeOldLabels();
       };
 
+      const updateCriterion = child => child.needsUpdate && child.visible;
+
       if (this.updateAsynchronously) {
         let updatePromise;
 
         if (this.forceRenderAfter <= 0) {
-          updatePromise = this.updateChildrenAsync(info, child => child.needsUpdate);
+          updatePromise = this.updateChildrenAsync(info, updateCriterion);
         } else {
           updatePromise = Promise.race([
-            this.updateChildrenAsync(info, child => child.needsUpdate),
+            this.updateChildrenAsync(info, updateCriterion),
             wait(this.forceRenderAfter)
           ]);
         }
 
         updatePromise.then(doRender);
       } else {
-        this.updateChildren(info, child => child.needsUpdate);
+        this.updateChildren(info, updateCriterion);
 
         doRender();
       }

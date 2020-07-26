@@ -212,7 +212,7 @@ class GraphemeElement {
     this.sortChildren()
 
     // Render all children
-    this.children.forEach((child) => child.render(info))
+    this.children.forEach((child) => child.visible && child.render(info))
   }
 
   /**
