@@ -169,7 +169,7 @@ function* convertTriangleStrip(vertices, pen, chunkSize=256000) {
 
       v2l = fastHypot(v2x, v2y)
 
-      if (v2l < 0.001) {
+      if (v2l < 1e-8) {
         v2x = 1
         v2y = 0
       } else {
@@ -207,7 +207,7 @@ function* convertTriangleStrip(vertices, pen, chunkSize=256000) {
 
       v1l = v2l
 
-      if (v1l < 0.001) {
+      if (v1l < 1e-8) {
         v1x = 1
         v1y = 0
       } else {
