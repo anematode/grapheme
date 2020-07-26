@@ -6,7 +6,7 @@ export default {
   },
   output: {
     file: 'build/grapheme.js',
-    format: 'iife',
+    format: 'umd',
     name: 'Grapheme'
   }
 };
