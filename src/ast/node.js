@@ -44,7 +44,7 @@ function compileFunction(compileText, exportedVariables) {
 }
 
 /**
- * Base class for a node in a grapheme expression. Has children, a string type (returnType), and a parent.
+ * Base class for a node in a Grapheme expression. Has children and a string type (returnType).
  */
 class ASTNode {
   constructor (params = {}) {

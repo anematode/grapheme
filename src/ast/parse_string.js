@@ -335,7 +335,7 @@ function parse_tokens(tokens) {
     })
   }
 
-  function combineOperators(operators) {
+  function combineOperators(operators, rtl=false) {
     let operators_remaining = true
 
     while (operators_remaining) {
