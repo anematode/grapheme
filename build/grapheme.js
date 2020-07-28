@@ -6302,98 +6302,131 @@
     }
   }
 
+  /**
+   * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
+   * handle overflows and underflows with much accuracy at all. Thus, we can use the straightforward calculation.
+   * @param x {number}
+   * @param y {number}
+   * @returns {number} hypot(x, y)
+   */
   function fastHypot(x, y) {
     return Math.sqrt(x * x + y * y)
   }
 
-  const MAX_VERTICES = 1e7;
+  /**
+   * The maximum number of vertices to be emitted by getDashedPolyline. This condition is here just to prevent dashed
+   * polyline from causing a crash from OOM or just taking forever to finish.
+   * @type {number}
+   */
+  const MAX_DASHED_POLYLINE_VERTICES = 1e7;
 
   /**
-   * Convert a polyline into another polyline, but with dashes.
+   * Convert a polyline into another polyline, but with dashes. The function periodically yields a number which represents
+   * the fraction of which it has completed the calculation. This is useful for asynchronous computations.
    * @param vertices {Array} The vertices of the polyline.
    * @param pen {Pen} The polyline's pen
-   * @param box {BoundingBox}
+   * @param box {BoundingBox} The plotting box, used to clip excess portions of the polyline. There could theoretically be
+   * an infinite number of dashes in a long vertical asymptote, for example, but this box condition prevents that from
+   * being an issue. Portions of the polyline outside the plotting box are simply returned without dashes.
+   * @param chunkSize {number} The number of
    * @returns {Array}
    */
   function* getDashedPolyline(vertices, pen, box, chunkSize=256000) {
-    let dashPattern = pen.dashPattern;
+    // dashPattern is the pattern of dashes, given as the length (in pixels) of consecutive dashes and gaps.
+    // dashOffset is the pixel offset at which to start the dash pattern, beginning at the start of every sub polyline.
+    let { dashPattern, dashOffset } = pen;
 
-    if (dashPattern.length % 2 === 1) {
-      // If the dash pattern is odd in length, concat it to itself
+    // If the dash pattern is odd in length, concat it to itself, creating a doubled, alternating dash pattern
+    if (dashPattern.length % 2 === 1)
       dashPattern = dashPattern.concat(dashPattern);
-    } else {
-      dashPattern = dashPattern.slice();
-    }
 
-    for (let i = 0; i < dashPattern.length; ++i) {
-      if (dashPattern[i] === 0) {
-        dashPattern[i] = 1e-6; // dumb hack
-      }
-    }
+    // The length, in pixels, of the pattern
+    const patternLength = dashPattern.reduce((a, b) => a + b);
 
-    let dashOffset = pen.dashOffset;
-    let patternLength = dashPattern.reduce((a, b) => a + b);
-
-    if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0))
+    // If the pattern is invalid in some way (NaN values, negative dash lengths, total length less than 2), return the
+    // polyline without dashes.
+    if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0) || dashPattern.some(Number.isNaN))
       return vertices
 
-    let currentOffset = dashOffset;
-    let currentIndex, currentLesserOffset;
+    // currentIndex is the current position in the dash pattern. currentLesserOffset is the offset within the dash or gap
+    // ----    ----    ----    ----    ----    ----    ----  ... etc.
+    //      ^
+    // If we are there, then currentIndex is 1 and currentLesserOffset is 1.
+    let currentIndex = 0, currentLesserOffset = 0;
 
-    recalculateOffset(0); // calculate the needed index
+    // Initialize the value of currentLesserOffset based on dashOffset and dashPattern
+    recalculateOffset(0);
 
-    let result = [];
+    // The returned dashed vertices
+    const result = [];
 
-    let box_x1 = box.x1, box_x2 = box.x2, box_y1 = box.y1, box_y2 = box.y2;
+    // The plotting box
+    const boxX1 = box.x1, boxX2 = box.x2, boxY1 = box.y1, boxY2 = box.y2;
 
+    // Calculate the value of currentLesserOffset, given the length of the pattern that we have just traversed.
     function recalculateOffset(length) {
-      if (length > 1e6) { // If there's an absurdly long segment, we just pretend the length is 0
+      // If there's an absurdly long segment, we just pretend the length is 0 to avoid problems with Infinities/NaNs
+      if (length > 1e6)
         length = 0;
-      }
 
-      currentOffset += length;
-      currentOffset %= patternLength;
+      // Move length along the dashOffset, modulo the patternLength
+      dashOffset += length;
+      dashOffset %= patternLength;
 
-      let sum = 0, i, lesserOffset;
-      for (i = 0; i < dashPattern.length; ++i) {
-        sum += dashPattern[i];
+      // It's certainly possible to precompute these sums and use a binary search to find the dash index, but
+      // that's unnecessary for dashes with short length
+      let sum = 0, i = 0, lesserOffset = 0;
+      for (; i < dashPattern.length; ++i) {
+        let dashLength = dashPattern[i];
 
-        if (currentOffset < sum) {
-          lesserOffset = dashPattern[i] - sum + currentOffset;
+        // Accumulate the length from the start of the pattern to the current dash
+        sum += dashLength;
+
+        // If the dashOffset is within this dash...
+        if (dashOffset <= sum) {
+          // calculate the lesser offset
+          lesserOffset = dashOffset - sum + dashLength;
           break
         }
       }
 
-      if (i === dashPattern.length)
-        --i;
-
+      // Set the current index and lesserOffset
       currentIndex = i;
       currentLesserOffset = lesserOffset;
     }
 
-    let chunkPos = 0;
-
+    // Generate dashes for the line segment (x1, y1) -- (x2, y2)
     function generateDashes(x1, y1, x2, y2) {
-      let length = fastHypot(x2 - x1, y2 - y1);
+      // length of the segment
+      const length = fastHypot(x2 - x1, y2 - y1);
+
+      // index of where along the dashes we are
       let i = currentIndex;
-      let totalLen = 0, _;
 
-      for (_ = 0; _ < MAX_VERTICES; _++) {
-        let componentLen = dashPattern[i] - currentLesserOffset;
-        let endingLen = componentLen + totalLen;
+      // Length so far of emitted dashes
+      let lengthSoFar = 0;
 
-        let inDash = i % 2 === 0;
+      // We do this instead of while (true) to prevent the program from crashing
+      for (let _ = 0; _ < MAX_DASHED_POLYLINE_VERTICES; _++) {
+        // Length of the dash/gap component we need to draw (we subtract currentLesserOffset because that is already drawn)
+        const componentLen = dashPattern[i] - currentLesserOffset;
+
+        // Length when this component ends
+        const endingLen = componentLen + lengthSoFar;
+
+        // Whether we are in a dash
+        const inDash = i % 2 === 0;
 
         if (endingLen <= length) {
-          if (!inDash)
-            result.push(NaN, NaN);
+          // If the end of the dash/gap occurs before the end of the current segment, we need to continue
 
           let r = endingLen / length;
 
           result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r);
 
-          if (inDash)
-            result.push(NaN, NaN);
+          // If we're in a dash, end the dash
+          /*if (inDash)
+            result.push(NaN, NaN)*/
 
           ++i;
           i %= dashPattern.length;
@@ -6406,11 +6439,13 @@
           break
         }
 
-        totalLen += componentLen;
+        lengthSoFar += componentLen;
       }
 
       recalculateOffset(length);
     }
+
+    let chunkPos = 0;
 
     if (currentIndex % 2 === 0) {
       // We're beginning with a dash, so start it off
@@ -6418,16 +6453,20 @@
     }
 
     for (let i = 0; i < vertices.length - 2; i += 2) {
+      // For each pair of vertices...
       let x1 = vertices[i];
       let y1 = vertices[i+1];
       let x2 = vertices[i+2];
       let y2 = vertices[i+3];
 
       if (isNaN(x1) || isNaN(y1)) {
-        currentOffset = dashOffset;
+        // At the start of every subpolyline, reset the dash offset
+        dashOffset = pen.dashOffset;
+
+        // Recalculate the initial currentLesserOffset
         recalculateOffset(0);
 
-        result.push(NaN, NaN);
+        //result.push(NaN, NaN)
 
         continue
       }
@@ -6437,7 +6476,7 @@
       }
 
       let length = fastHypot(x2 - x1, y2 - y1);
-      let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2);
+      let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, boxX1, boxY1, boxX2, boxY2);
 
       if (!intersect) {
         recalculateOffset(length);
@@ -6466,7 +6505,7 @@
         recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
       }
 
-      if (result.length > MAX_VERTICES)
+      if (result.length > MAX_DASHED_POLYLINE_VERTICES)
         return result
     }
 

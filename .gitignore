@@ -3,6 +3,4 @@ node_modules/**
 .idea/**
 *.out
 *.pkl
-src/cpp/grapheme_wasm*
-src/cpp/glue.cc
-src/cpp/glue.js
+src/cpp/*
