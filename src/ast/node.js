@@ -23,9 +23,6 @@ import { RealInterval, RealIntervalSet } from '../math/real_interval/interval'
 import { ComplexInterval } from '../math/complex_interval/interval'
 import { Vec2 } from '../math/vec'
 
-// List of operators (currently)
-// +, -, *, /, ^,
-
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
 function compileFunction(compileText, exportedVariables) {
@@ -46,16 +43,17 @@ function compileFunction(compileText, exportedVariables) {
   return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
 }
 
+/**
+ * Base class for a node in a grapheme expression. Has children, a string type (returnType), and a parent.
+ */
 class ASTNode {
   constructor (params = {}) {
     const {
-      parent = null,
       children = [],
       returnType = null
     } = params
 
     this.children = children
-    this.parent = parent
     this.returnType = returnType
   }
 
@@ -102,6 +100,8 @@ class ASTNode {
 
     if (childrenFirst)
       func(this, depth)
+
+    return this
   }
 
   compile(exportedVariables=[]) {
@@ -163,14 +163,18 @@ class ASTNode {
     this.children.forEach(child => child.resolveTypes(givenTypes))
 
     this.returnType = this.children[0].returnType
+
+    return this
   }
 
-  setParents () {
+  _setParents () {
     this.applyAll(child => {
       if (child.children) {
         child.children.forEach(subchild => subchild.parent = child)
       }
     })
+
+    return this
   }
 
   equals(node) {
@@ -198,7 +202,7 @@ class ASTNode {
       }
     }, 0, true)
 
-    this.setParents()
+    return this
   }
 
   toJSON () {

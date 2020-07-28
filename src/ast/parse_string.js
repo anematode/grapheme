@@ -413,8 +413,6 @@ function parse_tokens(tokens) {
     }
   })
 
-  root.setParents()
-
   return root
 }
 
@@ -431,8 +429,8 @@ function parseString(string, types={}) {
 
   let node = parse_tokens(tokens).children[0]
 
-  node.resolveTypes(types)
-  node.setParents()
+  if (types)
+    node.resolveTypes(types)
 
   return node
 }

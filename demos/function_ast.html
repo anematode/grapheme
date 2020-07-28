@@ -28,7 +28,7 @@
   let tree = new Grapheme.TreeElement()
   plot.add(tree)
 
-  tree.root = Grapheme.parseString("2*2+3")
+  tree.root = Grapheme.parseString("2*2+3").setParents()
 
   let ia = 0;
   function render() {
@@ -43,18 +43,6 @@
   window.onresize = () => {
     plot.setSize(window.innerWidth, window.innerHeight);
   }
-
-  const fromNumber = Grapheme.RealInterval.fromNumber
-
-  let int1 = fromNumber("2")
-  let int2 = fromNumber("2")
-
-
-
-  function updateLatex() {
-
-  }
-  document.getElementById()
 
 </script>
 
