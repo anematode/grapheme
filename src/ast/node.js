@@ -40,13 +40,23 @@ function compileFunction(compileText, exportedVariables) {
     Variables
   }
 
-  return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
+  return new Function("Grapheme", "return function(" + exportedVariables.join(',') + ") { return " + compileText + "}")(GraphemeSubset)
 }
 
 /**
  * Base class for a node in a Grapheme expression. Has children and a string type (returnType).
+ *
+ * A node can be one of a variety of types. A plain ASTNode signifies grouping, i.e. parentheses.
  */
 class ASTNode {
+  /**
+   * Construct a new ASTNode from parameters.
+   * @param params {Object} parameters
+   * @param params.children {Array} Array of node's children.
+   * @param params.returnType {string} The type of the node. Unlike math.js and similar libraries, Grapheme's expressions
+   * are strictly typed. Each expression/function only returns a single type of variable. Polymorphism is possible,
+   * however, in a C++-like fashion.
+   */
   constructor (params = {}) {
     const {
       children = [],
@@ -57,44 +67,58 @@ class ASTNode {
     this.returnType = returnType
   }
 
+  /**
+   * Convert the node into a string which can evaluated (in the JS interpreter sense) to get the value of the node.
+   * @param exportedVariables {Array} Variables to export to be used in the function
+   * @returns {string} The text of the function to evaluate.
+   * @private
+   */
   _getCompileText(exportedVariables=['x']) {
     return this.children[0]._getCompileText(exportedVariables)
   }
 
+  /**
+   * Convert the node into a string which can be evaluated with intervals.
+   * @param exportedVariables {Array}
+   * @returns {string}
+   * @private
+   */
   _getIntervalCompileText(exportedVariables=['x']) {
     return this.children[0]._getIntervalCompileText(exportedVariables)
   }
 
-  getDependencies() {
-    let funcs = new Set()
-    let vars = new Set()
-
-    this.applyAll((node) => {
-      if (node instanceof OperatorNode) {
-        funcs.add(node.operator)
-      } else if (node instanceof VariableNode) {
-        vars.add(node.name)
+  /**
+   * Function setting the value of this.parent for this node and all children. Useful when drawing trees, but shouldn't
+   * be called in most contexts.
+   * @returns {ASTNode}
+   * @private
+   */
+  _setParents () {
+    this.applyAll(child => {
+      if (child.children) {
+        child.children.forEach(subchild => subchild.parent = child)
       }
     })
 
-    funcs = Array.from(funcs).sort()
-    vars = Array.from(vars).sort()
+    this.parent = null
 
-
-    return {funcs, vars}
+    return this
   }
 
-  evaluate(scope) {
-    return this.children[0].evaluate(scope)
-  }
-
-  applyAll (func, depth = 0, childrenFirst=false) {
+  /**
+   * Apply a function to this node and all of its children, recursively.
+   * @param func {Function} The callback function. We call it each time with (node, depth) as arguments
+   * @param childrenFirst {boolean} Whether to call the callback function for each child first, or for the parent first.
+   * @param depth {number}
+   * @returns {ASTNode}
+   */
+  applyAll (func, childrenFirst=false, depth = 0) {
     if (!childrenFirst)
       func(this, depth)
 
     this.children.forEach(child => {
       if (child.applyAll) {
-        child.applyAll(func, depth + 1, childrenFirst)
+        child.applyAll(func, childrenFirst, depth+1)
       }
     })
 
@@ -104,32 +128,10 @@ class ASTNode {
     return this
   }
 
-  compile(exportedVariables=[]) {
-    if (!this.returnType) {
-      throw new Error("Need to call resolveTypes before compiling node.")
-    }
-
-    let compileText = this._getCompileText(exportedVariables)
-
-    return compileFunction(compileText, exportedVariables)
-  }
-
-  compileInterval(exportedVariables=[]) {
-    if (!this.returnType) {
-      throw new Error("Need to call resolveTypes before compiling node.")
-    }
-
-    this.applyAll(child => {
-      if (child.definition && !child.definition.evaluateInterval) {
-        throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly.")
-      }
-    })
-
-    let compileText = this._getIntervalCompileText(exportedVariables)
-
-    return compileFunction(compileText, exportedVariables)
-  }
-
+  /**
+   * Clone this node
+   * @returns {ASTNode}
+   */
   clone () {
     return new ASTNode({
       children: this.children.map(child => child.clone()),
@@ -137,56 +139,158 @@ class ASTNode {
     })
   }
 
-  getTreeText() {
-    return this.getText() + ' -> ' + this.returnType
+  /**
+   * Compile this node into a function to evaluate it directly
+   * @param exportedVariables {array}
+   * @returns {*}
+   */
+  compile(exportedVariables=[]) {
+    if (!this.returnType)
+      throw new Error("The node's type is not known. You need to call resolveTypes before compiling the node.")
+
+    // Get the text of the function
+    const compileText = this._getCompileText(exportedVariables)
+
+    // Compile the function
+    return compileFunction(compileText, exportedVariables)
   }
 
-  getText () {
-    return '(node)'
-  }
+  /**
+   * Compile this node into a function to evaluate it intervallicly
+   * @param exportedVariables
+   * @returns {*}
+   */
+  compileInterval(exportedVariables=[]) {
+    if (!this.returnType)
+      throw new Error("Need to call resolveTypes before compiling node.")
 
-  hasChildren () {
-    return this.children.length !== 0
-  }
-
-  isConstant () {
-    return this.children.every(child => child.isConstant())
-  }
-
-  latex (params={}) {
-    let latex = this.children.map(child => child.latex()).join('')
-
-    return String.raw`\left(${latex}\right)`
-  }
-
-  resolveTypes(givenTypes) {
-    this.children.forEach(child => child.resolveTypes(givenTypes))
-
-    this.returnType = this.children[0].returnType
-
-    return this
-  }
-
-  _setParents () {
+    // Check for operators which don't support interval evaluation
     this.applyAll(child => {
-      if (child.children) {
-        child.children.forEach(subchild => subchild.parent = child)
-      }
+      if (child.definition && !child.definition.evaluateInterval)
+        throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly. Sorry!")
     })
 
-    return this
+    // Get the text of the function
+    const compileText = this._getIntervalCompileText(exportedVariables)
+
+    // Compile the function
+    return compileFunction(compileText, exportedVariables)
   }
 
+  /**
+   * Return whether this is deep equal to the given node.
+   * @param node
+   * @returns {boolean}
+   */
   equals(node) {
+    // Easy condition
     if (this.returnType !== node.returnType)
       return false
 
+    // Return false if any of the children are not equal
     for (let i = 0; i < this.children.length; ++i) {
       if (!this.children[i].equals(node.children[i]))
         return false
     }
 
+    // Return true otherwise
     return true
+  }
+
+  /**
+   * Evaluate this node with a given scope, which is an object containing the values of variables and functions. For
+   * example, Grapheme.parseString("x^2").evaluate({x: -3}) returns 9. If a variable is not defined in scope and isn't
+   * in Grapheme.Variables, it will probably just throw an error or return NaN.
+   * @param scope {Object} Description of the variables and functions used by the node.
+   * @returns {*}
+   */
+  evaluate(scope) {
+    return this.children[0].evaluate(scope)
+  }
+
+  /**
+   * Get the operators and variables used by this function, and are thus required for the function to be evaluated
+   * correctly. Includes builtin operators.
+   * @returns {{funcs: string[], vars: string[]}}
+   */
+  getDependencies() {
+    let ops = new Set()
+    let vars = new Set()
+
+    // Accumulate all used variables and operators
+    this.applyAll((node) => {
+      if (node instanceof OperatorNode) {
+        ops.add(node.operator)
+      } else if (node instanceof VariableNode) {
+        vars.add(node.name)
+      }
+    })
+
+    ops = Array.from(ops).sort()
+    vars = Array.from(vars).sort()
+
+    return {operators: ops, variables: vars}
+  }
+
+  /**
+   * Convert the node to a simple text representation for drawing in a tree.
+   * @returns {string}
+   */
+  getText () {
+    return '(node)'
+  }
+
+  /**
+   * Convert the node into a simple text representation, including its return type.
+   * @returns {string}
+   */
+  getTreeText() {
+    return this.getText() + ' -> ' + this.returnType
+  }
+
+  /**
+   * Whether this node has children.
+   * @returns {boolean}
+   */
+  hasChildren () {
+    return this.children.length !== 0
+  }
+
+  /**
+   * Whether this node is constant (in that all of its operators are deterministic and all of its nodes are constant or
+   * constant variables, i.e. builtin variables such as pi, e, i)
+   * @returns {boolean}
+   */
+  isConstant () {
+    return this.children.every(child => child.isConstant())
+  }
+
+  /**
+   * Convert this node to latex, given options.
+   * @param options {Object} Options to be passed onto children.
+   * @returns {string}
+   */
+  latex (options={}) {
+    const latex = this.children.map(child => child.latex(options)).join(' ')
+
+    return String.raw`\left(${latex}\right)`
+  }
+
+  /**
+   * Resolve types, finding operator definitions and return types. parseString(str, false) returns a string whose types
+   * have not been resolved; this tries to figure out the types of each child node as well as which definition to use
+   * for each operator. For variables and functions, Grapheme.Variables and Grapheme.Functions are referenced to find
+   * types and definitions. Given types tells us the 
+   * @param givenTypes
+   * @returns {ASTNode}
+   */
+  resolveTypes(givenTypes) {
+    // Resolve the types of children
+    this.children.forEach(child => child.resolveTypes(givenTypes))
+
+    this.returnType = this.children[0].returnType
+
+    return this
   }
 
   substitute(node, expr) {
@@ -218,16 +322,6 @@ class ASTNode {
   }
 }
 
-const greek = ['alpha', 'beta', 'gamma', 'Gamma', 'delta', 'Delta', 'epsilon', 'zeta', 'eta', 'theta', 'Theta', 'iota', 'kappa', 'lambda', 'Lambda', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi', 'rho', 'Rho', 'sigma', 'Sigma', 'tau', 'phi', 'Phi', 'chi', 'psi', 'Psi', 'omega', 'Omega']
-
-function substituteGreekLetters (string) {
-  if (greek.includes(string)) {
-    return '\\' + string
-  }
-
-  return string
-}
-
 class VariableNode extends ASTNode {
   constructor (params = {}) {
     super()
@@ -237,18 +331,6 @@ class VariableNode extends ASTNode {
     } = params
 
     this.name = name
-  }
-
-  evaluate(scope) {
-    const value = scope[this.name]
-
-    if (value !== undefined) {
-      return value
-    }
-
-    let globalVar = Grapheme.Variables[this.name]
-
-    return globalVar.value
   }
 
   _getCompileText(exportedVariables) {
@@ -269,16 +351,28 @@ class VariableNode extends ASTNode {
       return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".intervalValue"
   }
 
-  latex(params) {
-    return LatexMethods.getVariableLatex(this.name)
-  }
-
   clone () {
     let node = new VariableNode({ name: this.name })
 
     node.returnType = this.returnType
 
     return node
+  }
+
+  equals(node) {
+    return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
+  }
+
+  evaluate(scope) {
+    const value = scope[this.name]
+
+    if (value !== undefined) {
+      return value
+    }
+
+    let globalVar = Grapheme.Variables[this.name]
+
+    return globalVar.value
   }
 
   getText () {
@@ -289,8 +383,8 @@ class VariableNode extends ASTNode {
     return false
   }
 
-  equals(node) {
-    return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
+  latex(params) {
+    return LatexMethods.getVariableLatex(this.name)
   }
 
   resolveTypes(typeInfo) {
@@ -422,6 +516,10 @@ class OperatorNode extends ASTNode {
     return this.definition.derivative(variable, ...this.children)
   }
 
+  equals(node) {
+    return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
+  }
+
   evaluate(scope) {
     const children = this.children
     let params = this.children.map(child => child.evaluate(scope))
@@ -436,16 +534,16 @@ class OperatorNode extends ASTNode {
     return this.definition.evaluateFunc(...params)
   }
 
+  getChildrenSignature() {
+    return this.children.map(child => child.returnType)
+  }
+
   getText () {
     return this.operator
   }
 
   latex (params) {
     return this.definition.latex(this.children, params)
-  }
-
-  equals(node) {
-    return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
   }
 
   resolveTypes(typeInfo={}) {
@@ -483,10 +581,6 @@ class OperatorNode extends ASTNode {
     }
 
     throw new Error("Could not find a suitable definition for " + this.operator + "(" + signature.join(', ') + ').')
-  }
-
-  getChildrenSignature() {
-    return this.children.map(child => child.returnType)
   }
 
   toJSON () {
@@ -547,12 +641,16 @@ class ConstantNode extends ASTNode {
     })
   }
 
-  getText () {
-    return this.invisible ? '' : LatexMethods.getConstantLatex(this)
+  equals(node) {
+    return node.value === this.value && super.equals(node)
   }
 
   evaluate() {
     return this.value
+  }
+
+  getText () {
+    return this.invisible ? '' : LatexMethods.getConstantLatex(this)
   }
 
   isConstant () {
@@ -577,10 +675,6 @@ class ConstantNode extends ASTNode {
       returnType: this.returnType,
       type: 'constant'
     }
-  }
-
-  equals(node) {
-    return node.value === this.value && super.equals(node)
   }
 
   type () {

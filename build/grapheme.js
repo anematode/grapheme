@@ -556,7 +556,7 @@
   };
 
   const Abs = (z) => {
-    return z.magnitudeSquared()
+    return z.magnitude()
   };
 
   const IsFinite = (z) => {
@@ -6419,20 +6419,23 @@
 
         if (endingLen <= length) {
           // If the end of the dash/gap occurs before the end of the current segment, we need to continue
-
           let r = endingLen / length;
 
+          // if in a gap, this starts the next dash; if in a dash, this ends the dash
           result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r);
 
-          // If we're in a dash, end the dash
-          /*if (inDash)
-            result.push(NaN, NaN)*/
+          // If we're ending off a dash, put the gap in
+          if (inDash)
+            result.push(NaN, NaN);
 
+          // Go to the next dash/gap
           ++i;
           i %= dashPattern.length;
 
+          // Reset the current lesser offset
           currentLesserOffset = 0;
         } else {
+          // If we're in a dash, that means we're in the middle of a dash, so we just add the vertex
           if (inDash)
             result.push(x2, y2);
 
@@ -6442,15 +6445,15 @@
         lengthSoFar += componentLen;
       }
 
+      // Recalculate currentLesserOffset
       recalculateOffset(length);
     }
 
+    // Where we along on each chunk, which tells us when to yield a progress report
     let chunkPos = 0;
 
-    if (currentIndex % 2 === 0) {
-      // We're beginning with a dash, so start it off
+    if (currentIndex % 2 === 0) // We're beginning with a dash, so start it off
       result.push(vertices[0], vertices[1]);
-    }
 
     for (let i = 0; i < vertices.length - 2; i += 2) {
       // For each pair of vertices...
@@ -6459,54 +6462,64 @@
       let x2 = vertices[i+2];
       let y2 = vertices[i+3];
 
-      if (isNaN(x1) || isNaN(y1)) {
+      if (Number.isNaN(x1) || Number.isNaN(y1)) {
         // At the start of every subpolyline, reset the dash offset
         dashOffset = pen.dashOffset;
 
         // Recalculate the initial currentLesserOffset
         recalculateOffset(0);
 
-        //result.push(NaN, NaN)
+        // End off the previous subpolyline
+        result.push(NaN, NaN);
 
         continue
       }
 
-      if (isNaN(x2) || isNaN(y2)) {
+      // If the end of the segment is undefined, continue
+      if (Number.isNaN(x2) || Number.isNaN(y2))
         continue
-      }
 
+      // Length of the segment
       let length = fastHypot(x2 - x1, y2 - y1);
+
+      // Find whether the segment intersects the box
       let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, boxX1, boxY1, boxX2, boxY2);
 
+      // If the segment doesn't intersect the box, it is entirely outside the box, so we can add its length to pretend
+      // like we drew it even though we didn't
       if (!intersect) {
         recalculateOffset(length);
         continue
       }
 
+      // Whether (x1, y1) and (x2, y2) are contained within the box
       let pt1Contained = (intersect[0] === x1 && intersect[1] === y1);
       let pt2Contained = (intersect[2] === x2 && intersect[3] === y2);
 
-      if (!pt1Contained) {
+      // If (x1, y1) is contained, fake draw the portion of the line outside of the box
+      if (!pt1Contained)
         recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]));
-      }
 
       chunkPos++;
+
+      // Generate dashes
       generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
 
       chunkPos++;
 
+      // Provide a progress report
       if (chunkPos >= chunkSize) {
         yield i / vertices.length;
 
         chunkPos = 0;
       }
 
-      if (!pt2Contained) {
+      if (!pt2Contained)
         recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
-      }
 
+      //
       if (result.length > MAX_DASHED_POLYLINE_VERTICES)
-        return result
+        throw new Error("Too many generated vertices in getDashedPolyline.")
     }
 
     return result
@@ -11515,9 +11528,6 @@ void main() {
     Identity: (r) => r
   };
 
-  // List of operators (currently)
-  // +, -, *, /, ^,
-
   const comparisonOperators = ['<', '>', '<=', '>=', '!=', '=='];
 
   function compileFunction(compileText, exportedVariables) {
@@ -11535,93 +11545,98 @@ void main() {
       Variables
     };
 
-    return new Function("Grapheme", "return (" + exportedVariables.join(',') + ") => " + compileText)(GraphemeSubset)
+    return new Function("Grapheme", "return function(" + exportedVariables.join(',') + ") { return " + compileText + "}")(GraphemeSubset)
   }
 
+  /**
+   * Base class for a node in a Grapheme expression. Has children and a string type (returnType).
+   *
+   * A node can be one of a variety of types. A plain ASTNode signifies grouping, i.e. parentheses.
+   */
   class ASTNode {
+    /**
+     * Construct a new ASTNode from parameters.
+     * @param params {Object} parameters
+     * @param params.children {Array} Array of node's children.
+     * @param params.returnType {string} The type of the node. Unlike math.js and similar libraries, Grapheme's expressions
+     * are strictly typed. Each expression/function only returns a single type of variable. Polymorphism is possible,
+     * however, in a C++-like fashion.
+     */
     constructor (params = {}) {
       const {
-        parent = null,
         children = [],
         returnType = null
       } = params;
 
       this.children = children;
-      this.parent = parent;
       this.returnType = returnType;
     }
 
+    /**
+     * Convert the node into a string which can evaluated (in the JS interpreter sense) to get the value of the node.
+     * @param exportedVariables {Array} Variables to export to be used in the function
+     * @returns {string} The text of the function to evaluate.
+     * @private
+     */
     _getCompileText(exportedVariables=['x']) {
       return this.children[0]._getCompileText(exportedVariables)
     }
 
+    /**
+     * Convert the node into a string which can be evaluated with intervals.
+     * @param exportedVariables {Array}
+     * @returns {string}
+     * @private
+     */
     _getIntervalCompileText(exportedVariables=['x']) {
       return this.children[0]._getIntervalCompileText(exportedVariables)
     }
 
-    getDependencies() {
-      let funcs = new Set();
-      let vars = new Set();
-
-      this.applyAll((node) => {
-        if (node instanceof OperatorNode) {
-          funcs.add(node.operator);
-        } else if (node instanceof VariableNode) {
-          vars.add(node.name);
+    /**
+     * Function setting the value of this.parent for this node and all children. Useful when drawing trees, but shouldn't
+     * be called in most contexts.
+     * @returns {ASTNode}
+     * @private
+     */
+    _setParents () {
+      this.applyAll(child => {
+        if (child.children) {
+          child.children.forEach(subchild => subchild.parent = child);
         }
       });
 
-      funcs = Array.from(funcs).sort();
-      vars = Array.from(vars).sort();
+      this.parent = null;
 
-
-      return {funcs, vars}
+      return this
     }
 
-    evaluate(scope) {
-      return this.children[0].evaluate(scope)
-    }
-
-    applyAll (func, depth = 0, childrenFirst=false) {
+    /**
+     * Apply a function to this node and all of its children, recursively.
+     * @param func {Function} The callback function. We call it each time with (node, depth) as arguments
+     * @param childrenFirst {boolean} Whether to call the callback function for each child first, or for the parent first.
+     * @param depth {number}
+     * @returns {ASTNode}
+     */
+    applyAll (func, childrenFirst=false, depth = 0) {
       if (!childrenFirst)
         func(this, depth);
 
       this.children.forEach(child => {
         if (child.applyAll) {
-          child.applyAll(func, depth + 1, childrenFirst);
+          child.applyAll(func, childrenFirst, depth+1);
         }
       });
 
       if (childrenFirst)
         func(this, depth);
+
+      return this
     }
 
-    compile(exportedVariables=[]) {
-      if (!this.returnType) {
-        throw new Error("Need to call resolveTypes before compiling node.")
-      }
-
-      let compileText = this._getCompileText(exportedVariables);
-
-      return compileFunction(compileText, exportedVariables)
-    }
-
-    compileInterval(exportedVariables=[]) {
-      if (!this.returnType) {
-        throw new Error("Need to call resolveTypes before compiling node.")
-      }
-
-      this.applyAll(child => {
-        if (child.definition && !child.definition.evaluateInterval) {
-          throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly.")
-        }
-      });
-
-      let compileText = this._getIntervalCompileText(exportedVariables);
-
-      return compileFunction(compileText, exportedVariables)
-    }
-
+    /**
+     * Clone this node
+     * @returns {ASTNode}
+     */
     clone () {
       return new ASTNode({
         children: this.children.map(child => child.clone()),
@@ -11629,52 +11644,158 @@ void main() {
       })
     }
 
-    getTreeText() {
-      return this.getText() + ' -> ' + this.returnType
+    /**
+     * Compile this node into a function to evaluate it directly
+     * @param exportedVariables {array}
+     * @returns {*}
+     */
+    compile(exportedVariables=[]) {
+      if (!this.returnType)
+        throw new Error("The node's type is not known. You need to call resolveTypes before compiling the node.")
+
+      // Get the text of the function
+      const compileText = this._getCompileText(exportedVariables);
+
+      // Compile the function
+      return compileFunction(compileText, exportedVariables)
     }
 
-    getText () {
-      return '(node)'
-    }
+    /**
+     * Compile this node into a function to evaluate it intervallicly
+     * @param exportedVariables
+     * @returns {*}
+     */
+    compileInterval(exportedVariables=[]) {
+      if (!this.returnType)
+        throw new Error("Need to call resolveTypes before compiling node.")
 
-    hasChildren () {
-      return this.children.length !== 0
-    }
-
-    isConstant () {
-      return this.children.every(child => child.isConstant())
-    }
-
-    latex (params={}) {
-      let latex = this.children.map(child => child.latex()).join('');
-
-      return String.raw`\left(${latex}\right)`
-    }
-
-    resolveTypes(givenTypes) {
-      this.children.forEach(child => child.resolveTypes(givenTypes));
-
-      this.returnType = this.children[0].returnType;
-    }
-
-    setParents () {
+      // Check for operators which don't support interval evaluation
       this.applyAll(child => {
-        if (child.children) {
-          child.children.forEach(subchild => subchild.parent = child);
-        }
+        if (child.definition && !child.definition.evaluateInterval)
+          throw new Error("Operator " + child.operator + " cannot be evaluated intervallicly. Sorry!")
       });
+
+      // Get the text of the function
+      const compileText = this._getIntervalCompileText(exportedVariables);
+
+      // Compile the function
+      return compileFunction(compileText, exportedVariables)
     }
 
+    /**
+     * Return whether this is deep equal to the given node.
+     * @param node
+     * @returns {boolean}
+     */
     equals(node) {
+      // Easy condition
       if (this.returnType !== node.returnType)
         return false
 
+      // Return false if any of the children are not equal
       for (let i = 0; i < this.children.length; ++i) {
         if (!this.children[i].equals(node.children[i]))
           return false
       }
 
+      // Return true otherwise
       return true
+    }
+
+    /**
+     * Evaluate this node with a given scope, which is an object containing the values of variables and functions. For
+     * example, Grapheme.parseString("x^2").evaluate({x: -3}) returns 9. If a variable is not defined in scope and isn't
+     * in Grapheme.Variables, it will probably just throw an error or return NaN.
+     * @param scope {Object} Description of the variables and functions used by the node.
+     * @returns {*}
+     */
+    evaluate(scope) {
+      return this.children[0].evaluate(scope)
+    }
+
+    /**
+     * Get the operators and variables used by this function, and are thus required for the function to be evaluated
+     * correctly. Includes builtin operators.
+     * @returns {{funcs: string[], vars: string[]}}
+     */
+    getDependencies() {
+      let ops = new Set();
+      let vars = new Set();
+
+      // Accumulate all used variables and operators
+      this.applyAll((node) => {
+        if (node instanceof OperatorNode) {
+          ops.add(node.operator);
+        } else if (node instanceof VariableNode) {
+          vars.add(node.name);
+        }
+      });
+
+      ops = Array.from(ops).sort();
+      vars = Array.from(vars).sort();
+
+      return {operators: ops, variables: vars}
+    }
+
+    /**
+     * Convert the node to a simple text representation for drawing in a tree.
+     * @returns {string}
+     */
+    getText () {
+      return '(node)'
+    }
+
+    /**
+     * Convert the node into a simple text representation, including its return type.
+     * @returns {string}
+     */
+    getTreeText() {
+      return this.getText() + ' -> ' + this.returnType
+    }
+
+    /**
+     * Whether this node has children.
+     * @returns {boolean}
+     */
+    hasChildren () {
+      return this.children.length !== 0
+    }
+
+    /**
+     * Whether this node is constant (in that all of its operators are deterministic and all of its nodes are constant or
+     * constant variables, i.e. builtin variables such as pi, e, i)
+     * @returns {boolean}
+     */
+    isConstant () {
+      return this.children.every(child => child.isConstant())
+    }
+
+    /**
+     * Convert this node to latex, given options.
+     * @param options {Object} Options to be passed onto children.
+     * @returns {string}
+     */
+    latex (options={}) {
+      const latex = this.children.map(child => child.latex(options)).join(' ');
+
+      return String.raw`\left(${latex}\right)`
+    }
+
+    /**
+     * Resolve types, finding operator definitions and return types. parseString(str, false) returns a string whose types
+     * have not been resolved; this tries to figure out the types of each child node as well as which definition to use
+     * for each operator. For variables and functions, Grapheme.Variables and Grapheme.Functions are referenced to find
+     * types and definitions. Given types tells us the 
+     * @param givenTypes
+     * @returns {ASTNode}
+     */
+    resolveTypes(givenTypes) {
+      // Resolve the types of children
+      this.children.forEach(child => child.resolveTypes(givenTypes));
+
+      this.returnType = this.children[0].returnType;
+
+      return this
     }
 
     substitute(node, expr) {
@@ -11690,7 +11811,7 @@ void main() {
         }
       }, 0, true);
 
-      this.setParents();
+      return this
     }
 
     toJSON () {
@@ -11717,18 +11838,6 @@ void main() {
       this.name = name;
     }
 
-    evaluate(scope) {
-      const value = scope[this.name];
-
-      if (value !== undefined) {
-        return value
-      }
-
-      let globalVar = Grapheme.Variables[this.name];
-
-      return globalVar.value
-    }
-
     _getCompileText(exportedVariables) {
       if (comparisonOperators.includes(this.name))
         return `"${this.name}"`
@@ -11747,16 +11856,28 @@ void main() {
         return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".intervalValue"
     }
 
-    latex(params) {
-      return LatexMethods.getVariableLatex(this.name)
-    }
-
     clone () {
       let node = new VariableNode({ name: this.name });
 
       node.returnType = this.returnType;
 
       return node
+    }
+
+    equals(node) {
+      return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
+    }
+
+    evaluate(scope) {
+      const value = scope[this.name];
+
+      if (value !== undefined) {
+        return value
+      }
+
+      let globalVar = Grapheme.Variables[this.name];
+
+      return globalVar.value
     }
 
     getText () {
@@ -11767,8 +11888,8 @@ void main() {
       return false
     }
 
-    equals(node) {
-      return (node instanceof VariableNode) && this.name === node.name && super.equals(node)
+    latex(params) {
+      return LatexMethods.getVariableLatex(this.name)
     }
 
     resolveTypes(typeInfo) {
@@ -11900,6 +12021,10 @@ void main() {
       return this.definition.derivative(variable, ...this.children)
     }
 
+    equals(node) {
+      return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
+    }
+
     evaluate(scope) {
       const children = this.children;
       let params = this.children.map(child => child.evaluate(scope));
@@ -11914,16 +12039,16 @@ void main() {
       return this.definition.evaluateFunc(...params)
     }
 
+    getChildrenSignature() {
+      return this.children.map(child => child.returnType)
+    }
+
     getText () {
       return this.operator
     }
 
     latex (params) {
       return this.definition.latex(this.children, params)
-    }
-
-    equals(node) {
-      return (node instanceof OperatorNode) && (node.definition === this.definition) && super.equals(node)
     }
 
     resolveTypes(typeInfo={}) {
@@ -11961,10 +12086,6 @@ void main() {
       }
 
       throw new Error("Could not find a suitable definition for " + this.operator + "(" + signature.join(', ') + ').')
-    }
-
-    getChildrenSignature() {
-      return this.children.map(child => child.returnType)
     }
 
     toJSON () {
@@ -12025,12 +12146,16 @@ void main() {
       })
     }
 
-    getText () {
-      return this.invisible ? '' : LatexMethods.getConstantLatex(this)
+    equals(node) {
+      return node.value === this.value && super.equals(node)
     }
 
     evaluate() {
       return this.value
+    }
+
+    getText () {
+      return this.invisible ? '' : LatexMethods.getConstantLatex(this)
     }
 
     isConstant () {
@@ -12055,10 +12180,6 @@ void main() {
         returnType: this.returnType,
         type: 'constant'
       }
-    }
-
-    equals(node) {
-      return node.value === this.value && super.equals(node)
     }
 
     type () {
@@ -14040,7 +14161,7 @@ void main() {
       });
     }
 
-    function combineOperators(operators) {
+    function combineOperators(operators, rtl=false) {
       let operators_remaining = true;
 
       while (operators_remaining) {
@@ -14118,8 +14239,6 @@ void main() {
       }
     });
 
-    root.setParents();
-
     return root
   }
 
@@ -14136,8 +14255,8 @@ void main() {
 
     let node = parse_tokens(tokens).children[0];
 
-    node.resolveTypes(types);
-    node.setParents();
+    if (types)
+      node.resolveTypes(types);
 
     return node
   }

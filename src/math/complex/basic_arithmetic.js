@@ -78,7 +78,7 @@ const piecewise = (val1, cond, ...args) => {
 }
 
 export const Abs = (z) => {
-  return z.magnitudeSquared()
+  return z.magnitude()
 }
 
 export const IsFinite = (z) => {
