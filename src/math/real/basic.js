@@ -7,6 +7,8 @@ export const Subtract = (a, b) => a - b
 
 export const Divide = (a, b) => a / b
 
+export const UnaryMinus = (a) => -a
+
 export const Ln = Math.log
 
 export const Log = Ln

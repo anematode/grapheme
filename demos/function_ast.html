@@ -28,7 +28,7 @@
   let tree = new Grapheme.TreeElement()
   plot.add(tree)
 
-  tree.root = Grapheme.parseString("2*2+3").setParents()
+  tree.root = Grapheme.parseString("2*2+3")._setParents()
 
   let ia = 0;
   function render() {
@@ -46,7 +46,7 @@
 
 </script>
 
-<input style="position:absolute; top: 10px; left: 10px" type="text" value="" oninput="tree.root=Grapheme.parseString(this.value); tree.markUpdate()"/>
+<input style="position:absolute; top: 10px; left: 10px" type="text" value="" oninput="tree.root=Grapheme.parseString(this.value)._setParents(); tree.markUpdate()"/>
 <div style="background: none no-repeat scroll 0 0 #fff;" id="katex-stuff"></div>
 
 </body>

@@ -252,6 +252,10 @@ function absoluteValueLatex(nodes, params={}) {
   return surround(nodes[0].latex(params), "lvert", "rvert")
 }
 
+function unaryMinusLatex(nodes, params={}) {
+  return "-" + nodes[0].latex(params)
+}
+
 const cmpLatex = {}
 
 Object.entries(inequalityOperatorSymbols).forEach(([key, value]) => {
@@ -292,6 +296,7 @@ const LatexMethods = {
   genFunctionLatex,
   getConstantLatex,
   genFunctionSubscriptLatex,
+  unaryMinusLatex,
   cmpLatex,
   logicLatex
 }

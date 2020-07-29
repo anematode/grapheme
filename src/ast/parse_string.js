@@ -1,14 +1,22 @@
+/**
+ * In this file, we convert strings representing expressions in Grapheme into their ASTNode counterparts. For example,
+ * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
+ */
 import {OperatorNode, VariableNode, ConstantNode, ASTNode, OperatorSynonyms} from "./node"
 
-// a * b - c * d ^ g
+const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/
+const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
+const constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
+const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
+const paren_regex = /^[()\[\]]/
+const comma_regex = /^,/
 
-let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/
-let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
-let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
-let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
-let paren_regex = /^[()\[\]]/
-let comma_regex = /^,/
-
+/**
+ * Helper function to throw an error at a specific index in a string.
+ * @param string {String} The string to complain about
+ * @param index {number} The index in the string to
+ * @param message
+ */
 function get_angry_at(string, index=0, message="I'm angry!") {
   let spaces = ""
 
@@ -175,8 +183,10 @@ function check_valid(string, tokens) {
     let token1 = tokens[i]
     let token2 = tokens[i+1]
 
+    let token2IsUnary = (token2.op === '-' || token2.op === '+')
+
     if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
-      (!(token2.op === '-' || token2.op === '+') || i === tokens.length - 2)) {
+      (!token2IsUnary || i === tokens.length - 2)) {
       get_angry_at(string, token2.index, "No consecutive operators/commas")
     }
     if (token1.paren === "(" && token2.paren === ")")
@@ -195,6 +205,10 @@ function check_valid(string, tokens) {
       get_angry_at(string, token2.index, "No comma after starting parenthesis")
     if (token1.paren === '[' && token2.type === "comma")
       get_angry_at(string, token2.index, "No comma after starting bracket")
+    if (token1.paren === '(' && token2.type === "operator" && !token2IsUnary)
+      get_angry_at(string, token2.index, "No operator after starting parenthesis")
+    if (token1.paren === '[' && token2.type === "operator" && !token2IsUnary)
+      get_angry_at(string, token2.index, "No operator after starting bracket")
   }
 
   if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
@@ -260,20 +274,6 @@ function parse_tokens(tokens) {
     })
   }
 
-  root.applyAll(child => {
-    let children = child.children
-
-    if (children) {
-      let first_child = children[0]
-
-      if (first_child) {
-        if (first_child.op === '+' || first_child.op === '-') {
-          children.splice(0, 0, new ConstantNode({value: 0, invisible: true}))
-        }
-      }
-    }
-  })
-
   let functions_remaining = true
 
   while (functions_remaining) {
@@ -305,37 +305,16 @@ function parse_tokens(tokens) {
     })
   }
 
-  let unary_remaining = true
+  function combineBinaryOperator(node, i) {
+    const children = node.children
+    let new_node = new OperatorNode({operator: children[i].op})
 
-  while (unary_remaining) {
-    unary_remaining = false
+    new_node.children = [children[i-1],children[i+1]]
 
-    root.applyAll(child => {
-      let children = child.children
-
-      for (let i = 0; i < children.length - 2; ++i) {
-        let child1 = children[i]
-        let child2 = children[i + 1]
-
-        if (child1.op && (child2.op === '-' || child2.op === '+')) {
-          const egg = new OperatorNode({
-            operator: "*",
-            children: [
-              new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
-              children[i + 2]
-            ]
-          })
-
-          child.children = children.slice(0, i + 1).concat([egg]).concat(children.slice(i + 3))
-          unary_remaining = true
-
-          return
-        }
-      }
-    })
+    node.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2))
   }
 
-  function combineOperators(operators, rtl=false) {
+  function combineOperators(operators) {
     let operators_remaining = true
 
     while (operators_remaining) {
@@ -348,21 +327,54 @@ function parse_tokens(tokens) {
           let child_test = children[i]
 
           if (operators.includes(child_test.op)) {
-            let new_node = new OperatorNode({operator: child_test.op})
+            combineBinaryOperator(child, i)
 
-            new_node.children = [children[i-1],children[i+1]]
-
-            child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2))
             operators_remaining = true
-
-            return
           }
         }
       })
     }
   }
 
-  combineOperators(['^'])
+  function processUnaryAndExponentiation() {
+    let operators_remaining = true
+
+    while (operators_remaining) {
+      operators_remaining = false
+
+      root.applyAll(child => {
+        for (let i = child.children.length - 1; i >= 0; --i) {
+          let children = child.children
+          let child_test = children[i]
+
+          switch (child_test.op) {
+            case "-": {
+              let new_node = new OperatorNode({operator: "-"})
+              let unaried = children[i + 1]
+
+              new_node.children = [children[i + 1]]
+
+              child.children = children.slice(0, i).concat([new_node]).concat(children.slice(i + 2))
+              break
+            }
+            case "+":
+              child.children.splice(i, 0)
+              break
+            case "^":
+              combineBinaryOperator(child, i)
+
+              --i
+
+              break
+          }
+        }
+      })
+    }
+  }
+
+  // Exponentiation is a right-to-left operator
+  processUnaryAndExponentiation()
+
   combineOperators(['*','/'])
   combineOperators(['-','+'])
 

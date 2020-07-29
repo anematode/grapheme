@@ -79,8 +79,12 @@ class Vec2 {
     return (this.x - v.x) ** 2 + (this.y - v.y) ** 2
   }
 
-  cross(v) {
+  dot(v) {
     return this.x * v.x + this.y * v.y
+  }
+
+  cross(v) {
+    return this.x * v.y - v.x * this.y
   }
 
   rotate(angle, about=Origin) {

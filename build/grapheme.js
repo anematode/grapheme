@@ -538,8 +538,19 @@
     return z.im
   };
 
+  /**
+   * Returns the complex number a+bi
+   * @param a
+   * @param b
+   * @returns {Complex}
+   * @constructor
+   */
   const Construct = (a, b=0) => {
     return new Complex$1(a, b)
+  };
+
+  const UnaryMinus = (a) => {
+    return new Complex$1(-a.re, -a.im)
   };
 
   const piecewise = (val1, cond, ...args) => {
@@ -573,6 +584,7 @@
     Re: Re,
     Im: Im,
     Construct: Construct,
+    UnaryMinus: UnaryMinus,
     Abs: Abs,
     IsFinite: IsFinite,
     Piecewise: Piecewise
@@ -7578,6 +7590,8 @@ void main() {
 
   const Divide$1 = (a, b) => a / b;
 
+  const UnaryMinus$1 = (a) => -a;
+
   const Ln = Math.log;
 
   const Log = Ln;
@@ -7637,6 +7651,7 @@ void main() {
     Add: Add$1,
     Subtract: Subtract$1,
     Divide: Divide$1,
+    UnaryMinus: UnaryMinus$1,
     Ln: Ln,
     Log: Log,
     Log2: Log2,
@@ -12432,6 +12447,10 @@ void main() {
     return surround(nodes[0].latex(params), "lvert", "rvert")
   }
 
+  function unaryMinusLatex(nodes, params={}) {
+    return "-" + nodes[0].latex(params)
+  }
+
   const cmpLatex = {};
 
   Object.entries(inequalityOperatorSymbols).forEach(([key, value]) => {
@@ -12472,6 +12491,7 @@ void main() {
     genFunctionLatex,
     getConstantLatex,
     genFunctionSubscriptLatex,
+    unaryMinusLatex,
     cmpLatex,
     logicLatex
   };
@@ -12803,6 +12823,27 @@ void main() {
         evaluate: "ComplexFunctions.Subtract",
         desc: "Returns the difference of two complex numbers.",
         latex: LatexMethods.subtractionLatex
+      }),
+      new NormalDefinition({
+        signature: ["int"],
+        returns: "int",
+        evaluate: "RealFunctions.UnaryMinus",
+        desc: "Returns the negation of an integer.",
+        latex: LatexMethods.unaryMinusLatex
+      }),
+      new NormalDefinition({
+        signature: ["real"],
+        returns: "real",
+        evaluate: "RealFunctions.UnaryMinus",
+        desc: "Returns the negation of a real number.",
+        latex: LatexMethods.unaryMinusLatex
+      }),
+      new NormalDefinition({
+        signature: ["complex"],
+        returns: "complex",
+        evaluate: "ComplexFunctions.UnaryMinus",
+        desc: "Returns the negation of a complex number.",
+        latex: LatexMethods.unaryMinusLatex
       }),
       new NormalDefinition({
         signature: ["vec2", "vec2"],
@@ -14001,8 +14042,10 @@ void main() {
       let token1 = tokens[i];
       let token2 = tokens[i+1];
 
+      let token2IsUnary = (token2.op === '-' || token2.op === '+');
+
       if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
-        (!(token2.op === '-' || token2.op === '+') || i === tokens.length - 2)) {
+        (!token2IsUnary || i === tokens.length - 2)) {
         get_angry_at(string, token2.index, "No consecutive operators/commas");
       }
       if (token1.paren === "(" && token2.paren === ")")
@@ -14021,6 +14064,10 @@ void main() {
         get_angry_at(string, token2.index, "No comma after starting parenthesis");
       if (token1.paren === '[' && token2.type === "comma")
         get_angry_at(string, token2.index, "No comma after starting bracket");
+      if (token1.paren === '(' && token2.type === "operator" && !token2IsUnary)
+        get_angry_at(string, token2.index, "No operator after starting parenthesis");
+      if (token1.paren === '[' && token2.type === "operator" && !token2IsUnary)
+        get_angry_at(string, token2.index, "No operator after starting bracket");
     }
 
     if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
@@ -14086,20 +14133,6 @@ void main() {
       });
     }
 
-    root.applyAll(child => {
-      let children = child.children;
-
-      if (children) {
-        let first_child = children[0];
-
-        if (first_child) {
-          if (first_child.op === '+' || first_child.op === '-') {
-            children.splice(0, 0, new ConstantNode({value: 0, invisible: true}));
-          }
-        }
-      }
-    });
-
     let functions_remaining = true;
 
     while (functions_remaining) {
@@ -14131,37 +14164,16 @@ void main() {
       });
     }
 
-    let unary_remaining = true;
+    function combineBinaryOperator(node, i) {
+      const children = node.children;
+      let new_node = new OperatorNode({operator: children[i].op});
 
-    while (unary_remaining) {
-      unary_remaining = false;
+      new_node.children = [children[i-1],children[i+1]];
 
-      root.applyAll(child => {
-        let children = child.children;
-
-        for (let i = 0; i < children.length - 2; ++i) {
-          let child1 = children[i];
-          let child2 = children[i + 1];
-
-          if (child1.op && (child2.op === '-' || child2.op === '+')) {
-            const egg = new OperatorNode({
-              operator: "*",
-              children: [
-                new ConstantNode({ value: child2.op === '-' ? -1 : 1 }),
-                children[i + 2]
-              ]
-            });
-
-            child.children = children.slice(0, i + 1).concat([egg]).concat(children.slice(i + 3));
-            unary_remaining = true;
-
-            return
-          }
-        }
-      });
+      node.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2));
     }
 
-    function combineOperators(operators, rtl=false) {
+    function combineOperators(operators) {
       let operators_remaining = true;
 
       while (operators_remaining) {
@@ -14174,21 +14186,54 @@ void main() {
             let child_test = children[i];
 
             if (operators.includes(child_test.op)) {
-              let new_node = new OperatorNode({operator: child_test.op});
+              combineBinaryOperator(child, i);
 
-              new_node.children = [children[i-1],children[i+1]];
-
-              child.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2));
               operators_remaining = true;
-
-              return
             }
           }
         });
       }
     }
 
-    combineOperators(['^']);
+    function processUnaryAndExponentiation() {
+      let operators_remaining = true;
+
+      while (operators_remaining) {
+        operators_remaining = false;
+
+        root.applyAll(child => {
+          for (let i = child.children.length - 1; i >= 0; --i) {
+            let children = child.children;
+            let child_test = children[i];
+
+            switch (child_test.op) {
+              case "-": {
+                let new_node = new OperatorNode({operator: "-"});
+                let unaried = children[i + 1];
+
+                new_node.children = [children[i + 1]];
+
+                child.children = children.slice(0, i).concat([new_node]).concat(children.slice(i + 2));
+                break
+              }
+              case "+":
+                child.children.splice(i, 0);
+                break
+              case "^":
+                combineBinaryOperator(child, i);
+
+                --i;
+
+                break
+            }
+          }
+        });
+      }
+    }
+
+    // Exponentiation is a right-to-left operator
+    processUnaryAndExponentiation();
+
     combineOperators(['*','/']);
     combineOperators(['-','+']);
 

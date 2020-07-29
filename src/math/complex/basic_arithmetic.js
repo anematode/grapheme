@@ -60,8 +60,19 @@ export const Im = (z) => {
   return z.im
 }
 
+/**
+ * Returns the complex number a+bi
+ * @param a
+ * @param b
+ * @returns {Complex}
+ * @constructor
+ */
 export const Construct = (a, b=0) => {
   return new Complex(a, b)
+}
+
+export const UnaryMinus = (a) => {
+  return new Complex(-a.re, -a.im)
 }
 
 const piecewise = (val1, cond, ...args) => {

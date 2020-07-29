@@ -330,6 +330,27 @@ const Operators = {
       latex: LatexMethods.subtractionLatex
     }),
     new NormalDefinition({
+      signature: ["int"],
+      returns: "int",
+      evaluate: "RealFunctions.UnaryMinus",
+      desc: "Returns the negation of an integer.",
+      latex: LatexMethods.unaryMinusLatex
+    }),
+    new NormalDefinition({
+      signature: ["real"],
+      returns: "real",
+      evaluate: "RealFunctions.UnaryMinus",
+      desc: "Returns the negation of a real number.",
+      latex: LatexMethods.unaryMinusLatex
+    }),
+    new NormalDefinition({
+      signature: ["complex"],
+      returns: "complex",
+      evaluate: "ComplexFunctions.UnaryMinus",
+      desc: "Returns the negation of a complex number.",
+      latex: LatexMethods.unaryMinusLatex
+    }),
+    new NormalDefinition({
       signature: ["vec2", "vec2"],
       returns: "vec2",
       evaluate: "VectorFunctions.Subtract",
