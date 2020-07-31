@@ -4,7 +4,7 @@
  */
 import {OperatorNode, VariableNode, ConstantNode, ASTNode, OperatorSynonyms} from "./node"
 
-const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/
+const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/
 const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
 const constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
 const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
@@ -136,7 +136,7 @@ function* tokenizer(string) {
       if (match) {
         yield {
           type: "operator",
-          op: match[0],
+          op: match[0].replace(/\s+/g, ""),
           index: i
         }
         break

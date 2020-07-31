@@ -84,8 +84,12 @@
       return (this.x - v.x) ** 2 + (this.y - v.y) ** 2
     }
 
-    cross(v) {
+    dot(v) {
       return this.x * v.x + this.y * v.y
+    }
+
+    cross(v) {
+      return this.x * v.y - v.x * this.y
     }
 
     rotate(angle, about=Origin) {
@@ -13872,57 +13876,79 @@ void main() {
     }
   }
 
-  // a * b - c * d ^ g
+  /**
+   * In this file, we convert strings representing expressions in Grapheme into their ASTNode counterparts. For example,
+   * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
+   */
 
-  let operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and|^or/;
-  let function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
-  let constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
-  let variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
-  let paren_regex = /^[()\[\]]/;
-  let comma_regex = /^,/;
+  const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/;
+  const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
+  const constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/;
+  const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
+  const paren_regex = /^[()\[\]]/;
+  const comma_regex = /^,/;
 
-  function get_angry_at(string, index=0, message="I'm angry!") {
-    let spaces = "";
+  class ParserError extends Error {
+    constructor(message) {
+      super(message);
 
-    for (let i = 0; i < index; ++i)
-      spaces += " ";
-
-    throw new Error(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
+      this.name = "ParserError";
+    }
   }
 
-  function check_parens_balanced(string) {
-    let stack = [];
+  /**
+   * Helper function to throw an error at a specific index in a string.
+   * @param string {String} The string to complain about
+   * @param index {number} The index in the string where the error occurred
+   * @param message {String} The error message
+   */
+  function getAngryAt(string, index=0, message="I'm angry!") {
+    // Spaces to offset the caret to the correct place along the string
+    const spaces = " ".repeat(index);
 
-    let i;
+    throw new ParserError(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
+  }
+
+  /**
+   * Take a string and check whether its parentheses are balanced, throwing a ParserError if not.
+   * @param string
+   */
+  function checkParensBalanced(string) {
+    // Stack of parentheses
+    const stack = [];
+
+    let i = 0;
     let err = false;
-    for (i = 0; i < string.length; ++i) {
-      let chr = string[i];
 
-      if (chr === '(') {
-        stack.push('(');
-      } else if (chr === '[') {
-        stack.push('[');
-      } else if (chr === ')' || chr === ']') {
-        if (stack.length === 0) {
-          err = true;
+    outer:
+    for (; i < string.length; ++i) {
+      const chr = string[i];
+
+      switch (chr) {
+        case '(': case '[':
+          stack.push(chr);
           break
-        }
-
-        if (chr === ')') {
-          let pop = stack.pop();
-
-          if (pop !== '(') {
+        case ')': case ']':
+          if (stack.length === 0) {
             err = true;
-            break
+            break outer
           }
-        } else {
-          let pop = stack.pop();
 
-          if (pop !== '[') {
-            err = true;
-            break
+          if (chr === ')') {
+            let pop = stack.pop();
+
+            if (pop !== '(') {
+              err = true;
+              break outer
+            }
+          } else {
+            let pop = stack.pop();
+
+            if (pop !== '[') {
+              err = true;
+              break outer
+            }
           }
-        }
       }
     }
 
@@ -13931,7 +13957,7 @@ void main() {
 
     if (err) {
 
-      get_angry_at(string, i, "Unbalanced parentheses/brackets");
+      getAngryAt(string, i, "Unbalanced parentheses/brackets");
     }
 
   }
@@ -13982,7 +14008,7 @@ void main() {
         if (match) {
           yield {
             type: "operator",
-            op: match[0],
+            op: match[0].replace(/\s+/g, ""),
             index: i
           };
           break
@@ -14028,7 +14054,7 @@ void main() {
           break
         }
 
-        get_angry_at(original_string, i, "Unrecognized token");
+        getAngryAt(original_string, i, "Unrecognized token");
       } while (false)
 
       let len = match[0].length;
@@ -14046,36 +14072,36 @@ void main() {
 
       if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
         (!token2IsUnary || i === tokens.length - 2)) {
-        get_angry_at(string, token2.index, "No consecutive operators/commas");
+        getAngryAt(string, token2.index, "No consecutive operators/commas");
       }
       if (token1.paren === "(" && token2.paren === ")")
-        get_angry_at(string, token2.index, "No empty parentheses");
+        getAngryAt(string, token2.index, "No empty parentheses");
       if (token1.paren === "[" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No empty brackets");
+        getAngryAt(string, token2.index, "No empty brackets");
       if (token1.type === "operator" && token2.paren === ")")
-        get_angry_at(string, token2.index, "No operator followed by closing parenthesis");
+        getAngryAt(string, token2.index, "No operator followed by closing parenthesis");
       if (token1.type === "operator" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No operator followed by closing bracket");
+        getAngryAt(string, token2.index, "No operator followed by closing bracket");
       if (token1.type === "comma" && token2.paren === ")")
-        get_angry_at(string, token2.index, "No comma followed by closing parenthesis");
+        getAngryAt(string, token2.index, "No comma followed by closing parenthesis");
       if (token1.type === "comma" && token2.paren === "]")
-        get_angry_at(string, token2.index, "No comma followed by closing bracket");
+        getAngryAt(string, token2.index, "No comma followed by closing bracket");
       if (token1.paren === '(' && token2.type === "comma")
-        get_angry_at(string, token2.index, "No comma after starting parenthesis");
+        getAngryAt(string, token2.index, "No comma after starting parenthesis");
       if (token1.paren === '[' && token2.type === "comma")
-        get_angry_at(string, token2.index, "No comma after starting bracket");
+        getAngryAt(string, token2.index, "No comma after starting bracket");
       if (token1.paren === '(' && token2.type === "operator" && !token2IsUnary)
-        get_angry_at(string, token2.index, "No operator after starting parenthesis");
+        getAngryAt(string, token2.index, "No operator after starting parenthesis");
       if (token1.paren === '[' && token2.type === "operator" && !token2IsUnary)
-        get_angry_at(string, token2.index, "No operator after starting bracket");
+        getAngryAt(string, token2.index, "No operator after starting bracket");
     }
 
     if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
-      get_angry_at(string, 0, "No starting comma/operator");
+      getAngryAt(string, 0, "No starting comma/operator");
 
     const last_token = tokens[tokens.length - 1];
     if (last_token.type === "comma" || last_token.type === "operator")
-      get_angry_at(string, tokens.length - 1, "No ending comma/operator");
+      getAngryAt(string, tokens.length - 1, "No ending comma/operator");
   }
 
   function find_paren_indices(children) {
@@ -14288,7 +14314,7 @@ void main() {
   }
 
   function parseString(string, types={}) {
-    check_parens_balanced(string);
+    checkParensBalanced(string);
 
     let tokens = [];
 
