@@ -22,6 +22,7 @@ import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
 import { RealInterval, RealIntervalSet } from '../math/real_interval/interval'
 import { ComplexInterval } from '../math/complex_interval/interval'
 import { Vec2 } from '../math/vec'
+import { protectVariable } from './js_keyword_variables'
 
 const comparisonOperators = ['<', '>', '<=', '>=', '!=', '==']
 
@@ -40,7 +41,7 @@ function compileFunction(compileText, exportedVariables) {
     Variables
   }
 
-  return new Function("Grapheme", "return function(" + exportedVariables.join(',') + ") { return " + compileText + "}")(GraphemeSubset)
+  return new Function("Grapheme", "return function(" + exportedVariables.map(protectVariable).join(',') + ") { return " + compileText + "}")(GraphemeSubset)
 }
 
 /**
@@ -147,6 +148,12 @@ class ASTNode {
   compile(exportedVariables=[]) {
     if (!this.returnType)
       throw new Error("The node's type is not known. You need to call resolveTypes before compiling the node.")
+
+
+    const compileInfo = {
+      exportedVariables,
+
+    }
 
     // Get the text of the function
     const compileText = this._getCompileText(exportedVariables)
@@ -280,7 +287,7 @@ class ASTNode {
    * Resolve types, finding operator definitions and return types. parseString(str, false) returns a string whose types
    * have not been resolved; this tries to figure out the types of each child node as well as which definition to use
    * for each operator. For variables and functions, Grapheme.Variables and Grapheme.Functions are referenced to find
-   * types and definitions. Given types tells us the 
+   * types and definitions. Given types tells us the
    * @param givenTypes
    * @returns {ASTNode}
    */
@@ -337,7 +344,7 @@ class VariableNode extends ASTNode {
     if (comparisonOperators.includes(this.name))
       return `"${this.name}"`
     if (exportedVariables.includes(this.name))
-      return this.name
+      return protectVariable(this.name)
     else
       return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".value"
   }
@@ -346,7 +353,7 @@ class VariableNode extends ASTNode {
     if (comparisonOperators.includes(this.name))
       return `"${this.name}"`
     if (exportedVariables.includes(this.name))
-      return this.name
+      return protectVariable(this.name)
     else
       return (isWorker ? '' : "Grapheme.") + "Variables." + this.name + ".intervalValue"
   }

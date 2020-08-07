@@ -23,15 +23,28 @@ function processExportedVariables(exportedVariables) {
   return exportedVariables
 }
 
+function getSignature(exportedVariables) {
+  return exportedVariables.map(pair => pair[1])
+}
+
+function getVariables(exportedVariables) {
+  return exportedVariables.map(pair => pair[0])
+}
+
+/**
+ * Class representing a user defined function, with a fixed number of inputs (and all with fixed type) and an output of
+ * fixed type. Contains a name, node,
+ */
 class UserDefinedFunction {
   constructor(name, node, exportedVariables=['x']) {
     this.name = name
-
     this.node = node
-
-    this.exportedVariables = processExportedVariables(exportedVariables)
-
     this.definition = null
+
+    exportedVariables = processExportedVariables(exportedVariables)
+
+    this.signature = getSignature(exportedVariables)
+    this.variables = getVariables(exportedVariables)
 
     this.update()
   }
@@ -39,30 +52,28 @@ class UserDefinedFunction {
   getVariableTypesAsDict() {
     let dict = {}
 
-    for (let pair of this.exportedVariables) {
-      dict[pair[0]] = pair[1]
+    const { signature, variables } = this
+
+    for (let i = 0; i < signature.length; ++i) {
+      dict[variables[i]] = signature[i]
     }
 
     return dict
   }
 
-  getSignature() {
-    return this.exportedVariables.map(pair => pair[1])
-  }
+  toString() {
 
-  getVariables() {
-    return this.exportedVariables.map(pair => pair[0])
   }
 
   update() {
     this.usable = false
 
     this.node.resolveTypes(this.getVariableTypesAsDict())
-    this.evaluate = this.node.compile(this.getVariables())
+    this.evaluate = this.node.compile(this.variables)
     this.evaluateInterval = null
 
     try {
-      this.evaluateInterval = this.node.compileInterval(this.getVariables())
+      this.evaluateInterval = this.node.compileInterval(this.variables)
     } catch (e) {
 
     }
@@ -73,7 +84,7 @@ class UserDefinedFunction {
       throw new Error("Was not able to find a return type for function " + this.name + ".")
 
     this.definition = new NormalDefinition({
-      signature: this.getSignature(),
+      signature: this.signature,
       returns: returnType,
       evaluate: "Functions." + this.name + '.evaluate',
       evaluateFunc: this.evaluate,

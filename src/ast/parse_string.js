@@ -3,34 +3,15 @@
  * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
  */
 import {OperatorNode, VariableNode, ConstantNode, ASTNode, OperatorSynonyms} from "./node"
+import { ParserError, getAngryAt } from './parser_error'
 
 const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/
 const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
-const constant_regex = /^-?[0-9]*\.?[0-9]*e?[0-9]+/
+const constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/
 const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/
 const paren_regex = /^[()\[\]]/
 const comma_regex = /^,/
-
-class ParserError extends Error {
-  constructor(message) {
-    super(message)
-
-    this.name = "ParserError"
-  }
-}
-
-/**
- * Helper function to throw an error at a specific index in a string.
- * @param string {String} The string to complain about
- * @param index {number} The index in the string where the error occurred
- * @param message {String} The error message
- */
-function getAngryAt(string, index=0, message="I'm angry!") {
-  // Spaces to offset the caret to the correct place along the string
-  const spaces = " ".repeat(index)
-
-  throw new ParserError(message + " at index " + index + ":\n" + string + "\n" + spaces + "^")
-}
+const string_regex = /^"(?:[^"\\]|\\.)*"/
 
 /**
  * Take a string and check whether its parentheses are balanced, throwing a ParserError if not.
@@ -78,16 +59,14 @@ function checkParensBalanced(string) {
   if (stack.length !== 0)
     err = true
 
-  if (err) {
-    let spaces = ""
-
-    for (let j = 0; j < i; ++j) {
-      spaces += ' '
-    }
-
+  if (err)
     getAngryAt(string, i, "Unbalanced parentheses/brackets")
-  }
+}
 
+function unescapeBackslashedEscapes(string) {
+  return string.replace(/\\n/g, "\n")
+    .replace(/\\'/g, "\'")
+    .replace(/\\n/g, "\n")
 }
 
 function* tokenizer(string) {
@@ -180,6 +159,16 @@ function* tokenizer(string) {
         }
 
         break
+      }
+
+      match = string.match(string_regex)
+
+      if (match) {
+        yield {
+          type: "string",
+          contents: match[0].slice(1, -1),
+          index: i
+        }
       }
 
       getAngryAt(original_string, i, "Unrecognized token")
@@ -342,6 +331,10 @@ function parse_tokens(tokens) {
           if (operators.includes(child_test.op)) {
             combineBinaryOperator(child, i)
 
+            children = child.children
+
+            --i
+
             operators_remaining = true
           }
         }
@@ -362,6 +355,9 @@ function parse_tokens(tokens) {
 
           switch (child_test.op) {
             case "-": {
+              if (i !== 0 && children[i-1].type !== "operator")
+                continue
+
               let new_node = new OperatorNode({operator: "-"})
               let unaried = children[i + 1]
 
@@ -371,6 +367,9 @@ function parse_tokens(tokens) {
               break
             }
             case "+":
+              if (i !== 0 && children[i-1].type !== "operator")
+                continue
+
               child.children.splice(i, 0)
               break
             case "^":

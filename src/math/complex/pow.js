@@ -31,13 +31,17 @@ export const PowBranched = (z, w, branch=0) => {
  * @returns {Complex}
  */
 export const PowR = (z, r) => {
+  if (r === 0)
+    return new Complex(1)
+  else if (r === 1)
+    return z.clone()
+  else if (r === 2)
+    return Multiply(z, z)
+
   return Pow(z, new Complex(r))
 }
 
 export const PowZ = (r, z) => {
-  if (r === 0)
-    return new Complex(0)
-
   return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
 }
 

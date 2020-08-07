@@ -43,32 +43,19 @@ class OperatorDefinition {
 
     let evaluate = params.evaluate
 
-    if (params.noGraphemePrefix)
-      this.evaluate = evaluate
-    else
-      this.evaluate = ((isWorker || evaluate.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluate
+    this.evaluate = "Grapheme." + evaluate
 
     this.evaluateFunc = params.evaluateFunc ? params.evaluateFunc : retrieveEvaluationFunction(this.evaluate)
 
-    try {
       const evaluateInterval = this.evaluate.replace(/Functions/g, "IntervalFunctions")
 
       this.evaluateIntervalFunc = params.evaluateIntervalFunc ? params.evaluateIntervalFunc : retrieveEvaluationFunction(evaluateInterval)
 
+
+    if (!this.evaluateIntervalFunc)
+      this.evaluateInterval = this.evaluateIntervalFunc = null
+    else
       this.evaluateInterval = evaluateInterval
-    } catch (e) {
-
-    }
-
-    if (params.evaluateInterval) {
-      this.evaluateInterval = params.evaluateInterval
-    }
-
-    if (!params.noGraphemePrefix) {
-      const evaluateInterval = this.evaluateInterval
-
-      this.evaluateInterval = ((isWorker || evaluateInterval.startsWith("Grapheme")) ? "" : "Grapheme.") + evaluateInterval
-    }
   }
 
   latex(nodes, options={}) {
@@ -209,6 +196,7 @@ for (let type in Typecasts) {
 }
 
 import { Typecasts as eggs } from '../math/typecasts'
+import { BooleanFunctions } from '../math/boolean_functions'
 
 function retrieveEvaluationFunction(str) {
   let fName = str.split('.').pop()
@@ -217,6 +205,7 @@ function retrieveEvaluationFunction(str) {
   const realIntervalFunctions = RealIntervalFunctions
   const complexFunctions = ComplexFunctions
   const complexIntervalFunctions = ComplexIntervalFunctions
+  const booleanFunctions = BooleanFunctions
 
   if (str.includes("RealFunctions"))
     return realFunctions[fName]
@@ -228,6 +217,9 @@ function retrieveEvaluationFunction(str) {
     return complexIntervalFunctions[fName]
   if (str.includes("Typecasts"))
     return eggs[fName]
+  if (str.includes("BooleanFunctions"))
+    return booleanFunctions[fName]
+
 }
 
 function constructTrigDefinitions(name, funcName) {
@@ -849,8 +841,7 @@ const Operators = {
     new NormalDefinition({
       signature: ["bool"],
       returns: "bool",
-      evaluate: "!",
-      noGraphemePrefix: true,
+      evaluate: "BooleanFunctions.Not",
       desc: "Returns the logical negation of b.",
       latex: LatexMethods.logicLatex.not
     })

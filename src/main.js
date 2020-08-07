@@ -61,5 +61,7 @@ export * from "./math/jsbi"
 export * from "./math/bessel"
 export * from "./ast/latex"
 export * from "./other/katex"
+export * from "./ast/type"
+export * from "./ast/func"
 
 export * from "../tests/real_functions/test_function_accuracy"
