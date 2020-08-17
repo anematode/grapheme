@@ -119,7 +119,7 @@ class Type {
   }
 
   clone() {
-    return new Type(this.str, this.children ?? this.children.map(child => child.clone()))
+    return new Type(this.str, this.children ? this.children : this.children.map(child => child.clone()))
   }
 
   argCount() {
