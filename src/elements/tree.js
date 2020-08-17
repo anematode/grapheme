@@ -30,6 +30,9 @@ class TreeElement extends GraphemeElement {
   update(info) {
     super.update()
 
+    if (!this.root)
+        return
+
     this.vertices = []
     this.labels = []
 
