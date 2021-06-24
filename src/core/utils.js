@@ -1,400 +1,245 @@
-import { BoundingBox } from '../math/bounding_box'
-import { Vec2 } from '../math/vec'
-import { ln_gamma } from '../math/gamma_function'
+// import { WASM } from "../wasm/wasm.js"
 
-// This file defines some common utilities that Grapheme uses!
+let version = 0
 
-// A list of all extant Grapheme Universes
-const Universes = []
+/**
+ * This function returns a number starting from 1 that never decreases. It is used to store "when" an operation has
+ * occurred, and thus whether to consider it a change.
+ * @returns {number}
+ */
+export function getVersionID () {
+  return ++version
+}
 
-// this function takes in a variadic list of arguments and returns the first
-// one that's not undefined
-function select (opt1, ...opts) {
-  if (opts.length === 0) { // if there are no other options, choose the first
-    return opt1
+export function benchmark (callback, iterations = 100, name) {
+  const start = performance.now()
+
+  for (let i = 0; i < iterations; ++i) {
+    callback()
   }
-  if (opt1 === undefined) { // if the first option is undefined, proceed
-    return select(...opts)
+
+  const duration = performance.now() - start
+
+  console.log(`Function ${name ?? callback.name} took ${duration / iterations} ms` + ((iterations === 1) ? '.' : ' per call.'))
+}
+
+export function time (callback, output = console.log) {
+  const start = performance.now()
+  let result = 'finished'
+
+  try {
+    callback()
+  } catch (e) {
+    result = 'threw'
+    throw e
+  } finally {
+    output(`Function ${callback.name} ${result} in ${performance.now() - start} ms.`)
+  }
+}
+
+export function assertRange (num, min, max, variableName = 'Unknown variable') {
+  if (num < min || num > max || Number.isNaN(num)) {
+    throw new RangeError(`${variableName} must be in the range [${min}, ${max}]`)
+  }
+}
+
+export function isPrimitive (obj) {
+  return typeof obj === 'object' && obj !== null
+}
+
+// Generate an id of the form xxxx-xxxx
+// TODO: guarantee no collisions via LFSR or something similar
+export function getStringID () {
+  function randLetter() {
+    return String.fromCharCode(Math.round(Math.random() * 25 + 97))
   }
 
-  // If the first option is valid, return it
-  return opt1
+  function randFourLetter() {
+    return randLetter() + randLetter() + randLetter() + randLetter()
+  }
+
+  return randFourLetter() + '-' + randFourLetter()
 }
 
-// Assert that a statement is true, and throw an error if it's not
-function assert (statement, error = 'Unknown error') {
-  if (!statement) throw new Error(error)
+// Simple deep equals. Uses Object.is-type equality, though. Doesn't handle circularity or any of the fancy new containers
+export function deepEquals (x, y) {
+  if (typeof x !== "object" || x === null) return Object.is(x, y)
+  if (x.constructor !== y.constructor) return false
+
+  if (Array.isArray(x) && Array.isArray(y)) {
+    if (x.length !== y.length) return false
+    for (let i = x.length - 1; i >= 0; --i) {
+      if (!deepEquals(x[i], y[i])) return false
+    }
+
+    return true
+  }
+
+  // The only other thing of consequence to us. Could probably handle other weird objects too, but meh.
+  if (isTypedArray(x) && isTypedArray(y)) {
+    if (x.length !== y.length) return false
+
+    if (x instanceof Float32Array || x instanceof Float64Array) {
+      for (let i = x.length - 1; i >= 0; --i) {
+        const xv = x[i]
+
+        // What a beautiful way to test for same valueness between floats!
+        if ((xv !== y[i] && !(xv !== xv && y[i] !== y[i])) || (xv === 0 && 1 / xv !== 1 / y[i])) return false
+      }
+    } else {
+      for (let i = x.length - 1; i >= 0; --i) {
+        if (x[i] !== y[i]) return false
+      }
+    }
+
+    return true
+  }
+
+  if (x instanceof Map || x instanceof Set) return false // Just in case
+
+  // x and y are just objects
+  const keys = Object.keys(x)
+  if (Object.keys(y).length !== keys.length) return false
+
+  for (const key of keys) {
+    // fails if y is Object.create(null)
+    if (!y.hasOwnProperty(key)) return false
+    if (!deepEquals(x[key], y[key]))
+      return false
+  }
+
+  return true
 }
 
-// Check that an object is of a given type
-function checkType (obj, type) {
-  assert(obj instanceof type, `Object must be instance of ${type}`)
+/**
+ * Merge two objects, not checking for circularity, not merging arrays, modifying the first object
+ * @param target {{}}
+ * @param source {{}}
+ * @param opts
+ */
+export function deepAssign (target, source, opts={}) {
+  opts.cloneArrays = opts.cloneArrays ?? true
+  opts.assignUndefined = opts.assignUndefined ?? false
+
+  return deepAssignInternal(target, source, opts)
 }
 
-// Check if two objects are... deeply equal
-// https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
-function deepEquals (x, y) {
-  const ok = Object.keys
-  const tx = typeof x
-  const ty = typeof y
-  return x && y && tx === 'object' && tx === ty ? (
-    ok(x).length === ok(y).length &&
-    ok(x).every((key) => deepEquals(x[key], y[key]))
-  ) : (x === y)
-}
+function deepAssignInternal (target, source, opts) {
+  if (typeof source !== "object") return (source !== undefined || opts.assignUndefined) ? source : target
 
-// The following functions are self-explanatory.
+  if (Array.isArray(target) || isTypedArray(target))
+    return opts.cloneArrays ? deepClone(source) : source
 
-function isInteger (z) {
-  return Number.isInteger(z) // didn't know about this lol
-}
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      let sourceVal = source[key]
 
-function isNonnegativeInteger (z) {
-  return Number.isInteger(z) && z >= 0
-}
+      if (opts.assignUndefined || sourceVal !== undefined) {
+        let val = target[key]
+        let sourceIsArray = Array.isArray(sourceVal) || isTypedArray(sourceVal)
 
-function isPositiveInteger (z) {
-  return Number.isInteger(z) && z > 0
-}
+        if (typeof val === "object" && !Array.isArray(val)) {
+          if (typeof sourceVal === "object" && !sourceIsArray) {
+            deepAssign(val, sourceVal, opts)
+            continue
+          }
+        }
 
-function isNonpositiveInteger (z) {
-  return Number.isInteger(z) && z <= 0
-}
-
-function isNegativeInteger (z) {
-  return Number.isInteger(z) && z < 0
-}
-
-function isTypedArray (arr) {
-  return !!(arr.buffer instanceof ArrayBuffer && arr.BYTES_PER_ELEMENT)
-}
-
-const isWorker = typeof window === "undefined"
-
-// https://stackoverflow.com/a/34749873
-function isObject (item) {
-  return (item && typeof item === 'object' && !Array.isArray(item))
-}
-
-// This merges the characteristics of two objects, typically parameters
-// or styles or something like that
-// https://stackoverflow.com/a/34749873
-function mergeDeep (target, ...sources) {
-  if (!sources.length) return target
-  const source = sources.shift()
-
-  if (isObject(target) && isObject(source)) {
-    for (const key in source) {
-      if (isObject(source[key])) {
-        if (!target[key]) Object.assign(target, { [key]: {} })
-        mergeDeep(target[key], source[key])
-      } else {
-        Object.assign(target, { [key]: source[key] })
+        target[key] = (sourceIsArray && opts.cloneArrays) ? deepClone(sourceVal) : sourceVal
       }
     }
   }
 
-  return mergeDeep(target, ...sources)
+  return target
 }
 
-// Check if two numbers are within epsilon of each other
-function isApproxEqual (v, w, eps = 1e-5) {
-  return Math.abs(v - w) < eps
+/**
+ * Same as deepAssign, but creating a copy of the object. Arrays are optionally copied.
+ * @param target {{}}
+ * @param source {{}}
+ * @param opts
+ */
+export function deepMerge (target, source, opts={}) {
+  if (target === undefined) return deepClone(source, opts)
+
+  return deepAssign(deepClone(target, opts), source, opts)
 }
 
-// Non-stupid mod function
-function mod (n, m) {
+/**
+ * Deep clone an object, not checking for circularity or other weirdness, optionally cloning arrays
+ * @param object
+ * @param opts
+ */
+export function deepClone (object, opts={}) {
+  opts.cloneArrays = opts.cloneArrays ?? true
+
+  return deepCloneInternal(object, opts)
+}
+
+function deepCloneInternal (object, opts={}) {
+  if (typeof object !== "object") return object
+
+  if (Array.isArray(object)) {
+    return opts.cloneArrays ? object.map(val => deepCloneInternal(val, opts)) : object
+  } else if (isTypedArray(object)) {
+    return opts.cloneArrays ? new object.constructor(object) : object
+  }
+
+  let ret = {}
+  for (let key in object) {
+    if (object.hasOwnProperty(key)) {
+      ret[key] = deepClone(object[key], opts)
+    }
+  }
+
+  return ret
+}
+
+export function isTypedArray (arr) {
+  return (ArrayBuffer.isView(arr)) && !(arr instanceof DataView)
+}
+
+export function mod (n, m) {
   return ((n % m) + m) % m
 }
 
-if (typeof window === "undefined")
-  self.window = self
-
-// device pixel ratio... duh
-let dpr = window.devicePixelRatio
-
-function updateDPR () {
-  if (dpr !== window.devicePixelRatio) {
-    dpr = window.devicePixelRatio
-
-    // Tell the babies that the device pixel ratio has changed
-    Universes.forEach(context => context.triggerEvent('dprchanged'))
-  }
+export function nextPowerOfTwo (n) {
+  return 1 << (Math.ceil(Math.log2(n)))
 }
 
-// Periodically check whether the dpr has changed
-setInterval(updateDPR, 100)
+/**
+ * Freeze an object and all its children. Does not account for cycles
+ * @param obj
+ */
+export function deepFreeze (obj) {
+  Object.freeze(obj)
 
-function addStyle(styleString) {
-  const style = document.createElement('style');
-  style.textContent = styleString;
-
-  window.addEventListener("load", () => document.head.append(style));
-}
-
-const graphemeCSS = `
-.grapheme-canvas {
-  z-index: 0;
-  position: absolute;
-  top: 0;
-  left: 0;
-  margin: 0;
-  touch-action: none;
-  -ms-touch-action: none;
-  overflow: hidden;
-}
-
-.grapheme-label {
-  position: absolute;
-}
-
-.grapheme-label-N {
-  transform: translate(-50%, -100%);
-}
-
-.grapheme-label-NW {
-  transform: translate(-100%, -100%);
-}
-
-.grapheme-label-NE {
-  transform: translate(0, -100%);
-}
-
-.grapheme-label-C {
-  transform: translate(-50%, -50%);
-}
-
-.grapheme-label-W {
-  transform: translate(-100%, -50%);
-}
-
-.grapheme-label-SW {
-  transform: translate(-100%, 0);
-}
-
-.grapheme-label-SE {
-
-}
-
-.grapheme-label-S {
-  transform: translate(-50%, 0);
-}
-
-.grapheme-label-E {
-  transform: translate(0, -50%);
-}
-`
-
-// Import the Grapheme CSS file for canvas styling
-function importGraphemeCSS () {
-  addStyle(graphemeCSS)
-}
-
-function importKatexCSS() {
-  window.addEventListener("load", () => {
-    let style = document.createElement("link")
-    style.setAttribute("rel", "stylesheet")
-    style.setAttribute("href", "https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css")
-
-    document.head.appendChild(style)
+  Object.values(obj).forEach(value => {
+    if (typeof value === "function" || typeof value === "object")
+      deepFreeze(value)
   })
+
+  return obj
 }
 
-if (!isWorker) {
-  importGraphemeCSS()
-  importKatexCSS()
+export function leftZeroPad (str, len, char='0') {
+  if (str.length >= len) return str
+
+  return char.repeat(len - str.length) + str
 }
 
-// This function takes in a GL rendering context, a type of shader (fragment/vertex),
-// and the GLSL source code for that shader, then returns the compiled shader
-function createShaderFromSource (gl, shaderType, shaderSourceText) {
-  // create an (empty) shader of the provided type
-  const shader = gl.createShader(shaderType)
+export function rightZeroPad (str, len, char='0') {
+  if (str.length >= len) return str
 
-  // set the source of the shader to the provided source
-  gl.shaderSource(shader, shaderSourceText)
-
-  // compile the shader!! piquant
-  gl.compileShader(shader)
-
-  // get whether the shader compiled properly
-  const succeeded = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
-
-  if (succeeded) {
-    return shader // return it if it compiled properly
-  }
-
-  // delete the shader to free it from memory
-  gl.deleteShader(shader)
-
-  // throw an error with the details of why the compilation failed
-  throw new Error(gl.getShaderInfoLog(shader))
+  return str + char.repeat(len - str.length)
 }
 
-// This function takes in a GL rendering context, the fragment shader, and the vertex shader,
-// and returns a compiled program.
-function createGLProgram (gl, vertShader, fragShader) {
-  // create an (empty) GL program
-  const program = gl.createProgram()
-
-  // link the vertex shader
-  gl.attachShader(program, vertShader)
-
-  // link the fragment shader
-  gl.attachShader(program, fragShader)
-
-  // compile the program
-  gl.linkProgram(program)
-
-  // get whether the program compiled properly
-  const succeeded = gl.getProgramParameter(program, gl.LINK_STATUS)
-
-  if (succeeded) {
-    return program
-  }
-
-  // delete the program to free it from memory
-  gl.deleteProgram(program)
-
-  // throw an error with the details of why the compilation failed
-  throw new Error(gl.getProgramInfoLog(program))
-}
-
-function generateUUID () {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0
-    const
-      v = c === 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
-}
-
-let empty_canvas = window.OffscreenCanvas ? new window.OffscreenCanvas(1, 1) : document.createElement('canvas')
-let empty_canvas_ctx = empty_canvas.getContext('2d')
-
-function measureText (text, font) {
-  if (empty_canvas_ctx.font !== font) {
-    empty_canvas_ctx.font = font
-  }
-  let metrics = empty_canvas_ctx.measureText(text)
-
-  return new BoundingBox(new Vec2(0, 0), metrics.width, metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent)
-}
-
-// Delete buffers with the given name from all Grapheme Universes
-function deleteBuffersNamed (bufferNames) {
-  if (Array.isArray(bufferNames)) {
-    for (let i = 0; i < bufferNames.length; ++i) {
-      deleteBuffersNamed(bufferNames[i])
-    }
-    return
-  }
-
-  Universes.forEach((universe) => {
-    universe.glManager.deleteBuffer(bufferNames)
-  })
-}
-
-let x = 0
-
-function getRenderID () {
-  x += 1
-  return x
-}
-
-function roundToCanvasPixel (x) {
-  return Math.round(x - 0.5) + 0.5
-}
-
-function flattenVectors (arr) {
-  let flattened = []
-
-  for (let i = 0; i < arr.length; ++i) {
-    let item = arr[i]
-    if (item.x !== undefined) {
-      flattened.push(item.x)
-      flattened.push(item.y)
-    } else if (Array.isArray(item)) {
-      flattened.push(item[0])
-      flattened.push(item[1])
-    } else {
-      flattened.push(item)
-    }
-  }
-
-  return flattened
-}
-
-function zeroFill (number, width) {
-  width -= number.toString().length
-  if (width > 0) {
-    return new Array(width + (/\./.test(number) ? 2 : 1)).join('0') + number
-  }
-  return number + '' // always return a string
-}
-
-function removeUniverse (context) {
-  let index = this.Universes.indexOf(context)
-
-  if (index !== -1) {
-    this.Universes.splice(index, 1)
-  }
-}
-
-function beautifyFloat (f, prec = 12) {
-  let strf = f.toFixed(prec)
-  if (strf.includes('.')) {
-    return strf.replace(/\.?0+$/g, '')
-  } else {
-    return strf
-  }
-}
-
-function expressQuantityPP (quantity) {
-  if (quantity > 0.01) {
-    return beautifyFloat(quantity * 100, 6) + '%'
-  } else if (quantity > 1e-6) {
-    return beautifyFloat(quantity * 1e6, 6) + ' ppm'
-  } else if (quantity > 1e-9) {
-    return beautifyFloat(quantity * 1e9, 6) + ' ppb'
-  } else if (quantity > 1e-12) {
-    return beautifyFloat(quantity * 1e12, 6) + ' ppt'
-  } else if (quantity > 1e-15) {
-    return beautifyFloat(quantity * 1e12, 6) + ' ppq'
-  } else {
-    return '0'
-  }
-}
-
-const gcd = function (a, b) {
-  if (!b) {
-    return a
-  }
-
-  return gcd(b, a % b)
-}
-
-const benchmark = function (callback, iterations = 100, output = console.log) {
-  let start = performance.now()
-
-  for (let i = 0; i < iterations; ++i) {
-    callback(i)
-  }
-
-  let duration = performance.now() - start
-
-  output(`Function ${callback.name} took ${duration / iterations} ms per call.`)
-}
-
-function removeDuplicates(arr) {
-  return [... new Set(arr)]
-}
-
-// Credit to https://github.com/gustf/js-levenshtein/blob/master/index.js
-const levenshtein = (function()
-{
-  function _min(d0, d1, d2, bx, ay)
-  {
+/**
+ * Credit to https://github.com/gustf/js-levenshtein/blob/master/index.js. Find the Levenshtein distance between two
+ * strings.
+ */
+export const levenshtein = (function() {
+  function _min (d0, d1, d2, bx, ay) {
     return d0 < d1 || d2 < d1
       ? d0 > d2
         ? d2 + 1
@@ -404,8 +249,7 @@ const levenshtein = (function()
         : d1 + 1;
   }
 
-  return function(a, b)
-  {
+  return function (a, b) {
     if (a === b) {
       return 0;
     }
@@ -438,18 +282,7 @@ const levenshtein = (function()
     }
 
     var x = 0;
-    var y;
-    var d0;
-    var d1;
-    var d2;
-    var d3;
-    var dd;
-    var dy;
-    var ay;
-    var bx0;
-    var bx1;
-    var bx2;
-    var bx3;
+    var y, d0, d1, d2, d3, dd, dy, ay, bx0, bx1, bx2, bx3;
 
     var vector = [];
 
@@ -495,86 +328,11 @@ const levenshtein = (function()
   };
 })();
 
-function getFunctionName() {
-  return '$' + getRenderID()
+const onReadyCallbacks = []
+export function onReady (callback) {
+  onReadyCallbacks.push(callback)
 }
 
-function wait(ms) {
-  return new Promise((resolve, reject) => {
-    setTimeout(resolve, ms)
-  })
-}
-
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-const BINOMIAL_TABLE = new Float64Array([0, 0, 0.6931471805599453, 1.791759469228055, 3.1780538303479458, 4.787491742782046, 6.579251212010101, 8.525161361065415, 10.60460290274525, 12.801827480081469, 15.104412573075516, 17.502307845873887, 19.987214495661885, 22.552163853123425, 25.19122118273868, 27.89927138384089, 30.671860106080672, 33.50507345013689, 36.39544520803305, 39.339884187199495, 42.335616460753485, 45.38013889847691, 48.47118135183523, 51.60667556776438, 54.78472939811232, 58.00360522298052, 61.261701761002, 64.55753862700634, 67.88974313718154, 71.25703896716801, 74.65823634883016, 78.0922235533153, 81.55795945611504, 85.05446701758152, 88.58082754219768, 92.1361756036871, 95.7196945421432, 99.33061245478743, 102.96819861451381, 106.63176026064346, 110.32063971475739, 114.0342117814617, 117.77188139974507, 121.53308151543864, 125.3172711493569, 129.12393363912722, 132.95257503561632, 136.80272263732635, 140.67392364823425, 144.5657439463449, 148.47776695177302, 152.40959258449735, 156.3608363030788, 160.3311282166309, 164.32011226319517, 168.32744544842765,  172.3527971391628, 176.39584840699735, 180.45629141754378, 184.53382886144948, 188.6281734236716, 192.7390472878449, 196.86618167289, 201.00931639928152, 205.1681994826412, 209.34258675253685, 213.53224149456327, 217.73693411395422, 221.95644181913033, 226.1905483237276, 230.43904356577696, 234.70172344281826, 238.97838956183432, 243.2688490029827, 247.57291409618688, 251.8904022097232, 256.22113555000954, 260.5649409718632, 264.9216497985528, 269.2910976510198, 273.6731242856937, 278.0675734403661, 282.4742926876304, 286.893133295427, 291.3239500942703, 295.76660135076065, 300.22094864701415, 304.6868567656687, 309.1641935801469, 313.65282994987905, 318.1526396202093, 322.66349912672615, 327.1852877037752, 331.7178871969285, 336.26118197919845, 340.815058870799, 345.37940706226686, 349.95411804077025, 354.5390855194408, 359.1342053695754, 363.73937555556347])
-const binomComputed = BINOMIAL_TABLE.length
-
-function nCrFloat(n, k) {
-  if (Number.isInteger(n) && Number.isInteger(k) && n >= 0 && k >= 0 && n < binomComputed && k < binomComputed)
-    return Math.exp(BINOMIAL_TABLE[n] - BINOMIAL_TABLE[n-k] - BINOMIAL_TABLE[k]);
-  else return Math.exp(ln_gamma(n) - ln_gamma(n - k) - ln_gamma(k))
-}
-
-function nCr(n, k) {
-  let result = 1;
-
-  for (let i = 1; i <= k; i++) {
-    result *= (n + 1 - i) / i;
-  }
-
-  return result;
-}
-
-const eulerGamma = 0.57721566490153286060
-
-let boundC = 1e30
-
-function bound(x) {
-  return Math.max(Math.min(x, boundC), -boundC)
-}
-
-export {
-  benchmark,
-  gcd,
-  expressQuantityPP,
-  zeroFill,
-  measureText,
-  generateUUID,
-  createShaderFromSource,
-  createGLProgram,
-  Universes,
-  removeUniverse,
-  mod,
-  dpr,
-  select,
-  assert,
-  checkType,
-  deepEquals,
-  isInteger,
-  isNonnegativeInteger,
-  isNonpositiveInteger,
-  isNegativeInteger,
-  isPositiveInteger,
-  isTypedArray,
-  mergeDeep,
-  isApproxEqual,
-  deleteBuffersNamed,
-  getRenderID,
-  flattenVectors,
-  roundToCanvasPixel,
-  removeDuplicates,
-  isWorker,
-  levenshtein,
-  getFunctionName,
-  wait,
-  getRandomInt,
-  nCrFloat,
-  nCr,
-  eulerGamma,
-  bound
-}
+setTimeout(() => {
+  for (const callback of onReadyCallbacks) callback()
+}, 0)

@@ -1,4 +1,4 @@
-import { ConstantNode, VariableNode } from './node'
+import { ConstantNode, VariableNode } from './new_node.js'
 
 function genInfixLatex(operator) {
   return (nodes, params={}) => {

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbi@3.1.4/dist/jsbi-umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/9.0.0/decimal.js"></script>
+
+<script id="setup">
+  var BI = Grapheme.BigInt
+  var BF = Grapheme.BigFloat
+
+  var canvas = document.createElement("canvas")
+
+  canvas.width = 500
+  canvas.height = 300
+
+  document.body.appendChild(canvas)
+
+  var ctx = canvas.getContext('2d')
+
+  var viewport = {cx: BF.fromNumber(0), cy: BF.fromNumber(0), w: BF.fromNumber(2), h: BF.fromNumber(1)}
+
+  Grapheme.CURRENT_ROUNDING_MODE = Grapheme.ROUNDING_MODE.WHATEVER
+
+  function displayBigFloat() {
+    let w = canvas.width
+    let h = canvas.height
+
+    const img = new Uint8ClampedArray(w * h * 4)
+
+    const fracX = BF.new(), fracY = BF.new(), plotRe = BF.new(), plotIm = BF.new(), zRe = BF.new(), zIm = BF.new(),
+      newRe = BF.new(), newIm = BF.new(), tmp1 = BF.new(), tmp2 = BF.new(), tmp3 = BF.new()
+
+    console.time("start")
+    for (let y = 0; y < h; ++y) {
+      fracY.setFromNumber(y / h - 0.5)
+
+      for (let x = 0; x < w; ++x) {
+        fracX.setFromNumber(x / w - 0.5)
+
+        BF.mulTo(fracX, viewport.w, plotRe)
+        BF.addTo(plotRe, viewport.cx, plotRe)
+
+        BF.mulTo(fracY, viewport.h, plotIm)
+        BF.addTo(plotIm, viewport.cy, plotIm)
+
+        zRe.setFromFloat(plotRe)
+        zIm.setFromFloat(plotIm)
+
+        let iterations = 0
+        let maxIterations = 100
+
+        for (; iterations < maxIterations; ++iterations) {
+          BF.mulTo(zRe, zRe, tmp1)
+          BF.mulTo(zIm, zIm, tmp2)
+
+          BF.subTo(tmp1, tmp2, tmp3)
+          BF.addTo(tmp3, plotRe, newRe)
+
+          BF.mulTo(zRe, zIm, tmp1)
+          BF.addTo(tmp1, tmp1, tmp2)
+
+          BF.addTo(tmp2, plotIm, newIm)
+
+          if (newRe.toNumber() ** 2 + newIm.toNumber() ** 2 > 2) break
+
+          zRe.setFromFloat(newRe)
+          zIm.setFromFloat(newIm)
+        }
+
+        let index = 4 * (y * w + x)
+        img[index] = iterations / maxIterations * 255
+        img[index + 1] = iterations / maxIterations * 255
+        img[index + 2] = iterations / maxIterations * 255
+        img[index + 3] = 255
+      }
+    }
+    console.timeEnd("start")
+
+    ctx.putImageData(new ImageData(img, w, h), 0, 0)
+  }
+
+  function displayBigDecimal() {
+    let w = canvas.width
+    let h = canvas.height
+
+    const img = new Uint8ClampedArray(w * h * 4)
+    let viewport = {cx: new Decimal(0), cy: new Decimal(0), w: new Decimal(2), h: new Decimal(1)}
+
+    console.time("start")
+    for (let y = 0; y < h; ++y) {
+      let fracY = new Decimal(y / h - 0.5)
+
+      for (let x = 0; x < w; ++x) {
+        let fracX = new Decimal(x / w - 0.5)
+
+        let plotRe = Decimal.add(Decimal.mul(fracX, viewport.w), viewport.cx)
+        let plotIm = Decimal.add(Decimal.mul(fracY, viewport.h), viewport.cy)
+
+        let zRe = new Decimal(plotRe)
+        let zIm = new Decimal(plotIm)
+
+        let iterations = 0
+        let maxIterations = 100
+
+        for (; iterations < maxIterations; ++iterations) {
+          newRe = Decimal.add(Decimal.sub(Decimal.mul(zRe, zRe), Decimal.mul(zIm, zIm)), plotRe)
+          newIm = Decimal.add(Decimal.mul(Decimal.mul(zRe, zIm), 2), plotIm)
+
+          if (newRe.toNumber() ** 2 + newIm.toNumber() ** 2 > 2) break
+
+          zRe = newRe
+          zIm = newIm
+        }
+
+        let index = 4 * (y * w + x)
+        img[index] = iterations / maxIterations * 255
+        img[index + 1] = iterations / maxIterations * 255
+        img[index + 2] = iterations / maxIterations * 255
+        img[index + 3] = 255
+      }
+    }
+    console.timeEnd("start")
+
+    ctx.putImageData(new ImageData(img, w, h), 0, 0)
+  }
+
+</script>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>

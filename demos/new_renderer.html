@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="test_setup.js"></script>
+
+<noscript id="setup">
+    const renderer = new Grapheme.GraphemeWebGLRenderer()
+
+    document.body.appendChild(renderer.canvas)
+
+    renderer.clearAndResizeCanvas(1000, 1000)
+</noscript>
+
+
+</body>
+</html>

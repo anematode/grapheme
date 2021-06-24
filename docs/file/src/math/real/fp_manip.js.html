@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/math/real/fp_manip.js | grapheme</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="JavaScript graphing library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="grapheme"><meta property="twitter:description" content="JavaScript graphing library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/anematode/grapheme"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-benchmark">benchmark</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getID">getID</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/core/element.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-bigint">math/bigint</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/bigint/bigint.js~BigInt.html">BigInt</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real">math/real</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-add">add</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-divide">divide</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gcd">gcd</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-multiply">multiply</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-subtract">subtract</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-countFloatsBetween">countFloatsBetween</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-frexp">frexp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getExponent">getExponent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isDenormal">isDenormal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundDown">roundDown</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundUp">roundUp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-toExactFloat">toExactFloat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-factorial">factorial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gamma">gamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-lnGamma">lnGamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-doubleToRational">doubleToRational</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pow">pow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RealFunctions">RealFunctions</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real-interval">math/real_interval</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealInterval.html">RealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealIntervalSet.html">RealIntervalSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~TaggedRealInterval.html">TaggedRealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getIntervals">getIntervals</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-wrapIntervalFunction">wrapIntervalFunction</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-typedef">T</span><span data-ice="name"><span><a href="typedef/index.html#static-typedef-RealIntervalLike">RealIntervalLike</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/math/real/fp_manip.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">/** Here we define functions for manipulation of double-precision floating point numbers.
+ * Some definitions:
+ *   special value: &#xB1;Infinity and any NaN
+ *   normal number: Number which is not &#xB1;0 and whose exponent is nonzero
+ *   denormal number: Number which is not &#xB1;0 and whose exponent is zero
+ * */
+
+/** Check endianness. The functions in this file will not work on big-endian systems, so we need to throw an error.
+ * Credit goes to Lucio Pavia on StackOverflow, specifically
+ * {@link https://stackoverflow.com/a/52827031/13458117|this answer}.
+ * It is released under CC BY-SA 4.0, which is compatible with this project.
+ * @ignore
+ */
+const isBigEndian = (() =&gt; {
+  const array = new Uint8Array(4)
+  const view = new Uint32Array(array.buffer)
+  return !((view[0] = 1) &amp; array[0])
+})()
+if (isBigEndian) throw new Error(&apos;only works on little-endian systems; your system is mixed- or big-endian.&apos;)
+
+const floatStore = new Float64Array(1)
+const intView = new Uint32Array(floatStore.buffer)
+
+/**
+ * Returns the next floating point number after a positive x, but doesn&apos;t account for special cases.
+ * @param x {number}
+ * @returns {number}
+ * @private
+ */
+function _roundUp (x) {
+  floatStore[0] = x
+
+  if (++intView[0] === 4294967296 /* uint32_max + 1 */) ++intView[1]
+
+  return floatStore[0]
+}
+
+/**
+ * Returns the previous floating point number before a POSITIVE x, but doesn&apos;t account for special cases.
+ * roundDown.
+ * @param x {number}
+ * @returns {number}
+ * @private
+ */
+function _roundDown (x) {
+  floatStore[0] = x
+
+  if (--intView[0] === -1) --intView[1]
+
+  return floatStore[0]
+}
+
+/**
+ * Returns the next floating point number after x. For example, roundUp(0) returns Number.MIN_VALUE.
+ * Special cases (&#xB1;inf, NaNs, 0) are handled separately. An interesting special case is -Number.MIN_VALUE,
+ * which would normally return -0 and thus must be handled separately. Then, the float is put into a TypedArray,
+ * treated as an integer, and incremented, which sets it to the next representable value. roundUp should
+ * NEVER return -0 or -Infinity, but it can accept those. On my computer both these functions take about
+ * 20 ns / call (October 2020). They need to be performant because they are called so often (every interval
+ * function, pretty much).
+ * @param x {number} Any valid floating-point number
+ * @returns {number} The next representable floating-point number, handling special cases
+ * @function roundUp
+ * @memberOf FP
+ */
+export function roundUp (x) {
+  // Special cases, where the float representation will mess us up
+  if (x === Infinity) return Infinity
+  if (x === -Infinity) return -Number.MAX_VALUE
+  // since -0 === 0, deals with signed zero
+  if (x === 0) return Number.MIN_VALUE
+  if (Number.isNaN(x)) return NaN
+
+  // Special case unique to roundUp
+  if (x === -Number.MIN_VALUE) return 0
+
+  return (x &lt; 0) ? -_roundDown(-x) : _roundUp(x)
+}
+
+/**
+ * Returns the previous floating point number before x. For example, roundUp(0) returns -Number.MIN_VALUE.
+ * See {@link FP.roundUp} for implementation explanation. This function should NEVER return -0 or
+ * +Infinity, but it can accept those values; roundDown(0) is -Number.MIN_VALUE and roundDown(Infinity) is
+ * Number.MAX_VALUE.
+ * @param x {number} Any valid floating-point number
+ * @returns {number} The previous representable floating-point number, handling special cases
+ * @function roundDown
+ * @memberOf FP
+ */
+export function roundDown (x) {
+  if (x === Infinity) return Number.MAX_VALUE
+  if (x === -Infinity) return -Infinity
+  if (x === 0) return -Number.MIN_VALUE
+  if (Number.isNaN(x)) return NaN
+
+  return (x &lt; 0) ? -_roundUp(-x) : _roundDown(x)
+}
+
+// The first positive normal number
+const POSITIVE_NORMAL_MIN = 2.2250738585072014e-308
+
+// The first negative normal number
+const NEGATIVE_NORMAL_MAX = -POSITIVE_NORMAL_MIN
+
+/**
+ * Return whether a number is denormal; see {@link https://en.wikipedia.org/wiki/Denormal_number|Wikipedia} for a
+ * technical explanation of what this means. &#xB1;0 are not considered denormal numbers. Denormal numbers are sometimes
+ * known as subnormal numbers.
+ * @param x {number} Any valid floating-point number
+ * @returns {boolean} Whether the number is a denormal number
+ * @function isDenormal
+ * @memberOf FP
+ */
+export function isDenormal (x) {
+  // Note that NaN will return false, since NaN &lt; anything is false.
+  return x !== 0 &amp;&amp; x &lt; POSITIVE_NORMAL_MIN &amp;&amp; x &gt; NEGATIVE_NORMAL_MAX
+}
+
+/**
+ * Get the non-biased exponent of a floating-point number x. Equivalent mathematically to floor(log2(abs(x))) for
+ * finite values, but more accurate as the precision of log2 is not technically guaranteed.
+ * @param x
+ * @returns {number}
+ */
+export function getExponent (x) {
+  floatStore[0] = x
+
+  // Mask the biased exponent, retrieve it and convert it to non-biased
+  return ((intView[1] &amp; 0x7ff00000) &gt;&gt; 20) - 1023
+}
+
+/**
+ * Testing function. Counts the approximate number of floats between x1 and x2, including x1 but excluding x2. NaN if
+ * either is undefined. It is approximate because the answer may sometimes exceed Number.MAX_SAFE_INTEGER, but it is
+ * reliable if the answer is less than Number.MAX_SAFE_INTEGER.
+ * @param x1 {number}
+ * @param x2 {number}
+ * @returns {number}
+ * @function countFloatsBetween
+ * @memberOf FP
+ */
+export function countFloatsBetween (x1, x2) {
+  if (Number.isNaN(x1) || Number.isNaN(x2)) { return NaN }
+
+  if (x1 === x2) {
+    return 0
+  }
+
+  if (x2 &lt; x1) {
+    const tmp = x1
+    x1 = x2
+    x2 = tmp
+  }
+
+  const [x1man, x1exp] = frexp(x1)
+  const [x2man, x2exp] = frexp(x2)
+
+  return (x2man - x1man) * 2 ** 53 + (x2exp - x1exp) * 2 ** 52
+}
+
+/**
+ * Converts a floating-point number into a fraction in [0.5, 1), except special cases, and a power of 2 to multiply it by.
+ * @param x
+ * @returns {Array} [fraction, exponent]
+ */
+export function frexp (x) {
+  if (x === 0 || !Number.isFinite(x)) {
+    return [x, 0]
+  }
+
+  // +1 so that the fraction is between
+  const exp = getExponent(x) + 1
+
+  return [x / Math.pow(2, exp), exp]
+}
+
+/**
+ * Whether str can be represented exactly as a float. For example, &quot;0&quot;, &quot;0.00000&quot;, &quot;1&quot;, &quot;1109519&quot;, &quot;-14518924&quot;,
+ * &quot;-1.5&quot;, &quot;-1.5e3&quot;, &quot;4.25&quot;, &quot;42.5e-1&quot;. Floats allowed by Grapheme are relatively simple; they are of the form
+ * &quot;... numeric ... [eE]? ... integer ...&quot;.
+ *
+ * The function is not perfect by any means, and it errs on the side of caution. Even if the function returns false, it might
+ * actually be exactly representable. I might write a guaranteed version of this function if I ever get into arbitrary-precision
+ * floats.
+ *
+ * Actually this function is terrible. Whatever.
+ * @param str {string}
+ * @returns {number}
+ */
+export function toExactFloat (str) {
+  // Floats are basically just exciting dyadic rationals.
+  // TODO
+
+  return NaN
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

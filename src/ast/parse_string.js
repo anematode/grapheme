@@ -2,8 +2,36 @@
  * In this file, we convert strings representing expressions in Grapheme into their ASTNode counterparts. For example,
  * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
  */
-import {OperatorNode, VariableNode, ConstantNode, ASTNode, OperatorSynonyms} from "./node"
-import { ParserError, getAngryAt } from './parser_error'
+import { getAngryAt } from './parser_error.js'
+import {ConstantNode, VariableNode, OperatorNode, ASTGroup, ASTNode} from './new_node.js'
+
+const OperatorSynonyms = {
+  'arcsinh': 'asinh',
+  'arsinh': 'asinh',
+  'arccosh': 'acosh',
+  'arcosh': 'acosh',
+  'arctanh': 'atanh',
+  'artanh': 'atanh',
+  'arcsech': 'asech',
+  'arccsch': 'acsch',
+  'arccoth': 'acoth',
+  'arsech': 'asech',
+  'arcsch': 'acsch',
+  'arcoth': 'acoth',
+  'arcsin': 'asin',
+  'arsin': 'asin',
+  'arccos': 'acos',
+  'arcos': 'acos',
+  'arctan': 'atan',
+  'artan': 'atan',
+  'arcsec': 'asec',
+  'arccsc': 'acsc',
+  'arccot': 'acot',
+  'arsec': 'asec',
+  'arcsc': 'acsc',
+  'arcot': 'acot',
+  'log': 'ln'
+}
 
 const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/
 const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
@@ -180,7 +208,7 @@ function* tokenizer(string) {
   }
 }
 
-function check_valid(string, tokens) {
+function checkValid(string, tokens) {
   for (let i = 0; i < tokens.length - 1; ++i) {
     let token1 = tokens[i]
     let token2 = tokens[i+1]
@@ -221,221 +249,254 @@ function check_valid(string, tokens) {
     getAngryAt(string, tokens.length - 1, "No ending comma/operator")
 }
 
-function find_paren_indices(children) {
-  let start_paren_index = -1;
+/**
+ * Find a pair of parentheses in a list of tokens, namely the first one as indexed by the closing paren/bracket. For
+ * example, in (x(y(z)(w))) it will find (z).
+ * @param children
+ * @returns {number[]}
+ */
+function findParenIndices(children) {
+  let startIndex = -1;
 
   for (let i = 0; i < children.length; ++i) {
     let child = children[i]
+    if (!child.paren) continue
 
     if (child.paren === '(' || child.paren === '[')
-      start_paren_index = i
+      startIndex = i
 
-    if ((child.paren === ')' || child.paren === ']') && start_paren_index !== -1)
-      return [start_paren_index, i]
+    if ((child.paren === ')' || child.paren === ']') && startIndex !== -1)
+      return [startIndex, i]
   }
 }
 
-function parse_tokens(tokens) {
+/**
+ * Convert constants and variables to their ASTNode counterparts
+ * @param tokens {Array}
+ */
+function processConstantsAndVariables (tokens) {
   for (let i = 0; i < tokens.length; ++i) {
     let token = tokens[i]
 
     switch (token.type) {
       case "constant":
-        tokens[i] = new ConstantNode({value: parseFloat(token.value), text: token.value})
+        let v = parseFloat(token.value)
+        let node = new ConstantNode(v, token.value)
+
+        if (Number.isInteger(v))
+          node.type = "int"
+        tokens[i] = node
+
         break
       case "variable":
-        tokens[i] = new VariableNode({name: token.name})
+        tokens[i] = new VariableNode(token.name)
         break
     }
   }
+}
 
-  let root = new ASTNode()
-  root.children = tokens
-
-  let parens_remaining = true
-
-  while (parens_remaining) {
-    parens_remaining = false
-
-    root.applyAll(child => {
-      if (!(child instanceof ASTNode))
-        return
-
-      let indices = find_paren_indices(child.children)
-
+// To process parentheses, we find pairs of them and combine them into ASTNodes containing the nodes and
+// tokens between them. We already know the parentheses are balanced, which is a huge help here. We basically go
+// through each node recursively and convert all paren pairs to a node, then recurse into those new nodes
+function processParentheses (rootNode) {
+  rootNode.applyAll(node => {
+    let parensRemaining = true
+    while (parensRemaining) {
+      parensRemaining = false
+      let indices = findParenIndices(node.children)
 
       if (indices) {
-        parens_remaining = true
+        parensRemaining = true
 
-        let new_node = new ASTNode()
-        new_node.children = child.children.slice(indices[0] + 1, indices[1])
-        child.children = child.children.slice(0, indices[0]).concat([
-          new_node
-        ]).concat(child.children.slice(indices[1] + 1))
+        let newNode = new ASTGroup()
+        let expr = node.children.splice(indices[0], indices[1] - indices[0] + 1, newNode)
+
+        newNode.children = expr.slice(1, expr.length - 1)
       }
-    })
-  }
+    }
+  }, true)
+}
 
-  let functions_remaining = true
+// Turn function tokens followed by ASTNodes into OperatorNodes
+function processFunctions (rootNode) {
+  rootNode.applyAll(node => {
+    let children = node.children
 
-  while (functions_remaining) {
-    functions_remaining = false
+    for (let i = 0; i < children.length; ++i) {
+      let token = children[i]
 
-    root.applyAll(child => {
-      let children = child.children
+      if (token.type === "function") {
+        let synonym = OperatorSynonyms[token.name]
+        let newNode = new OperatorNode(synonym ?? token.name)
 
-      if (children) {
-        for (let i = 0; i < children.length; ++i) {
-          let child_test = children[i]
+        children[i] = newNode
 
-          if (child_test.type === "function") {
-            let synonym = OperatorSynonyms[child_test.name]
+        // Take children from the node coming immediately after
+        newNode.children = children[i + 1].children
 
-            let function_node = new OperatorNode({ operator: synonym ? synonym : child_test.name })
-
-            children[i] = function_node
-
-            function_node.children = children[i + 1].children
-
-            functions_remaining = true
-
-            children.splice(i + 1, 1)
-            return
-          }
-        }
+        // Remove the node immediately after
+        children.splice(i + 1, 1)
       }
-    })
-  }
+    }
+  }, true)
+}
 
-  function combineBinaryOperator(node, i) {
+// Given a node and an index i of a binary operator, combine the nodes immediately to the left and right of the node
+// into a single binary operator
+function combineBinaryOperator(node, i) {
+  const children = node.children
+  let newNode = new OperatorNode(children[i].op)
+
+  newNode.children = [children[i - 1], children[i + 1]]
+
+  children.splice(i - 1, 3, newNode)
+}
+
+// Process the highest precedence operators. Note that e^x^2 = (e^x)^2 and e^-x^2 = e^(-x^2).
+function processUnaryAndExponentiation (root) {
+  root.applyAll(node => {
+    let children = node.children
+
+    // We iterate backwards
+    for (let i = children.length - 1; i >= 0; --i) {
+      let child = children[i]
+      if (child instanceof ASTNode || !child.op) continue
+
+      if (child.op === "-") {
+        // If the preceding token is an unprocessed non-operator token, or node, then it's a binary expression
+        if (i !== 0 && children[i - 1].type !== "operator")
+          continue
+
+        let newNode = new OperatorNode("-")
+        newNode.children = [ children[i + 1] ]
+
+        children.splice(i, 2, newNode)
+      } else if (child.op === "+") {
+        // See above
+        if (i !== 0 && children[i - 1].type !== "operator")
+          continue
+
+        // Unary + is a no-op
+        children.splice(i, 1)
+      } else if (child.op === "^") {
+        combineBinaryOperator(node, i)
+
+        --i
+      }
+    }
+  }, true)
+}
+
+// Combine binary operators, going from left to right, with equal precedence for all
+function processOperators (root, operators) {
+  root.applyAll(node => {
+    let children = node.children
+
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i]
+      if (child instanceof ASTNode || !child.op) continue
+
+      if (operators.includes(child.op)) {
+        combineBinaryOperator(node, i)
+        --i
+      }
+    }
+  }, true)
+}
+
+// The index of each operator is also an enum, which is used in comparison chains to describe which operator is being used
+const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>']
+
+// Process "comparison chains", which are sequences of the form 0 <= x < 2. Internally these are transformed into
+// "cchain" operators, which have the form cchain(0, 1 (enum comparison), x, 0 (enum comparison), 2). Gross, but
+// it's hard to cleanly represent these comparison chains otherwise. You *could* represent them using boolean operations,
+// but that duplicates the internal nodes which is inefficient
+function processComparisonChains (root) {
+  root.applyAll(node => {
     const children = node.children
-    let new_node = new OperatorNode({operator: children[i].op})
 
-    new_node.children = [children[i-1],children[i+1]]
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i]
+      if (child instanceof ASTNode || !child.op) continue
 
-    node.children = children.slice(0, i-1).concat([new_node]).concat(children.slice(i+2))
-  }
+      if (comparisonOperators.includes(children[i].op)) {
+        let comparisonChainFound = false
 
-  function combineOperators(operators) {
-    let operators_remaining = true
+        // Found a comparison operator token; we now check for whether the tokens +2, +4, etc. ahead of it are also
+        // comparison tokens. If so, we emit a comparison chain
 
-    while (operators_remaining) {
-      operators_remaining = false
+        // Index of the last comparison token, plus 2
+        let j = i + 2
+        for (; j < children.length; j += 2) {
+          let nextChild = children[j]
+          if (nextChild instanceof ASTNode || !nextChild.op) continue
 
-      root.applyAll(child => {
-        let children = child.children
-
-        for (let i = 0; i < children.length; ++i) {
-          let child_test = children[i]
-
-          if (operators.includes(child_test.op)) {
-            combineBinaryOperator(child, i)
-
-            children = child.children
-
-            --i
-
-            operators_remaining = true
+          if (comparisonOperators.includes(children[j].op)) {
+            comparisonChainFound = true
+          } else {
+            break
           }
         }
-      })
-    }
-  }
 
-  function processUnaryAndExponentiation() {
-    let operators_remaining = true
+        if (comparisonChainFound) {
+          // The nodes i, i+2, i+4, ..., j-4, j-2 are all comparison nodes. Thus, all nodes in the range i-1 ... j-1
+          // should be included in the comparison chain
 
-    while (operators_remaining) {
-      operators_remaining = false
+          let comparisonChain = new OperatorNode("cchain")
+          let cchainChildren = comparisonChain.children = children.splice(i-1, j-i+1, comparisonChain)
 
-      root.applyAll(child => {
-        for (let i = child.children.length - 1; i >= 0; --i) {
-          let children = child.children
-          let child_test = children[i]
 
-          switch (child_test.op) {
-            case "-": {
-              if (i !== 0 && children[i-1].type !== "operator")
-                continue
+          for (let i = cchainChildren.length - 2; i >= 0; i -= 2) {
+            // Convert operator tokens into constant node corresponding to their enum status
+            let token = cchainChildren[i]
+            let tokenEnum = comparisonOperators.indexOf(token.op)
 
-              let new_node = new OperatorNode({operator: "-"})
-              let unaried = children[i + 1]
-
-              new_node.children = [children[i + 1]]
-
-              child.children = children.slice(0, i).concat([new_node]).concat(children.slice(i + 2))
-              break
-            }
-            case "+":
-              if (i !== 0 && children[i-1].type !== "operator")
-                continue
-
-              child.children.splice(i, 0)
-              break
-            case "^":
-              combineBinaryOperator(child, i)
-
-              --i
-
-              break
-          }
-        }
-      })
-    }
-  }
-
-  // Exponentiation is a right-to-left operator
-  processUnaryAndExponentiation()
-
-  combineOperators(['*','/'])
-  combineOperators(['-','+'])
-
-  const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>']
-
-  // CChain
-  let cchain_remaining = true
-  while (cchain_remaining) {
-    cchain_remaining = false
-
-    root.applyAll(child => {
-      const children = child.children
-      let cchain_found = false
-
-      for (let i = 0; i < children.length; ++i) {
-        if (comparisonOperators.includes(children[i].op)) {
-          let j
-          for (j = i + 2; j < children.length; j += 2) {
-            if (comparisonOperators.includes(children[j].op)) {
-              cchain_found = true
-            } else {
-              break
-            }
+            cchainChildren[i] = new ConstantNode(tokenEnum, tokenEnum + '', "int")
           }
 
-          if (cchain_found) {
-            child.children = children.slice(0, i-1).concat(new OperatorNode({
-              operator: "cchain",
-              children: children.slice(i-1, j).map(child => child.op ? new VariableNode({name: child.op}) : child)
-            })).concat(children.slice(j))
-
-            cchain_remaining = true
-
-            return
-
-          }
+          return
         }
       }
-    })
-  }
-
-  combineOperators(comparisonOperators)
-  combineOperators(["and", "or"])
-
-  root.applyAll(child => {
-    if (child.children) {
-      child.children = child.children.filter(child => child.type !== "comma")
     }
-  })
+  }, true)
+}
+
+// Remove residual commas from the node
+function removeCommas (root) {
+  root.applyAll(node => {
+    let children = node.children
+    let i = children.length
+    while (i--) {
+      if (children[i].type === "comma")
+        children.splice(i, 1)
+    }
+  }, true)
+}
+
+/**
+ * Parse a given list of tokens, returning a single ASTNode. At this point, the tokens are a list of the form
+ * { type: "function"|"variable"|"paren"|"operator"|"constant"|"comma", index: <index of the token in the original string>,
+ *  op?: <operator>, name?: <name of variable>, paren?: <type of paren> }
+ * @param tokens
+ * @returns {ASTNode}
+ */
+function parseTokens(tokens) {
+  processConstantsAndVariables(tokens)
+  let root = new ASTGroup(tokens)
+
+  processParentheses(root)
+  processFunctions(root)
+  processUnaryAndExponentiation(root)
+
+  // PEMDAS
+  processOperators(root, ['*','/'])
+  processOperators(root, ['-','+'])
+
+  processComparisonChains(root)
+  processOperators(root, comparisonOperators)
+  processOperators(root, ["and", "or"])
+
+  removeCommas(root)
 
   return root
 }
@@ -449,12 +510,9 @@ function parseString(string, types={}) {
     tokens.push(token)
   }
 
-  check_valid(string, tokens)
+  checkValid(string, tokens)
 
-  let node = parse_tokens(tokens).children[0]
-
-  if (types)
-    node.resolveTypes(types)
+  let node = parseTokens(tokens).children[0]
 
   return node
 }

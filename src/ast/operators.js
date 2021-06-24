@@ -1,22 +1,30 @@
-import { levenshtein, isWorker } from "../core/utils"
-import { RealFunctions } from '../math/real/functions'
-import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
-import { ComplexFunctions } from '../math/complex/functions'
-import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
-import { LatexMethods } from './latex'
-import { IntervalTypecasts } from '../math/complex_interval/typecasts'
+import {levenshtein} from "../core/utils"
+import {RealFunctions} from '../math/real/functions'
+import {RealIntervalFunctions} from '../math/real_interval/functions'
+import {ComplexFunctions} from '../math/complex/functions'
+import {LatexMethods} from './latex'
+import {Typecasts} from '../math/other/typecasts'
+import {BooleanFunctions} from '../math/other/boolean_functions'
 
-// Types: "bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"
-
+// List of valid types in Grapheme math language (as distinct from the props and stuff)
 const TYPES = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"]
 
+/**
+ * Whether a type is valid
+ * @param typename {string}
+ * @returns {boolean}
+ */
 function isValidType(typename) {
   return TYPES.includes(typename)
 }
 
+/**
+ * Throw a (hopefully helpful) error when a type is invalid
+ * @param typename {string}
+ * @returns {boolean}
+ */
 function throwInvalidType(typename) {
   if (!isValidType(typename)) {
-
     let didYouMean = ""
 
     let distances = TYPES.map(type => levenshtein(typename, type))
@@ -30,62 +38,92 @@ function throwInvalidType(typename) {
   }
 }
 
+/**
+ * Given the name of a function like Grapheme.RealFunctions.Multiply, find and return it. Eventually it will throw an
+ * error when no function is found; for now, it will silently fail until I implement all the functions
+ * @param str {string}
+ * @returns {Function}
+ */
+function retrieveEvaluationFunction(str) {
+  let fName = str.split('.').pop()
+
+  let res
+
+  if (str.includes("RealFunctions"))
+    res = RealFunctions[fName]
+  else if (str.includes("RealIntervalFunctions"))
+    res = RealIntervalFunctions[fName]
+  else if (str.includes("ComplexFunctions"))
+    res = ComplexFunctions[fName]
+  else if (str.includes("typecastList"))
+    res = Typecasts[fName]
+  else if (str.includes("BooleanFunctions"))
+    res = BooleanFunctions[fName]
+
+  /*if (!res)
+    throw new Error(`Could not find evaluation function ${str}`)*/
+
+  return res
+}
+
+/**
+ * Abstract class: definition of an evaluable operator
+ */
 class OperatorDefinition {
   constructor(params={}) {
+    /**
+     * Return type of the operator
+     * @type {string}
+     */
     this.returns = params.returns || "real"
-
     throwInvalidType(this.returns)
 
-    if (params.latex)
-      this.latex = params.latex
-    else
-      this.latex = () => { throw new Error("unimplemented") }
-
     let evaluate = params.evaluate
+    if (!evaluate) throw new Error("An evaluation instruction must be provided")
 
+    /**
+     * String containing the location of the function among RealFunctions, ComplexFunctions, etc. so that it can be
+     * compiled to JS. For example, multiplication may have an evaluate of "Grapheme.RealFunctions.Multiply".
+     * @type {string}
+     */
     this.evaluate = "Grapheme." + evaluate
 
-    this.evaluateFunc = params.evaluateFunc ? params.evaluateFunc : retrieveEvaluationFunction(this.evaluate)
-
-      const evaluateInterval = this.evaluate.replace(/Functions/g, "IntervalFunctions")
-
-      this.evaluateIntervalFunc = params.evaluateIntervalFunc ? params.evaluateIntervalFunc : retrieveEvaluationFunction(evaluateInterval)
-
-
-    if (!this.evaluateIntervalFunc)
-      this.evaluateInterval = this.evaluateIntervalFunc = null
-    else
-      this.evaluateInterval = evaluateInterval
-  }
-
-  latex(nodes, options={}) {
-    if (this.latexFunc) {
-      return this.latexFunc(nodes, options)
-    }
+    /**
+     * The function object which can be called directly instead of looking it up in the list of functions.
+     */
+    this.evaluateFunc = retrieveEvaluationFunction(this.evaluate)
   }
 }
 
-function castableIntoMultiple(signature1, signature2) {
-  return (signature1.length === signature2.length) && signature1.every((type, index) => castableInto(type, signature2[index]))
-}
-
+/**
+ * Definition of an evaluable operator with a specific signature (fixed length and types of arguments)
+ */
 class NormalDefinition extends OperatorDefinition {
   constructor(params={}) {
     super(params)
 
-    this.signature = params.signature
-    if (!Array.isArray(this.signature))
-      throw new Error("Given signature is not an array")
+    let signature = params.signature
+    this.signature = Array.isArray(signature) ? signature : [ signature ]
 
     this.signature.forEach(throwInvalidType)
-
   }
 
-  signatureWorks(signature) {
+  /**
+   * Whether a given set of arguments (their types) works
+   * @param signature {string[]}
+   * @returns {boolean}
+   */
+  signatureWorks (signature) {
     return castableIntoMultiple(signature, this.signature)
   }
 
-  getDefinition(signature) {
+  /**
+   * Get the true definition for a given signature. This is an identity operation for NormalDefinitions but requires
+   * generating a signature of a specific length for VariadicDefinitions.
+   * @param signature
+   * @returns {NormalDefinition}
+   */
+  getDefinition (signature) {
     return this
   }
 }
@@ -101,7 +139,7 @@ class VariadicDefinition extends OperatorDefinition {
     this.repeatingSignature.forEach(throwInvalidType)
   }
 
-  getSignatureOfLength(len) {
+  getSignatureOfLength (len) {
     let signature = this.initialSignature.slice()
 
     while (signature.length < len) {
@@ -111,7 +149,7 @@ class VariadicDefinition extends OperatorDefinition {
     return signature
   }
 
-  signatureWorks(signature) {
+  signatureWorks (signature) {
     let len = signature.length
 
     if (len < this.initialSignature.length)
@@ -138,92 +176,78 @@ class VariadicDefinition extends OperatorDefinition {
   }
 }
 
-function castableInto(from, into) {
-  if (from === into)
+/**
+ * Determines whether a given type can be cast into another type.
+ * @param from {string}
+ * @param to {string}
+ * @returns {boolean}
+ */
+function castableInto (from, to) {
+  if (from === to)
     return true
 
-  let summarizedTypecasts = SummarizedTypecasts[from]
+  let casts = TypecastDefinitions[from]
 
-  if (!summarizedTypecasts)
-    return false
-
-  return summarizedTypecasts.includes(into)
+  return casts && casts.some(cast => cast.returns === to)
 }
 
-function getCastingFunction(from, into) {
-  if (!castableInto(from, into))
-    throw new Error("Cannot cast from type " + from + " into " + into + ".")
+/**
+ * Determines whether two signatures are compatible, in that every element of one can be cast into the other
+ * @param signatureFrom {string[]}
+ * @param signatureTo {string[]}
+ * @returns {boolean}
+ */
+function castableIntoMultiple(signatureFrom, signatureTo) {
+  return (signatureFrom.length === signatureTo.length) && signatureFrom.every((type, index) => castableInto(type, signatureTo[index]))
+}
 
-  let casts = Typecasts[from]
+/**
+ * Given two types, return the function which can cast between them, throwing an error if no such function exists
+ * @param from {string}
+ * @param to {string}
+ * @returns {string}
+ */
+function getCastingFunction(from, to) {
+  let casts = TypecastDefinitions[from]
 
-  for (let cast of casts) {
-    if (cast.returns === into)
+  for (let cast of casts)
+    if (cast.returns === to)
       return cast.evaluate
-  }
+
+  throw new Error(`Cannot cast from type ${from} into type ${to}`)
 }
 
+/**
+ * Special class for typecast definitions (in case we want more metadata for them later
+ */
 class TypecastDefinition extends OperatorDefinition {
-  constructor(params={}) {
-    super(params)
-  }
+
 }
 
-const Typecasts = {
+/**
+ * Definitions of allowed typecasts. Currently just int -> real, int -> complex, and real -> complex, but we'll soon see
+ * other conversions
+ */
+const TypecastDefinitions = {
   'int': [
     new TypecastDefinition({
       returns: 'real',
-      evaluate: "Typecasts.Identity"
+      evaluate: "typecastList.Identity"
     }),
     new TypecastDefinition({
       returns: 'complex',
-      evaluate: "Typecasts.RealToComplex"
+      evaluate: "typecastList.RealToComplex"
     })
   ],
   'real': [
     new TypecastDefinition({
       returns: 'complex',
-      evaluate: "Typecasts.RealToComplex"
+      evaluate: "typecastList.RealToComplex"
     })
   ]
 }
 
-const SummarizedTypecasts = {}
-
-for (let type in Typecasts) {
-  if (Typecasts.hasOwnProperty(type)) {
-    SummarizedTypecasts[type] = Typecasts[type].map(cast => cast.returns)
-  }
-}
-
-import { Typecasts as eggs } from '../math/typecasts'
-import { BooleanFunctions } from '../math/boolean_functions'
-
-function retrieveEvaluationFunction(str) {
-  let fName = str.split('.').pop()
-
-  const realFunctions = RealFunctions
-  const realIntervalFunctions = RealIntervalFunctions
-  const complexFunctions = ComplexFunctions
-  const complexIntervalFunctions = ComplexIntervalFunctions
-  const booleanFunctions = BooleanFunctions
-
-  if (str.includes("RealFunctions"))
-    return realFunctions[fName]
-  if (str.includes("RealIntervalFunctions"))
-    return realIntervalFunctions[fName]
-  if (str.includes("ComplexFunctions"))
-    return complexFunctions[fName]
-  if (str.includes("ComplexIntervalFunctions"))
-    return complexIntervalFunctions[fName]
-  if (str.includes("Typecasts"))
-    return eggs[fName]
-  if (str.includes("BooleanFunctions"))
-    return booleanFunctions[fName]
-
-}
-
 function constructTrigDefinitions(name, funcName) {
-
   let latex = LatexMethods.genFunctionLatex(funcName.toLowerCase())
 
   return [

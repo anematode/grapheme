@@ -1,0 +1,190 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{enumitem}
+
+\newcommand{\NaN}{\texttt{NaN}}
+\newcommand{\allfp}{\mathbb{F}_\text{all}}
+\newcommand{\definedfp}{\mathbb{F}_\infty}
+\newcommand{\finitefp}{\mathbb{F}}
+
+\begin{document}
+
+\title{Grapheme: An Online Graphing Calculator}
+\author{Timothy Herchen}
+\date{October 2020}
+
+\begin{titlepage}
+\maketitle
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Floating-point Operations}
+
+Grapheme uses double-precision floating-point arithmetic for most calculations, since this functionality is provided by JS directly and is highly optimized. When the calculator is directed to evaluate $3 \cdot 4$, it uses the JS $*$ operator which maps directly to a machine instruction. There is no point in using single-precision arithmetic, as these are the same speed on modern processors and JS has no facilities besides asm.js to use this format.
+
+There are some important limitations in double-precision FP. Some of the most obvious are the inability to express integers greater than $2^{53}\approx 9.007\cdot 10^{15}$, numbers greater than about $2^{1023}\approx 1.798 \cdot 10^{308}$, and positive numbers smaller than $2^{-1074}\approx 4.941\cdot 10^{-324}$. While arbitrary-precision arithmetic may be eventually implemented, this is difficult and thus we will try to do our best using the existing system.
+
+Some conventions:
+\begin{enumerate}
+  \item $\pm\infty$ and $\NaN$ are known as \textit{special numbers}.
+  \item Floating-point numbers that are not special numbers are \textit{finite numbers}.
+  \item Denormal numbers and normal numbers are named as usual.
+  \item $\NaN\neq\NaN$, contrary to the mathematical definition of equality. However, $\NaN\simeq\NaN$. For all other purposes, $=$ and $\simeq$ are equivalent.
+  \item There is only one $\NaN$ value, because the standard does not specify the existence of qNaNs, sNaNs and the like.
+  \item The set of all double-precision floating-point numbers, including the special numbers, is denoted $\allfp$.
+  \item $\allfp$ without the special numbers is denoted $\finitefp$. Without only $\NaN$, it is denoted $\definedfp$. Thus, $\finitefp\subset\definedfp\subset\allfp$.
+\end{enumerate}
+
+\subsection{Directed Rounding}
+
+Per the ECMAScript standard, JS operations all use round-to-nearest, ties-to-even. That means that if the mathematical result of an operation is, say, $3.261$, and the nearest permitted floats are $3.26$ and $3.27$, the operation will return $3.26$. Unfortunately, JS does not provide facilities to set the rounding mode, which is understandable given the niche use of these modes. Grapheme does provide the functions \texttt{FP.roundUp} and \texttt{FP.roundDown}.
+
+\subsubsection{FP.roundUp and FP.roundDown}
+
+The basic idea is to treat a floating-point number as a 64-bit integer, which we can do via typed arrays. Incrementing this integer moves us to the next floating-point value, and decrementing it moves us to the previous one. This works for all values except special values, 0, and -\texttt{Number.MIN\_VALUE} (the last is only an issue for \texttt{roundUp}). It even works for denormals!
+
+\subsection{Other Helpful Functions}
+
+\texttt{pow2(x)} computes $2^x$ exactly for integers $-1074\leq x \leq 1023$, which is done via bit manipulation. \texttt{getExponent} and \texttt{getMantissa} return the non-biased exponent and mantissa, respectively, of a given float. \texttt{mantissaCtz} and \texttt{mantissaClz} count the number of trailing and leading zeros, respectively, of a given float. \texttt{frExp(x)}, for $x\in \finitefp$, returns a floating-point number $0.5\leq |f| < 1$ and integer $e$ and guarantees that $f\cdot \texttt{pow2}(e)=x$. This guarantee is preserved for $x\in \allfp$, but $f$ in that case may be $\NaN$ or $\pm \infty$. It handles denormalized numbers correctly but uses a special algorithm for them.
+
+\texttt{rationalExp(x)} returns a reduced fraction $n/d$ and exponent $e$ such that $n/d\cdot \texttt{pow2}(e)=x$ in JS arithmetic. It does this by first using \texttt{frExp} to find $f$ and $e$ such that $f\cdot 2^e = x$, then representing $f$ as a fraction $(f\cdot 2^{53})/2^{53}$; since $0.5\leq |f| < 1$, the numerator is positive. It finally cancels out as many powers as two as it can to ensure it is reduced.
+
+\subsection{Intelligent Pow}
+
+Among the real numbers, exponentiation is straightforward for positive bases, but rather complicated for negative bases. Negative bases raised to a rational power are variously positive, negative or undefined, depending on the fraction. Among $\finitefp$, however, negative bases raised to any power $p\in\finitefp\setminus\mathbb{Z}$ are undefined. This can be logically seen from the fact that all floating-point numbers, besides the integers, are rational numbers with a power-of-two base. But the number $0.3333333333333333\in\finitefp$ likely refers to $\frac{1}{3}$, and so does $0.33333333333333326$, but probably not $0.3333333333001$.
+
+\subsubsection{Doubles to Rationals}
+
+We hence describe the function \texttt{doubleToRational}. There are two competing interests: one, to correctly recognize mathematical rational numbers that would be reasonably encountered in a graphing session, and two, to make coincidences that lead to the recognition of irrational numbers as rational unlikely. We restrict our further work to the positive domain, since this makes our life far easier. In other words, we want to find a reasonable function $d : \finitefp_{>0} \to \mathbb{Z}^2$, so that the resulting numerator–denominator pair corresponds closely to the floating-point number argument.
+
+To do this, we make some stipulations.
+
+\begin{enumerate}
+  \item At most approximately $\frac{1}{10000}$ of floating-point numbers in any range $\left(2^n, 2^{n+1}\right)$ are classified as rational. This makes it unlikely that a randomly-generated real number will be considered rational.
+  \item The floating-point numbers corresponding to a rational number $\frac{p}{q}$ are at most those inside \texttt{RealInterval.from(p/q)}; in other words, they are either \texttt{p/q} as evaluated by JS, or the preceding or succeeding float.
+  \item There must be no intersections between these intervals.
+  \item We assert that the numerator and denominator be less than or equal in magnitude to $2^{53}-1$, which makes our life easier (and such numbers are the majority of rational numbers we'd encounter).
+  \item If we are to recognize any floats in a range, we must recognize up to at least denominator $100$.
+\end{enumerate}
+
+For example, \texttt{1/3} evaluates to the floating-point number $0.3333333333333333$. The preceding and succeeding members of $\finitefp$, namely $0.33333333333333337$ and $0.33333333333333326$ should also correspond to the same number, but no other numbers should correspond to the rational number $\frac{1}{3}$. Because the spacing between floating-point numbers varies, we split up our recognition algorithm over each of the $2046$ sets $\left(2^n, 2^{n+1}\right)$ for $-1022\leq n\leq 1023$ available to floating-point numbers. (Denormalized numbers are ignored, since they are too small.)
+
+The minimum returnable rational number is $\frac{1}{2^{53}-1}$, which means that all numbers smaller than $\frac{1}{2^{53}}$ may be considered irrational. The minimum possible distance between two floating-point numbers in a given range is $2^{n-52}$. The maximum error of \texttt{p/q} from its mathematical value, since it is round-to-nearest, is $2^{n-53}$. Thus, the minimum distance between two allowed fractions must be greater than
+
+$$\underbrace{2\cdot 2^{n-53}}_{\text{rounding}}+\underbrace{3\cdot 2^{n-52}}_{\text{interval widths}} = 2^{n-50}$$
+
+to comply with stipulations 2 and 3. We wish to support all reduced rational numbers $p/q$ with $q \leq d_n$ in a range $[2^n, 2^{n+1})$, where we choose $d_n$ intelligently. The minimum distance between any two supported rational numbers is at least $\frac{1}{d_n^2}$, so
+
+\begin{equation}
+  \frac{1}{d_n^2} \geq 2^{n-50}\Longrightarrow d_n^2 \leq 2^{50-n}\Longrightarrow d_n \leq 2^{25 - n/2}. \label{eq:dn_restriction_1}
+\end{equation}
+
+Finally, to comply with the first stipulation, we wish to compute the number of rational numbers $p/q$ with $q \leq d_n$ in the given range. This is approximately the length of the Farey sequence of order $d_n$ (the number of such rationals between $0$ and $1$) times $2^n$, which asymptotically is $\frac{3d_n^2\cdot 2^n}{\pi^2}$. The number of floats classified as rational is three times this. The number of floats in the entire range is $2^{52}$. Thus, to comply with the first requirement,
+
+\begin{equation}
+  \frac{9d_n^2 2^n}{\pi^2} \leq \frac{1}{10000}\cdot 2^{52}\Longrightarrow d_n^2 \leq \frac{\pi^2\cdot 2^{52}\cdot 2^{-n}}{9\cdot 10000} \Longrightarrow d_n \leq \frac{\pi\cdot 2^{26 - n/2}}{300}. \label{eq:dn_restriction_2}
+\end{equation}
+
+We see that \eqref{eq:dn_restriction_2} is always stricter than \eqref{eq:dn_restriction_1}, and we know that $100 \leq d_n < 2^{53}$, so the final expression is now
+
+$$\boxed{100 \leq d_n \leq \min \left\{ \frac{\pi\cdot 2^{26 - n/2}}{300}, 2^{53} - 1\right\}}.$$
+
+Such a $d_n$ only exists for $n \leq 25$, so we can consider numbers above $2^{26}$ irrational. Our procedure for numbers $x\in [1/2^{53}, 2^{26}]$ is now as follows:
+
+\begin{enumerate}
+\item Get the exponent $n$ via any reliable method (presumably the \texttt{getExponent} function).
+\item Look up the corresponding maximum value of $d_n$.
+\item Find the nearest rational number $p/q$ whose denominator is less than or equal to $d_n$.
+\item If $x-\frac{p}{q}\leq 2^{n-52}$, return $p/q$; otherwise, return nothing.
+\end{enumerate}
+
+Step 1 can be done via looking at the binary representation of the function, which is what \texttt{getExponent} does. Step 3 is the tricky part to do rigorously and quickly. A bit more detail is given in the implementation, but the gist of it is below:
+
+\begin{enumerate}[label=(\alph*)]
+  \item Given a floating-point number $x$ and integers \texttt{maxDenominator} and \texttt{maxNumerator}:
+  \item If $x < 0$, return the negation of this function evaluated for $-x$.
+  \item If $x$ is not finite, return $\NaN, \NaN, \NaN$.
+  \item If $x$ is an integer, return the minimum of \texttt{maxNumerator} and $x$ for the numerator, $1$ for the denominator, and the error.
+  \item Compute the integer and fractional part of $x$, \texttt{flr} and \texttt{frac} respectively.
+  \item Using \texttt{rationalExp}, find floats $p$ and $q$ in reduced form such that $p/q=\texttt{flr}$ and the equation is mathematically exact. $q$ might overflow to $\infty$, but that only happens when $x$ is smaller than $2^{1000}$ or so, in which case we return $0$ as the nearest rational. The reason we operate on \texttt{flr} is because we can guarantee that $p$ is a safe integer (though $q$, as mentioned, will be exact but not necessarily safe).
+  \item If $p/q$ satisfies the bounds given, return it with error $0$.
+  \item The continued fraction expansion of $x$ is $$\texttt{flr} + \texttt{frac}=\texttt{flr} + \tfrac{1}{\tfrac{q}{p}}.$$ Compute the integer part of $\frac{q}{p}$, \texttt{inv\_flr}, and the remainder, \texttt{inv\_rem}. \texttt{inv\_flr} must be nudged so that rounding errors don't cause \texttt{Math.floor} to fail; see the code for how this happens. As an example, consider $x=\texttt{1/5}$, which leads to calculating \texttt{inv\_flr} for $\lfloor\frac{q}{p}\rfloor=\lfloor\frac{18014398509481984}{3602879701896397}\rfloor$. The JS result is $5$ due to the fraction being closer to $5$ than $5$'s predecessor in $\finitefp$, but the mathematically exact result (which we need) is $4$. \texttt{inv\_rem} is exact per the ECMAScript standard, since the result is exactly representable.
+  \item Define $c_i$ as the exact, terminating continued fraction expansion of $x$, computed as $$\texttt{flr} + \tfrac{1}{\texttt{inv\_flr} + \tfrac{1}{\tfrac{\texttt{inv\_rem}}{p}}\ddots}.$$ Note that $\texttt{inv\_rem},p \leq \texttt{Number.MAX\_SAFE\_INTEGER}$, so we don't have to do any special handling here on out. Indexing: $c_1 = \texttt{flr}$ and $c_2 = \texttt{inv\_flr}$.
+  \item We define additional recurrence relations. These provide the convergent numerators and denominators at each step. \begin{enumerate}
+    \item Convergent numerators: $n_0 = 1, n_1 = \texttt{flr}, n_{i+1} = c_{i+1}n_i + n_{i-1}$.
+    \item Convergent denominators: $d_0 = 1, d_1 = \texttt{flr}, n_{i+1} = c_{i+1}n_i + n_{i-1}$.
+\end{enumerate}
+  \item Define variables $\texttt{bestN}=\texttt{Math.round}(x)$ and $\texttt{bestD}=1$. We begin at $i=2$.
+  \item Compute $c_i, n_i,$ and $d_i$ via the recurrence relations. The computation of $c_i$ from previous values is done simply by storing the numerator and denominator of the unresolved part of the continued fraction; the relevant variables are \texttt{contFracGeneratorNum} and \texttt{contFracGeneratorDen}. \label{closestRationalLoopStart}
+  \item If $n_i/d_i$ satisfies our bounds, record it in $\texttt{bestN}$ and $\texttt{bestD}$, then go to \ref{closestRationalLoopStart}.
+  \item If one of the variables is too big, compute the maximum reduction $r$ of $c_i$ which would give $n_i$ and $d_i$ small enough values.
+  \item If $r < \frac{c_i}{2}$, return $\texttt{bestN}/\texttt{bestD}$ with its computed error.
+  \item If $r > \frac{c_i}{2}$, compute the corresponding new value $n_i'/d_i'$ and return that with its computed error.
+  \item If $r = \frac{c_i}{2}$, compute $n_i'/d_i'$, its error and the error of $\texttt{bestN}/\texttt{bestD}$. If the latter error is worse than the former, return the new convergent with its error; otherwise, return the old convergent with its error.
+  \item If $c_{i+1}$ does not exist, return the $\texttt{bestN}/\texttt{bestD}$ with its computed error.
+  \item Go to step \ref{closestRationalLoopStart}
+\end{enumerate}
+
+This is implemented in \texttt{closestRational}. Together, this gives a complete implementation of rational-guessing for \texttt{pow}. An important optimization is that arguments to \texttt{doubleToRational} are cached, since often the exponent of \texttt{pow} is constant. We only cache the previous float; caching multiple floats is a rather finnicky process, since it would be expensive to store it in an associative array with strings as keys.
+
+Once tagged real numbers are implemented, this issue should be less important, but will still likely be used as a fallback.
+
+\section{Interval Arithmetic}
+
+\section{BigInts}
+
+Big integers are rather helpful and fun. Native bigints do exist in modern browsers, but they're a bit annoying to use sometimes, and where's the fun in them? Thus, I created my own big integer class.
+
+The class stores integers as a sign, a word count, and an array of signed 32-bit integers representing the limbs of the integer. Basically, the binary expansion of the integer is contained in these "words", as I call them. Each word is actually only 30 bits long, to make certain bitwise operations a bit easier. The word count variable basically stores how many words there are; the array may actually be longer, with a bunch of zeros at the end. This setup allows us to use typed arrays, which are generally nice, if a bit finnicky. The performance benefit from them is uncertain, but they definitely take up less memory, and are a lot more fun to use.
+
+The maximum word is $2^{30}-1 = 1073741823$. Therefore, all positive integers below this number are represented as a single word. $2^{30}$ is represented as the words $[0, 1]$ (note the lowest-to-highest order). $1$ trillion is stored as $[346361856, 931]$, since $346361856\cdot 2^{30} + 931 = 10^{12}$. Simple enough.
+
+The first question is how to convert from conventional forms to a big integer. Converting from a Number isn't too difficult; if the number's magnitude is less than $2^30$, it can be plopped in as a single word. If larger, the number is broken up into its exponent and mantissa, the latter of which is a 53-bit integer that can be inserted in two components, followed by a bit shift to the left to account for the exponent (multiplying by $2^e$). In this way, massive doubles like $2^{1022}$ may be handled without trouble. Converting from a string to a big int is trickier, especially because of JS's mathematical limitations.
+
+Given a string $s_1s_2\cdotss_n$ in a radix $r$, we wish to find the corresponding sequence of $30$-bit words. One way is to express the string as the value $((\cdots((s_1\cdot r)+s_2)\cdot r)\cdots)\cdot r +s_n$, then compute the value by repeatedly adding $s_i$ and multiplying by $r$ onto the $30$-bit sequence. The multiplication process is a bit tricky, which we'll get to in a second, but this system is simple and effective. To speed up computation, however, the multiplications are \textit{batched}, meaning a radix which is a power of the original radix is chosen so that multiple digits can be multiplied at once, thus saving time proportional to the exponent. The largest radix that we can easily handle multiplying is $2^30-1$, so we choose exponents that are just below that value. For example, for decimal numbers we choose $e=9$, since $10^9=1,000,000,000<2^30-1$. Now, nine decimal digits are processed at a time.
+
+How do we multiply a 30-bit sequence by a number less than $2^30-1$? It's relatively simple: we multiply by the first word, store the lower $30$ bits of the result, carry the upper $30$ bits, multiply by the second word, add the carry, compute the new carry, and repeat. The problem is JS's lack of 64-bit integer multiplication. 32-bit multiplication is present in the form of \textit{Math.imul}, but it only provides the lower 32 bits of the result. Thus, we need a function taking 30-bit words $w_1$ and $w_2$ and outputting $[lo, hi]$, the low and high parts, respectively, of their product. Note that we can't just multiply $w_1$ and $w_2$ and take the modulus; since floats have $53$ bits of precision, there is a loss of accuracy.
+
+The simplest approach is to split the $30$-bit words into $15$-bit subwords, then do the four-part multiplication to construct the lower and higher parts of the final product. For example, $w_1=2^{15}\cdot s_1+s_2$ and $w_2=2^{15}\cdot t_1+t_2$; the lower $30$ bits can be computed as the lower bits of $t_1t_2+(t_1s_2+t_2s_1)\cdot 2^{15}$, while the upper $30$ bits can be computed as $s_1t_1+(t_1s_2+t_2s_1)/2^{15}+\text{carry}$ (note that this is integer floor division, or a bit shift). There is a potential carry from the lower word multiplications, but the overall concept is not too daunting. The main problem is efficiency; what would normally be a single 64-bit instruction has been turned into a series of bit shifts, multiplications, bit masks, and more.
+
+A dirtier approach is to use floats. Instead of trying to accurately compute the words via integer arithmetic, we calculate the higher $30$ bits via the float arithmetic of before: $\lfloor w_1\cdot w_2 / 2^{30} \rfloor$. Since floats have $53$ bits of precision while the result has $30$ bits, this expression for the higher word is generally accurate, except rounding errors cause sporadic problems. Mathematically, the division and multiplication are intended to be over the integers, but the first multiplication may round \textit{up}, to the point that the floor function no longer returns the correct result. For example, on $(w_1,w_2)=(673814485,427759235)$, the naive approach gives $(1073741823, 268435449)$, but it should be $(1073741823, 268435448)$. To account for this, a special case is added in which if the argument to the floor function is an exact integer--meaning it could have been the result of a slight, imprecise round up--the slower, integer-based method is used. In the final sequence, we compute the low and high words of the product by 1. computing the lower half with \textit{Math.imul} with a $30$-bit bit mask, 2. computing the upper half by multiplying the words and dividing by $2^{30}$, 3. conditionally falling back to the default high word calculation if the result is an integer.
+
+It's unclear which approach is more efficient; they're pretty close in my tests. In any case, more research is needed here, because although we are five times faster than JSBI, we are still 8 times slower than native bigint.
+
+\section{Rendering Model}
+
+Grapheme has a rendering model designed for relatively simple 2D and 3D drawing operations, with a focus on performance. After creating a \texttt{Grapheme.Plot}, elements may be added to that plot in a tree structure. The plot's canvas element may be inserted into the DOM, and the plot's \texttt{render} function may be called. It accepts a \texttt{timeout} argument, defaulting to $-1$, which throws an error if the plot could not be rendered within \texttt{timeout} milliseconds (note that it may be inaccurate for small \texttt{timeout} values). This function first updates the plot's elements that have been marked as "needing an update" (see below), then renders the entire plot synchronously. The function \texttt{renderAsync} may also be called; it returns a custom promise which resolves when the rendering completes, and raises an error otherwise. \texttt{renderAsync}, along with \texttt{timeout}, accepts an optional parameter \texttt{progressCallback} for progress management.
+
+Grapheme uses both Canvas 2D and WebGL, because both of these systems have their strengths. WebGL is blazingly fast on most computers due to its low-level abilities and GPU usage, but it is not effective for things like text. Canvas 2D is good for text and certain effects which are difficult to do in WebGL alone. Each \texttt{Plot} has a canvas element which has a Canvas 2D context, but also is assigned a \texttt{Universe} which has a single canvas used for WebGL. Multiple \texttt{Universe}s may be created for special cases, but by default every \texttt{Plot} is assigned to a single default \texttt{Universe}. The universe has a single canvas which is at least as
+big as all of the plots assigned to that universe. The elements of a plot indicate at render time if they need to use the WebGL or Canvas 2D API (possibly both). If they use the WebGL API, this is recorded so that when another element uses the Canvas 2D API, the contents of the \textit{universe}'s WebGL canvas are first copied onto the \textit{plot}'s canvas; this call is also guaranteed to happen at the end of rendering in case the last element didn't use Canvas 2D. We do this because while Canvas 2D instances are comparatively lightweight and an unlimited number of them may be used, WebGL instances are usually limited per tab to a number like $6$ (and it's good to reuse shaders and the like anyway).
+
+There are four classes of major importance to understand the system.
+
+\subsection{Element}
+
+\texttt{Grapheme.Element} is the base for all elements in a Grapheme plot, be it 2D or 3D. Its fields include \texttt{precedence}, which is the order in which the element will be drawn relative to other elements; \texttt{id}, a unique string identifier corresponding to that element; \texttt{needsUpdate}, a variable used mostly internally that signifies an element needs recalculation; \texttt{visible}, a variable which determines whether an element should be updated and/or rendered; \texttt{parent}, the parent of the element in the tree; and \texttt{plot}, the plot the element uses.
+
+\subsection{Group}
+
+\subsection{Plot}
+
+\texttt{Grapheme.Plot}
+
+\subsection{Universe}
+
+\section{Coordinate Spaces}
+
+Grapheme has several disparate coordinate spaces for different contexts. We try to abstract these away as much as possible so that the end user doesn't have as much difficulty. When we set the size of a plot with \texttt{plot.setSize(width, height)}, the displayed canvas will change to have that size in CSS pixels. The canvas itself, however, may have a different number of "true pixels" than the displayed canvas. This occurs if the dpr is not $1$. Indeed, the size of the canvas is internally \texttt{width}$*$\texttt{dpr}.
+
+A font of size $12$ will be twice the size, in true pixels, on a screen with dpr $2$ than one with dpr $1$. Most Grapheme elements, to make their life easier, consider everything in CSS pixels. Some elements, however, care about true pixels. If they have an artifact
+
+\section{Rendering Stages}
+
+At the highest level, there are three stages to rendering an element tree to a plot. They are property computation, updating, and rendering. The user won't normally have to call the first two, and calling any one of these also forces the previous ones to run.
+
+Property computation is the computation of what parameters will be used for each element. Consider a FunctionPlot2D element, for example. This element needs quite a bit of information to draw itself. It needs both information shared with other elements, such as the \texttt{plotting box}, and information particular to itself, such as its \texttt{color} and \texttt{function}.
+
+\end{document}

@@ -1,6 +1,0 @@
-
-class Contour {
-  constructor() {
-
-  }
-}

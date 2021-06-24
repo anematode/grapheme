@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/math/bigint/bigint.js | grapheme</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="JavaScript graphing library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="grapheme"><meta property="twitter:description" content="JavaScript graphing library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/anematode/grapheme"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-benchmark">benchmark</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getID">getID</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/core/element.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-bigint">math/bigint</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/bigint/bigint.js~BigInt.html">BigInt</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real">math/real</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-add">add</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-divide">divide</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gcd">gcd</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-multiply">multiply</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-subtract">subtract</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-countFloatsBetween">countFloatsBetween</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-frexp">frexp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getExponent">getExponent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isDenormal">isDenormal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundDown">roundDown</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundUp">roundUp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-toExactFloat">toExactFloat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-factorial">factorial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gamma">gamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-lnGamma">lnGamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-doubleToRational">doubleToRational</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pow">pow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RealFunctions">RealFunctions</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real-interval">math/real_interval</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealInterval.html">RealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealIntervalSet.html">RealIntervalSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~TaggedRealInterval.html">TaggedRealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getIntervals">getIntervals</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-wrapIntervalFunction">wrapIntervalFunction</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-typedef">T</span><span data-ice="name"><span><a href="typedef/index.html#static-typedef-RealIntervalLike">RealIntervalLike</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/math/bigint/bigint.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">
+const digits = &apos;0123456789abcdefghijklmnopqrstuvwxyz&apos;
+const base10Verify = /^[0-9]+$/
+
+const BI_WORD_BITS = 30
+
+// Numbers between 0 and this are allowed in a BigInt&apos;s words
+const MAX_BI_WORD = 2 ** BI_WORD_BITS - 1
+
+// Maximum, stolen from JSBI
+const MAX_BI_LENGTH = 1 &lt;&lt; 25
+const MAX_BI_BITS = MAX_BI_LENGTH * BI_WORD_BITS
+
+function fromStringBase10 (str) {
+  // Verify the string is okay
+  if (!str.match(base10Verify)) {
+    str.forEach(char =&gt; {
+      if (!isValidDigit(char.charCodeAt(0), 10)) { throw new Error(`Invalid digit &apos;${char}&apos;`) }
+    })
+  }
+
+  // We operate on the words themselves for extra optimizations
+  const pow10Words = []
+  const ret = BigInt.one()
+
+  for (let i = str.length - 1; i &gt;= 0; --i) {
+    // 0 through 9
+    const v = str.charCodeAt(i) - 48
+
+    ret.multiplyAddInPlace(base, 10)
+  }
+}
+
+function fromString (str, radix) {
+  const negative = str[0] === &apos;-&apos;
+  if (negative || str[0] === &apos;+&apos;) str = str.substring(1)
+
+  if (!str) return new BigInt(0, 0)
+
+  // The most critical implementation
+  if (radix === 10) return fromStringBase10(str).multiplyInPlace(negative ? 1 : -1)
+
+  // Verify that the string is valid
+  for (let i = 0; i &lt; str.length; ++i) {
+    const charCode = str.charCodeAt(i)
+
+    if (!isValidDigit(radix, charCode)) throw new Error(`Invalid digit &apos;${str[i]}&apos;`)
+  }
+}
+
+function isValidDigit (base, digitCode) {
+  // Bases &lt;= 10
+  if (base &lt;= 10) return digitCode &gt;= 48 &amp;&amp; digitCode &lt; (base + 48)
+
+  // Other bases
+  return (digitCode &gt;= 48 &amp;&amp; digitCode &lt; 57) || (digitCode &gt;= 97 &amp;&amp; digitCode &lt; (87 + base))
+}
+
+/**
+ * Big integers in JS! I would use the native implementation or JSBI, but I want a pretty customized setup for fast
+ * multiplication, division, et cetera. Also, this will be fun.
+ *
+ * We represent a big-integer with an array of unsigned 30-bit words with the least significant bit at the front, and a
+ * sign (-1, 0, or 1). Big-integers are not immutable; they may be modified in-place by any operation
+ * containing the phrase &quot;inPlace&quot;.
+ *
+ * As an example, &quot;-45&quot; is represented with { sign: -1, words: [45] }. &quot;-1073741823&quot; is { sign: -1, words: [ 1073741823 ] },
+ * while &quot;-1073741824&quot; is { sign: -1, words: [ 0, 1 ]}.
+ *
+ * &quot;0&quot; is always represented with { sign: 0, words: [] }. This guarantees that there is only one representation for each
+ * number. There may be trailing zeroes in the words array.
+ */
+export class BigInt {
+  constructor (words = [], sign = 0) {
+    this.words = words
+    this.sign = sign
+  }
+
+  static zero () {
+    return new BigInt(0, 0)
+  }
+
+  static one () {
+    return new BigInt([1], 1)
+  }
+
+  /**
+   * Supported forms:
+   *
+   * Whitespace is trimmed. After this stage, it handles anything of the form -?[0-9a-z]+, throwing an error if the
+   * base is out of range
+   * @param str
+   * @param radix
+   */
+  static fromString (str, radix = 10) {
+    radix = Number(radix)
+
+    if (radix &lt; 2 || radix &gt; digits.length || !Number.isInteger(radix)) {
+      throw new RangeError(&apos;Invalid radix&apos;)
+    }
+
+    str = str.trim()
+
+    return fromString(str, radix)
+  }
+
+  wordCount () {
+    return this.words.length
+  }
+
+  bitCount () {
+    const lastElem = this.words[this.wordCount() - 1]
+
+    if (!lastElem) { return 0 }
+  }
+
+  setZero () {
+    this.words = []
+    this.sign = 0
+
+    return this
+  }
+
+  multiplyInPlace (num) {
+    if (typeof num === &apos;number&apos;) {
+      if (!Number.isInteger(num)) { throw new TypeError(&quot;Can&apos;t multiply by non-integer&quot;) }
+
+      if (num === 0) {
+        this.setZero()
+      } else if (num === 1 || num === -1) {
+        this.sign *= num
+      } else {
+        if (num &lt; 0) this.multiplyInPlace(-1)
+        num = Math.abs(num)
+
+        if (num &lt; 2097152) {
+          const { words } = this
+
+          for (let i = 0; i &lt; words.length; ++i) {
+
+          }
+        }
+      }
+    }
+
+    return this
+  }
+
+  shiftLeft (num) {
+    num = Number(num)
+
+    if (!num) // handles NaN and 0
+    { return }
+
+    if (num &lt; 0) { return this.shiftRight(-num) }
+
+    const newWordCount = this
+  }
+
+  shiftRight (num) {
+    num = Number(num)
+
+    if (!num) // handles NaN and 0
+    { return }
+
+    if (num &lt; 0) { return this.shiftLeft(-num) }
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

@@ -2,8 +2,6 @@
 // const fs = require( ...
 // No, this is not node.js the language.
 
-import * as utils from '../core/utils'
-import { StandardLabelFunction } from '../elements/gridlines'
 import { Functions, Variables, getVariable } from './user_defined'
 import {
   castableInto,
@@ -12,15 +10,10 @@ import {
   Operators,
   retrieveEvaluationFunction
 } from './operators'
-import { isWorker } from '../core/utils'
 import { LatexMethods } from './latex'
-import { ComplexIntervalFunctions } from '../math/complex_interval/interval_functions'
-import { ComplexFunctions } from '../math/complex/functions'
 import { Typecasts } from '../math/typecasts'
-import { RealFunctions } from '../math/real/functions'
-import { RealIntervalFunctions } from '../math/real_interval/interval_functions'
-import { RealInterval, RealIntervalSet } from '../math/real_interval/interval'
-import { ComplexInterval } from '../math/complex_interval/interval'
+import { RealFunctions } from '../math/real/functions.js'
+import { RealIntervalFunctions } from '../math/real_interval/functions.js'
 import { Vec2 } from '../math/vec'
 import { protectVariable } from './js_keyword_variables'
 
@@ -427,34 +420,6 @@ class VariableNode extends ASTNode {
   }
 }
 
-const OperatorSynonyms = {
-  'arcsinh': 'asinh',
-  'arsinh': 'asinh',
-  'arccosh': 'acosh',
-  'arcosh': 'acosh',
-  'arctanh': 'atanh',
-  'artanh': 'atanh',
-  'arcsech': 'asech',
-  'arccsch': 'acsch',
-  'arccoth': 'acoth',
-  'arsech': 'asech',
-  'arcsch': 'acsch',
-  'arcoth': 'acoth',
-  'arcsin': 'asin',
-  'arsin': 'asin',
-  'arccos': 'acos',
-  'arcos': 'acos',
-  'arctan': 'atan',
-  'artan': 'atan',
-  'arcsec': 'asec',
-  'arccsc': 'acsc',
-  'arccot': 'acot',
-  'arsec': 'asec',
-  'arcsc': 'acsc',
-  'arcot': 'acot',
-  'log': 'ln'
-}
-
 class OperatorNode extends ASTNode {
   constructor (params = {}) {
     super(params)
@@ -614,7 +579,7 @@ class ConstantNode extends ASTNode {
     } = params
 
     this.value = value
-    this.text = text ? text : StandardLabelFunction(value)
+    this.text = text ? text : value + ''
     this.invisible = invisible
   }
 

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/math/real_interval/real_interval.js | grapheme</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="JavaScript graphing library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="grapheme"><meta property="twitter:description" content="JavaScript graphing library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/anematode/grapheme"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-benchmark">benchmark</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getID">getID</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/core/element.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-bigint">math/bigint</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/bigint/bigint.js~BigInt.html">BigInt</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real">math/real</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-add">add</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-divide">divide</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gcd">gcd</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-multiply">multiply</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-subtract">subtract</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-countFloatsBetween">countFloatsBetween</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-frexp">frexp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getExponent">getExponent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isDenormal">isDenormal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundDown">roundDown</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundUp">roundUp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-toExactFloat">toExactFloat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-factorial">factorial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gamma">gamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-lnGamma">lnGamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-doubleToRational">doubleToRational</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pow">pow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RealFunctions">RealFunctions</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real-interval">math/real_interval</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealInterval.html">RealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealIntervalSet.html">RealIntervalSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~TaggedRealInterval.html">TaggedRealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getIntervals">getIntervals</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-wrapIntervalFunction">wrapIntervalFunction</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-typedef">T</span><span data-ice="name"><span><a href="typedef/index.html#static-typedef-RealIntervalLike">RealIntervalLike</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/math/real_interval/real_interval.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">/** This file defines interval arithmetic functions and classes. */
+
+/**
+ * An interval-like object; in other words, something that is a {@link RealInterval} or {@link RealIntervalSet}.
+ * @typedef {(RealInterval|RealIntervalSet)} RealIntervalLike
+ */
+
+import { roundDown, roundUp, toExactFloat } from &apos;../real/fp_manip.js&apos;
+
+/**
+ * A real interval is a closed interval that is represents a nonstrict superset of a set of real numbers. The minimum
+ * is stored in the variable min, and the maximum is stored in the variable max. The set of
+ * all real numbers can be represented with the interval [-inf, inf].
+ *
+ * &lt;p&gt;Jeff Tupper adds four additional properties,  named defMin, defMax, contMin, and contMax. If defMin = defMax = true,
+ * then the number represented is entirely DEFINED. If defMin = false and defMax = true, then we are unsure whether the number is defined.
+ * If defMin = defMax = false, then the number is definitely undefined. My modification is to represent those intervals
+ * where defMin = defMax = false&lt;/p&gt;
+ *
+ * &lt;p&gt;The reason this is useful is to encapsulate the notion of a function being undefined. For example, sqrt([-1, -0.5])
+ * is entirely undefined, so defMin = defMax = false. In other words, if x is in [-1, -0.5], we KNOW that sqrt(x) is
+ * undefined &#x2013; at least among the real numbers. But if x is in [-1, 1], we don&apos;t know for sure that sqrt(x) is defined,
+ * so defMin = false and defMax = true for sqrt([-1, 1]).&lt;/p&gt;
+ *
+ * &lt;p&gt;contMin and contMax are the same thing, but for continuity. Some functions are defined everywhere, but discontinuous.
+ * A good example is the floor function. floor([-1, 1]) is always defined, so defMin = defMax = true, but contMin =
+ * false and contMax = true. Undefinedness implies discontinuity, not the other way around. That is, if defMin = false,
+ * that will take precedence over contMin = true; the value of contMin is immaterial in that case.&lt;/p&gt;
+ *
+ * &lt;p&gt;There is also the class {@link RealIntervalSet}, which represents a set of intervals.&lt;/p&gt;
+ *
+ * &lt;p&gt;In normal Grapheme usage, an undefined RealInterval is simply represented with defMin = defMax = false. null should
+ * never be passed to a function as a RealInterval; it will almost certainly throw an error.&lt;/p&gt;
+ *
+ * &lt;p&gt;tl;dr: Six parameters, namely min, max, defMin, defMax, contMin, contMax. min and max are numbers which represent the
+ * bounds of the interval, and the remaining four parameters are booleans that provide extra context for the meaning of
+ * the interval.&lt;/p&gt;
+ */
+export class RealInterval {
+  /**
+   * Construct a RealInterval. Only a single argument is needed, and will produce an &quot;exact interval&quot;, but there are
+   * six arguments in total. The meaning of each argument is described in the class description.
+   * @param min {number} The minimum of the interval.
+   * @param max {number} The maximum of the interval.
+   * @param defMin {boolean} Whether the interval is always defined.
+   * @param defMax {boolean} Whether the interval is potentially defined.
+   * @param contMin {boolean} Whether the interval is always continuous.
+   * @param contMax {boolean} Whether the interval is potentially continuous.
+   */
+  constructor (min, max = min, defMin = true, defMax = true, contMin = true, contMax = true) {
+    /**
+     * The minimum of the interval.
+     * @type {number}
+     * @public
+     */
+    this.min = min
+    /**
+     * The maximum of the interval.
+     * @type {number}
+     * @public
+     */
+    this.max = max
+    /**
+     * Whether the interval is always defined.
+     * @type {boolean}
+     * @public
+     */
+    this.defMin = defMin
+    /**
+     * Whether the interval is potentially defined.
+     * @type {boolean}
+     * @public
+     */
+    this.defMax = defMax
+    /**
+     * Whether the interval is always continuous.
+     * @type {boolean}
+     * @public
+     */
+    this.contMin = contMin
+    /**
+     * Whether the interval is potentially continuous.
+     * @type {boolean}
+     * @public
+     */
+    this.contMax = contMax
+  }
+
+  /**
+   * The width of this interval, in other words max - min.
+   * @returns {number}
+   */
+  size () {
+    return this.max - this.min
+  }
+
+  /**
+   * Whether this interval contains x.
+   * @param x {number}
+   * @returns {boolean}
+   */
+  contains (x) {
+    return this.min &lt; x &amp;&amp; x &lt; this.max
+  }
+
+  /**
+   * Whether this is a RealIntervalSet (it&apos;s not).
+   * @returns {boolean} false.
+   */
+  isSet () {
+    return false
+  }
+
+  /**
+   * Returns whether the interval can be represented as a single number.
+   * @returns {boolean}
+   */
+  isExact () {
+    return this.min === this.max
+  }
+
+  /**
+   * Clone the interval.
+   * @returns {RealInterval}
+   */
+  clone () {
+    return new RealInterval(this.min, this.max, this.defMin, this.defMax, this.contMin, this.contMax)
+  }
+
+  /**
+   * Whether this is equal to another interval.
+   * @param {RealInterval} int
+   * @returns {boolean}
+   */
+  equals (int) {
+    return this.min === int.min &amp;&amp; this.max === int.max &amp;&amp; this.defMin === int.defMin &amp;&amp; this.defMax === int.defMax &amp;&amp;
+      this.contMin === int.contMin &amp;&amp; this.contMax === int.contMax
+  }
+
+  /**
+   * Whether this interval intersects another.
+   * @param int {RealIntervalLike}
+   * @return {boolean} Whether the intervals intersect.
+   */
+  intersects (int) {
+    if (int.isSet()) {
+      return int.intervals.any(subint =&gt; this.intersects(subint))
+    } else {
+      // Iff two intervals intersect, then either some of this.contains(int.min), this.contains(int.max) is true, or
+      // this interval is a subset of the other one which can be detected via int.contains(this.min)
+      return this.contains(int.min) || this.contains(int.max) || int.contains(this.min)
+    }
+  }
+
+  /**
+   * Create an interval from a JS number or a string representing a real number. If correctRounding is true, it will
+   * ensure that the INTENDED real number is encapsulated in the interval, by setting the bounds of the interval to be
+   * just around the number. If the string can be exactly represented as a float, an exact interval is returned. If
+   * correctRounding is false, then an exact interval is always outputted.
+   * @param x {Number|String} Number or string to make an interval from.
+   * @param correctRounding {boolean} If true, it will ensure the interval contains the real number that was desired.
+   * @returns {RealInterval}
+   */
+  static from (x, correctRounding = true) {
+    if (correctRounding &amp;&amp; typeof x === &apos;string&apos;) {
+      const val = toExactFloat(x)
+
+      if (!Number.isNaN(val)) { return new RealInterval(val, val) }
+    }
+
+    const val = parseFloat(x)
+
+    if (Number.isNaN(val)) { return BAD_INTERVAL }
+
+    return new RealInterval(roundDown(val), roundUp(val))
+  }
+}
+
+/**
+ * Similar to a standard RealInterval, but supports tags, which is an object stored in a tags parameter. There are a
+ * variety of tags that can be used, and there needs to be a balancing act between more tags for tighter and faster
+ * computation, and having too many tags that leads to slow down.
+ */
+export class TaggedRealInterval extends RealInterval {
+
+}
+
+/** &lt;p&gt;Some functions, such as f(x) = 1/x, may
+ * have to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],
+ * and there is no tighter bound. The solution is to return a SET of intervals, which together cover the solution set.
+ * In this case, there would be three (not two) intervals returned. The intervals are [-inf, -1], [1, inf], and
+ * [NaN, NaN, defMin=false, defMin=false]. The first two intervals cover the defined possibilities; the last interval
+ * covers the fact that 1/0 is undefined.&lt;/p&gt;
+ *
+ * &lt;p&gt;RealIntervalSet is equipped with defMin, defMax, contMin, and contMax just like a RealInterval, but they are in
+ * function form: setMin(), setMax(), setDefMin(), .... They are calculated; defMin is the logical AND of each interval,
+ * and defMax is the logical OR of each interval, and the same is true for contMin and contMax.&lt;/p&gt;
+ *
+ * &lt;p&gt;All exposed interval functions accept both RealIntervals and RealIntervalSets. For performant testing of whether an
+ * argument is a RealInterval or Set, the function isSet() can be used. RealIntervalSets CANNOT be nested; they should
+ * always be flattened. If a set becomes too fat, it must be MERGED. This can be done in a lossless or lossy fashion.
+ * Lossless merging happens when intervals are merged in a way such that the resulting set is exactly equivalent
+ * mathematically to the original. For example, [-1, 1] u [1, 4] can be losslessly merged to [-1, 4]. Note that this
+ * merging needs to account for differing defMin and defMax values. For example, [-1, 1, defMin=false, defMax=true] u
+ * [1, 4, defMin=true, defMax=true] CANNOT be losslessly merged to [-1, 4, defMin=false, defMax=true]; this is a lossy
+ * conversion. Obviously, lossless merging is preferred over lossy merging, but the latter might be necessary. In the
+ * most extreme case, the interval [-inf, inf, defMin=false, defMax=true, contMin=false, contMax=true] is a valid
+ * superset and lossy merge of ANY interval set. The maximum acceptable size for a RealIntervalSet is
+ * maxRealIntervalSetSize.&lt;/p&gt;
+ *
+ * &lt;p&gt;An undefined RealIntervalSet is one containing only undefined intervals, or an empty set. It is NOT null, as with
+ * RealInterval.&lt;/p&gt;
+ */
+export class RealIntervalSet {
+  /**
+   * Construct a RealIntervalSet from an Array of RealIntervals.
+   * @param intervals {Array&lt;RealInterval&gt;} The real intervals in this set of intervals.
+   */
+  constructor (intervals = []) {
+    /**
+     * The set of intervals this contains.
+     * @type {Array&lt;RealInterval&gt;}
+     * @public
+     */
+    this.intervals = intervals
+  }
+
+  /**
+   * Whether this is a RealIntervalSet (it is).
+   * @returns {boolean} true.
+   */
+  isSet () {
+    return false
+  }
+
+  /**
+   * There are a lot of cases here to consider. We ignore all intervals where defMax = false, since they never matter.
+   * If the set is empty, we return Infinity.
+   */
+  setMin () {
+    const { intervals } = this
+
+    const min = Infinity
+  }
+}
+
+/** Convert an interval set or interval into a list of intervals */
+export function getIntervals (int) {
+  if (int.isSet()) {
+    return int.intervals
+  } else {
+    return [int]
+  }
+}
+
+/** Interval returned when a function is completely undefined. */
+const BAD_INTERVAL = Object.freeze(new RealInterval(NaN, NaN, false, false, false, false))
+
+function evalIntervalSet1 (func, int1, furtherArgs) {
+  const intervals = []
+  let undefIntervalReturned = false
+
+  for (const int of int1.intervals) {
+    if (int.defMax) {
+      const res = func(int1, ...furtherArgs)
+
+      if (res.defMax) { // record the interval if it is defined
+        intervals.push(res)
+        continue
+      }
+    }
+
+    if (!undefIntervalReturned) {
+      undefIntervalReturned = true // note this
+      intervals.push(BAD_INTERVAL) // push a BAD_INTERVAL
+    }
+  }
+
+  return new RealIntervalSet(intervals)
+}
+
+function evalIntervalSet2 (func, int1, int2, furtherArgs) {
+  const int1Intervals = getIntervals(int1)
+  const int2Intervals = getIntervals(int2)
+
+  const intervals = []
+  let undefIntervalReturned = false
+
+  function undefinedIntervalNeeded () {
+    if (!undefIntervalReturned) {
+      undefIntervalReturned = true
+      intervals.push(BAD_INTERVAL)
+    }
+  }
+
+  for (const int1 of int1Intervals) {
+    if (!int1.defMax) {
+      undefinedIntervalNeeded()
+      continue
+    }
+    for (const int2 of int2Intervals) {
+      if (!int2.defMax) {
+        undefinedIntervalNeeded()
+        continue
+      }
+      // for each pair of intervals where both are defined
+
+      const res = func(int1, int2, ...furtherArgs)
+
+      if (!res.defMax) { // see explanation above
+        undefinedIntervalNeeded()
+      } else {
+        intervals.push(res)
+      }
+    }
+  }
+
+  return new RealIntervalSet(intervals)
+}
+
+/**
+ * Assume func is a function that accepts argCount number of intervals. For example, + might accept 2, while unary -
+ * might accept 1. This function enumerates each possible double / triple of intervals in an interval set and forwards
+ * it to the function, combining all the intervals into an interval set.
+ * @param func {Function} Function to forward arguments to
+ * @param argCount {number} The number of arguments in the function. Further arguments will be forwarded unmodified.
+ */
+export function wrapIntervalFunction (func, argCount = 2) {
+  let ret
+
+  if (argCount === 0) {
+    ret = func
+  } else if (argCount === 1) {
+    ret = (int1, ...furtherArgs) =&gt; {
+      if (int1.isSet()) {
+        return evalIntervalSet1(func, int1, furtherArgs)
+      } else {
+        return func(int1, ...furtherArgs)
+      }
+    }
+  } else if (argCount === 2) { // the most common case
+    ret = (int1, int2, ...furtherArgs) =&gt; {
+      if (int1.isSet() || int2.isSet()) {
+        return evalIntervalSet2(func, int1, int2, furtherArgs)
+      } else {
+        return func(int1, int2, ...furtherArgs)
+      }
+    }
+  } else {
+    throw new RangeError(&apos;Unimplemented&apos;)
+  }
+
+  // Store the internal interval function for convenience
+  ret.internal = func
+
+  return ret
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

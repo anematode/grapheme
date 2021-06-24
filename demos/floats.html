@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbi@3.1.4/dist/jsbi-umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/9.0.0/decimal.js"></script>
+
+<script id="setup">
+    var BI = Grapheme.BigInt
+    var BF = Grapheme.BigFloat
+
+    var f = BF.new(53)
+    var g = BF.new(53)
+    var pi = BF.fromNumber(Math.PI)
+    var pio2 = BF.fromNumber(Math.PI / 2)
+
+    /*var cases = [ [ 2058, 308 ], [0.1, 0.0002], [1, 3], [-9, -4285]]
+
+    for (const [ n, d ] of cases) {
+      var f = BF.fromNumber(n)
+      var g = BF.fromNumber(d)
+      var h = BF.fromNumber(0)
+
+      BF.div(f, g, h)
+
+      console.log(`n/d: ${n} / ${d}`)
+      console.log("Grapheme:", h.toNumber())
+      console.log("Native:", n / d)
+    }*/
+
+    var arr2 = new Int32Array(2)
+    var arr3 = new Int32Array(3)
+    var arr4 = new Int32Array(4)
+    var arr1 = new Int32Array(1)
+
+    var arr10000 = new Int32Array(10000)
+    var numerator = new Int32Array(9994)
+    var denom = new Int32Array(9992)
+
+    for (let i = 0; i < 10000; ++i) {
+      numerator[i] = (Math.random() * (2 ** 30)) | 0
+      denom[i] = (Math.random() * (2 ** 30)) | 0
+    }
+
+    function testLargeSubtraction() {
+      Grapheme.subtractMantissas(numerator, denom, 2, 30000, arr10000, Grapheme.ROUNDING_MODE.WHATEVER)
+    }
+
+</script>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>

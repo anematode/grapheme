@@ -1,0 +1,3574 @@
+[
+  {
+    "__docId__": 1,
+    "kind": "external",
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Infinity",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 2,
+    "kind": "external",
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~NaN",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 3,
+    "kind": "external",
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~undefined",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 4,
+    "kind": "external",
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~null",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 5,
+    "kind": "external",
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Object",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 6,
+    "kind": "external",
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~object",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 7,
+    "kind": "external",
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Function",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 8,
+    "kind": "external",
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~function",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 9,
+    "kind": "external",
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Boolean",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 10,
+    "kind": "external",
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~boolean",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 11,
+    "kind": "external",
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Symbol",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 12,
+    "kind": "external",
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Error",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 13,
+    "kind": "external",
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~EvalError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 14,
+    "kind": "external",
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~InternalError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 15,
+    "kind": "external",
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~RangeError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 16,
+    "kind": "external",
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~ReferenceError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 17,
+    "kind": "external",
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~SyntaxError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 18,
+    "kind": "external",
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~TypeError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 19,
+    "kind": "external",
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~URIError",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 20,
+    "kind": "external",
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Number",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 21,
+    "kind": "external",
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~number",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 22,
+    "kind": "external",
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Date",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 23,
+    "kind": "external",
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~String",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 24,
+    "kind": "external",
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~string",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 25,
+    "kind": "external",
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~RegExp",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 26,
+    "kind": "external",
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 27,
+    "kind": "external",
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Int8Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 28,
+    "kind": "external",
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Uint8Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 29,
+    "kind": "external",
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Uint8ClampedArray",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 30,
+    "kind": "external",
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Int16Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 31,
+    "kind": "external",
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Uint16Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 32,
+    "kind": "external",
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Int32Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 33,
+    "kind": "external",
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Uint32Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 34,
+    "kind": "external",
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Float32Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 35,
+    "kind": "external",
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Float64Array",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 36,
+    "kind": "external",
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Map",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 37,
+    "kind": "external",
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Set",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 38,
+    "kind": "external",
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~WeakMap",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 39,
+    "kind": "external",
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~WeakSet",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 40,
+    "kind": "external",
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~ArrayBuffer",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 41,
+    "kind": "external",
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~DataView",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 42,
+    "kind": "external",
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~JSON",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 43,
+    "kind": "external",
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Promise",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 44,
+    "kind": "external",
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Generator",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 45,
+    "kind": "external",
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~GeneratorFunction",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 46,
+    "kind": "external",
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Reflect",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 47,
+    "kind": "external",
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
+    "memberof": "src/.external-ecmascript.js",
+    "static": true,
+    "longname": "src/.external-ecmascript.js~Proxy",
+    "access": "public",
+    "description": "",
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 48,
+    "kind": "file",
+    "name": "src/core/element.js",
+    "content": "\nexport class Element {\n\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/core/element.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 49,
+    "kind": "class",
+    "name": "Element",
+    "memberof": "src/core/element.js",
+    "static": true,
+    "longname": "src/core/element.js~Element",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/core/element.js",
+    "importStyle": "{Element}",
+    "description": null,
+    "lineNumber": 2,
+    "undocument": true,
+    "interface": false
+  },
+  {
+    "__docId__": 50,
+    "kind": "file",
+    "name": "src/main.js",
+    "content": "import * as FP from './math/real/fp_manip.js'\nimport * as utils from './utils.js'\nexport { RealFunctions } from './math/real/real_functions.js'\n\n/**\n * Defines\n * @namespace FP\n */\nexport { FP }\nexport { utils }\nexport * from './math/real_interval/real_interval.js'\nexport * from './math/bigint/bigint.js'\nexport * from './math/real/pow.js'\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/main.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 51,
+    "kind": "file",
+    "name": "src/math/bigint/bigint.js",
+    "content": "\nconst digits = '0123456789abcdefghijklmnopqrstuvwxyz'\nconst base10Verify = /^[0-9]+$/\n\nconst BI_WORD_BITS = 30\n\n// Numbers between 0 and this are allowed in a BigInt's words\nconst MAX_BI_WORD = 2 ** BI_WORD_BITS - 1\n\n// Maximum, stolen from JSBI\nconst MAX_BI_LENGTH = 1 << 25\nconst MAX_BI_BITS = MAX_BI_LENGTH * BI_WORD_BITS\n\nfunction fromStringBase10 (str) {\n  // Verify the string is okay\n  if (!str.match(base10Verify)) {\n    str.forEach(char => {\n      if (!isValidDigit(char.charCodeAt(0), 10)) { throw new Error(`Invalid digit '${char}'`) }\n    })\n  }\n\n  // We operate on the words themselves for extra optimizations\n  const pow10Words = []\n  const ret = BigInt.one()\n\n  for (let i = str.length - 1; i >= 0; --i) {\n    // 0 through 9\n    const v = str.charCodeAt(i) - 48\n\n    ret.multiplyAddInPlace(base, 10)\n  }\n}\n\nfunction fromString (str, radix) {\n  const negative = str[0] === '-'\n  if (negative || str[0] === '+') str = str.substring(1)\n\n  if (!str) return new BigInt(0, 0)\n\n  // The most critical implementation\n  if (radix === 10) return fromStringBase10(str).multiplyInPlace(negative ? 1 : -1)\n\n  // Verify that the string is valid\n  for (let i = 0; i < str.length; ++i) {\n    const charCode = str.charCodeAt(i)\n\n    if (!isValidDigit(radix, charCode)) throw new Error(`Invalid digit '${str[i]}'`)\n  }\n}\n\nfunction isValidDigit (base, digitCode) {\n  // Bases <= 10\n  if (base <= 10) return digitCode >= 48 && digitCode < (base + 48)\n\n  // Other bases\n  return (digitCode >= 48 && digitCode < 57) || (digitCode >= 97 && digitCode < (87 + base))\n}\n\n/**\n * Big integers in JS! I would use the native implementation or JSBI, but I want a pretty customized setup for fast\n * multiplication, division, et cetera. Also, this will be fun.\n *\n * We represent a big-integer with an array of unsigned 30-bit words with the least significant bit at the front, and a\n * sign (-1, 0, or 1). Big-integers are not immutable; they may be modified in-place by any operation\n * containing the phrase \"inPlace\".\n *\n * As an example, \"-45\" is represented with { sign: -1, words: [45] }. \"-1073741823\" is { sign: -1, words: [ 1073741823 ] },\n * while \"-1073741824\" is { sign: -1, words: [ 0, 1 ]}.\n *\n * \"0\" is always represented with { sign: 0, words: [] }. This guarantees that there is only one representation for each\n * number. There may be trailing zeroes in the words array.\n */\nexport class BigInt {\n  constructor (words = [], sign = 0) {\n    this.words = words\n    this.sign = sign\n  }\n\n  static zero () {\n    return new BigInt(0, 0)\n  }\n\n  static one () {\n    return new BigInt([1], 1)\n  }\n\n  /**\n   * Supported forms:\n   *\n   * Whitespace is trimmed. After this stage, it handles anything of the form -?[0-9a-z]+, throwing an error if the\n   * base is out of range\n   * @param str\n   * @param radix\n   */\n  static fromString (str, radix = 10) {\n    radix = Number(radix)\n\n    if (radix < 2 || radix > digits.length || !Number.isInteger(radix)) {\n      throw new RangeError('Invalid radix')\n    }\n\n    str = str.trim()\n\n    return fromString(str, radix)\n  }\n\n  wordCount () {\n    return this.words.length\n  }\n\n  bitCount () {\n    const lastElem = this.words[this.wordCount() - 1]\n\n    if (!lastElem) { return 0 }\n  }\n\n  setZero () {\n    this.words = []\n    this.sign = 0\n\n    return this\n  }\n\n  multiplyInPlace (num) {\n    if (typeof num === 'number') {\n      if (!Number.isInteger(num)) { throw new TypeError(\"Can't multiply by non-integer\") }\n\n      if (num === 0) {\n        this.setZero()\n      } else if (num === 1 || num === -1) {\n        this.sign *= num\n      } else {\n        if (num < 0) this.multiplyInPlace(-1)\n        num = Math.abs(num)\n\n        if (num < 2097152) {\n          const { words } = this\n\n          for (let i = 0; i < words.length; ++i) {\n\n          }\n        }\n      }\n    }\n\n    return this\n  }\n\n  shiftLeft (num) {\n    num = Number(num)\n\n    if (!num) // handles NaN and 0\n    { return }\n\n    if (num < 0) { return this.shiftRight(-num) }\n\n    const newWordCount = this\n  }\n\n  shiftRight (num) {\n    num = Number(num)\n\n    if (!num) // handles NaN and 0\n    { return }\n\n    if (num < 0) { return this.shiftLeft(-num) }\n  }\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/bigint/bigint.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 52,
+    "kind": "variable",
+    "name": "digits",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~digits",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 2,
+    "undocument": true,
+    "type": {
+      "types": [
+        "string"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 53,
+    "kind": "variable",
+    "name": "base10Verify",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~base10Verify",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "type": {
+      "types": [
+        "undefined"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 54,
+    "kind": "variable",
+    "name": "BI_WORD_BITS",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~BI_WORD_BITS",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 55,
+    "kind": "variable",
+    "name": "MAX_BI_WORD",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~MAX_BI_WORD",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 8,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 56,
+    "kind": "variable",
+    "name": "MAX_BI_LENGTH",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~MAX_BI_LENGTH",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 11,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 57,
+    "kind": "variable",
+    "name": "MAX_BI_BITS",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~MAX_BI_BITS",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 12,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 58,
+    "kind": "function",
+    "name": "fromStringBase10",
+    "memberof": "src/math/bigint/bigint.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~fromStringBase10",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 14,
+    "undocument": true,
+    "params": [
+      {
+        "name": "str",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": null,
+    "ignore": true
+  },
+  {
+    "__docId__": 59,
+    "kind": "function",
+    "name": "fromString",
+    "memberof": "src/math/bigint/bigint.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~fromString",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 34,
+    "undocument": true,
+    "params": [
+      {
+        "name": "str",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "radix",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 60,
+    "kind": "function",
+    "name": "isValidDigit",
+    "memberof": "src/math/bigint/bigint.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~isValidDigit",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 51,
+    "undocument": true,
+    "params": [
+      {
+        "name": "base",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "digitCode",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 61,
+    "kind": "class",
+    "name": "BigInt",
+    "memberof": "src/math/bigint/bigint.js",
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~BigInt",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/bigint/bigint.js",
+    "importStyle": "{BigInt}",
+    "description": "Big integers in JS! I would use the native implementation or JSBI, but I want a pretty customized setup for fast\nmultiplication, division, et cetera. Also, this will be fun.\n\nWe represent a big-integer with an array of unsigned 30-bit words with the least significant bit at the front, and a\nsign (-1, 0, or 1). Big-integers are not immutable; they may be modified in-place by any operation\ncontaining the phrase \"inPlace\".\n\nAs an example, \"-45\" is represented with { sign: -1, words: [45] }. \"-1073741823\" is { sign: -1, words: [ 1073741823 ] },\nwhile \"-1073741824\" is { sign: -1, words: [ 0, 1 ]}.\n\n\"0\" is always represented with { sign: 0, words: [] }. This guarantees that there is only one representation for each\nnumber. There may be trailing zeroes in the words array.",
+    "lineNumber": 73,
+    "interface": false
+  },
+  {
+    "__docId__": 62,
+    "kind": "constructor",
+    "name": "constructor",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#constructor",
+    "access": "public",
+    "description": null,
+    "lineNumber": 74,
+    "undocument": true
+  },
+  {
+    "__docId__": 63,
+    "kind": "member",
+    "name": "words",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#words",
+    "access": "public",
+    "description": null,
+    "lineNumber": 75,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 64,
+    "kind": "member",
+    "name": "sign",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#sign",
+    "access": "public",
+    "description": null,
+    "lineNumber": 76,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 65,
+    "kind": "method",
+    "name": "zero",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~BigInt.zero",
+    "access": "public",
+    "description": null,
+    "lineNumber": 79,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 66,
+    "kind": "method",
+    "name": "one",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~BigInt.one",
+    "access": "public",
+    "description": null,
+    "lineNumber": 83,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 67,
+    "kind": "method",
+    "name": "fromString",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/bigint/bigint.js~BigInt.fromString",
+    "access": "public",
+    "description": "Supported forms:\n\nWhitespace is trimmed. After this stage, it handles anything of the form -?[0-9a-z]+, throwing an error if the\nbase is out of range",
+    "lineNumber": 95,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "str",
+        "description": ""
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "radix",
+        "description": ""
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 68,
+    "kind": "method",
+    "name": "wordCount",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#wordCount",
+    "access": "public",
+    "description": null,
+    "lineNumber": 107,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 69,
+    "kind": "method",
+    "name": "bitCount",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#bitCount",
+    "access": "public",
+    "description": null,
+    "lineNumber": 111,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 70,
+    "kind": "method",
+    "name": "setZero",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#setZero",
+    "access": "public",
+    "description": null,
+    "lineNumber": 117,
+    "undocument": true,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 73,
+    "kind": "method",
+    "name": "multiplyInPlace",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#multiplyInPlace",
+    "access": "public",
+    "description": null,
+    "lineNumber": 124,
+    "undocument": true,
+    "params": [
+      {
+        "name": "num",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 75,
+    "kind": "method",
+    "name": "shiftLeft",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#shiftLeft",
+    "access": "public",
+    "description": null,
+    "lineNumber": 149,
+    "undocument": true,
+    "params": [
+      {
+        "name": "num",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 76,
+    "kind": "method",
+    "name": "shiftRight",
+    "memberof": "src/math/bigint/bigint.js~BigInt",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/bigint/bigint.js~BigInt#shiftRight",
+    "access": "public",
+    "description": null,
+    "lineNumber": 160,
+    "undocument": true,
+    "params": [
+      {
+        "name": "num",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 77,
+    "kind": "file",
+    "name": "src/math/real/basic_arithmetic.js",
+    "content": "/** The scariest functions. */\n\n/**\n * Returns x + y.\n * @param x {number}\n * @param y {number}\n * @returns {number}\n * @function add\n * @memberOf RealFunctions\n */\nexport function add (x, y) {\n  return x + y\n}\n\n/**\n * Returns x - y.\n * @param x {number}\n * @param y {number}\n * @returns {number}\n * @function subtract\n * @memberOf RealFunctions\n */\nexport function subtract (x, y) {\n  return x - y\n}\n\n/**\n * Returns x * y.\n * @param x {number}\n * @param y {number}\n * @returns {number}\n * @function multiply\n * @memberOf RealFunctions\n */\nexport function multiply (x, y) {\n  return x * y\n}\n\n/**\n * Returns x / y.\n * @param x {number}\n * @param y {number}\n * @returns {number}\n * @function divide\n * @memberOf RealFunctions\n */\nexport function divide (x, y) {\n  return x / y\n}\n\nexport function gcd (a, b) {\n  a = Math.abs(a)\n  b = Math.abs(b)\n\n  if (b > a) {\n    const tmp = a\n    a = b\n    b = tmp\n  }\n\n  while (true) {\n    if (b === 0) { return a }\n\n    a %= b\n\n    if (a === 0) { return b }\n\n    b %= a\n  }\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real/basic_arithmetic.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 78,
+    "kind": "function",
+    "name": "add",
+    "memberof": "src/math/real/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/basic_arithmetic.js~add",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/basic_arithmetic.js",
+    "importStyle": "{add}",
+    "description": "Returns x + y.",
+    "lineNumber": 11,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "add"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "y",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 79,
+    "kind": "function",
+    "name": "subtract",
+    "memberof": "src/math/real/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/basic_arithmetic.js~subtract",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/basic_arithmetic.js",
+    "importStyle": "{subtract}",
+    "description": "Returns x - y.",
+    "lineNumber": 23,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "subtract"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "y",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 80,
+    "kind": "function",
+    "name": "multiply",
+    "memberof": "src/math/real/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/basic_arithmetic.js~multiply",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/basic_arithmetic.js",
+    "importStyle": "{multiply}",
+    "description": "Returns x * y.",
+    "lineNumber": 35,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "multiply"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "y",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 81,
+    "kind": "function",
+    "name": "divide",
+    "memberof": "src/math/real/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/basic_arithmetic.js~divide",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/basic_arithmetic.js",
+    "importStyle": "{divide}",
+    "description": "Returns x / y.",
+    "lineNumber": 47,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "divide"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "y",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 82,
+    "kind": "function",
+    "name": "gcd",
+    "memberof": "src/math/real/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/basic_arithmetic.js~gcd",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/basic_arithmetic.js",
+    "importStyle": "{gcd}",
+    "description": null,
+    "lineNumber": 51,
+    "undocument": true,
+    "params": [
+      {
+        "name": "a",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "b",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 83,
+    "kind": "file",
+    "name": "src/math/real/fp_manip.js",
+    "content": "/** Here we define functions for manipulation of double-precision floating point numbers.\n * Some definitions:\n *   special value: ±Infinity and any NaN\n *   normal number: Number which is not ±0 and whose exponent is nonzero\n *   denormal number: Number which is not ±0 and whose exponent is zero\n * */\n\n/** Check endianness. The functions in this file will not work on big-endian systems, so we need to throw an error.\n * Credit goes to Lucio Pavia on StackOverflow, specifically\n * {@link https://stackoverflow.com/a/52827031/13458117|this answer}.\n * It is released under CC BY-SA 4.0, which is compatible with this project.\n * @ignore\n */\nconst isBigEndian = (() => {\n  const array = new Uint8Array(4)\n  const view = new Uint32Array(array.buffer)\n  return !((view[0] = 1) & array[0])\n})()\nif (isBigEndian) throw new Error('only works on little-endian systems; your system is mixed- or big-endian.')\n\nconst floatStore = new Float64Array(1)\nconst intView = new Uint32Array(floatStore.buffer)\n\n/**\n * Returns the next floating point number after a positive x, but doesn't account for special cases.\n * @param x {number}\n * @returns {number}\n * @private\n */\nfunction _roundUp (x) {\n  floatStore[0] = x\n\n  if (++intView[0] === 4294967296 /* uint32_max + 1 */) ++intView[1]\n\n  return floatStore[0]\n}\n\n/**\n * Returns the previous floating point number before a POSITIVE x, but doesn't account for special cases.\n * roundDown.\n * @param x {number}\n * @returns {number}\n * @private\n */\nfunction _roundDown (x) {\n  floatStore[0] = x\n\n  if (--intView[0] === -1) --intView[1]\n\n  return floatStore[0]\n}\n\n/**\n * Returns the next floating point number after x. For example, roundUp(0) returns Number.MIN_VALUE.\n * Special cases (±inf, NaNs, 0) are handled separately. An interesting special case is -Number.MIN_VALUE,\n * which would normally return -0 and thus must be handled separately. Then, the float is put into a TypedArray,\n * treated as an integer, and incremented, which sets it to the next representable value. roundUp should\n * NEVER return -0 or -Infinity, but it can accept those. On my computer both these functions take about\n * 20 ns / call (October 2020). They need to be performant because they are called so often (every interval\n * function, pretty much).\n * @param x {number} Any valid floating-point number\n * @returns {number} The next representable floating-point number, handling special cases\n * @function roundUp\n * @memberOf FP\n */\nexport function roundUp (x) {\n  // Special cases, where the float representation will mess us up\n  if (x === Infinity) return Infinity\n  if (x === -Infinity) return -Number.MAX_VALUE\n  // since -0 === 0, deals with signed zero\n  if (x === 0) return Number.MIN_VALUE\n  if (Number.isNaN(x)) return NaN\n\n  // Special case unique to roundUp\n  if (x === -Number.MIN_VALUE) return 0\n\n  return (x < 0) ? -_roundDown(-x) : _roundUp(x)\n}\n\n/**\n * Returns the previous floating point number before x. For example, roundUp(0) returns -Number.MIN_VALUE.\n * See {@link FP.roundUp} for implementation explanation. This function should NEVER return -0 or\n * +Infinity, but it can accept those values; roundDown(0) is -Number.MIN_VALUE and roundDown(Infinity) is\n * Number.MAX_VALUE.\n * @param x {number} Any valid floating-point number\n * @returns {number} The previous representable floating-point number, handling special cases\n * @function roundDown\n * @memberOf FP\n */\nexport function roundDown (x) {\n  if (x === Infinity) return Number.MAX_VALUE\n  if (x === -Infinity) return -Infinity\n  if (x === 0) return -Number.MIN_VALUE\n  if (Number.isNaN(x)) return NaN\n\n  return (x < 0) ? -_roundUp(-x) : _roundDown(x)\n}\n\n// The first positive normal number\nconst POSITIVE_NORMAL_MIN = 2.2250738585072014e-308\n\n// The first negative normal number\nconst NEGATIVE_NORMAL_MAX = -POSITIVE_NORMAL_MIN\n\n/**\n * Return whether a number is denormal; see {@link https://en.wikipedia.org/wiki/Denormal_number|Wikipedia} for a\n * technical explanation of what this means. ±0 are not considered denormal numbers. Denormal numbers are sometimes\n * known as subnormal numbers.\n * @param x {number} Any valid floating-point number\n * @returns {boolean} Whether the number is a denormal number\n * @function isDenormal\n * @memberOf FP\n */\nexport function isDenormal (x) {\n  // Note that NaN will return false, since NaN < anything is false.\n  return x !== 0 && x < POSITIVE_NORMAL_MIN && x > NEGATIVE_NORMAL_MAX\n}\n\n/**\n * Get the non-biased exponent of a floating-point number x. Equivalent mathematically to floor(log2(abs(x))) for\n * finite values, but more accurate as the precision of log2 is not technically guaranteed.\n * @param x\n * @returns {number}\n */\nexport function getExponent (x) {\n  floatStore[0] = x\n\n  // Mask the biased exponent, retrieve it and convert it to non-biased\n  return ((intView[1] & 0x7ff00000) >> 20) - 1023\n}\n\n/**\n * Testing function. Counts the approximate number of floats between x1 and x2, including x1 but excluding x2. NaN if\n * either is undefined. It is approximate because the answer may sometimes exceed Number.MAX_SAFE_INTEGER, but it is\n * reliable if the answer is less than Number.MAX_SAFE_INTEGER.\n * @param x1 {number}\n * @param x2 {number}\n * @returns {number}\n * @function countFloatsBetween\n * @memberOf FP\n */\nexport function countFloatsBetween (x1, x2) {\n  if (Number.isNaN(x1) || Number.isNaN(x2)) { return NaN }\n\n  if (x1 === x2) {\n    return 0\n  }\n\n  if (x2 < x1) {\n    const tmp = x1\n    x1 = x2\n    x2 = tmp\n  }\n\n  const [x1man, x1exp] = frexp(x1)\n  const [x2man, x2exp] = frexp(x2)\n\n  return (x2man - x1man) * 2 ** 53 + (x2exp - x1exp) * 2 ** 52\n}\n\n/**\n * Converts a floating-point number into a fraction in [0.5, 1), except special cases, and a power of 2 to multiply it by.\n * @param x\n * @returns {Array} [fraction, exponent]\n */\nexport function frexp (x) {\n  if (x === 0 || !Number.isFinite(x)) {\n    return [x, 0]\n  }\n\n  // +1 so that the fraction is between\n  const exp = getExponent(x) + 1\n\n  return [x / Math.pow(2, exp), exp]\n}\n\n/**\n * Whether str can be represented exactly as a float. For example, \"0\", \"0.00000\", \"1\", \"1109519\", \"-14518924\",\n * \"-1.5\", \"-1.5e3\", \"4.25\", \"42.5e-1\". Floats allowed by Grapheme are relatively simple; they are of the form\n * \"... numeric ... [eE]? ... integer ...\".\n *\n * The function is not perfect by any means, and it errs on the side of caution. Even if the function returns false, it might\n * actually be exactly representable. I might write a guaranteed version of this function if I ever get into arbitrary-precision\n * floats.\n *\n * Actually this function is terrible. Whatever.\n * @param str {string}\n * @returns {number}\n */\nexport function toExactFloat (str) {\n  // Floats are basically just exciting dyadic rationals.\n  // TODO\n\n  return NaN\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real/fp_manip.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 84,
+    "kind": "variable",
+    "name": "isBigEndian",
+    "memberof": "src/math/real/fp_manip.js",
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~isBigEndian",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": "Check endianness. The functions in this file will not work on big-endian systems, so we need to throw an error.\nCredit goes to Lucio Pavia on StackOverflow, specifically\n{@link https://stackoverflow.com/a/52827031/13458117|this answer}.\nIt is released under CC BY-SA 4.0, which is compatible with this project.",
+    "lineNumber": 14,
+    "ignore": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 85,
+    "kind": "variable",
+    "name": "floatStore",
+    "memberof": "src/math/real/fp_manip.js",
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~floatStore",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 21,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 86,
+    "kind": "variable",
+    "name": "intView",
+    "memberof": "src/math/real/fp_manip.js",
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~intView",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 22,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 87,
+    "kind": "function",
+    "name": "_roundUp",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~_roundUp",
+    "access": "private",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": "Returns the next floating point number after a positive x, but doesn't account for special cases.",
+    "lineNumber": 30,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 88,
+    "kind": "function",
+    "name": "_roundDown",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~_roundDown",
+    "access": "private",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": "Returns the previous floating point number before a POSITIVE x, but doesn't account for special cases.\nroundDown.",
+    "lineNumber": 45,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 89,
+    "kind": "function",
+    "name": "roundUp",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~roundUp",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{roundUp}",
+    "description": "Returns the next floating point number after x. For example, roundUp(0) returns Number.MIN_VALUE.\nSpecial cases (±inf, NaNs, 0) are handled separately. An interesting special case is -Number.MIN_VALUE,\nwhich would normally return -0 and thus must be handled separately. Then, the float is put into a TypedArray,\ntreated as an integer, and incremented, which sets it to the next representable value. roundUp should\nNEVER return -0 or -Infinity, but it can accept those. On my computer both these functions take about\n20 ns / call (October 2020). They need to be performant because they are called so often (every interval\nfunction, pretty much).",
+    "lineNumber": 66,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number} The next representable floating-point number, handling special cases"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "roundUp"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "FP"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number} Any valid floating-point number"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": "The next representable floating-point number, handling special cases"
+    }
+  },
+  {
+    "__docId__": 90,
+    "kind": "function",
+    "name": "roundDown",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~roundDown",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{roundDown}",
+    "description": "Returns the previous floating point number before x. For example, roundUp(0) returns -Number.MIN_VALUE.\nSee {@link FP.roundUp} for implementation explanation. This function should NEVER return -0 or\n+Infinity, but it can accept those values; roundDown(0) is -Number.MIN_VALUE and roundDown(Infinity) is\nNumber.MAX_VALUE.",
+    "lineNumber": 90,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number} The previous representable floating-point number, handling special cases"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "roundDown"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "FP"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number} Any valid floating-point number"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": "The previous representable floating-point number, handling special cases"
+    }
+  },
+  {
+    "__docId__": 91,
+    "kind": "variable",
+    "name": "POSITIVE_NORMAL_MIN",
+    "memberof": "src/math/real/fp_manip.js",
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~POSITIVE_NORMAL_MIN",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 100,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 92,
+    "kind": "variable",
+    "name": "NEGATIVE_NORMAL_MAX",
+    "memberof": "src/math/real/fp_manip.js",
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~NEGATIVE_NORMAL_MAX",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 103,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 93,
+    "kind": "function",
+    "name": "isDenormal",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~isDenormal",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{isDenormal}",
+    "description": "Return whether a number is denormal; see {@link https://en.wikipedia.org/wiki/Denormal_number|Wikipedia} for a\ntechnical explanation of what this means. ±0 are not considered denormal numbers. Denormal numbers are sometimes\nknown as subnormal numbers.",
+    "lineNumber": 114,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean} Whether the number is a denormal number"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "isDenormal"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "FP"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number} Any valid floating-point number"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": "Whether the number is a denormal number"
+    }
+  },
+  {
+    "__docId__": 94,
+    "kind": "function",
+    "name": "getExponent",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~getExponent",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{getExponent}",
+    "description": "Get the non-biased exponent of a floating-point number x. Equivalent mathematically to floor(log2(abs(x))) for\nfinite values, but more accurate as the precision of log2 is not technically guaranteed.",
+    "lineNumber": 125,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": ""
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 95,
+    "kind": "function",
+    "name": "countFloatsBetween",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~countFloatsBetween",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{countFloatsBetween}",
+    "description": "Testing function. Counts the approximate number of floats between x1 and x2, including x1 but excluding x2. NaN if\neither is undefined. It is approximate because the answer may sometimes exceed Number.MAX_SAFE_INTEGER, but it is\nreliable if the answer is less than Number.MAX_SAFE_INTEGER.",
+    "lineNumber": 142,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "countFloatsBetween"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "FP"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x1",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x2",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 96,
+    "kind": "function",
+    "name": "frexp",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~frexp",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{frexp}",
+    "description": "Converts a floating-point number into a fraction in [0.5, 1), except special cases, and a power of 2 to multiply it by.",
+    "lineNumber": 166,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{Array} [fraction, exponent]"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": ""
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Array"
+      ],
+      "spread": false,
+      "description": "[fraction, exponent]"
+    }
+  },
+  {
+    "__docId__": 97,
+    "kind": "function",
+    "name": "toExactFloat",
+    "memberof": "src/math/real/fp_manip.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/fp_manip.js~toExactFloat",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/fp_manip.js",
+    "importStyle": "{toExactFloat}",
+    "description": "Whether str can be represented exactly as a float. For example, \"0\", \"0.00000\", \"1\", \"1109519\", \"-14518924\",\n\"-1.5\", \"-1.5e3\", \"4.25\", \"42.5e-1\". Floats allowed by Grapheme are relatively simple; they are of the form\n\"... numeric ... [eE]? ... integer ...\".\n\nThe function is not perfect by any means, and it errs on the side of caution. Even if the function returns false, it might\nactually be exactly representable. I might write a guaranteed version of this function if I ever get into arbitrary-precision\nfloats.\n\nActually this function is terrible. Whatever.",
+    "lineNumber": 190,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "str",
+        "description": "{string}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 98,
+    "kind": "file",
+    "name": "src/math/real/gamma.js",
+    "content": "// Number of coefficients in the approximation\nconst LANCZOS_COUNT = 7\nconst LANCZOS_COEFFICIENTS = [\n  0.99999999999980993,\n  676.5203681218851,\n  -1259.1392167224028,\n  771.32342877765313,\n  -176.61502916214059,\n  12.507343278686905,\n  -0.13857109526572012,\n  9.9843695780195716e-6,\n  1.5056327351493116e-7\n]\n\n// 1, 1, 2, 6, ...\nconst INTEGER_FACTORIALS = [1]\n\n// Populate INTEGER_FACTORIALS\nlet fact = 1\nfor (let i = 1; ; ++i) {\n  fact *= i\n\n  if (fact === Infinity) { break }\n\n  INTEGER_FACTORIALS.push(fact)\n}\n\nconst INTEGER_FACTORIAL_LEN = INTEGER_FACTORIALS.length\n\n/**\n * This function accepts a real-valued number x and returns the value of the gamma function evaluated at\n * x. If there is a pole at x, NaN is returned. NaN is returned instead of Infinity to distinguish a pole\n * (at -1, -2, ...) from a massive value (e.g. at 100). The function is relatively accurate and fast, though I\n * would like to assess its accuracy at some point.\n *\n * Handling of special values: NaN -> NaN, Infinity -> Infinity, -Infinity -> NaN\n *\n * The algorithm works based on the Lanczos approximation. The original code was written in Python by\n * Fredrik Johansson and published to Wikipedia, which means it is compatible license-wise with this\n * project. The relevant diff (on the Swedish Wikipedia) is at\n * https://sv.wikipedia.org/w/index.php?title=Gammafunktionen&diff=1146966&oldid=1146894.\n * Values below 0.5 are calculated using the reflection formula, see\n * https://en.wikipedia.org/wiki/Gamma_function#General.\n * @param x {number}\n * @returns {number}\n * @function gamma\n * @memberOf RealFunctions\n */\nexport function gamma (x) {\n  // Special cases\n  if (Number.isNaN(x)) return NaN\n  if (x === Infinity) return Infinity\n  if (x === -Infinity) return NaN\n\n  // Define gamma specially for integral values\n  if (Number.isInteger(x)) {\n    // Gamma function undefined for negative integers\n    if (x <= 0) return NaN\n\n    // Gamma function too large, return Infinity\n    if (x > INTEGER_FACTORIAL_LEN) return Infinity\n\n    return INTEGER_FACTORIALS[x - 1]\n  }\n\n  if (x < 0.5) {\n    // Reflection formula\n    return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x))\n  } else {\n    // Lanczos approximation\n    x -= 1\n\n    // The value of A_g(x), see https://en.wikipedia.org/wiki/Lanczos_approximation#Introduction\n    let z = LANCZOS_COEFFICIENTS[0]\n    for (let i = 1; i < LANCZOS_COUNT + 2; ++i) {\n      z += LANCZOS_COEFFICIENTS[i] / (x + i)\n    }\n\n    const t = x + LANCZOS_COUNT + 0.5\n    const sqrt2Pi = Math.sqrt(2 * Math.PI) // for performance, since Math.sqrt can be overwritten\n\n    return sqrt2Pi * Math.pow(t, (x + 0.5)) * Math.exp(-t) * z\n  }\n}\n\n/**\n * The factorial of x. This function accepts all numerical values and just internally uses the gamma function.\n * @param x {number}\n * @returns {number}\n * @function factorial\n * @memberOf RealFunctions\n */\nexport function factorial (x) {\n  return gamma(x + 1)\n}\n\n/**\n * The log-gamma or ln-gamma function, commonly used because the gamma function blows up fast and it is\n * useful to work with its larger values. It is just the natural logarithm of the gamma function. The\n * algorithm is identical to the above, except there is no special case for positive integers > 2 (since\n * there is little point, and the list would have to be enormous).\n *\n * Handling of special values: NaN -> NaN, Infinity -> Infinity, -Infinity -> NaN\n *\n * @param x {number}\n * @returns {number}\n * @function lnGamma\n * @memberOf RealFunctions\n */\nexport function lnGamma (x) {\n  // Special cases\n  if (Number.isNaN(x)) return NaN\n  if (x === Infinity) return Infinity\n  if (x === -Infinity) return NaN\n\n  if (x <= 0) {\n    // Handle negative numbers\n    if (Number.isInteger(x)) return NaN\n\n    // If the floor of x is an odd number, then gamma(x) is negative and thus NaN should be returned.\n    if (Math.floor(x) % 2 === 1) return NaN\n  }\n\n  // lnGamma(1) = lnGamma(2) = 0; the algorithm is inexact for the former\n  if (x === 1 || x === 2) return 0\n\n  if (x < 0.5) {\n    // Reflection formula, as above\n    const reflected = lnGamma(1 - x)\n\n    const lnPi = Math.log(Math.PI) // for performance, since Math.log can be overwritten\n\n    return lnPi - Math.log(Math.sin(Math.PI * x)) - reflected\n  } else {\n    // See above for explanation\n    x -= 1\n\n    let z = LANCZOS_COEFFICIENTS[0]\n    for (let i = 1; i < LANCZOS_COUNT + 2; ++i) {\n      z += LANCZOS_COEFFICIENTS[i] / (x + i)\n    }\n\n    const t = x + LANCZOS_COUNT + 0.5\n    const lnSqrt2Pi = Math.log(2 * Math.PI) / 2 // for performance, since Math.log can be overwritten\n\n    return lnSqrt2Pi + Math.log(t) * (x + 0.5) - t + Math.log(z)\n  }\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real/gamma.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 99,
+    "kind": "variable",
+    "name": "LANCZOS_COUNT",
+    "memberof": "src/math/real/gamma.js",
+    "static": true,
+    "longname": "src/math/real/gamma.js~LANCZOS_COUNT",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 2,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 100,
+    "kind": "variable",
+    "name": "LANCZOS_COEFFICIENTS",
+    "memberof": "src/math/real/gamma.js",
+    "static": true,
+    "longname": "src/math/real/gamma.js~LANCZOS_COEFFICIENTS",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 3,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number[]"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 101,
+    "kind": "variable",
+    "name": "INTEGER_FACTORIALS",
+    "memberof": "src/math/real/gamma.js",
+    "static": true,
+    "longname": "src/math/real/gamma.js~INTEGER_FACTORIALS",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 16,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number[]"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 102,
+    "kind": "variable",
+    "name": "fact",
+    "memberof": "src/math/real/gamma.js",
+    "static": true,
+    "longname": "src/math/real/gamma.js~fact",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 19,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 103,
+    "kind": "variable",
+    "name": "INTEGER_FACTORIAL_LEN",
+    "memberof": "src/math/real/gamma.js",
+    "static": true,
+    "longname": "src/math/real/gamma.js~INTEGER_FACTORIAL_LEN",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 28,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 104,
+    "kind": "function",
+    "name": "gamma",
+    "memberof": "src/math/real/gamma.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/gamma.js~gamma",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": "{gamma}",
+    "description": "This function accepts a real-valued number x and returns the value of the gamma function evaluated at\nx. If there is a pole at x, NaN is returned. NaN is returned instead of Infinity to distinguish a pole\n(at -1, -2, ...) from a massive value (e.g. at 100). The function is relatively accurate and fast, though I\nwould like to assess its accuracy at some point.\n\nHandling of special values: NaN -> NaN, Infinity -> Infinity, -Infinity -> NaN\n\nThe algorithm works based on the Lanczos approximation. The original code was written in Python by\nFredrik Johansson and published to Wikipedia, which means it is compatible license-wise with this\nproject. The relevant diff (on the Swedish Wikipedia) is at\nhttps://sv.wikipedia.org/w/index.php?title=Gammafunktionen&diff=1146966&oldid=1146894.\nValues below 0.5 are calculated using the reflection formula, see\nhttps://en.wikipedia.org/wiki/Gamma_function#General.",
+    "lineNumber": 49,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "gamma"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 105,
+    "kind": "function",
+    "name": "factorial",
+    "memberof": "src/math/real/gamma.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/gamma.js~factorial",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": "{factorial}",
+    "description": "The factorial of x. This function accepts all numerical values and just internally uses the gamma function.",
+    "lineNumber": 93,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "factorial"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 106,
+    "kind": "function",
+    "name": "lnGamma",
+    "memberof": "src/math/real/gamma.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/gamma.js~lnGamma",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/gamma.js",
+    "importStyle": "{lnGamma}",
+    "description": "The log-gamma or ln-gamma function, commonly used because the gamma function blows up fast and it is\nuseful to work with its larger values. It is just the natural logarithm of the gamma function. The\nalgorithm is identical to the above, except there is no special case for positive integers > 2 (since\nthere is little point, and the list would have to be enormous).\n\nHandling of special values: NaN -> NaN, Infinity -> Infinity, -Infinity -> NaN",
+    "lineNumber": 110,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      },
+      {
+        "tagName": "@function",
+        "tagValue": "lnGamma"
+      },
+      {
+        "tagName": "@memberOf",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 107,
+    "kind": "file",
+    "name": "src/math/real/pow.js",
+    "content": "import { getExponent } from './fp_manip.js'\nimport { gcd } from './basic_arithmetic.js'\n\n// Computes a ^ (c/d), where c and d are integers.\nfunction powRational (a, c, d) {\n  // Simple return cases\n  if (d === 0 || Number.isNaN(c) || Number.isNaN(d) || !Number.isInteger(c) || !Number.isInteger(d) || Number.isNaN(a)) { return NaN }\n\n  if (a === 0) return 0\n\n  const evenDenom = d % 2 === 0\n  const evenNumer = c % 2 === 0\n\n  if (evenDenom && a < 0) return NaN\n\n  if (d < 0) {\n    c = -c\n    d = -d\n  }\n\n  // Now we know that a is not NaN, c is an integer, and d is a nonzero positive integer. Also, the answer is not NaN.\n  const mag = Math.pow(Math.abs(a), c / d)\n\n  if (a >= 0) { // Can just do Math.pow\n    return mag\n  } else if (a === 0) {\n    return 0\n  } else {\n    // We know that evenDenom is false\n    return evenNumer ? mag : -mag\n  }\n}\n\n/**\n * Return the closest rational number p/q to x where q < maxDenominator and p < maxNumerator.\n * @param x {number}\n * @param maxDenominator {number}\n * @param maxNumerator {number}\n * @returns {number[]} A three-element array [ p, q, error ], where error is abs(x - p/q)\n */\nfunction closestRational (x, maxDenominator, maxNumerator = Number.MAX_SAFE_INTEGER) {\n  const flr = Math.floor(x)\n\n  // If we find frac is approximately p/q, the true numerator is q * flr + p. Thus, the maximum numerator is dn - q * flr\n\n  let an = flr\n  let ad = 1\n  let bn = flr + 1\n  let bd = 1\n\n  while (true) {\n    // Compute middle in Farey sequence\n    let cn = an + bn\n    let cd = ad + bd\n\n    // Reduce fraction\n    const g = gcd(cn, cd)\n    if (g !== 1) {\n      cn /= g\n      cd /= g\n    }\n\n    // Compute both sides\n    const a = an / ad\n    const b = bn / bd\n\n    const errA = x - a\n    const errB = b - x\n\n    let bestn\n    let bestd\n    let bestErr\n\n    // Which approximation is better? Store it in bestn, bestd, bestErr\n    if (errA < errB) {\n      bestn = an\n      bestd = ad\n      bestErr = errA\n    } else {\n      bestn = bn\n      bestd = bd\n      bestErr = errB\n    }\n\n    // If numerator or denominator are too big, or the approximation is exact, return the approximation\n    if (cd > maxDenominator || cn > maxNumerator || bestErr === 0) return [bestn, bestd, bestErr]\n\n    const c = cn / cd\n\n    if (c === x) return [cn, cd, 0]\n\n    if (x < c) {\n      bn = cn\n      bd = cd\n    } else {\n      an = cn\n      ad = cd\n    }\n  }\n}\n\n// [...Array(53 + 25).keys()].map(n => { n = n - 52; return Math.floor(Math.min(Math.PI * 2 ** (26 - n/2) / 300, Number.MAX_SAFE_INTEGER)) })\nconst dnLookupTable = [\n  47161585013522, 33348276574567, 23580792506761, 16674138287283, 11790396253380, 8337069143641, 5895198126690,\n  4168534571820, 2947599063345, 2084267285910, 1473799531672, 1042133642955, 736899765836, 521066821477, 368449882918,\n  260533410738, 184224941459, 130266705369, 92112470729, 65133352684, 46056235364, 32566676342, 23028117682,\n  16283338171, 11514058841, 8141669085, 5757029420, 4070834542, 2878514710, 2035417271, 1439257355, 1017708635,\n  719628677, 508854317, 359814338, 254427158, 179907169, 127213579, 89953584, 63606789, 44976792, 31803394, 22488396,\n  15901697, 11244198, 7950848, 5622099, 3975424, 2811049, 1987712, 1405524, 993856, 702762, 496928, 351381, 248464,\n  175690, 124232, 87845, 62116, 43922, 31058, 21961, 15529, 10980, 7764, 5490, 3882, 2745, 1941, 1372, 970, 686, 485,\n  343, 242, 171, 121\n]\n\nfunction _doubleToRational (d) {\n  if (d === 0) { return [0, 1] } else if (Number.isInteger(d)) { return [d, 1] }\n\n  const negative = d < 0\n  d = Math.abs(d)\n\n  if (d <= 1.1102230246251565e-16 /** 2^-53 */ || d > 67108864 /** 2^26 */ || !Number.isFinite(d)) { return [NaN, NaN] }\n\n  // Guaranteed that d > 0 and is finite, and that its exponent n is in the range [-52, 25] inclusive.\n  const exp = getExponent(d)\n\n  // We now look up the corresponding value of d_n, as explained in Grapheme Theory. It is offset by 52 because arrays\n  // start from 0\n  const dn = dnLookupTable[exp + 52]\n\n  // We find the nearest rational number that satisfies our requirements\n  const [p, q, err] = closestRational(d, dn)\n\n  // Close enough, but rigorously so (see Theory)\n  if (err <= Math.pow(2, exp - 52)) return [negative ? -p : p, q]\n\n  return [NaN, NaN]\n}\n\nlet lastDoubleToRationalArg = 0\nlet lastDoubleToRationalRes = [0, 1]\n\n/**\n * Cached wrapper for _doubleToRational. The question is how to classify FLOATS, which are all technically rationals\n * (more specifically, dyadic rationals), as rational numbers. See Grapheme Theory, \"Intelligent Pow\" for more\n * information. In short, at most 1/10000 of floats are classified as rational, and the potential returned rational\n * numbers vary depending on the magnitude of d.\n * @param d {number}\n * @returns {number[]} Two-element array; first is the numerator, second is the denominator\n */\nexport function doubleToRational (d) {\n  if (d === lastDoubleToRationalArg) return lastDoubleToRationalRes\n\n  const res = _doubleToRational(d)\n\n  lastDoubleToRationalRes = res\n  lastDoubleToRationalArg = d\n\n  return res\n}\n\n/**\n * Given a < 0 and non-integer b, try to compute a ^ b. Yeah, good luck Tim.\n * The gist of the argument is that we try to convert b to a nearby rational number. If there is no such rational number,\n * we assume that b is irrational and simply return NaN. If there is such a rational number p/q, then we return NaN if\n * q is even, and otherwise return the mathematical value.\n *\n * @param a {number}\n * @param b {number}\n */\nfunction powSpecial (a, b) {\n  const [num, den] = doubleToRational(b)\n\n  // deemed irrational\n  if (!den) return NaN\n\n  // integer\n  if (den === 1) return Math.pow(a, num)\n\n  return powRational(a, num, den)\n}\n\n/**\n * This function computes a^b, where a and b are floats, but does not always return NaN for a < 0 and b ≠ Z. The\n * method by which this is bodged is specified in Grapheme Theory. For the special cases, it takes about 0.006 ms per\n * evaluation on my computer.\n *\n * There are some special cases:\n *   a. if a === b === 0, 1 is returned (this is same as Math.pow)\n *   b. if a is NaN or b is NaN, NaN is returned\n *   c. if a < 0, b not an integer, a special algorithm is used (see above)\n *   d. The rest of the cases are identical to Math.pow.\n *\n * Contrast these cases with Math.pow at https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate\n * @param a {number} The base of the exponential.\n * @param b {number} The exponent. If a is negative and b is deemed to be a near-rational, a^b is different from Math.pow(a, b).\n * @returns {number}\n */\nexport function pow (a, b) {\n  if (Number.isNaN(a) || Number.isNaN(b)) return NaN\n\n  if (a < 0 && a > -Infinity && !Number.isInteger(b)) return powSpecial(a, b)\n\n  return Math.pow(a, b)\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real/pow.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 108,
+    "kind": "function",
+    "name": "powRational",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~powRational",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 5,
+    "undocument": true,
+    "params": [
+      {
+        "name": "a",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "c",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "d",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 109,
+    "kind": "function",
+    "name": "closestRational",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~closestRational",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": "Return the closest rational number p/q to x where q < maxDenominator and p < maxNumerator.",
+    "lineNumber": 41,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number[]} A three-element array [ p, q, error ], where error is abs(x - p/q)"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "maxDenominator",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "maxNumerator",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number[]"
+      ],
+      "spread": false,
+      "description": "A three-element array [ p, q, error ], where error is abs(x - p/q)"
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 110,
+    "kind": "variable",
+    "name": "dnLookupTable",
+    "memberof": "src/math/real/pow.js",
+    "static": true,
+    "longname": "src/math/real/pow.js~dnLookupTable",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 103,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number[]"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 111,
+    "kind": "function",
+    "name": "_doubleToRational",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~_doubleToRational",
+    "access": "private",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 114,
+    "undocument": true,
+    "params": [
+      {
+        "name": "d",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "undefined[]"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 112,
+    "kind": "variable",
+    "name": "lastDoubleToRationalArg",
+    "memberof": "src/math/real/pow.js",
+    "static": true,
+    "longname": "src/math/real/pow.js~lastDoubleToRationalArg",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 138,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 113,
+    "kind": "variable",
+    "name": "lastDoubleToRationalRes",
+    "memberof": "src/math/real/pow.js",
+    "static": true,
+    "longname": "src/math/real/pow.js~lastDoubleToRationalRes",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 139,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number[]"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 114,
+    "kind": "function",
+    "name": "doubleToRational",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~doubleToRational",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": "{doubleToRational}",
+    "description": "Cached wrapper for _doubleToRational. The question is how to classify FLOATS, which are all technically rationals\n(more specifically, dyadic rationals), as rational numbers. See Grapheme Theory, \"Intelligent Pow\" for more\ninformation. In short, at most 1/10000 of floats are classified as rational, and the potential returned rational\nnumbers vary depending on the magnitude of d.",
+    "lineNumber": 149,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number[]} Two-element array; first is the numerator, second is the denominator"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "d",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number[]"
+      ],
+      "spread": false,
+      "description": "Two-element array; first is the numerator, second is the denominator"
+    }
+  },
+  {
+    "__docId__": 115,
+    "kind": "function",
+    "name": "powSpecial",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~powSpecial",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": null,
+    "description": "Given a < 0 and non-integer b, try to compute a ^ b. Yeah, good luck Tim.\nThe gist of the argument is that we try to convert b to a nearby rational number. If there is no such rational number,\nwe assume that b is irrational and simply return NaN. If there is such a rational number p/q, then we return NaN if\nq is even, and otherwise return the mathematical value.",
+    "lineNumber": 169,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "a",
+        "description": "{number}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "b",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 116,
+    "kind": "function",
+    "name": "pow",
+    "memberof": "src/math/real/pow.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real/pow.js~pow",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/pow.js",
+    "importStyle": "{pow}",
+    "description": "This function computes a^b, where a and b are floats, but does not always return NaN for a < 0 and b ≠ Z. The\nmethod by which this is bodged is specified in Grapheme Theory. For the special cases, it takes about 0.006 ms per\nevaluation on my computer.\n\nThere are some special cases:\n  a. if a === b === 0, 1 is returned (this is same as Math.pow)\n  b. if a is NaN or b is NaN, NaN is returned\n  c. if a < 0, b not an integer, a special algorithm is used (see above)\n  d. The rest of the cases are identical to Math.pow.\n\nContrast these cases with Math.pow at https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate",
+    "lineNumber": 197,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "a",
+        "description": "{number} The base of the exponential."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "b",
+        "description": "{number} The exponent. If a is negative and b is deemed to be a near-rational, a^b is different from Math.pow(a, b)."
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 117,
+    "kind": "file",
+    "name": "src/math/real/real_functions.js",
+    "content": "import { add, divide, multiply, subtract } from './basic_arithmetic.js'\nimport { gamma, lnGamma, factorial } from './gamma.js'\nimport { pow } from './pow.js'\n\n/**\n * Functions that accept double-precision floating point numbers as arguments. Common functions not here are likely\n * provided by Math, so use those.\n * @namespace RealFunctions\n */\nconst RealFunctions = Object.freeze({\n  add,\n  divide,\n  multiply,\n  subtract,\n  gamma,\n  lnGamma,\n  factorial,\n  pow\n})\n\nexport { RealFunctions }\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real/real_functions.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 118,
+    "kind": "variable",
+    "name": "RealFunctions",
+    "memberof": "src/math/real/real_functions.js",
+    "static": true,
+    "longname": "src/math/real/real_functions.js~RealFunctions",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real/real_functions.js",
+    "importStyle": "{RealFunctions}",
+    "description": "Functions that accept double-precision floating point numbers as arguments. Common functions not here are likely\nprovided by Math, so use those.",
+    "lineNumber": 10,
+    "unknown": [
+      {
+        "tagName": "@namespace",
+        "tagValue": "RealFunctions"
+      }
+    ],
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 119,
+    "kind": "file",
+    "name": "src/math/real_interval/basic_arithmetic.js",
+    "content": "/**\n * Add two RealIntervals.\n * @param int1 {RealInterval}\n * @param int2 {RealInterval}\n */\nfunction addInternal (int1, int2) {\n\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real_interval/basic_arithmetic.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 120,
+    "kind": "function",
+    "name": "addInternal",
+    "memberof": "src/math/real_interval/basic_arithmetic.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/basic_arithmetic.js~addInternal",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real_interval/basic_arithmetic.js",
+    "importStyle": null,
+    "description": "Add two RealIntervals.",
+    "lineNumber": 6,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "int1",
+        "description": "{RealInterval}"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "int2",
+        "description": "{RealInterval}"
+      }
+    ],
+    "return": null,
+    "ignore": true
+  },
+  {
+    "__docId__": 121,
+    "kind": "file",
+    "name": "src/math/real_interval/real_interval.js",
+    "content": "/** This file defines interval arithmetic functions and classes. */\n\n/**\n * An interval-like object; in other words, something that is a {@link RealInterval} or {@link RealIntervalSet}.\n * @typedef {(RealInterval|RealIntervalSet)} RealIntervalLike\n */\n\nimport { roundDown, roundUp, toExactFloat } from '../real/fp_manip.js'\n\n/**\n * A real interval is a closed interval that is represents a nonstrict superset of a set of real numbers. The minimum\n * is stored in the variable min, and the maximum is stored in the variable max. The set of\n * all real numbers can be represented with the interval [-inf, inf].\n *\n * <p>Jeff Tupper adds four additional properties,  named defMin, defMax, contMin, and contMax. If defMin = defMax = true,\n * then the number represented is entirely DEFINED. If defMin = false and defMax = true, then we are unsure whether the number is defined.\n * If defMin = defMax = false, then the number is definitely undefined. My modification is to represent those intervals\n * where defMin = defMax = false</p>\n *\n * <p>The reason this is useful is to encapsulate the notion of a function being undefined. For example, sqrt([-1, -0.5])\n * is entirely undefined, so defMin = defMax = false. In other words, if x is in [-1, -0.5], we KNOW that sqrt(x) is\n * undefined – at least among the real numbers. But if x is in [-1, 1], we don't know for sure that sqrt(x) is defined,\n * so defMin = false and defMax = true for sqrt([-1, 1]).</p>\n *\n * <p>contMin and contMax are the same thing, but for continuity. Some functions are defined everywhere, but discontinuous.\n * A good example is the floor function. floor([-1, 1]) is always defined, so defMin = defMax = true, but contMin =\n * false and contMax = true. Undefinedness implies discontinuity, not the other way around. That is, if defMin = false,\n * that will take precedence over contMin = true; the value of contMin is immaterial in that case.</p>\n *\n * <p>There is also the class {@link RealIntervalSet}, which represents a set of intervals.</p>\n *\n * <p>In normal Grapheme usage, an undefined RealInterval is simply represented with defMin = defMax = false. null should\n * never be passed to a function as a RealInterval; it will almost certainly throw an error.</p>\n *\n * <p>tl;dr: Six parameters, namely min, max, defMin, defMax, contMin, contMax. min and max are numbers which represent the\n * bounds of the interval, and the remaining four parameters are booleans that provide extra context for the meaning of\n * the interval.</p>\n */\nexport class RealInterval {\n  /**\n   * Construct a RealInterval. Only a single argument is needed, and will produce an \"exact interval\", but there are\n   * six arguments in total. The meaning of each argument is described in the class description.\n   * @param min {number} The minimum of the interval.\n   * @param max {number} The maximum of the interval.\n   * @param defMin {boolean} Whether the interval is always defined.\n   * @param defMax {boolean} Whether the interval is potentially defined.\n   * @param contMin {boolean} Whether the interval is always continuous.\n   * @param contMax {boolean} Whether the interval is potentially continuous.\n   */\n  constructor (min, max = min, defMin = true, defMax = true, contMin = true, contMax = true) {\n    /**\n     * The minimum of the interval.\n     * @type {number}\n     * @public\n     */\n    this.min = min\n    /**\n     * The maximum of the interval.\n     * @type {number}\n     * @public\n     */\n    this.max = max\n    /**\n     * Whether the interval is always defined.\n     * @type {boolean}\n     * @public\n     */\n    this.defMin = defMin\n    /**\n     * Whether the interval is potentially defined.\n     * @type {boolean}\n     * @public\n     */\n    this.defMax = defMax\n    /**\n     * Whether the interval is always continuous.\n     * @type {boolean}\n     * @public\n     */\n    this.contMin = contMin\n    /**\n     * Whether the interval is potentially continuous.\n     * @type {boolean}\n     * @public\n     */\n    this.contMax = contMax\n  }\n\n  /**\n   * The width of this interval, in other words max - min.\n   * @returns {number}\n   */\n  size () {\n    return this.max - this.min\n  }\n\n  /**\n   * Whether this interval contains x.\n   * @param x {number}\n   * @returns {boolean}\n   */\n  contains (x) {\n    return this.min < x && x < this.max\n  }\n\n  /**\n   * Whether this is a RealIntervalSet (it's not).\n   * @returns {boolean} false.\n   */\n  isSet () {\n    return false\n  }\n\n  /**\n   * Returns whether the interval can be represented as a single number.\n   * @returns {boolean}\n   */\n  isExact () {\n    return this.min === this.max\n  }\n\n  /**\n   * Clone the interval.\n   * @returns {RealInterval}\n   */\n  clone () {\n    return new RealInterval(this.min, this.max, this.defMin, this.defMax, this.contMin, this.contMax)\n  }\n\n  /**\n   * Whether this is equal to another interval.\n   * @param {RealInterval} int\n   * @returns {boolean}\n   */\n  equals (int) {\n    return this.min === int.min && this.max === int.max && this.defMin === int.defMin && this.defMax === int.defMax &&\n      this.contMin === int.contMin && this.contMax === int.contMax\n  }\n\n  /**\n   * Whether this interval intersects another.\n   * @param int {RealIntervalLike}\n   * @return {boolean} Whether the intervals intersect.\n   */\n  intersects (int) {\n    if (int.isSet()) {\n      return int.intervals.any(subint => this.intersects(subint))\n    } else {\n      // Iff two intervals intersect, then either some of this.contains(int.min), this.contains(int.max) is true, or\n      // this interval is a subset of the other one which can be detected via int.contains(this.min)\n      return this.contains(int.min) || this.contains(int.max) || int.contains(this.min)\n    }\n  }\n\n  /**\n   * Create an interval from a JS number or a string representing a real number. If correctRounding is true, it will\n   * ensure that the INTENDED real number is encapsulated in the interval, by setting the bounds of the interval to be\n   * just around the number. If the string can be exactly represented as a float, an exact interval is returned. If\n   * correctRounding is false, then an exact interval is always outputted.\n   * @param x {Number|String} Number or string to make an interval from.\n   * @param correctRounding {boolean} If true, it will ensure the interval contains the real number that was desired.\n   * @returns {RealInterval}\n   */\n  static from (x, correctRounding = true) {\n    if (correctRounding && typeof x === 'string') {\n      const val = toExactFloat(x)\n\n      if (!Number.isNaN(val)) { return new RealInterval(val, val) }\n    }\n\n    const val = parseFloat(x)\n\n    if (Number.isNaN(val)) { return BAD_INTERVAL }\n\n    return new RealInterval(roundDown(val), roundUp(val))\n  }\n}\n\n/**\n * Similar to a standard RealInterval, but supports tags, which is an object stored in a tags parameter. There are a\n * variety of tags that can be used, and there needs to be a balancing act between more tags for tighter and faster\n * computation, and having too many tags that leads to slow down.\n */\nexport class TaggedRealInterval extends RealInterval {\n\n}\n\n/** <p>Some functions, such as f(x) = 1/x, may\n * have to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],\n * and there is no tighter bound. The solution is to return a SET of intervals, which together cover the solution set.\n * In this case, there would be three (not two) intervals returned. The intervals are [-inf, -1], [1, inf], and\n * [NaN, NaN, defMin=false, defMin=false]. The first two intervals cover the defined possibilities; the last interval\n * covers the fact that 1/0 is undefined.</p>\n *\n * <p>RealIntervalSet is equipped with defMin, defMax, contMin, and contMax just like a RealInterval, but they are in\n * function form: setMin(), setMax(), setDefMin(), .... They are calculated; defMin is the logical AND of each interval,\n * and defMax is the logical OR of each interval, and the same is true for contMin and contMax.</p>\n *\n * <p>All exposed interval functions accept both RealIntervals and RealIntervalSets. For performant testing of whether an\n * argument is a RealInterval or Set, the function isSet() can be used. RealIntervalSets CANNOT be nested; they should\n * always be flattened. If a set becomes too fat, it must be MERGED. This can be done in a lossless or lossy fashion.\n * Lossless merging happens when intervals are merged in a way such that the resulting set is exactly equivalent\n * mathematically to the original. For example, [-1, 1] u [1, 4] can be losslessly merged to [-1, 4]. Note that this\n * merging needs to account for differing defMin and defMax values. For example, [-1, 1, defMin=false, defMax=true] u\n * [1, 4, defMin=true, defMax=true] CANNOT be losslessly merged to [-1, 4, defMin=false, defMax=true]; this is a lossy\n * conversion. Obviously, lossless merging is preferred over lossy merging, but the latter might be necessary. In the\n * most extreme case, the interval [-inf, inf, defMin=false, defMax=true, contMin=false, contMax=true] is a valid\n * superset and lossy merge of ANY interval set. The maximum acceptable size for a RealIntervalSet is\n * maxRealIntervalSetSize.</p>\n *\n * <p>An undefined RealIntervalSet is one containing only undefined intervals, or an empty set. It is NOT null, as with\n * RealInterval.</p>\n */\nexport class RealIntervalSet {\n  /**\n   * Construct a RealIntervalSet from an Array of RealIntervals.\n   * @param intervals {Array<RealInterval>} The real intervals in this set of intervals.\n   */\n  constructor (intervals = []) {\n    /**\n     * The set of intervals this contains.\n     * @type {Array<RealInterval>}\n     * @public\n     */\n    this.intervals = intervals\n  }\n\n  /**\n   * Whether this is a RealIntervalSet (it is).\n   * @returns {boolean} true.\n   */\n  isSet () {\n    return false\n  }\n\n  /**\n   * There are a lot of cases here to consider. We ignore all intervals where defMax = false, since they never matter.\n   * If the set is empty, we return Infinity.\n   */\n  setMin () {\n    const { intervals } = this\n\n    const min = Infinity\n  }\n}\n\n/** Convert an interval set or interval into a list of intervals */\nexport function getIntervals (int) {\n  if (int.isSet()) {\n    return int.intervals\n  } else {\n    return [int]\n  }\n}\n\n/** Interval returned when a function is completely undefined. */\nconst BAD_INTERVAL = Object.freeze(new RealInterval(NaN, NaN, false, false, false, false))\n\nfunction evalIntervalSet1 (func, int1, furtherArgs) {\n  const intervals = []\n  let undefIntervalReturned = false\n\n  for (const int of int1.intervals) {\n    if (int.defMax) {\n      const res = func(int1, ...furtherArgs)\n\n      if (res.defMax) { // record the interval if it is defined\n        intervals.push(res)\n        continue\n      }\n    }\n\n    if (!undefIntervalReturned) {\n      undefIntervalReturned = true // note this\n      intervals.push(BAD_INTERVAL) // push a BAD_INTERVAL\n    }\n  }\n\n  return new RealIntervalSet(intervals)\n}\n\nfunction evalIntervalSet2 (func, int1, int2, furtherArgs) {\n  const int1Intervals = getIntervals(int1)\n  const int2Intervals = getIntervals(int2)\n\n  const intervals = []\n  let undefIntervalReturned = false\n\n  function undefinedIntervalNeeded () {\n    if (!undefIntervalReturned) {\n      undefIntervalReturned = true\n      intervals.push(BAD_INTERVAL)\n    }\n  }\n\n  for (const int1 of int1Intervals) {\n    if (!int1.defMax) {\n      undefinedIntervalNeeded()\n      continue\n    }\n    for (const int2 of int2Intervals) {\n      if (!int2.defMax) {\n        undefinedIntervalNeeded()\n        continue\n      }\n      // for each pair of intervals where both are defined\n\n      const res = func(int1, int2, ...furtherArgs)\n\n      if (!res.defMax) { // see explanation above\n        undefinedIntervalNeeded()\n      } else {\n        intervals.push(res)\n      }\n    }\n  }\n\n  return new RealIntervalSet(intervals)\n}\n\n/**\n * Assume func is a function that accepts argCount number of intervals. For example, + might accept 2, while unary -\n * might accept 1. This function enumerates each possible double / triple of intervals in an interval set and forwards\n * it to the function, combining all the intervals into an interval set.\n * @param func {Function} Function to forward arguments to\n * @param argCount {number} The number of arguments in the function. Further arguments will be forwarded unmodified.\n */\nexport function wrapIntervalFunction (func, argCount = 2) {\n  let ret\n\n  if (argCount === 0) {\n    ret = func\n  } else if (argCount === 1) {\n    ret = (int1, ...furtherArgs) => {\n      if (int1.isSet()) {\n        return evalIntervalSet1(func, int1, furtherArgs)\n      } else {\n        return func(int1, ...furtherArgs)\n      }\n    }\n  } else if (argCount === 2) { // the most common case\n    ret = (int1, int2, ...furtherArgs) => {\n      if (int1.isSet() || int2.isSet()) {\n        return evalIntervalSet2(func, int1, int2, furtherArgs)\n      } else {\n        return func(int1, int2, ...furtherArgs)\n      }\n    }\n  } else {\n    throw new RangeError('Unimplemented')\n  }\n\n  // Store the internal interval function for convenience\n  ret.internal = func\n\n  return ret\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/math/real_interval/real_interval.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 122,
+    "kind": "typedef",
+    "name": "RealIntervalLike",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalLike",
+    "access": "public",
+    "description": "An interval-like object; in other words, something that is a {@link RealInterval} or {@link RealIntervalSet}.",
+    "lineNumber": 8,
+    "type": {
+      "types": [
+        "RealInterval",
+        "RealIntervalSet"
+      ],
+      "optional": false,
+      "name": "RealIntervalLike"
+    }
+  },
+  {
+    "__docId__": 123,
+    "kind": "class",
+    "name": "RealInterval",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": "{RealInterval}",
+    "description": "A real interval is a closed interval that is represents a nonstrict superset of a set of real numbers. The minimum\nis stored in the variable min, and the maximum is stored in the variable max. The set of\nall real numbers can be represented with the interval [-inf, inf].\n\n<p>Jeff Tupper adds four additional properties,  named defMin, defMax, contMin, and contMax. If defMin = defMax = true,\nthen the number represented is entirely DEFINED. If defMin = false and defMax = true, then we are unsure whether the number is defined.\nIf defMin = defMax = false, then the number is definitely undefined. My modification is to represent those intervals\nwhere defMin = defMax = false</p>\n\n<p>The reason this is useful is to encapsulate the notion of a function being undefined. For example, sqrt([-1, -0.5])\nis entirely undefined, so defMin = defMax = false. In other words, if x is in [-1, -0.5], we KNOW that sqrt(x) is\nundefined – at least among the real numbers. But if x is in [-1, 1], we don't know for sure that sqrt(x) is defined,\nso defMin = false and defMax = true for sqrt([-1, 1]).</p>\n\n<p>contMin and contMax are the same thing, but for continuity. Some functions are defined everywhere, but discontinuous.\nA good example is the floor function. floor([-1, 1]) is always defined, so defMin = defMax = true, but contMin =\nfalse and contMax = true. Undefinedness implies discontinuity, not the other way around. That is, if defMin = false,\nthat will take precedence over contMin = true; the value of contMin is immaterial in that case.</p>\n\n<p>There is also the class {@link RealIntervalSet}, which represents a set of intervals.</p>\n\n<p>In normal Grapheme usage, an undefined RealInterval is simply represented with defMin = defMax = false. null should\nnever be passed to a function as a RealInterval; it will almost certainly throw an error.</p>\n\n<p>tl;dr: Six parameters, namely min, max, defMin, defMax, contMin, contMax. min and max are numbers which represent the\nbounds of the interval, and the remaining four parameters are booleans that provide extra context for the meaning of\nthe interval.</p>",
+    "lineNumber": 39,
+    "interface": false
+  },
+  {
+    "__docId__": 124,
+    "kind": "constructor",
+    "name": "constructor",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#constructor",
+    "access": "public",
+    "description": "Construct a RealInterval. Only a single argument is needed, and will produce an \"exact interval\", but there are\nsix arguments in total. The meaning of each argument is described in the class description.",
+    "lineNumber": 50,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "min",
+        "description": "{number} The minimum of the interval."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "max",
+        "description": "{number} The maximum of the interval."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "defMin",
+        "description": "{boolean} Whether the interval is always defined."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "defMax",
+        "description": "{boolean} Whether the interval is potentially defined."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "contMin",
+        "description": "{boolean} Whether the interval is always continuous."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "contMax",
+        "description": "{boolean} Whether the interval is potentially continuous."
+      }
+    ]
+  },
+  {
+    "__docId__": 125,
+    "kind": "member",
+    "name": "min",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#min",
+    "access": "public",
+    "description": "The minimum of the interval.",
+    "lineNumber": 56,
+    "type": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 126,
+    "kind": "member",
+    "name": "max",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#max",
+    "access": "public",
+    "description": "The maximum of the interval.",
+    "lineNumber": 62,
+    "type": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 127,
+    "kind": "member",
+    "name": "defMin",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#defMin",
+    "access": "public",
+    "description": "Whether the interval is always defined.",
+    "lineNumber": 68,
+    "type": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 128,
+    "kind": "member",
+    "name": "defMax",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#defMax",
+    "access": "public",
+    "description": "Whether the interval is potentially defined.",
+    "lineNumber": 74,
+    "type": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 129,
+    "kind": "member",
+    "name": "contMin",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#contMin",
+    "access": "public",
+    "description": "Whether the interval is always continuous.",
+    "lineNumber": 80,
+    "type": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 130,
+    "kind": "member",
+    "name": "contMax",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#contMax",
+    "access": "public",
+    "description": "Whether the interval is potentially continuous.",
+    "lineNumber": 86,
+    "type": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 131,
+    "kind": "method",
+    "name": "size",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#size",
+    "access": "public",
+    "description": "The width of this interval, in other words max - min.",
+    "lineNumber": 93,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "number"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "params": []
+  },
+  {
+    "__docId__": 132,
+    "kind": "method",
+    "name": "contains",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#contains",
+    "access": "public",
+    "description": "Whether this interval contains x.",
+    "lineNumber": 102,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{number}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 133,
+    "kind": "method",
+    "name": "isSet",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#isSet",
+    "access": "public",
+    "description": "Whether this is a RealIntervalSet (it's not).",
+    "lineNumber": 110,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean} false."
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": "false."
+    },
+    "params": []
+  },
+  {
+    "__docId__": 134,
+    "kind": "method",
+    "name": "isExact",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#isExact",
+    "access": "public",
+    "description": "Returns whether the interval can be represented as a single number.",
+    "lineNumber": 118,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "params": []
+  },
+  {
+    "__docId__": 135,
+    "kind": "method",
+    "name": "clone",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#clone",
+    "access": "public",
+    "description": "Clone the interval.",
+    "lineNumber": 126,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{RealInterval}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "RealInterval"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "params": []
+  },
+  {
+    "__docId__": 136,
+    "kind": "method",
+    "name": "equals",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#equals",
+    "access": "public",
+    "description": "Whether this is equal to another interval.",
+    "lineNumber": 135,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "RealInterval"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "int",
+        "description": ""
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 137,
+    "kind": "method",
+    "name": "intersects",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval#intersects",
+    "access": "public",
+    "description": "Whether this interval intersects another.",
+    "lineNumber": 145,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "int",
+        "description": "{RealIntervalLike}"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": "Whether the intervals intersect."
+    }
+  },
+  {
+    "__docId__": 138,
+    "kind": "method",
+    "name": "from",
+    "memberof": "src/math/real_interval/real_interval.js~RealInterval",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~RealInterval.from",
+    "access": "public",
+    "description": "Create an interval from a JS number or a string representing a real number. If correctRounding is true, it will\nensure that the INTENDED real number is encapsulated in the interval, by setting the bounds of the interval to be\njust around the number. If the string can be exactly represented as a float, an exact interval is returned. If\ncorrectRounding is false, then an exact interval is always outputted.",
+    "lineNumber": 164,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{RealInterval}"
+      }
+    ],
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "x",
+        "description": "{Number|String} Number or string to make an interval from."
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "correctRounding",
+        "description": "{boolean} If true, it will ensure the interval contains the real number that was desired."
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "RealInterval"
+      ],
+      "spread": false,
+      "description": ""
+    }
+  },
+  {
+    "__docId__": 139,
+    "kind": "class",
+    "name": "TaggedRealInterval",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~TaggedRealInterval",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": "{TaggedRealInterval}",
+    "description": "Similar to a standard RealInterval, but supports tags, which is an object stored in a tags parameter. There are a\nvariety of tags that can be used, and there needs to be a balancing act between more tags for tighter and faster\ncomputation, and having too many tags that leads to slow down.",
+    "lineNumber": 184,
+    "interface": false,
+    "extends": [
+      "RealInterval"
+    ]
+  },
+  {
+    "__docId__": 140,
+    "kind": "class",
+    "name": "RealIntervalSet",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalSet",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": "{RealIntervalSet}",
+    "description": "<p>Some functions, such as f(x) = 1/x, may\nhave to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],\nand there is no tighter bound. The solution is to return a SET of intervals, which together cover the solution set.\nIn this case, there would be three (not two) intervals returned. The intervals are [-inf, -1], [1, inf], and\n[NaN, NaN, defMin=false, defMin=false]. The first two intervals cover the defined possibilities; the last interval\ncovers the fact that 1/0 is undefined.</p>\n\n<p>RealIntervalSet is equipped with defMin, defMax, contMin, and contMax just like a RealInterval, but they are in\nfunction form: setMin(), setMax(), setDefMin(), .... They are calculated; defMin is the logical AND of each interval,\nand defMax is the logical OR of each interval, and the same is true for contMin and contMax.</p>\n\n<p>All exposed interval functions accept both RealIntervals and RealIntervalSets. For performant testing of whether an\nargument is a RealInterval or Set, the function isSet() can be used. RealIntervalSets CANNOT be nested; they should\nalways be flattened. If a set becomes too fat, it must be MERGED. This can be done in a lossless or lossy fashion.\nLossless merging happens when intervals are merged in a way such that the resulting set is exactly equivalent\nmathematically to the original. For example, [-1, 1] u [1, 4] can be losslessly merged to [-1, 4]. Note that this\nmerging needs to account for differing defMin and defMax values. For example, [-1, 1, defMin=false, defMax=true] u\n[1, 4, defMin=true, defMax=true] CANNOT be losslessly merged to [-1, 4, defMin=false, defMax=true]; this is a lossy\nconversion. Obviously, lossless merging is preferred over lossy merging, but the latter might be necessary. In the\nmost extreme case, the interval [-inf, inf, defMin=false, defMax=true, contMin=false, contMax=true] is a valid\nsuperset and lossy merge of ANY interval set. The maximum acceptable size for a RealIntervalSet is\nmaxRealIntervalSetSize.</p>\n\n<p>An undefined RealIntervalSet is one containing only undefined intervals, or an empty set. It is NOT null, as with\nRealInterval.</p>",
+    "lineNumber": 214,
+    "interface": false
+  },
+  {
+    "__docId__": 141,
+    "kind": "constructor",
+    "name": "constructor",
+    "memberof": "src/math/real_interval/real_interval.js~RealIntervalSet",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalSet#constructor",
+    "access": "public",
+    "description": "Construct a RealIntervalSet from an Array of RealIntervals.",
+    "lineNumber": 219,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "intervals",
+        "description": "{Array<RealInterval>} The real intervals in this set of intervals."
+      }
+    ]
+  },
+  {
+    "__docId__": 142,
+    "kind": "member",
+    "name": "intervals",
+    "memberof": "src/math/real_interval/real_interval.js~RealIntervalSet",
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalSet#intervals",
+    "access": "public",
+    "description": "The set of intervals this contains.",
+    "lineNumber": 225,
+    "type": {
+      "nullable": null,
+      "types": [
+        "Array<RealInterval>"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 143,
+    "kind": "method",
+    "name": "isSet",
+    "memberof": "src/math/real_interval/real_interval.js~RealIntervalSet",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalSet#isSet",
+    "access": "public",
+    "description": "Whether this is a RealIntervalSet (it is).",
+    "lineNumber": 232,
+    "unknown": [
+      {
+        "tagName": "@returns",
+        "tagValue": "{boolean} true."
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": "true."
+    },
+    "params": []
+  },
+  {
+    "__docId__": 144,
+    "kind": "method",
+    "name": "setMin",
+    "memberof": "src/math/real_interval/real_interval.js~RealIntervalSet",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "src/math/real_interval/real_interval.js~RealIntervalSet#setMin",
+    "access": "public",
+    "description": "There are a lot of cases here to consider. We ignore all intervals where defMax = false, since they never matter.\nIf the set is empty, we return Infinity.",
+    "lineNumber": 240,
+    "params": [],
+    "return": null
+  },
+  {
+    "__docId__": 145,
+    "kind": "function",
+    "name": "getIntervals",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~getIntervals",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": "{getIntervals}",
+    "description": "Convert an interval set or interval into a list of intervals",
+    "lineNumber": 248,
+    "params": [
+      {
+        "name": "int",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "undefined[]"
+      ]
+    }
+  },
+  {
+    "__docId__": 146,
+    "kind": "variable",
+    "name": "BAD_INTERVAL",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~BAD_INTERVAL",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": null,
+    "description": "Interval returned when a function is completely undefined.",
+    "lineNumber": 257,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 147,
+    "kind": "function",
+    "name": "evalIntervalSet1",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~evalIntervalSet1",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 259,
+    "undocument": true,
+    "params": [
+      {
+        "name": "func",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "int1",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "furtherArgs",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 148,
+    "kind": "function",
+    "name": "evalIntervalSet2",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~evalIntervalSet2",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 282,
+    "undocument": true,
+    "params": [
+      {
+        "name": "func",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "int1",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "int2",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "furtherArgs",
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 149,
+    "kind": "function",
+    "name": "wrapIntervalFunction",
+    "memberof": "src/math/real_interval/real_interval.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/math/real_interval/real_interval.js~wrapIntervalFunction",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/math/real_interval/real_interval.js",
+    "importStyle": "{wrapIntervalFunction}",
+    "description": "Assume func is a function that accepts argCount number of intervals. For example, + might accept 2, while unary -\nmight accept 1. This function enumerates each possible double / triple of intervals in an interval set and forwards\nit to the function, combining all the intervals into an interval set.",
+    "lineNumber": 328,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "func",
+        "description": "{Function} Function to forward arguments to"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "*"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "argCount",
+        "description": "{number} The number of arguments in the function. Further arguments will be forwarded unmodified."
+      }
+    ],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 150,
+    "kind": "file",
+    "name": "src/utils.js",
+    "content": "\nlet id = 0\n\n/** Returns a single unique positive integer */\nexport function getID () {\n  return ++id\n}\n\nexport function benchmark (callback, iterations = 100, output = console.log) {\n  const start = performance.now()\n\n  for (let i = 0; i < iterations; ++i) {\n    callback(i)\n  }\n\n  const duration = performance.now() - start\n\n  output(`Function ${callback.name} took ${duration / iterations} ms per call.`)\n}\n",
+    "static": true,
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/src/utils.js",
+    "access": "public",
+    "description": null,
+    "lineNumber": 1
+  },
+  {
+    "__docId__": 151,
+    "kind": "variable",
+    "name": "id",
+    "memberof": "src/utils.js",
+    "static": true,
+    "longname": "src/utils.js~id",
+    "access": "public",
+    "export": false,
+    "importPath": "grapheme/src/utils.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 2,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 152,
+    "kind": "function",
+    "name": "getID",
+    "memberof": "src/utils.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/utils.js~getID",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/utils.js",
+    "importStyle": "{getID}",
+    "description": "Returns a single unique positive integer",
+    "lineNumber": 5,
+    "params": [],
+    "return": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 153,
+    "kind": "function",
+    "name": "benchmark",
+    "memberof": "src/utils.js",
+    "generator": false,
+    "async": false,
+    "static": true,
+    "longname": "src/utils.js~benchmark",
+    "access": "public",
+    "export": true,
+    "importPath": "grapheme/src/utils.js",
+    "importStyle": "{benchmark}",
+    "description": null,
+    "lineNumber": 9,
+    "undocument": true,
+    "params": [
+      {
+        "name": "callback",
+        "types": [
+          "*"
+        ]
+      },
+      {
+        "name": "iterations",
+        "optional": true,
+        "types": [
+          "number"
+        ],
+        "defaultRaw": 100,
+        "defaultValue": "100"
+      },
+      {
+        "name": "output",
+        "optional": true,
+        "types": [
+          "*"
+        ]
+      }
+    ],
+    "return": null
+  },
+  {
+    "kind": "index",
+    "content": "# grapheme-neue\nTemp repo for Grapheme whittling\n",
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/README.md",
+    "name": "./README.md",
+    "static": true,
+    "access": "public"
+  },
+  {
+    "kind": "packageJSON",
+    "content": "{\n  \"name\": \"grapheme\",\n  \"version\": \"1.0.0\",\n  \"description\": \"JavaScript graphing library\",\n  \"main\": \"build/grapheme.js\",\n  \"scripts\": {\n    \"test\": \"jest\",\n    \"start\": \"http-server -a localhost -p 8000\",\n    \"lint\": \"eslint . --fix\",\n    \"build\": \"rollup -c\",\n    \"gendoc\": \"jsdoc src -r -d docs\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/anematode/grapheme.git\"\n  },\n  \"author\": \"Timothy Herchen <timothy.herchen@gmail.com> (https://moomath.com)\",\n  \"license\": \"GPL-3.0-or-later\",\n  \"bugs\": {\n    \"url\": \"https://github.com/anematode/grapheme/issues\"\n  },\n  \"homepage\": \"https://github.com/anematode/grapheme#readme\",\n  \"devDependencies\": {\n    \"@babel/core\": \"^7.11.6\",\n    \"@babel/plugin-transform-modules-commonjs\": \"^7.10.4\",\n    \"esdoc\": \"^1.1.0\",\n    \"esdoc-standard-plugin\": \"^1.0.0\",\n    \"eslint\": \"^7.10.0\",\n    \"eslint-plugin-import\": \"^2.22.1\",\n    \"eslint-plugin-node\": \"^11.1.0\",\n    \"eslint-plugin-promise\": \"^4.2.1\",\n    \"eslint-plugin-standard\": \"^4.0.1\",\n    \"jest-expect-message\": \"^1.0.2\"\n  },\n  \"esdoc\": {\n    \"source\": \"./src\",\n    \"destination\": \"./docs\",\n    \"plugins\": [\n      {\n        \"name\": \"esdoc-standard-plugin\"\n      }\n    ]\n  },\n  \"jest\": {\n    \"setupFilesAfterEnv\": [\n      \"jest-expect-message\",\n      \"./jest.setup.js\"\n    ]\n  },\n  \"babel\": {\n    \"env\": {\n      \"test\": {\n        \"plugins\": [\n          \"@babel/plugin-transform-modules-commonjs\"\n        ]\n      }\n    }\n  }\n}\n",
+    "longname": "/Users/timoothy/Documents/GitHub/grapheme-neue/package.json",
+    "name": "package.json",
+    "static": true,
+    "access": "public"
+  }
+]

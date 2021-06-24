@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/math/real/pow.js | grapheme</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="JavaScript graphing library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="grapheme"><meta property="twitter:description" content="JavaScript graphing library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/anematode/grapheme"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-benchmark">benchmark</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getID">getID</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/core/element.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-bigint">math/bigint</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/bigint/bigint.js~BigInt.html">BigInt</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real">math/real</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-add">add</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-divide">divide</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gcd">gcd</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-multiply">multiply</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-subtract">subtract</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-countFloatsBetween">countFloatsBetween</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-frexp">frexp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getExponent">getExponent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isDenormal">isDenormal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundDown">roundDown</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundUp">roundUp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-toExactFloat">toExactFloat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-factorial">factorial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gamma">gamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-lnGamma">lnGamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-doubleToRational">doubleToRational</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pow">pow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RealFunctions">RealFunctions</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real-interval">math/real_interval</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealInterval.html">RealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealIntervalSet.html">RealIntervalSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~TaggedRealInterval.html">TaggedRealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getIntervals">getIntervals</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-wrapIntervalFunction">wrapIntervalFunction</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-typedef">T</span><span data-ice="name"><span><a href="typedef/index.html#static-typedef-RealIntervalLike">RealIntervalLike</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/math/real/pow.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import { getExponent } from &apos;./fp_manip.js&apos;
+import { gcd } from &apos;./basic_arithmetic.js&apos;
+
+// Computes a ^ (c/d), where c and d are integers.
+function powRational (a, c, d) {
+  // Simple return cases
+  if (d === 0 || Number.isNaN(c) || Number.isNaN(d) || !Number.isInteger(c) || !Number.isInteger(d) || Number.isNaN(a)) { return NaN }
+
+  if (a === 0) return 0
+
+  const evenDenom = d % 2 === 0
+  const evenNumer = c % 2 === 0
+
+  if (evenDenom &amp;&amp; a &lt; 0) return NaN
+
+  if (d &lt; 0) {
+    c = -c
+    d = -d
+  }
+
+  // Now we know that a is not NaN, c is an integer, and d is a nonzero positive integer. Also, the answer is not NaN.
+  const mag = Math.pow(Math.abs(a), c / d)
+
+  if (a &gt;= 0) { // Can just do Math.pow
+    return mag
+  } else if (a === 0) {
+    return 0
+  } else {
+    // We know that evenDenom is false
+    return evenNumer ? mag : -mag
+  }
+}
+
+/**
+ * Return the closest rational number p/q to x where q &lt; maxDenominator and p &lt; maxNumerator.
+ * @param x {number}
+ * @param maxDenominator {number}
+ * @param maxNumerator {number}
+ * @returns {number[]} A three-element array [ p, q, error ], where error is abs(x - p/q)
+ */
+function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SAFE_INTEGER) {
+  const flr = Math.floor(x)
+
+  // If we find frac is approximately p/q, the true numerator is q * flr + p. Thus, the maximum numerator is dn - q * flr
+
+  let an = flr
+  let ad = 1
+  let bn = flr + 1
+  let bd = 1
+
+  while (true) {
+    // Compute middle in Farey sequence
+    let cn = an + bn
+    let cd = ad + bd
+
+    // Reduce fraction
+    const g = gcd(cn, cd)
+    if (g !== 1) {
+      cn /= g
+      cd /= g
+    }
+
+    // Compute both sides
+    const a = an / ad
+    const b = bn / bd
+
+    const errA = x - a
+    const errB = b - x
+
+    let bestn
+    let bestd
+    let bestErr
+
+    // Which approximation is better? Store it in bestn, bestd, bestErr
+    if (errA &lt; errB) {
+      bestn = an
+      bestd = ad
+      bestErr = errA
+    } else {
+      bestn = bn
+      bestd = bd
+      bestErr = errB
+    }
+
+    // If numerator or denominator are too big, or the approximation is exact, return the approximation
+    if (cd &gt; maxDenominator || cn &gt; maxNumerator || bestErr === 0) return [bestn, bestd, bestErr]
+
+    const c = cn / cd
+
+    if (c === x) return [cn, cd, 0]
+
+    if (x &lt; c) {
+      bn = cn
+      bd = cd
+    } else {
+      an = cn
+      ad = cd
+    }
+  }
+}
+
+// [...Array(53 + 25).keys()].map(n =&gt; { n = n - 52; return Math.floor(Math.min(Math.PI * 2 ** (26 - n/2) / 300, Number.MAX_SAFE_INTEGER)) })
+const dnLookupTable = [
+  47161585013522, 33348276574567, 23580792506761, 16674138287283, 11790396253380, 8337069143641, 5895198126690,
+  4168534571820, 2947599063345, 2084267285910, 1473799531672, 1042133642955, 736899765836, 521066821477, 368449882918,
+  260533410738, 184224941459, 130266705369, 92112470729, 65133352684, 46056235364, 32566676342, 23028117682,
+  16283338171, 11514058841, 8141669085, 5757029420, 4070834542, 2878514710, 2035417271, 1439257355, 1017708635,
+  719628677, 508854317, 359814338, 254427158, 179907169, 127213579, 89953584, 63606789, 44976792, 31803394, 22488396,
+  15901697, 11244198, 7950848, 5622099, 3975424, 2811049, 1987712, 1405524, 993856, 702762, 496928, 351381, 248464,
+  175690, 124232, 87845, 62116, 43922, 31058, 21961, 15529, 10980, 7764, 5490, 3882, 2745, 1941, 1372, 970, 686, 485,
+  343, 242, 171, 121
+]
+
+function _doubleToRational (d) {
+  if (d === 0) { return [0, 1] } else if (Number.isInteger(d)) { return [d, 1] }
+
+  const negative = d &lt; 0
+  d = Math.abs(d)
+
+  if (d &lt;= 1.1102230246251565e-16 /** 2^-53 */ || d &gt; 67108864 /** 2^26 */ || !Number.isFinite(d)) { return [NaN, NaN] }
+
+  // Guaranteed that d &gt; 0 and is finite, and that its exponent n is in the range [-52, 25] inclusive.
+  const exp = getExponent(d)
+
+  // We now look up the corresponding value of d_n, as explained in Grapheme Theory. It is offset by 52 because arrays
+  // start from 0
+  const dn = dnLookupTable[exp + 52]
+
+  // We find the nearest rational number that satisfies our requirements
+  const [p, q, err] = closestRational(d, dn)
+
+  // Close enough, but rigorously so (see Theory)
+  if (err &lt;= Math.pow(2, exp - 52)) return [negative ? -p : p, q]
+
+  return [NaN, NaN]
+}
+
+let lastDoubleToRationalArg = 0
+let lastDoubleToRationalRes = [0, 1]
+
+/**
+ * Cached wrapper for _doubleToRational. The question is how to classify FLOATS, which are all technically rationals
+ * (more specifically, dyadic rationals), as rational numbers. See Grapheme Theory, &quot;Intelligent Pow&quot; for more
+ * information. In short, at most 1/10000 of floats are classified as rational, and the potential returned rational
+ * numbers vary depending on the magnitude of d.
+ * @param d {number}
+ * @returns {number[]} Two-element array; first is the numerator, second is the denominator
+ */
+export function doubleToRational (d) {
+  if (d === lastDoubleToRationalArg) return lastDoubleToRationalRes
+
+  const res = _doubleToRational(d)
+
+  lastDoubleToRationalRes = res
+  lastDoubleToRationalArg = d
+
+  return res
+}
+
+/**
+ * Given a &lt; 0 and non-integer b, try to compute a ^ b. Yeah, good luck Tim.
+ * The gist of the argument is that we try to convert b to a nearby rational number. If there is no such rational number,
+ * we assume that b is irrational and simply return NaN. If there is such a rational number p/q, then we return NaN if
+ * q is even, and otherwise return the mathematical value.
+ *
+ * @param a {number}
+ * @param b {number}
+ */
+function powSpecial (a, b) {
+  const [num, den] = doubleToRational(b)
+
+  // deemed irrational
+  if (!den) return NaN
+
+  // integer
+  if (den === 1) return Math.pow(a, num)
+
+  return powRational(a, num, den)
+}
+
+/**
+ * This function computes a^b, where a and b are floats, but does not always return NaN for a &lt; 0 and b &#x2260; Z. The
+ * method by which this is bodged is specified in Grapheme Theory. For the special cases, it takes about 0.006 ms per
+ * evaluation on my computer.
+ *
+ * There are some special cases:
+ *   a. if a === b === 0, 1 is returned (this is same as Math.pow)
+ *   b. if a is NaN or b is NaN, NaN is returned
+ *   c. if a &lt; 0, b not an integer, a special algorithm is used (see above)
+ *   d. The rest of the cases are identical to Math.pow.
+ *
+ * Contrast these cases with Math.pow at https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate
+ * @param a {number} The base of the exponential.
+ * @param b {number} The exponent. If a is negative and b is deemed to be a near-rational, a^b is different from Math.pow(a, b).
+ * @returns {number}
+ */
+export function pow (a, b) {
+  if (Number.isNaN(a) || Number.isNaN(b)) return NaN
+
+  if (a &lt; 0 &amp;&amp; a &gt; -Infinity &amp;&amp; !Number.isInteger(b)) return powSpecial(a, b)
+
+  return Math.pow(a, b)
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

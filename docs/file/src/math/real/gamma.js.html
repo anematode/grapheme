@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">src/math/real/gamma.js | grapheme</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="JavaScript graphing library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="grapheme"><meta property="twitter:description" content="JavaScript graphing library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/anematode/grapheme"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-benchmark">benchmark</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getID">getID</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/core/element.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-bigint">math/bigint</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/bigint/bigint.js~BigInt.html">BigInt</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real">math/real</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-add">add</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-divide">divide</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gcd">gcd</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-multiply">multiply</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-subtract">subtract</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-countFloatsBetween">countFloatsBetween</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-frexp">frexp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getExponent">getExponent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isDenormal">isDenormal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundDown">roundDown</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-roundUp">roundUp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-toExactFloat">toExactFloat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-factorial">factorial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gamma">gamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-lnGamma">lnGamma</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-doubleToRational">doubleToRational</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pow">pow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RealFunctions">RealFunctions</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#math-real-interval">math/real_interval</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealInterval.html">RealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~RealIntervalSet.html">RealIntervalSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/math/real_interval/real_interval.js~TaggedRealInterval.html">TaggedRealInterval</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getIntervals">getIntervals</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-wrapIntervalFunction">wrapIntervalFunction</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-typedef">T</span><span data-ice="name"><span><a href="typedef/index.html#static-typedef-RealIntervalLike">RealIntervalLike</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/math/real/gamma.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">// Number of coefficients in the approximation
+const LANCZOS_COUNT = 7
+const LANCZOS_COEFFICIENTS = [
+  0.99999999999980993,
+  676.5203681218851,
+  -1259.1392167224028,
+  771.32342877765313,
+  -176.61502916214059,
+  12.507343278686905,
+  -0.13857109526572012,
+  9.9843695780195716e-6,
+  1.5056327351493116e-7
+]
+
+// 1, 1, 2, 6, ...
+const INTEGER_FACTORIALS = [1]
+
+// Populate INTEGER_FACTORIALS
+let fact = 1
+for (let i = 1; ; ++i) {
+  fact *= i
+
+  if (fact === Infinity) { break }
+
+  INTEGER_FACTORIALS.push(fact)
+}
+
+const INTEGER_FACTORIAL_LEN = INTEGER_FACTORIALS.length
+
+/**
+ * This function accepts a real-valued number x and returns the value of the gamma function evaluated at
+ * x. If there is a pole at x, NaN is returned. NaN is returned instead of Infinity to distinguish a pole
+ * (at -1, -2, ...) from a massive value (e.g. at 100). The function is relatively accurate and fast, though I
+ * would like to assess its accuracy at some point.
+ *
+ * Handling of special values: NaN -&gt; NaN, Infinity -&gt; Infinity, -Infinity -&gt; NaN
+ *
+ * The algorithm works based on the Lanczos approximation. The original code was written in Python by
+ * Fredrik Johansson and published to Wikipedia, which means it is compatible license-wise with this
+ * project. The relevant diff (on the Swedish Wikipedia) is at
+ * https://sv.wikipedia.org/w/index.php?title=Gammafunktionen&amp;diff=1146966&amp;oldid=1146894.
+ * Values below 0.5 are calculated using the reflection formula, see
+ * https://en.wikipedia.org/wiki/Gamma_function#General.
+ * @param x {number}
+ * @returns {number}
+ * @function gamma
+ * @memberOf RealFunctions
+ */
+export function gamma (x) {
+  // Special cases
+  if (Number.isNaN(x)) return NaN
+  if (x === Infinity) return Infinity
+  if (x === -Infinity) return NaN
+
+  // Define gamma specially for integral values
+  if (Number.isInteger(x)) {
+    // Gamma function undefined for negative integers
+    if (x &lt;= 0) return NaN
+
+    // Gamma function too large, return Infinity
+    if (x &gt; INTEGER_FACTORIAL_LEN) return Infinity
+
+    return INTEGER_FACTORIALS[x - 1]
+  }
+
+  if (x &lt; 0.5) {
+    // Reflection formula
+    return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x))
+  } else {
+    // Lanczos approximation
+    x -= 1
+
+    // The value of A_g(x), see https://en.wikipedia.org/wiki/Lanczos_approximation#Introduction
+    let z = LANCZOS_COEFFICIENTS[0]
+    for (let i = 1; i &lt; LANCZOS_COUNT + 2; ++i) {
+      z += LANCZOS_COEFFICIENTS[i] / (x + i)
+    }
+
+    const t = x + LANCZOS_COUNT + 0.5
+    const sqrt2Pi = Math.sqrt(2 * Math.PI) // for performance, since Math.sqrt can be overwritten
+
+    return sqrt2Pi * Math.pow(t, (x + 0.5)) * Math.exp(-t) * z
+  }
+}
+
+/**
+ * The factorial of x. This function accepts all numerical values and just internally uses the gamma function.
+ * @param x {number}
+ * @returns {number}
+ * @function factorial
+ * @memberOf RealFunctions
+ */
+export function factorial (x) {
+  return gamma(x + 1)
+}
+
+/**
+ * The log-gamma or ln-gamma function, commonly used because the gamma function blows up fast and it is
+ * useful to work with its larger values. It is just the natural logarithm of the gamma function. The
+ * algorithm is identical to the above, except there is no special case for positive integers &gt; 2 (since
+ * there is little point, and the list would have to be enormous).
+ *
+ * Handling of special values: NaN -&gt; NaN, Infinity -&gt; Infinity, -Infinity -&gt; NaN
+ *
+ * @param x {number}
+ * @returns {number}
+ * @function lnGamma
+ * @memberOf RealFunctions
+ */
+export function lnGamma (x) {
+  // Special cases
+  if (Number.isNaN(x)) return NaN
+  if (x === Infinity) return Infinity
+  if (x === -Infinity) return NaN
+
+  if (x &lt;= 0) {
+    // Handle negative numbers
+    if (Number.isInteger(x)) return NaN
+
+    // If the floor of x is an odd number, then gamma(x) is negative and thus NaN should be returned.
+    if (Math.floor(x) % 2 === 1) return NaN
+  }
+
+  // lnGamma(1) = lnGamma(2) = 0; the algorithm is inexact for the former
+  if (x === 1 || x === 2) return 0
+
+  if (x &lt; 0.5) {
+    // Reflection formula, as above
+    const reflected = lnGamma(1 - x)
+
+    const lnPi = Math.log(Math.PI) // for performance, since Math.log can be overwritten
+
+    return lnPi - Math.log(Math.sin(Math.PI * x)) - reflected
+  } else {
+    // See above for explanation
+    x -= 1
+
+    let z = LANCZOS_COEFFICIENTS[0]
+    for (let i = 1; i &lt; LANCZOS_COUNT + 2; ++i) {
+      z += LANCZOS_COEFFICIENTS[i] / (x + i)
+    }
+
+    const t = x + LANCZOS_COUNT + 0.5
+    const lnSqrt2Pi = Math.log(2 * Math.PI) / 2 // for performance, since Math.log can be overwritten
+
+    return lnSqrt2Pi + Math.log(t) * (x + 0.5) - t + Math.log(z)
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

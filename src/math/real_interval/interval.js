@@ -1,303 +1,357 @@
-// This class represents an interval [min, max]. If defMin=defMax=true, the interval is defined for all x. If defMin=false
-// and defMax=true, then the interval may be defined for all x. If defMin=defMax=false, the interval is undefined for
-// all x. For example, sqrt([-2,-1]) would have defMin=defMax=false
-class RealInterval {
-  constructor (min = 0, max = min, defMin = true, defMax = true) {
+/** This file defines interval arithmetic functions and classes. */
+
+/**
+ * An interval-like object; in other words, something that is a {@link RealInterval} or {@link RealIntervalSet}.
+ * @typedef {(RealInterval|RealIntervalSet)} RealIntervalLike
+ */
+
+import { roundDown, roundUp } from '../real/fp_manip.js'
+
+/**
+ * A real interval is a closed interval that is represents a nonstrict superset of a set of real numbers. The minimum
+ * is stored in the variable min, and the maximum is stored in the variable max. The set of
+ * all real numbers can be represented with the interval [-inf, inf].
+ *
+ * <p>Jeff Tupper adds four additional properties,  named defMin, defMax, contMin, and contMax. If defMin = defMax = true,
+ * then the number represented is entirely DEFINED. If defMin = false and defMax = true, then we are unsure whether the number is defined.
+ * If defMin = defMax = false, then the number is definitely undefined. My modification is to represent those intervals
+ * where defMin = defMax = false</p>
+ *
+ * <p>The reason this is useful is to encapsulate the notion of a function being undefined. For example, sqrt([-1, -0.5])
+ * is entirely undefined, so defMin = defMax = false. In other words, if x is in [-1, -0.5], we KNOW that sqrt(x) is
+ * undefined – at least among the real numbers. But if x is in [-1, 1], we don't know for sure that sqrt(x) is defined,
+ * so defMin = false and defMax = true for sqrt([-1, 1]).</p>
+ *
+ * <p>contMin and contMax are the same thing, but for continuity. Some functions are defined everywhere, but discontinuous.
+ * A good example is the floor function. floor([-1, 1]) is always defined, so defMin = defMax = true, but contMin =
+ * false and contMax = true. Undefinedness implies discontinuity, not the other way around. That is, if defMin = false,
+ * that will take precedence over contMin = true; the value of contMin is immaterial in that case.</p>
+ *
+ * <p>There is also the class {@link RealIntervalSet}, which represents a set of intervals.</p>
+ *
+ * <p>In normal Grapheme usage, an undefined RealInterval is simply represented with defMin = defMax = false. null should
+ * never be passed to a function as a RealInterval; it will almost certainly throw an error.</p>
+ *
+ * <p>tl;dr: Six parameters, namely min, max, defMin, defMax, contMin, contMax. min and max are numbers which represent the
+ * bounds of the interval, and the remaining four parameters are booleans that provide extra context for the meaning of
+ * the interval.</p>
+ */
+export class RealInterval {
+  /**
+   * Construct a RealInterval. Only a single argument is needed, and will produce an "exact interval", but there are
+   * six arguments in total. The meaning of each argument is described in the class description.
+   * @param min {number} The minimum of the interval.
+   * @param max {number} The maximum of the interval.
+   * @param defMin {boolean} Whether the interval is always defined.
+   * @param defMax {boolean} Whether the interval is potentially defined.
+   * @param contMin {boolean} Whether the interval is always continuous.
+   * @param contMax {boolean} Whether the interval is potentially continuous.
+   */
+  constructor (min, max = min, defMin = true, defMax = true, contMin = true, contMax = true) {
+    /**
+     * The minimum of the interval.
+     * @type {number}
+     * @public
+     */
     this.min = min
+    /**
+     * The maximum of the interval.
+     * @type {number}
+     * @public
+     */
     this.max = max
+    /**
+     * Whether the interval is always defined.
+     * @type {boolean}
+     * @public
+     */
     this.defMin = defMin
+    /**
+     * Whether the interval is potentially defined.
+     * @type {boolean}
+     * @public
+     */
     this.defMax = defMax
+    /**
+     * Whether the interval is always continuous.
+     * @type {boolean}
+     * @public
+     */
+    this.contMin = contMin
+    /**
+     * Whether the interval is potentially continuous.
+     * @type {boolean}
+     * @public
+     */
+    this.contMax = contMax
   }
 
   /**
-   * Returns whether the interval can be represented as a single number; does it contain only one number.
+   * The width of this interval, in other words max - min.
+   * @returns {number}
+   */
+  size () {
+    return this.max - this.min
+  }
+
+  /**
+   * Whether this interval contains x.
+   * @param x {number}
    * @returns {boolean}
    */
-  isExact () {
-    return this.min === this.max
+  contains (x) {
+    return this.min < x && x < this.max
   }
 
   /**
-   * Returns whether the interval is a set of intervals, aka false
-   * @returns {boolean}
+   * Whether this is a RealIntervalSet (it's not).
+   * @returns {boolean} false.
    */
   isSet () {
     return false
   }
 
   /**
-   * Print out the interval nicely for analysis
-   * @returns {string}
+   * Returns whether the interval can be represented as a single number.
+   * @returns {boolean}
    */
-  prettyPrint () {
-    return `(${this.min}, ${this.max}), <${this.defMin}, ${this.defMax}>`
-  }
-
-  /**
-   * Clone the interval
-   * @returns {RealInterval}
-   */
-  clone () {
-    return new RealInterval(this.min, this.max, this.defMin, this.defMax)
-  }
-
-  /**
-   * Whether x is contained within the interval.
-   * @param x
-   */
-  contains (x) {
-    return this.min <= x && x <= this.max
-  }
-
-  intersects (i) {
-    if (i.isSet()) {
-      return getIntervals(i).some(int => this.intersects(int))
-    } else {
-      return i.contains(this.min) || i.contains(this.max) || this.contains(i.min)
-    }
-  }
-
-  equals(i1) {
-    return (this.min === i1.min && this.max === i1.max && this.defMin === i1.defMin && this.defMax === i1.defMax)
-  }
-
-  static get One () {
-    return constructIntervalFromFloat(1)
-  }
-
-  static get Yes () {
-    return new RealInterval(1, 1, true, true)
-  }
-
-  static get Yesnt () {
-    return new RealInterval(0, 1, true, true)
-  }
-
-  static get No () {
-    return new RealInterval(0, 0, true, false)
-  }
-
-  static fromNumber(d, correctRounding=true) {
-    if (correctRounding && typeof d === "string") {
-      // We can check whether d is exactly representable as a float
-      // TODO make more general
-
-      let f = parseFloat(d)
-
-      if (f === parseInt(d)) {
-        correctRounding = false
-
-        d = f
-      }
-    }
-
-    if (correctRounding)
-      return constructIntervalFromFloat(d)
-    else
-      return new RealInterval(d, d, true, true)
-  }
-}
-
-/**
- * Convert an Interval or an IntervalSet into a list of intervals
- * @param i
- * @returns {Array}
- */
-function getIntervals (i) {
-  if (i.isSet()) {
-    return i.intervals
-  } else {
-    return [i]
-  }
-}
-
-/**
- * Represents a set of RealIntervals
- */
-class RealIntervalSet {
-  constructor (intervals = []) {
-    this.intervals = intervals
-  }
-
-  get min () {
-    return Math.min.apply(null, this.intervals.map(interval => interval.min))
-  }
-
-  get max () {
-    return Math.max.apply(null, this.intervals.map(interval => interval.max))
-  }
-
-  get defMin () {
-    return !!Math.min.apply(null, this.intervals.map(interval => interval.defMin))
-  }
-
-  get defMax () {
-    return !!Math.max.apply(null, this.intervals.map(interval => interval.defMax))
-  }
-
-  isSet () {
-    return true
-  }
-
   isExact () {
     return this.min === this.max
   }
 
-  contains (x) {
-    return this.intervals.some(i => i.contains(x))
+  /**
+   * Clone the interval.
+   * @returns {RealInterval}
+   */
+  clone () {
+    return new RealInterval(this.min, this.max, this.defMin, this.defMax, this.contMin, this.contMax)
   }
 
-  intersects (i) {
-    return this.intervals.some(interval => interval.intersects(i))
+  /**
+   * Whether this is equal to another interval.
+   * @param {RealInterval} int
+   * @returns {boolean}
+   */
+  equals (int) {
+    return this.min === int.min && this.max === int.max && this.defMin === int.defMin && this.defMax === int.defMax &&
+      this.contMin === int.contMin && this.contMax === int.contMax
+  }
+
+  /**
+   * Whether this interval intersects another.
+   * @param int {RealIntervalLike}
+   * @return {boolean} Whether the intervals intersect.
+   */
+  intersects (int) {
+    if (int.isSet()) {
+      return int.intervals.any(subint => this.intersects(subint))
+    } else {
+      // Iff two intervals intersect, then either some of this.contains(int.min), this.contains(int.max) is true, or
+      // this interval is a subset of the other one which can be detected via int.contains(this.min)
+      return this.contains(int.min) || this.contains(int.max) || int.contains(this.min)
+    }
+  }
+
+  /**
+   * Create an interval from a JS number or a string representing a real number. If correctRounding is true, it will
+   * ensure that the INTENDED real number is encapsulated in the interval, by setting the bounds of the interval to be
+   * just around the number. If the string can be exactly represented as a float, an exact interval is returned. If
+   * correctRounding is false, then an exact interval is always outputted.
+   * @param x {Number|String} Number or string to make an interval from.
+   * @param correctRounding {boolean} If true, it will ensure the interval contains the real number that was desired.
+   * @returns {RealInterval}
+   */
+  static from (x, correctRounding = true) {
+    /* if (correctRounding && typeof x === 'string') {
+      const val = toExactFloat(x)
+
+      if (!Number.isNaN(val)) { return new RealInterval(val, val) }
+    } */
+
+    const val = parseFloat(x)
+
+    if (Number.isNaN(val)) { return BAD_INTERVAL }
+
+    return new RealInterval(roundDown(val), roundUp(val))
   }
 }
 
-function applyTuples (callback, intervals) {
-  switch (intervals.length) {
-    case 0:
-      return
-    case 1:
-      intervals[0].forEach(callback)
-      break
-    case 2:
-      let int1 = intervals[0]
-      let int2 = intervals[1]
+/**
+ * Similar to a standard RealInterval, but supports tags, which is an object stored in a tags parameter. There are a
+ * variety of tags that can be used, and there needs to be a balancing act between more tags for tighter and faster
+ * computation, and having too many tags that leads to slow down.
+ */
+export class TaggedRealInterval extends RealInterval {
 
-      int1.forEach(i1 => {
-        int2.forEach(i2 => {
-          callback(i1, i2)
-        })
-      })
-      break
-    default:
-      let remainingIntervals = intervals.slice(1)
-      intervals[0].forEach(int => {
-        applyTuples((...args) => {
-          callback(int, ...args)
-        }, remainingIntervals)
-      })
+}
+
+/** <p>Some functions, such as f(x) = 1/x, may
+ * have to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],
+ * and there is no tighter bound. The solution is to return a SET of intervals, which together cover the solution set.
+ * In this case, there would be three (not two) intervals returned. The intervals are [-inf, -1], [1, inf], and
+ * [NaN, NaN, defMin=false, defMin=false]. The first two intervals cover the defined possibilities; the last interval
+ * covers the fact that 1/0 is undefined.</p>
+ *
+ * <p>RealIntervalSet is equipped with defMin, defMax, contMin, and contMax just like a RealInterval, but they are in
+ * function form: setMin(), setMax(), setDefMin(), .... They are calculated; defMin is the logical AND of each interval,
+ * and defMax is the logical OR of each interval, and the same is true for contMin and contMax.</p>
+ *
+ * <p>All exposed interval functions accept both RealIntervals and RealIntervalSets. For performant testing of whether an
+ * argument is a RealInterval or Set, the function isSet() can be used. RealIntervalSets CANNOT be nested; they should
+ * always be flattened. If a set becomes too fat, it must be MERGED. This can be done in a lossless or lossy fashion.
+ * Lossless merging happens when intervals are merged in a way such that the resulting set is exactly equivalent
+ * mathematically to the original. For example, [-1, 1] u [1, 4] can be losslessly merged to [-1, 4]. Note that this
+ * merging needs to account for differing defMin and defMax values. For example, [-1, 1, defMin=false, defMax=true] u
+ * [1, 4, defMin=true, defMax=true] CANNOT be losslessly merged to [-1, 4, defMin=false, defMax=true]; this is a lossy
+ * conversion. Obviously, lossless merging is preferred over lossy merging, but the latter might be necessary. In the
+ * most extreme case, the interval [-inf, inf, defMin=false, defMax=true, contMin=false, contMax=true] is a valid
+ * superset and lossy merge of ANY interval set. The maximum acceptable size for a RealIntervalSet is
+ * maxRealIntervalSetSize.</p>
+ *
+ * <p>An undefined RealIntervalSet is one containing only undefined intervals, or an empty set. It is NOT null, as with
+ * RealInterval.</p>
+ */
+export class RealIntervalSet {
+  /**
+   * Construct a RealIntervalSet from an Array of RealIntervals.
+   * @param intervals {Array<RealInterval>} The real intervals in this set of intervals.
+   */
+  constructor (intervals = []) {
+    /**
+     * The set of intervals this contains.
+     * @type {Array<RealInterval>}
+     * @public
+     */
+    this.intervals = intervals
+  }
+
+  /**
+   * Whether this is a RealIntervalSet (it is).
+   * @returns {boolean} true.
+   */
+  isSet () {
+    return false
+  }
+
+  /**
+   * There are a lot of cases here to consider. We ignore all intervals where defMax = false, since they never matter.
+   * If the set is empty, we return Infinity.
+   */
+  setMin () {
+    const { intervals } = this
+
+    const min = Infinity
   }
 }
 
-function wrapIntervalSetFunction (func, intervalArgCount=func.length) {
-  return function (...intervals) {
-    let isSet = false
-    let extraParams = intervals.slice(intervalArgCount)
+/** Convert an interval set or interval into a list of intervals */
+export function getIntervals (int) {
+  if (int.isSet()) {
+    return int.intervals
+  } else {
+    return [ int ]
+  }
+}
 
-    for (let i = 0; i < intervalArgCount; ++i) {
-      let interval = intervals[i]
+/** Interval returned when a function is completely undefined. */
+const BAD_INTERVAL = Object.freeze(new RealInterval(NaN, NaN, false, false, false, false))
 
-      if (interval.isSet()) {
-        isSet = true
-        break
+function evalIntervalSet1 (func, int1, furtherArgs) {
+  const intervals = []
+  let undefIntervalReturned = false
+
+  for (const int of int1.intervals) {
+    if (int.defMax) {
+      const res = func(int1, ...furtherArgs)
+
+      if (res.defMax) { // record the interval if it is defined
+        intervals.push(res)
+        continue
       }
     }
 
-    if (isSet) {
-      const retIntervals = []
-
-      const obtainedIntervals = intervals.slice(0, intervalArgCount).map(getIntervals)
-
-      applyTuples((...ints) => {
-        const result = func(...ints, ...extraParams)
-
-        const intervals = getIntervals(result)
-
-        for (let i = 0; i < intervals.length; ++i) {
-          retIntervals.push(intervals[i])
-        }
-      }, obtainedIntervals)
-
-      return new RealIntervalSet(retIntervals)
-    } else {
-      return func(...intervals)
+    if (!undefIntervalReturned) {
+      undefIntervalReturned = true // note this
+      intervals.push(BAD_INTERVAL) // push a BAD_INTERVAL
     }
   }
+
+  return new RealIntervalSet(intervals)
 }
 
-const floatStore = new Float64Array(1)
+function evalIntervalSet2 (func, int1, int2, furtherArgs) {
+  const int1Intervals = getIntervals(int1)
+  const int2Intervals = getIntervals(int2)
 
-const intView = new Uint32Array(floatStore.buffer)
+  const intervals = []
+  let undefIntervalReturned = false
 
-let correctRounding = true
-
-const roundUpCorrectRounding = (x) => {
-  if (x === Infinity) {
-    return Infinity
-  }
-  if (x === -Infinity) {
-    return -Number.MAX_VALUE
-  }
-  if (x === 0) {
-    return Number.MIN_VALUE
-  }
-  if (isNaN(x)) {
-    return NaN
+  function undefinedIntervalNeeded () {
+    if (!undefIntervalReturned) {
+      undefIntervalReturned = true
+      intervals.push(BAD_INTERVAL)
+    }
   }
 
-  if (x < 0) {
-    return -roundDownCorrectRounding(-x)
+  for (const int1 of int1Intervals) {
+    if (!int1.defMax) {
+      undefinedIntervalNeeded()
+      continue
+    }
+    for (const int2 of int2Intervals) {
+      if (!int2.defMax) {
+        undefinedIntervalNeeded()
+        continue
+      }
+      // for each pair of intervals where both are defined
+
+      const res = func(int1, int2, ...furtherArgs)
+
+      if (!res.defMax) { // see explanation above
+        undefinedIntervalNeeded()
+      } else {
+        intervals.push(res)
+      }
+    }
   }
 
-  floatStore[0] = x
-
-  let leastSignificantGroup = ++intView[0]
-
-  if (leastSignificantGroup === 0) {
-    ++intView[1]
-  }
-
-  return floatStore[0]
+  return new RealIntervalSet(intervals)
 }
 
-const roundDownCorrectRounding = (x) => {
-  if (x === Infinity) {
-    return Number.MAX_VALUE
-  }
-  if (x === -Infinity) {
-    return -Infinity
-  }
-  if (x === 0) {
-    return -Number.MIN_VALUE
-  }
-  if (isNaN(x)) {
-    return NaN
-  }
+/**
+ * Assume func is a function that accepts argCount number of intervals. For example, + might accept 2, while unary -
+ * might accept 1. This function enumerates each possible double / triple of intervals in an interval set and forwards
+ * it to the function, combining all the intervals into an interval set.
+ * @param func {Function} Function to forward arguments to
+ * @param argCount {number} The number of arguments in the function. Further arguments will be forwarded unmodified.
+ */
+export function wrapIntervalFunction (func, argCount = 2) {
+  let ret
 
-  if (x < 0) {
-    return -roundUpCorrectRounding(-x)
-  }
-
-  floatStore[0] = x
-
-  let leastSignificantGroup = --intView[0]
-
-  if (leastSignificantGroup === -1) {
-    --intView[1]
-  }
-
-  return floatStore[0]
-}
-
-let roundUp = roundUpCorrectRounding
-let roundDown = roundDownCorrectRounding
-
-const identity = (x) => x
-
-function toggleCorrectRounding(v) {
-  if (v === correctRounding)
-    return
-
-  if (v) {
-    roundUp = roundUpCorrectRounding
-    roundDown = roundDownCorrectRounding
+  if (argCount === 0) {
+    ret = func
+  } else if (argCount === 1) {
+    ret = (int1, ...furtherArgs) => {
+      if (int1.isSet()) {
+        return evalIntervalSet1(func, int1, furtherArgs)
+      } else {
+        return func(int1, ...furtherArgs)
+      }
+    }
+  } else if (argCount === 2) { // the most common case
+    ret = (int1, int2, ...furtherArgs) => {
+      if (int1.isSet() || int2.isSet()) {
+        return evalIntervalSet2(func, int1, int2, furtherArgs)
+      } else {
+        return func(int1, int2, ...furtherArgs)
+      }
+    }
   } else {
-    roundUp = roundDown = identity
+    throw new RangeError('Unimplemented')
   }
-}
 
-function constructIntervalFromFloat (f) {
-  return new RealInterval(roundDown(f), roundUp(f))
-}
+  // Store the internal interval function for convenience
+  ret.internal = func
 
-export { RealInterval, wrapIntervalSetFunction, roundUp, roundDown, toggleCorrectRounding, RealIntervalSet, getIntervals }
+  return ret
+}

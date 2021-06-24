@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbi@3.1.4/dist/jsbi-umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/9.0.0/decimal.js"></script>
+
+<script id="setup">
+    var BI = Grapheme.BigInt
+    var BF = Grapheme.BigFloat
+
+    var VERIFY = Grapheme.BFVERIFY
+
+    var argNames = ["mant", "prec", "target", "round", "trailing", "trailingInfo"]
+
+    VERIFY.testMantissaCase(Grapheme.roundMantissaToPrecision, [ [ 0x1fffffff, 0 ], 20, 2, Grapheme.ROUNDING_MODE.NEAREST, 0, 0 ], argNames, [ 0x20000000, 0 ], 0)
+</script>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>

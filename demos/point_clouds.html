@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="test_setup.js"></script>
+<p style="font-size:16px;">Test</span>
+
+<noscript id="setup">
+
+    const renderer = new Grapheme.WebGLRenderer()
+    const scene = new Grapheme.InteractiveScene({ id: "main" })
+    document.body.appendChild(scene.domElement)
+
+    scene.setSize(640, 480)
+
+    figure = new Grapheme.Figure({ marginLeft: 10, marginRight: 10, marginTop: 10, marginBottom: 10, interactivity: true })
+    scene.add(figure)
+
+    baubles = new Grapheme.PlotBaubles()
+    figure.add(baubles)
+
+    function getPoints () {
+        let data = []
+        let cnt = 1000
+
+        for (let i = 0; i < cnt; ++i) {
+            let m = i / cnt * 50
+            data.push(Math.cos(5 * m) + Math.cos(4 * m) ** 2, Math.sin(4 * m))
+        }
+
+        return data
+    }
+
+    points = new Grapheme.PointCloudElement({ data: getPoints() })
+    figure.add(points)
+
+    function render() {
+        renderer.renderDOMScene(scene)
+        requestAnimationFrame(render)
+    }
+
+    render()
+
+
+</noscript>
+
+
+</body>
+</html>

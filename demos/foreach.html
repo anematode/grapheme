@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grapheme Neue</title>
+</head>
+<body>
+<script type="module">
+  import * as Grapheme from "../src/main.js"
+
+  Object.assign(window, {Grapheme})
+
+  Object.assign(window, setup())
+</script>
+
+<script>
+  function setup() {
+    const topElem = new Grapheme.Group()
+
+    const elems = []
+
+    for (let i = 0; i < 1000; ++i) {
+      const child = new Grapheme.Group()
+
+      if (Math.random() < 0.5) {
+        const randomParent = elems[Math.floor(Math.random() ** 4 * elems.length)]
+
+        if (randomParent) randomParent.add(child)
+      }
+
+      elems.push(child)
+    }
+
+    elems.forEach(elem => !elem.parent ? topElem.add(elem) : null)
+
+    return {topElem}
+  }
+</script>
+</body>
+</html>

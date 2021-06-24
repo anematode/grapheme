@@ -1,0 +1,105 @@
+{
+  "coverage": "56.04%",
+  "expectCount": 91,
+  "actualCount": 51,
+  "files": {
+    "src/core/element.js": {
+      "expectCount": 1,
+      "actualCount": 0,
+      "undocumentLines": [
+        2
+      ]
+    },
+    "src/math/bigint/bigint.js": {
+      "expectCount": 22,
+      "actualCount": 2,
+      "undocumentLines": [
+        2,
+        3,
+        5,
+        8,
+        11,
+        12,
+        14,
+        34,
+        51,
+        74,
+        75,
+        76,
+        79,
+        83,
+        107,
+        111,
+        117,
+        124,
+        149,
+        160
+      ]
+    },
+    "src/math/real/basic_arithmetic.js": {
+      "expectCount": 5,
+      "actualCount": 4,
+      "undocumentLines": [
+        51
+      ]
+    },
+    "src/math/real/fp_manip.js": {
+      "expectCount": 14,
+      "actualCount": 10,
+      "undocumentLines": [
+        21,
+        22,
+        100,
+        103
+      ]
+    },
+    "src/math/real/gamma.js": {
+      "expectCount": 8,
+      "actualCount": 3,
+      "undocumentLines": [
+        2,
+        3,
+        16,
+        19,
+        28
+      ]
+    },
+    "src/math/real/pow.js": {
+      "expectCount": 9,
+      "actualCount": 4,
+      "undocumentLines": [
+        5,
+        103,
+        114,
+        138,
+        139
+      ]
+    },
+    "src/math/real/real_functions.js": {
+      "expectCount": 1,
+      "actualCount": 1,
+      "undocumentLines": []
+    },
+    "src/math/real_interval/basic_arithmetic.js": {
+      "expectCount": 1,
+      "actualCount": 1,
+      "undocumentLines": []
+    },
+    "src/math/real_interval/real_interval.js": {
+      "expectCount": 27,
+      "actualCount": 25,
+      "undocumentLines": [
+        259,
+        282
+      ]
+    },
+    "src/utils.js": {
+      "expectCount": 3,
+      "actualCount": 1,
+      "undocumentLines": [
+        2,
+        9
+      ]
+    }
+  }
+}

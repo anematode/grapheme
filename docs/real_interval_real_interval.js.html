@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: real_interval/real_interval.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: real_interval/real_interval.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * This file defines interval arithmetic functions.
+ * @module RealIntervals
+ * */
+
+/** A real interval is, à la Jeff Tupper's groundbreaking 2001
+ * SIGGRAPH paper, a closed interval that is a (not necessarily strict) superset of a set of real numbers. The minimum
+ * is stored in the variable min, and the maximum is stored in the variable max. The set of
+ * all real numbers can be represented with the interval [-inf, inf]. Tupper also adds four additional properties,
+ * here named defMin, defMax, contMin, and contMax. If defMin = defMax = true, then the number represented is entirely
+ * DEFINED. If defMin = false and defMax = true, then we are unsure whether the number is defined. If
+ * defMin = defMax = false, then the number is definitely undefined.
+ *
+ * The reason this is useful is to encapsulate the notion of a function being undefined. For example, sqrt([-1, -0.5])
+ * is entirely undefined, so defMin = defMax = false. In other words, if x is in [-1, -0.5], we KNOW that sqrt(x) is
+ * undefined – at least among the real numbers. But if x is in [-1, 1], we don't know for sure that sqrt(x) is defined,
+ * so defMin = false and defMax = true for sqrt([-1, 1]).
+ *
+ * contMin and contMax are the same thing, but for continuity. Some functions are defined everywhere, but discontinuous.
+ * A good example is the floor function. floor([-1, 1]) is always defined, so defMin = defMax = true, but contMin =
+ * false and contMax = true. Undefinedness implies discontinuity, not the other way around. That is, if defMin = false,
+ * that will take precedence over contMin = true; the value of contMin is immaterial in that case.
+ *
+ * There is also the class RealIntervalSet, which represents a set of intervals. See that class for more information.
+ *
+ * In normal Grapheme usage, an undefined RealInterval is simply represented with defMin = defMax = false. null should
+ * never be passed to a function as a RealInterval; it will almost certainly throw an error.
+ *
+ * tl;dr: Six parameters, namely min, max, defMin, defMax, contMin, contMax. min and max are numbers which represent the
+ * bounds of the interval, and the remaining four parameters are booleans that provide extra context for the meaning of
+ * the interval.
+ *
+ * @memberof Grapheme
+ */
+export class RealInterval {
+  /**
+   * Construct a RealInterval. Only a single argument is needed, and will produce an "exact interval", but there are
+   * six arguments in total. The meaning of each argument is described in the class description.
+   * @param min {number}
+   * @param max {number}
+   * @param defMin {boolean}
+   * @param defMax {boolean}
+   * @param contMin {boolean}
+   * @param contMax {boolean}
+   */
+  constructor (min, max = min, defMin = true, defMax = true, contMin = true, contMax = true) {
+    /** {number} */
+    this.min = min
+    /** {number} */
+    this.max = max
+    /** {boolean} */
+    this.defMin = defMin
+    /** {boolean} */
+    this.defMax = defMax
+    /** {boolean} */
+    this.contMin = contMin
+    /** {boolean} */
+    this.contMax = contMax
+  }
+}
+
+/** Some functions, such as f(x) = 1/x, may
+ * have to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],
+ * and there is no tighter bound. The solution is to return a SET of intervals, which together cover the solution set.
+ * In this case, there would be three (not two) intervals returned. The intervals are [-inf, -1], [1, inf], and
+ * [NaN, NaN, defMin=false, defMin=false]. The first two intervals cover the defined possibilities; the last interval
+ * covers the fact that 1/0 is undefined.
+ *
+ * RealIntervalSet is equipped with defMin, defMax, contMin, and contMax functions just like a RealInterval, but they
+ * should not be used in performance-intensive situations, because they are getters (which are known to be exceedingly
+ * slow). They are calculated; defMin is the logical AND of each interval, and defMax is the logical OR of each
+ * interval, and the same is true for contMin and contMax.
+ *
+ * All exposed interval functions accept both RealIntervals and RealIntervalSets. For performant testing of whether an
+ * argument is a RealInterval or Set, the function isSet() can be used. RealIntervalSets CANNOT be nested; they should
+ * always be flattened. If a set becomes too fat, it must be MERGED. This can be done in a lossless or lossy fashion.
+ * Lossless merging happens when intervals are merged in a way such that the resulting set is exactly equivalent
+ * mathematically to the original. For example, [-1, 1] u [1, 4] can be losslessly merged to [-1, 4]. Note that this
+ * merging needs to account for differing defMin and defMax values. For example, [-1, 1, defMin=false, defMax=true] u
+ * [1, 4, defMin=true, defMax=true] CANNOT be losslessly merged to [-1, 4, defMin=false, defMax=true]; this is a lossy
+ * conversion. Obviously, lossless merging is preferred over lossy merging, but the latter might be necessary. In the
+ * most extreme case, the interval [-inf, inf, defMin=false, defMax=true, contMin=false, contMax=true] is a valid
+ * superset and lossy merge of ANY interval set. The maximum acceptable size for a RealIntervalSet is
+ * maxRealIntervalSetSize.
+ *
+ * As with the RealInterval, an undefined RealIntervalSet is just a RealIntervalSet containing a single undefined
+ * RealInterval. */
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-RealIntervals.html">RealIntervals</a></li></ul><h3>Namespaces</h3><ul><li><a href="Grapheme.RealFunctions.html">RealFunctions</a></li></ul><h3>Classes</h3><ul><li><a href="Grapheme.exports.RealInterval.html">exports.RealInterval</a></li></ul><h3>Global</h3><ul><li><a href="global.html#add">add</a></li><li><a href="global.html#divide">divide</a></li><li><a href="global.html#factorial">factorial</a></li><li><a href="global.html#gamma">gamma</a></li><li><a href="global.html#isBigEndian">isBigEndian</a></li><li><a href="global.html#isDenormal">isDenormal</a></li><li><a href="global.html#lnGamma">lnGamma</a></li><li><a href="global.html#multiply">multiply</a></li><li><a href="global.html#roundDown">roundDown</a></li><li><a href="global.html#roundUp">roundUp</a></li><li><a href="global.html#subtract">subtract</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Thu Oct 01 2020 05:21:45 GMT-0700 (Pacific Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbi@3.1.4/dist/jsbi-umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/9.0.0/decimal.js"></script>
+
+<noscript id="setup">
+    let BI = Grapheme.BigInt
+    let BF = Grapheme.BigFloat
+
+    function testBigFloat () {
+        test1 = BF.fromNumber(1.01)
+    }
+
+    function testTruncation () {
+        for (let i = 0; i < 62; ++i) {
+            arr = new Int32Array([ 0xADBEEE, 0x3EADBEEF, 0x3EADBEEF ])
+            console.log(Array.from(Grapheme.truncateMantissaToPrecisionInPlace(arr, i)).map(x => x.toString(2)).join(', '))
+        }
+    }
+
+    function testRounding () {
+        for (let i = 0; i < 62; ++i) {
+            arr = new Int32Array([ 0x3FFFFFFF ])
+            Grapheme.roundMantissaToPrecisionInPlace(arr, i, Grapheme.ROUNDING_MODE.UP)
+            console.log(Array.from(arr).map(x => x.toString(2)).join(', '))
+        }
+    }
+
+    function testAddition () {
+        let arr1 = new Int32Array([ 0xE, 0x3FFFFFFF, 0x0, 0x3FFFFFFF ])
+        let arr2 = new Int32Array([ 0xE, 0xE, 0xE, 0xE ])
+
+        let target = new Int32Array(3)
+
+        Grapheme.addMantissas(arr1, arr2, 0, 50, target)
+
+        console.log(target)
+    }
+
+    function testF () {
+    f1 = BF.fromNumber(0.1)
+    f2 = BF.fromNumber(0.2)
+
+    f3 = BF.add(f1, f2)
+    }
+
+    //testF()
+
+
+    Decimal.precision = 3000
+
+    let s = 0.510285230981
+    let d = new Decimal(s)
+    let g = BF.fromNumber(s)
+
+    /*Grapheme.utils.performance(() => {
+    res1 = Decimal.add(d, d)
+    res1 = Decimal.add(d, d)
+    res1 = Decimal.add(d, d)
+    res1 = Decimal.add(d, d)
+    }, 1e6, "decimal.js")
+
+    Grapheme.utils.performance(() => {
+    res1 = BF.add(g, g, { roundingMode: Grapheme.ROUNDING_MODE.WHATEVER })
+    res1 = BF.add(g, g, { roundingMode: Grapheme.ROUNDING_MODE.WHATEVER })
+    res1 = BF.add(g, g, { roundingMode: Grapheme.ROUNDING_MODE.WHATEVER })
+    res1 = BF.add(g, g, { roundingMode: Grapheme.ROUNDING_MODE.WHATEVER })
+    }, 1e6, "grapheme")*/
+
+</noscript>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>

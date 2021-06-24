@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbi@3.1.4/dist/jsbi-umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/9.0.0/decimal.js"></script>
+
+<script id="setup">
+  deferLoad()
+
+  var BI = Grapheme.BigInt
+  var BF = Grapheme.BigFloat
+
+  function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+
+  Decimal.precision = 15
+
+  var res
+  var floats = generateRandomFloats()
+  var bigFloats = floats.map(f => BF.fromNumber(f))
+  var decimalFloats = floats.map(f => new Decimal(f))
+
+  var boundedFloats = floats.map(f => BF.fromNumber(f % 1041.2241))
+
+  function generateRandomFloats() {
+    let seed = 6
+    let gen = mulberry32(seed)
+
+    var a = new Float64Array(1)
+    var view = new BigUint64Array(a.buffer)
+    var arr = []
+
+    for (var i = 0; i < 1000; ++i) {
+      view[0] = BigInt((gen() * 2 ** 32) >>> 0) + BigInt(gen() * 2 ** 64)
+      arr.push(a[0])
+    }
+
+    return arr
+  }
+
+  function fromNumber() {
+    for (let i = 0; i < floats.length; ++i) {
+      res = BF.fromNumber(floats[i])
+    }
+  }
+
+  function toNumber() {
+    for (let i = 0; i < floats.length; ++i) {
+      res = bigFloats[i].toNumber({ roundingMode: Grapheme.ROUNDING_MODE.WHATEVER })
+    }
+  }
+
+  function addition() {
+    res = BF.new(53)
+
+    for (let i = 0; i < floats.length; ++i) {
+      for (let j = 0; j < floats.length; ++j) {
+        BF.addTo(boundedFloats[i], boundedFloats[j], res, Grapheme.ROUNDING_MODE.WHATEVER)
+      }
+    }
+  }
+
+  function decimalAddition () {
+    let res
+
+    for (let i = 0; i < floats.length; ++i) {
+      for (let j = 0; j < floats.length; ++j) {
+        res = decimalFloats[i].add(decimalFloats[j])
+      }
+    }
+  }
+
+  function decimalMultiplication () {
+    let res
+
+    for (let i = 0; i < floats.length; ++i) {
+      for (let j = 0; j < floats.length; ++j) {
+        res = decimalFloats[i].mul(decimalFloats[j])
+      }
+    }
+  }
+
+  function decimalLn () {
+    let res
+
+    for (let i = 0; i < floats.length; ++i) {
+      res = Decimal.ln(decimalFloats[i])
+    }
+  }
+
+  function multiplication() {
+    res = BF.new(53)
+
+    for (let i = 0; i < floats.length; ++i) {
+      for (let j = 0; j < floats.length; ++j) {
+        BF.mulTo(bigFloats[i], bigFloats[j], res, Grapheme.ROUNDING_MODE.WHATEVER)
+      }
+    }
+  }
+
+  function division() {
+    res = BF.new(53)
+
+    for (let i = 0; i < floats.length; ++i) {
+      for (let j = 0; j < floats.length; ++j) {
+        BF.div2(bigFloats[i], bigFloats[j], res)
+      }
+    }
+  }
+
+  function ln () {
+    for (let i = 0; i < floats.length; ++i) {
+      res = BF.ln(bigFloats[i])
+    }
+  }
+
+  function exp () {
+    for (let i = 0; i < floats.length; ++i) {
+      res = BF.exp(boundedFloats[i])
+    }
+  }
+
+  function benchmark(callback, name, iterations) {
+    setTimeout(() => {
+      let timeStart = Date.now()
+
+      for (let i = 0; i < iterations; ++i)
+        callback()
+
+      let timeEnd = Date.now()
+
+      document.body.innerHTML += `Benchmark ${name}: ${(timeEnd - timeStart) / iterations} ms per iteration for ${iterations} iterations<br>`
+    })
+  }
+
+  benchmark(fromNumber, "fromNumber", 100)
+  benchmark(toNumber, "toNumber", 100)
+  benchmark(addition, "addition", 300)
+  benchmark(multiplication, "multiplication", 10)
+  //benchmark(division, "division", 2)
+  benchmark(ln, "ln", 10)
+  benchmark(exp, "exp", 10)
+  //benchmark(decimalLn, "decimal.js ln", 10)
+  /*
+  benchmark(decimalAddition, "decimal.js addition", 10)
+  benchmark(decimalMultiplication, "decimal.js multiplication", 10)*/
+
+
+  /**
+   Before moving primitive functions to C-like writing instead of returning value
+   Benchmark fromNumber: 0.158 ms per iteration for 1000 iterations
+   Benchmark toNumber: 1.4 ms per iteration for 10 iterations
+   Benchmark addition: 385 ms per iteration for 2 iterations
+   Benchmark multiplication: 466.5 ms per iteration for 2 iterations
+   Benchmark division: 4340 ms per iteration for 2 iterations
+   */
+</script>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>
