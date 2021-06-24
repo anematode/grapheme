@@ -1,0 +1,11 @@
+node_modules/**
+.DS_Store
+.idea/**
+*.out
+*.pkl
+*.wasm
+demos/**
+theory/**
+test/**
+_config.yml
+conventions.md

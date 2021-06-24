@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "JavaScript graphing library",
   "main": "build/grapheme.js",
-  "module": "build/main.js",
+  "module": "src/main.js",
   "scripts": {
     "test": "npx mocha --reporter spec",
     "start": "http-server -a localhost -p 8000 --ext js",
