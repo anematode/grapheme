@@ -1,4 +1,0 @@
-
-const Rules = [
-  new Rule()
-]

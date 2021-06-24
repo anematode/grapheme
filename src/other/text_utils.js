@@ -1,7 +1,14 @@
-const canvas = document.createElement("canvas")
-const ctx = canvas.getContext("2d")
+let canvas, ctx
+function initCanvas () {
+  if (canvas) return
+
+  canvas = document.createElement("canvas")
+  ctx = canvas.getContext("2d")
+}
 
 export function measureText (text, textStyle) {
+  initCanvas()
+
   let font = textStyle.font
   let fontSize = textStyle.fontSize
 
