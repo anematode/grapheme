@@ -6,14 +6,26 @@ describe('Eventful', () => {
     const callback = jest.fn()
     const data = { name: 'Quinoa' }
 
-    expect(evt.addEventListener('huzzah', callback), 'addEventListener returns self').toBe(evt)
-    expect(evt.triggerEvent('huzzah', data), "triggerEvent returns false when listener doesn't return").toBe(false)
+    expect(
+      evt.addEventListener('huzzah', callback),
+      'addEventListener returns self'
+    ).toBe(evt)
+    expect(
+      evt.triggerEvent('huzzah', data),
+      "triggerEvent returns false when listener doesn't return"
+    ).toBe(false)
     expect(callback).toBeCalledWith(data, evt, 'huzzah')
 
     callback.mockClear()
 
-    expect(evt.removeEventListener('huzzah', callback), 'removeEventListener returns self').toBe(evt)
-    expect(callback, 'callback should not be called after removal').not.toBeCalled()
+    expect(
+      evt.removeEventListener('huzzah', callback),
+      'removeEventListener returns self'
+    ).toBe(evt)
+    expect(
+      callback,
+      'callback should not be called after removal'
+    ).not.toBeCalled()
   })
 
   test('add, remove, and trigger multiple listeners', () => {
@@ -26,46 +38,78 @@ describe('Eventful', () => {
     const callback5 = jest.fn()
     const data = { name: 'Quinoa' }
 
-    expect(evt.addEventListener('huzzah', [
-      callback1, callback2, callback3, callback4, callback5
-    ]), 'addEventListener accepts array').toBe(evt)
-    expect(evt.removeEventListener('huzzah', [
-      callback2, callback4
-    ]), 'addEventListener accepts array').toBe(evt)
+    expect(
+      evt.addEventListener('huzzah', [
+        callback1,
+        callback2,
+        callback3,
+        callback4,
+        callback5
+      ]),
+      'addEventListener accepts array'
+    ).toBe(evt)
+    expect(
+      evt.removeEventListener('huzzah', [callback2, callback4]),
+      'addEventListener accepts array'
+    ).toBe(evt)
 
-    expect(evt.hasEventListenersFor('choochoo'), 'returns false if there are no registered event listeners under the given name').toBe(false)
-    expect(evt.hasEventListenersFor('huzzah'), 'returns true if there are registered event listeners under the given name').toBe(true)
+    expect(
+      evt.hasEventListenersFor('choochoo'),
+      'returns false if there are no registered event listeners under the given name'
+    ).toBe(false)
+    expect(
+      evt.hasEventListenersFor('huzzah'),
+      'returns true if there are registered event listeners under the given name'
+    ).toBe(true)
 
     evt.triggerEvent('huzzah', data)
+    ;[callback1, callback3, callback5].forEach(c =>
+      expect(c).toBeCalledWith(data, evt, 'huzzah')
+    )
+    ;[callback2, callback4].forEach(c => expect(c).not.toBeCalled())
 
-    ;[ callback1, callback3, callback5 ].forEach(c => expect(c).toBeCalledWith(data, evt, 'huzzah'))
-    ;[ callback2, callback4 ].forEach(c => expect(c).not.toBeCalled())
+    expect(
+      evt.hasEventListenersFor('huzzah'),
+      'returns true if there are registered event listeners under the given name'
+    ).toBe(true)
+    ;[callback1, callback2, callback3, callback4, callback5].forEach(c =>
+      c.mockClear()
+    )
 
-    expect(evt.hasEventListenersFor('huzzah'), 'returns true if there are registered event listeners under the given name').toBe(true)
-
-    ;[ callback1, callback2, callback3, callback4, callback5 ].forEach(c => c.mockClear())
-
-    expect(evt.removeEventListeners('huzzah'), 'removeEventListeners returns self').toBe(evt)
+    expect(
+      evt.removeEventListeners('huzzah'),
+      'removeEventListeners returns self'
+    ).toBe(evt)
 
     evt.triggerEvent('huzzah')
+    ;[callback1, callback2, callback3, callback4, callback5].forEach(c =>
+      expect(c).not.toBeCalled()
+    )
 
-    ;[ callback1, callback2, callback3, callback4, callback5 ].forEach(c => expect(c).not.toBeCalled())
-
-    expect(evt.hasEventListenersFor('huzzah'), 'returns false if there are no registered event listeners under the given name').toBe(false)
+    expect(
+      evt.hasEventListenersFor('huzzah'),
+      'returns false if there are no registered event listeners under the given name'
+    ).toBe(false)
   })
 
   test('throws on an invalid event name or callback', () => {
     // Event names may be any non-empty string
     const evt = new Eventful()
-    const badEventNames = [ 0, -Infinity, '', [] ]
-    const badFunctions = [ 3, 'cow' ]
+    const badEventNames = [0, -Infinity, '', []]
+    const badFunctions = [3, 'cow']
 
     for (const bad of badEventNames) {
-      expect(() => evt.addEventListener(bad, () => null), 'Given bad name: ' + bad).toThrow()
+      expect(
+        () => evt.addEventListener(bad, () => null),
+        'Given bad name: ' + bad
+      ).toThrow()
     }
 
     for (const bad of badFunctions) {
-      expect(() => evt.addEventListener('valid event name', bad), 'Given bad callback: ' + bad).toThrow()
+      expect(
+        () => evt.addEventListener('valid event name', bad),
+        'Given bad callback: ' + bad
+      ).toThrow()
     }
   })
 
@@ -79,7 +123,9 @@ describe('Eventful', () => {
     evt.triggerEvent('choong')
 
     expect(callback, 'removed listener not called').not.toBeCalled()
-    expect(evt.hasEventListenersFor('choong'), 'reports no listeners').toBe(false)
+    expect(evt.hasEventListenersFor('choong'), 'reports no listeners').toBe(
+      false
+    )
   })
 
   test("adding a listener twice doesn't mean it gets called twice", () => {
@@ -96,7 +142,7 @@ describe('Eventful', () => {
 
   test('getEventListeners works as expected', () => {
     const evt = new Eventful()
-    const listeners = [ jest.fn(), jest.fn(), jest.fn(), jest.fn(), jest.fn() ]
+    const listeners = [jest.fn(), jest.fn(), jest.fn(), jest.fn(), jest.fn()]
 
     evt.addEventListener('porpoise', listeners)
 

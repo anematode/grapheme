@@ -69,9 +69,9 @@
  * instructions which are very prone to change and where its values should be tied solely to the element updating.
  */
 
-import {TextRenderer} from "./text_renderer.js"
-import {Colors, Pen} from "../styles/definitions.js"
-import {SceneGraph} from "./scene_graph.js"
+import { TextRenderer } from './text_renderer.js'
+import { Colors, Pen } from '../styles/definitions.js'
+import { SceneGraph } from './scene_graph.js'
 
 // Functions taken from Mozilla docs
 function createShaderFromSource (gl, shaderType, shaderSource) {
@@ -125,7 +125,8 @@ void main() {
 }`
 }
 
-const MulticolorGeometryProgram = [`
+const MulticolorGeometryProgram = [
+  `
 precision highp float;
 attribute vec2 vertexPosition;
 attribute vec4 vertexColor;
@@ -140,7 +141,8 @@ vec2 displacement = vec2(-1, 1);
 void main() {
    gl_Position = vec4(vertexPosition * xyScale + displacement, 0, 1);
    fragmentColor = vertexColor;
-}`, `
+}`,
+  `
 precision highp float;
 varying vec4 fragmentColor;
   
@@ -148,10 +150,12 @@ void main() {
    gl_FragColor = fragmentColor;
 }`,
 
-  ["vertexPosition", "vertexColor"], ["xyScale"]
+  ['vertexPosition', 'vertexColor'],
+  ['xyScale']
 ]
 
-const TextProgram = { vert: `
+const TextProgram = {
+  vert: `
 precision highp float;
 attribute vec2 vertexPosition;
 attribute vec2 texCoords;
@@ -165,7 +169,8 @@ vec2 displace = vec2(-1, 1);
 void main() {
   gl_Position = vec4(vertexPosition * xyScale + displace, 0, 1);
   texCoord = texCoords / textureSize;
-}`, frag: `
+}`,
+  frag: `
 precision highp float;
         
 uniform vec4 color;
@@ -175,7 +180,8 @@ varying vec2 texCoord;
         
 void main() {
   gl_FragColor = texture2D(textAtlas, texCoord);
-}`}
+}`
+}
 
 /**
  * Currently accepted draw calls:
@@ -187,8 +193,8 @@ void main() {
 
 export class WebGLRenderer {
   constructor () {
-    const canvas = document.createElement("canvas")
-    const gl = canvas.getContext("webgl2")
+    const canvas = document.createElement('canvas')
+    const gl = canvas.getContext('webgl2')
 
     /**
      * The main rendering buffer
@@ -234,14 +240,22 @@ export class WebGLRenderer {
    * @param uniformNames {string[]}
    * @return  {{glProgram: WebGLProgram, attribs: {}, uniforms: {}}} The program
    */
-  createProgram (programName, vertexShaderSource, fragShaderSource, attributeBindings={}, uniformNames=[]) {
+  createProgram (
+    programName,
+    vertexShaderSource,
+    fragShaderSource,
+    attributeBindings = {},
+    uniformNames = []
+  ) {
     this.deleteProgram(programName)
 
     const { gl } = this
 
-    const glProgram = createGLProgram(gl,
+    const glProgram = createGLProgram(
+      gl,
       createShaderFromSource(gl, gl.VERTEX_SHADER, vertexShaderSource),
-      createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragShaderSource))
+      createShaderFromSource(gl, gl.FRAGMENT_SHADER, fragShaderSource)
+    )
 
     for (let name in attributeBindings) {
       let loc = attributeBindings[name]
@@ -352,28 +366,34 @@ export class WebGLRenderer {
   }
 
   monochromaticGeometryProgram () {
-    let program = this.getProgram("__MonochromaticGeometry")
+    let program = this.getProgram('__MonochromaticGeometry')
 
     if (!program) {
       const programDesc = MonochromaticGeometryProgram
-      program = this.createProgram("__MonochromaticGeometry",
+      program = this.createProgram(
+        '__MonochromaticGeometry',
         programDesc.vert,
         programDesc.frag,
-        { vertexPosition: 0 }, ['xyScale', 'color'])
+        { vertexPosition: 0 },
+        ['xyScale', 'color']
+      )
     }
 
     return program
   }
 
   textProgram () {
-    let program = this.getProgram("__Text")
+    let program = this.getProgram('__Text')
 
     if (!program) {
       const programDesc = TextProgram
-      program = this.createProgram("__Text",
+      program = this.createProgram(
+        '__Text',
         programDesc.vert,
         programDesc.frag,
-        { vertexPosition: 0, texCoords: 1}, ["textureSize", "xyScale", "textAtlas", "color"])
+        { vertexPosition: 0, texCoords: 1 },
+        ['textureSize', 'xyScale', 'textAtlas', 'color']
+      )
     }
 
     return program
@@ -386,7 +406,7 @@ export class WebGLRenderer {
    * @param dpr
    * @param clear {Color}
    */
-  clearAndResizeCanvas (width, height, dpr=1, clear=Colors.TRANSPARENT) {
+  clearAndResizeCanvas (width, height, dpr = 1, clear = Colors.TRANSPARENT) {
     const { canvas } = this
 
     this.dpr = dpr
@@ -411,15 +431,20 @@ export class WebGLRenderer {
   clearCanvas (clearColor) {
     const { gl } = this
 
-    gl.clearColor(clearColor.r / 255, clearColor.g / 255, clearColor.b / 255, clearColor.a / 255)
+    gl.clearColor(
+      clearColor.r / 255,
+      clearColor.g / 255,
+      clearColor.b / 255,
+      clearColor.a / 255
+    )
     gl.clear(gl.COLOR_BUFFER_BIT)
   }
 
   getXYScale () {
-    return [ 2 / this.canvas.width, -2 / this.canvas.height ]
+    return [2 / this.canvas.width, -2 / this.canvas.height]
   }
 
-  renderScene (scene, log=false) {
+  renderScene (scene, log = false) {
     scene.updateAll()
 
     const graph = new SceneGraph()
@@ -471,32 +496,45 @@ export class WebGLRenderer {
     startTime = performance.now()
 
     gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
     graph.forEachCompiledInstruction(instruction => {
       let drawMode = 0
       switch (instruction.type) {
-        case "scene": {
+        case 'scene': {
           const { dims, backgroundColor } = instruction
 
-          this.clearAndResizeCanvas(dims.canvasWidth, dims.canvasHeight, dims.dpr, backgroundColor)
+          this.clearAndResizeCanvas(
+            dims.canvasWidth,
+            dims.canvasHeight,
+            dims.dpr,
+            backgroundColor
+          )
           contexts.push(null)
 
           break
         }
-        case "scissor": {
-          contexts.push({ type: "set_scissor", enable: scissorTest, scissor: scissorBox })
+        case 'scissor': {
+          contexts.push({
+            type: 'set_scissor',
+            enable: scissorTest,
+            scissor: scissorBox
+          })
           setScissor(true, instruction.scissor)
 
           break
         }
-        case "text": {
+        case 'text': {
           const program = this.textProgram()
           gl.useProgram(program.glProgram)
 
           gl.bindVertexArray(this.getVAO(instruction.vao))
 
-          let { id: atlasID, width: atlasWidth, height: atlasHeight } = graph.resources.textAtlas
+          let {
+            id: atlasID,
+            width: atlasWidth,
+            height: atlasHeight
+          } = graph.resources.textAtlas
           let texture = this.getTexture(atlasID)
 
           gl.activeTexture(gl.TEXTURE0)
@@ -511,34 +549,40 @@ export class WebGLRenderer {
           break
         }
 
-        case "triangle_strip": // LOL
+        case 'triangle_strip': // LOL
           drawMode++
-        case "triangles":
+        case 'triangles':
           drawMode++
-        case "line_strip":
+        case 'line_strip':
           drawMode += 2
-        case "lines":
+        case 'lines':
           drawMode++
-         {
-          const program = this.monochromaticGeometryProgram()
-          gl.useProgram(program.glProgram)
+          {
+            const program = this.monochromaticGeometryProgram()
+            gl.useProgram(program.glProgram)
 
-          gl.bindVertexArray(this.getVAO(instruction.vao))
-          const color = instruction.color
+            gl.bindVertexArray(this.getVAO(instruction.vao))
+            const color = instruction.color
 
-          gl.uniform4f(program.uniforms.color, color.r / 255, color.g / 255, color.b / 255, color.a / 255)
-          gl.uniform2fv(program.uniforms.xyScale, this.getXYScale())
+            gl.uniform4f(
+              program.uniforms.color,
+              color.r / 255,
+              color.g / 255,
+              color.b / 255,
+              color.a / 255
+            )
+            gl.uniform2fv(program.uniforms.xyScale, this.getXYScale())
 
-          gl.drawArrays(drawMode, 0, instruction.vertexCount)
-          break
-        }
-        case "pop_context": {
+            gl.drawArrays(drawMode, 0, instruction.vertexCount)
+            break
+          }
+        case 'pop_context': {
           const popped = contexts.pop()
 
           if (!popped) break
 
           switch (popped.type) {
-            case "set_scissor": {
+            case 'set_scissor': {
               setScissor(popped.enabled, popped.scissor)
               break
             }

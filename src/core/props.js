@@ -1,7 +1,6 @@
-
 // The general form of a prop store is { value: , changed: , userValue: , }
 
-import {deepEquals, getVersionID} from "./utils.js"
+import { deepEquals, getVersionID } from './utils.js'
 
 const proxyHandlers = {
   get: (target, propName) => {
@@ -165,12 +164,12 @@ export class Props {
 
   static toBit (as) {
     switch (as) {
-      case "program":
+      case 'program':
         return 2
-      case "user":
+      case 'user':
         return 1
-      case "real":
-      case "default":
+      case 'real':
+      case 'default':
         return 0
     }
   }
@@ -215,7 +214,7 @@ export class Props {
   }
 
   forEachProperty (callback) {
-    for (let [ key, value ] of this.store.entries()) {
+    for (let [key, value] of this.store.entries()) {
       callback(key, value)
     }
   }
@@ -234,7 +233,7 @@ export class Props {
    * @returns {boolean}
    */
   hasChanged (propName) {
-    return !!(this.getPropertyStore(propName)?.changed)
+    return !!this.getPropertyStore(propName)?.changed
   }
 
   /**
@@ -243,7 +242,9 @@ export class Props {
    * @returns {boolean}
    */
   haveChanged (propList) {
-    return this.hasChangedProperties && propList.some(prop => this.hasChanged(prop))
+    return (
+      this.hasChangedProperties && propList.some(prop => this.hasChanged(prop))
+    )
   }
 
   /**
@@ -252,7 +253,7 @@ export class Props {
    * @returns {boolean}
    */
   isPropertyInheritable (propName) {
-    return !!(this.getPropertyStore(propName)?.inherit)
+    return !!this.getPropertyStore(propName)?.inherit
   }
 
   /**
@@ -268,7 +269,9 @@ export class Props {
    * @returns {string[]}
    */
   listInheritableProperties () {
-    return this.listProperties().filter(prop => this.isPropertyInheritable(prop))
+    return this.listProperties().filter(prop =>
+      this.isPropertyInheritable(prop)
+    )
   }
 
   /**
@@ -283,23 +286,27 @@ export class Props {
    * synced with the top element's properties. This usually happens after an element is added to a group, or after a
    * group's inheritance signature has changed.
    */
-  inheritPropertiesFrom (props, updateAll=false) {
+  inheritPropertiesFrom (props, updateAll = false) {
     // Early exit condition, where if no inheritable properties have changed, we need not do anything
     if (!(updateAll || props.hasChangedInheritableProperties)) return
 
-    updateAll = updateAll || (props.hasChangedInheritableProperties === 2)
+    updateAll = updateAll || props.hasChangedInheritableProperties === 2
 
     // We recalculate all local properties whose inheritance is 1, indicating they were inherited from above. Properties
     // not found above are deleted, properties found above are copied if their version is greater than or equal to the
     // version of the current property. This ensures that this props does not have any extraneous properties or any
     // incorrect/nonupdated values.
-    for (const [ propName, propStore ] of this.store.entries()) {
+    for (const [propName, propStore] of this.store.entries()) {
       if (propStore.inherit !== 1) continue
 
       const otherPropsStore = props.getPropertyStore(propName)
 
       // if no such inheritable property, *delete* the local property (do not keep it as inheritable)
-      if (!otherPropsStore || otherPropsStore.inherit < 1 || otherPropsStore.value === undefined) {
+      if (
+        !otherPropsStore ||
+        otherPropsStore.inherit < 1 ||
+        otherPropsStore.value === undefined
+      ) {
         propStore.value = undefined
         propStore.changed |= 0b1
         propStore.inherit = 0
@@ -321,13 +328,17 @@ export class Props {
 
     // If updateAll is true, we run through all the given properties and inherit all 1s and 2s.
     if (updateAll) {
-      for (const [ propName, propStore ] of props.store.entries()) {
+      for (const [propName, propStore] of props.store.entries()) {
         if (!propStore.inherit || propStore.value === undefined) continue
 
         let ourPropStore = this.getPropertyStore(propName)
 
         // Where things are actually inherited!!
-        if (!ourPropStore || (ourPropStore.inherit === 1 && propStore.version > ourPropStore.version)) {
+        if (
+          !ourPropStore ||
+          (ourPropStore.inherit === 1 &&
+            propStore.version > ourPropStore.version)
+        ) {
           if (!ourPropStore) {
             ourPropStore = this.createPropertyStore(propName)
 
@@ -362,23 +373,32 @@ export class Props {
    * inheritable property, that will be noted
    * @returns {any}
    */
-  set (propName, value, as=0, equalityCheck=0, markChanged=true) {
+  set (propName, value, as = 0, equalityCheck = 0, markChanged = true) {
     let store = this.getPropertyStore(propName)
 
     // Helper functions to abstract away the "user/program/real" concept
     function getStoreValue () {
       switch (as) {
-        case 0: return store.value
-        case 1: return store.userValue
-        case 2: return store.programValue
+        case 0:
+          return store.value
+        case 1:
+          return store.userValue
+        case 2:
+          return store.programValue
       }
     }
 
     function setStoreValue (v) {
       switch (as) {
-        case 0: store.value = v; break
-        case 1: store.userValue = v; break
-        case 2: store.programValue = v; break
+        case 0:
+          store.value = v
+          break
+        case 1:
+          store.userValue = v
+          break
+        case 2:
+          store.programValue = v
+          break
       }
     }
 
@@ -429,7 +449,8 @@ export class Props {
 
       // Perform various equality checks
       if (equalityCheck === 1 && storeValue === value) return value
-      else if (equalityCheck === 2 && deepEquals(storeValue, value)) return value
+      else if (equalityCheck === 2 && deepEquals(storeValue, value))
+        return value
     }
 
     // Set the value and changed values
@@ -449,8 +470,8 @@ export class Props {
     return value
   }
 
-  setProperties (values, equalityCheck=0, markChanged=true) {
-    for (const [ propName, propValue ] of Object.entries(values)) {
+  setProperties (values, equalityCheck = 0, markChanged = true) {
+    for (const [propName, propValue] of Object.entries(values)) {
       this.set(propName, propValue, equalityCheck, markChanged)
     }
 
@@ -461,15 +482,18 @@ export class Props {
     this.hasChangedProperties = true
   }
 
-  markHasChangedInheritableProperties() {
-    this.hasChangedInheritableProperties = Math.max(this.hasChangedInheritableProperties, 1)
+  markHasChangedInheritableProperties () {
+    this.hasChangedInheritableProperties = Math.max(
+      this.hasChangedInheritableProperties,
+      1
+    )
   }
 
-  markHasChangedInheritanceSignature() {
+  markHasChangedInheritanceSignature () {
     this.hasChangedInheritableProperties = 2
   }
 
-  configureProperty (propName, opts={}) {
+  configureProperty (propName, opts = {}) {
     const store = this.getPropertyStore(propName)
 
     if (opts.inherit !== undefined) {
@@ -477,9 +501,8 @@ export class Props {
     }
   }
 
-  configureProperties (propNames, opts={}) {
-    for (const propName of propNames)
-      this.configureProperty(propName, opts)
+  configureProperties (propNames, opts = {}) {
+    for (const propName of propNames) this.configureProperty(propName, opts)
   }
 
   /**
@@ -488,7 +511,7 @@ export class Props {
    * @param inherit {boolean}
    * @return {Props}
    */
-  setPropertyInheritance (propName, inherit=false) {
+  setPropertyInheritance (propName, inherit = false) {
     const store = this.createPropertyStore(propName)
 
     let currentInheritance = !!store.inherit
@@ -502,8 +525,7 @@ export class Props {
       delete store.inherit
     }
 
-    if (store.value !== undefined)
-      this.hasChangedInheritableProperties = 2
+    if (store.value !== undefined) this.hasChangedInheritableProperties = 2
 
     return this
   }
@@ -514,14 +536,17 @@ export class Props {
    * @param as {number} 0 if getting the real value, 1 if getting the user value, 2 if getting the program value
    * @returns {*}
    */
-  get (propName, as=0) {
+  get (propName, as = 0) {
     let store = this.getPropertyStore(propName)
 
     if (!store) return undefined
     switch (as) {
-      case 0: return store.value
-      case 1: return store.userValue
-      case 2: return store.programValue
+      case 0:
+        return store.value
+      case 1:
+        return store.userValue
+      case 2:
+        return store.programValue
     }
   }
 
@@ -545,11 +570,13 @@ export class Props {
   /**
    * Mark all properties as locally updated (changed = false).
    */
-  markAllUpdated (bitmask=0b111) {
+  markAllUpdated (bitmask = 0b111) {
     bitmask = ~bitmask
     this.hasChangedProperties &= bitmask
 
-    this.forEachStore(store => { store.changed &= bitmask })
+    this.forEachStore(store => {
+      store.changed &= bitmask
+    })
   }
 
   /**

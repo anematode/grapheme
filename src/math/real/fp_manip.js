@@ -14,7 +14,10 @@ const isBigEndian = (() => {
   const view = new Uint32Array(array.buffer)
   return !((view[0] = 1) & array[0])
 })()
-if (isBigEndian) throw new Error('only works on little-endian systems; your system is mixed- or big-endian.')
+if (isBigEndian)
+  throw new Error(
+    'only works on little-endian systems; your system is mixed- or big-endian.'
+  )
 
 // Used for bit-level manipulation of floats
 export const floatStore = new Float64Array(1)
@@ -72,7 +75,7 @@ export function roundUp (x) {
   // Special case unique to roundUp
   if (x === -Number.MIN_VALUE) return 0
 
-  return (x < 0) ? -_roundDown(-x) : _roundUp(x)
+  return x < 0 ? -_roundDown(-x) : _roundUp(x)
 }
 
 /**
@@ -91,7 +94,7 @@ export function roundDown (x) {
   if (x === 0) return -Number.MIN_VALUE
   if (Number.isNaN(x)) return NaN
 
-  return (x < 0) ? -_roundUp(-x) : _roundDown(x)
+  return x < 0 ? -_roundUp(-x) : _roundDown(x)
 }
 
 // The first positive normal number
@@ -152,7 +155,10 @@ export function getMantissa (x) {
 export function getExponentAndMantissa (x) {
   floatStore[0] = x
 
-  return [ ((intView[1] & 0x7ff00000) >> 20) - 1023, intView[0] + _getMantissaHighWord() * 4294967296 ]
+  return [
+    ((intView[1] & 0x7ff00000) >> 20) - 1023,
+    intView[0] + _getMantissaHighWord() * 4294967296
+  ]
 }
 
 /**
@@ -166,7 +172,9 @@ export function getExponentAndMantissa (x) {
  * @memberOf FP
  */
 export function countFloatsBetween (x1, x2) {
-  if (Number.isNaN(x1) || Number.isNaN(x2)) { return NaN }
+  if (Number.isNaN(x1) || Number.isNaN(x2)) {
+    return NaN
+  }
 
   if (x1 === x2) return 0
 
@@ -176,8 +184,8 @@ export function countFloatsBetween (x1, x2) {
     x2 = tmp
   }
 
-  const [ x1man, x1exp ] = frExp(x1)
-  const [ x2man, x2exp ] = frExp(x2)
+  const [x1man, x1exp] = frExp(x1)
+  const [x2man, x2exp] = frExp(x2)
 
   return (x2man - x1man) * 2 ** 53 + (x2exp - x1exp) * 2 ** 52
 }
@@ -200,10 +208,12 @@ export function pow2 (exp) {
     // Works because of JS's insane casting systems
     const field = 1 << (exp + 1074)
 
-    if (exp > -1043) { // denormalized case 1
+    if (exp > -1043) {
+      // denormalized case 1
       intView[0] = 0
       intView[1] = field
-    } else { // case 2
+    } else {
+      // case 2
       intView[0] = field
       intView[1] = 0
     }
@@ -223,17 +233,17 @@ function countTrailingZeros (n) {
     let x = n
 
     // Suck off groups of 16 bits, then 8 bits, et cetera
-    if ((x & 0x0000FFFF) === 0) {
+    if ((x & 0x0000ffff) === 0) {
       bits += 16
       x >>>= 16
     }
 
-    if ((x & 0x000000FF) === 0) {
+    if ((x & 0x000000ff) === 0) {
       bits += 8
       x >>>= 8
     }
 
-    if ((x & 0x0000000F) === 0) {
+    if ((x & 0x0000000f) === 0) {
       bits += 4
       x >>>= 4
     }
@@ -307,7 +317,7 @@ export function mantissaClz (d) {
  * @memberOf FP
  */
 export function frExp (x) {
-  if (x === 0 || !Number.isFinite(x)) return [ x, 0 ]
+  if (x === 0 || !Number.isFinite(x)) return [x, 0]
 
   // +1 so that the fraction is between 0.5 and 1 instead of 1 and 2
   let exp = getExponent(x) + 1
@@ -318,7 +328,7 @@ export function frExp (x) {
     exp -= _mantissaClz()
   }
 
-  return [ x / pow2(exp), exp ]
+  return [x / pow2(exp), exp]
 }
 
 /**
@@ -331,30 +341,30 @@ export function frExp (x) {
  * @memberOf FP
  */
 export function rationalExp (x) {
-  const [ frac, denExponent, exp ] = rationalExpInternal(x)
+  const [frac, denExponent, exp] = rationalExpInternal(x)
 
   let den = pow2(denExponent)
 
-  return [ frac * den, den, exp ]
+  return [frac * den, den, exp]
 }
 
 function rationalExpInternal (x) {
   if (x < 0) {
-    const [ num, den, exp ] = rationalExpInternal(-x)
+    const [num, den, exp] = rationalExpInternal(-x)
 
-    return [ -num, den, exp ]
+    return [-num, den, exp]
   }
 
-  if (x === 0 || !Number.isFinite(x)) return [ x, 0, 0 ]
+  if (x === 0 || !Number.isFinite(x)) return [x, 0, 0]
 
   // Decompose into frac * 2 ^ exp
-  const [ frac, exp ] = frExp(x)
+  const [frac, exp] = frExp(x)
 
   // This tells us the smallest power of two which frac * (2 ** shift) is an integer, which is the denominator
   // of the dyadic rational corresponding to x
   const denExponent = 53 - mantissaCtz(frac)
 
-  return [ frac, denExponent, exp ]
+  return [frac, denExponent, exp]
 }
 
 /**
@@ -363,9 +373,9 @@ function rationalExpInternal (x) {
  * @param x
  */
 export function integerExp (x) {
-  const [ frac, denExponent, exp ] = rationalExpInternal(x)
+  const [frac, denExponent, exp] = rationalExpInternal(x)
 
-  return [ frac * pow2(denExponent), exp - denExponent]
+  return [frac * pow2(denExponent), exp - denExponent]
 }
 
 /**

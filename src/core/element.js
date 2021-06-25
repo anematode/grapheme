@@ -5,16 +5,16 @@
  * An Element has properties, which may be explicitly specified, inherited
  */
 
-import {Eventful} from "./eventful.js"
-import {getStringID, getVersionID} from "./utils.js"
-import {Props} from "./props.js"
-import {NullInterface} from "./interface.js"
+import { Eventful } from './eventful.js'
+import { getStringID, getVersionID } from './utils.js'
+import { Props } from './props.js'
+import { NullInterface } from './interface.js'
 
 /**
  * The element class.
  */
 export class Element extends Eventful {
-  constructor (params={}) {
+  constructor (params = {}) {
     super()
 
     /**
@@ -24,8 +24,8 @@ export class Element extends Eventful {
      */
     this.id = params.id ?? getStringID()
 
-    if (typeof this.id !== "string" || this.id.length === 0)
-      throw new TypeError("The element id must be a non-empty string.")
+    if (typeof this.id !== 'string' || this.id.length === 0)
+      throw new TypeError('The element id must be a non-empty string.')
 
     /**
      * The parent of this element; null if it has no parent
@@ -72,9 +72,7 @@ export class Element extends Eventful {
     this.set(params)
   }
 
-  _update () {
-
-  }
+  _update () {}
 
   apply (callback) {
     callback(this)
@@ -82,15 +80,17 @@ export class Element extends Eventful {
 
   defaultInheritProps () {
     if (this.parent)
-      this.props.inheritPropertiesFrom(this.parent.props, this.updateStage === -1)
+      this.props.inheritPropertiesFrom(
+        this.parent.props,
+        this.updateStage === -1
+      )
   }
 
   getRenderingInfo () {
-    if (this.internal.renderInfo)
-      return this.internal.renderInfo
+    if (this.internal.renderInfo) return this.internal.renderInfo
   }
 
-  isChild (child, recursive=true) {
+  isChild (child, recursive = true) {
     return false
   }
 
@@ -98,9 +98,7 @@ export class Element extends Eventful {
     return false
   }
 
-  init (params) {
-
-  }
+  init (params) {}
 
   set (propName, value) {
     this.getInterface().set(this, propName, value)

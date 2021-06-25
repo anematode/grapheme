@@ -1,4 +1,4 @@
-import {FixedOperatorDefinition} from "./operator.js"
+import { FixedOperatorDefinition } from './operator.js'
 import { Vec2 } from '../math/vec/vec2.js'
 
 /**
@@ -38,72 +38,87 @@ function registerOperator (name, ...ops) {
 }
 
 function defineSimpleBinaryOperator (type, name, generic) {
-  registerOperator(name, new FixedOperatorDefinition({
-    signature: [ type, type ],
-    returnType: type,
-    evaluators: {
-      generic
-    }
-  }))
+  registerOperator(
+    name,
+    new FixedOperatorDefinition({
+      signature: [type, type],
+      returnType: type,
+      evaluators: {
+        generic
+      }
+    })
+  )
 }
 
-defineSimpleBinaryOperator("int", "+", "addition")
-defineSimpleBinaryOperator("int", "-", "subtraction")
-defineSimpleBinaryOperator("int", "*", "multiplication")
-defineSimpleBinaryOperator("int", "^", Math.pow)
+defineSimpleBinaryOperator('int', '+', 'addition')
+defineSimpleBinaryOperator('int', '-', 'subtraction')
+defineSimpleBinaryOperator('int', '*', 'multiplication')
+defineSimpleBinaryOperator('int', '^', Math.pow)
 
-defineSimpleBinaryOperator("real", "+", "addition")
-defineSimpleBinaryOperator("real", "-", "subtraction")
-defineSimpleBinaryOperator("real", "*", "multiplication")
-defineSimpleBinaryOperator("real", "/", "division")
-defineSimpleBinaryOperator("real", "^", Math.pow)
+defineSimpleBinaryOperator('real', '+', 'addition')
+defineSimpleBinaryOperator('real', '-', 'subtraction')
+defineSimpleBinaryOperator('real', '*', 'multiplication')
+defineSimpleBinaryOperator('real', '/', 'division')
+defineSimpleBinaryOperator('real', '^', Math.pow)
 
-registerOperator('-', new FixedOperatorDefinition({
-  signature: [ "int" ],
-  returnType: "int",
-  evaluators: {
-    generic: "unary_subtraction"
-  }
-}))
+registerOperator(
+  '-',
+  new FixedOperatorDefinition({
+    signature: ['int'],
+    returnType: 'int',
+    evaluators: {
+      generic: 'unary_subtraction'
+    }
+  })
+)
 
-registerOperator('-', new FixedOperatorDefinition({
-  signature: [ "real" ],
-  returnType: "real",
-  evaluators: {
-    generic: "unary_subtraction"
-  }
-}))
+registerOperator(
+  '-',
+  new FixedOperatorDefinition({
+    signature: ['real'],
+    returnType: 'real',
+    evaluators: {
+      generic: 'unary_subtraction'
+    }
+  })
+)
 
 function defineUnaryReal (name, evaluator) {
-  registerOperator(name, new FixedOperatorDefinition({
-    signature: [ "real" ],
-    returnType: "real",
-    evaluators: {
-      generic: evaluator
-    }
-  }))
+  registerOperator(
+    name,
+    new FixedOperatorDefinition({
+      signature: ['real'],
+      returnType: 'real',
+      evaluators: {
+        generic: evaluator
+      }
+    })
+  )
 }
 
-defineUnaryReal("sin", Math.sin)
-defineUnaryReal("cos", Math.cos)
-defineUnaryReal("tan", Math.tan)
-defineUnaryReal("asin", Math.asin)
-defineUnaryReal("acos", Math.acos)
-defineUnaryReal("atan", Math.atan)
-defineUnaryReal("sinh", Math.sinh)
-defineUnaryReal("cosh", Math.cosh)
-defineUnaryReal("tanh", Math.tanh)
-defineUnaryReal("asinh", Math.asinh)
-defineUnaryReal("acosh", Math.acosh)
-defineUnaryReal("atanh", Math.atanh)
+defineUnaryReal('sin', Math.sin)
+defineUnaryReal('cos', Math.cos)
+defineUnaryReal('tan', Math.tan)
+defineUnaryReal('asin', Math.asin)
+defineUnaryReal('acos', Math.acos)
+defineUnaryReal('atan', Math.atan)
+defineUnaryReal('sinh', Math.sinh)
+defineUnaryReal('cosh', Math.cosh)
+defineUnaryReal('tanh', Math.tanh)
+defineUnaryReal('asinh', Math.asinh)
+defineUnaryReal('acosh', Math.acosh)
+defineUnaryReal('atanh', Math.atanh)
 
-defineUnaryReal("sqrt", Math.sqrt)
-defineUnaryReal("cbrt", Math.cbrt)
+defineUnaryReal('sqrt', Math.sqrt)
+defineUnaryReal('cbrt', Math.cbrt)
 
-registerOperator('vec2', new FixedOperatorDefinition({
-  signature: [ "real", "real" ],
-  returnType: "vec2",
-  evaluators: {
-    generic: (a, b) => new Vec2(a, b)
-  }
-}))
+registerOperator(
+  'vec2',
+  new FixedOperatorDefinition({
+    signature: ['real', 'real'],
+    returnType: 'vec2',
+    evaluators: {
+      generic: (a, b) => new Vec2(a, b)
+    }
+  })
+)

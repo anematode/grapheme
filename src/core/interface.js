@@ -1,5 +1,3 @@
-
-
 // Defines an interface between a user-facing getter/setter and the internal properties of an element. There is not a
 // one-to-one correspondence between the user-facing "properties" and the actual underlying properties. In fact, some
 // operations by the user may be no-ops while others may fail silently, and still others may throw an error when
@@ -12,11 +10,10 @@
 // update function, which should be optimized first. If the property system turns out to be a serious drag, then I'll
 // find a workaround. But even just for me, having this kind of system would help with catching my own errors.
 
-
-import {Vec2} from "../math/vec/vec2.js"
-import {deepMerge, isTypedArray} from "./utils.js"
-import {Color, lookupCompositionType} from "../styles/definitions.js"
-import {Props} from "./props.js"
+import { Vec2 } from '../math/vec/vec2.js'
+import { deepMerge, isTypedArray } from './utils.js'
+import { Color, lookupCompositionType } from '../styles/definitions.js'
+import { Props } from './props.js'
 import { isValidVariableName } from '../ast/parse_string'
 
 /**
@@ -24,22 +21,21 @@ import { isValidVariableName } from '../ast/parse_string'
  * @param obj
  * @param limit {number} (Estimated) number of characters to restrict the display to
  */
-export function relaxedPrint (obj, limit=100) {
-  if (typeof obj === "number" || typeof obj === "boolean") {
+export function relaxedPrint (obj, limit = 100) {
+  if (typeof obj === 'number' || typeof obj === 'boolean') {
     return '' + obj
-  } else if (typeof obj === "function") {
+  } else if (typeof obj === 'function') {
     let name = obj.name
-    let ret = name ? "[function " + name : "[function]"
+    let ret = name ? '[function ' + name : '[function]'
 
-    if (ret.length > limit)
-      return "..."
+    if (ret.length > limit) return '...'
 
     return ret
-  } else if (typeof obj === "object") {
+  } else if (typeof obj === 'object') {
     let keys = Object.keys(obj).slice(0, 3)
 
     if (keys.length === 0) {
-      return "{}"
+      return '{}'
     }
 
     let keysUsed = 0
@@ -58,64 +54,79 @@ export function relaxedPrint (obj, limit=100) {
     }
 
     if (keysUsed === 0) {
-      return "{ ... }"
+      return '{ ... }'
     } else {
-      let ret = "{ "
+      let ret = '{ '
 
       for (let i = 0; i < keysUsed; ++i) {
         ret += keys[i]
         ret += ': '
         ret += keyValues[i]
-        if (i !== keysUsed - 1)
-          ret += ', '
+        if (i !== keysUsed - 1) ret += ', '
       }
 
-      return ret + " }"
+      return ret + ' }'
     }
-  } else if (typeof obj === "string") {
+  } else if (typeof obj === 'string') {
     if (obj.length <= limit - 2) return `"${obj}"`
 
     let len = Math.max(((limit / 2) | 0) - 4, 0)
 
-    return '"' + obj.slice(0, len) + " ... " + obj.slice(obj.length - len) + '"'
+    return '"' + obj.slice(0, len) + ' ... ' + obj.slice(obj.length - len) + '"'
   }
 }
 
 function genTypecheckRangedInteger (lo, hi) {
   if (lo === undefined) {
-    return obj => (!Number.isInteger(obj) || obj > hi) ? `Expected $p to be an integer less than ${hi}; got $v.` : undefined
+    return obj =>
+      !Number.isInteger(obj) || obj > hi
+        ? `Expected $p to be an integer less than ${hi}; got $v.`
+        : undefined
   } else if (hi === undefined) {
-    return obj => (!Number.isInteger(obj) || obj < lo) ? `Expected $p to be an integer greater than ${lo}; got $v.` : undefined
+    return obj =>
+      !Number.isInteger(obj) || obj < lo
+        ? `Expected $p to be an integer greater than ${lo}; got $v.`
+        : undefined
   } else {
-    return obj => (!Number.isInteger(obj) || obj < lo || obj > hi) ? `Expected $p to be an integer in the range [${lo}, ${hi}], inclusive; got $v.` : undefined
+    return obj =>
+      !Number.isInteger(obj) || obj < lo || obj > hi
+        ? `Expected $p to be an integer in the range [${lo}, ${hi}], inclusive; got $v.`
+        : undefined
   }
 }
 
 function typecheckInteger (obj) {
-  if (!Number.isInteger(obj))
-    return "Expected $p to be an integer, not $v."
+  if (!Number.isInteger(obj)) return 'Expected $p to be an integer, not $v.'
 }
 
 function genTypecheckRangedNumber (lo, hi, finite) {
-  let finiteMsg = finite ? "finite " : ""
+  let finiteMsg = finite ? 'finite ' : ''
 
   if (lo === undefined) {
-    return obj => (typeof obj !== "number" || obj > hi || (finite && !Number.isFinite(obj))) ? `Expected $p to be a ${finiteMsg}number less than ${hi}, got $v.` : undefined
+    return obj =>
+      typeof obj !== 'number' || obj > hi || (finite && !Number.isFinite(obj))
+        ? `Expected $p to be a ${finiteMsg}number less than ${hi}, got $v.`
+        : undefined
   } else if (hi === undefined) {
-    return obj => (typeof obj !== "number" || obj < lo) ? `Expected $p to be a ${finiteMsg}number greater than ${lo}, got $v.` : undefined
+    return obj =>
+      typeof obj !== 'number' || obj < lo
+        ? `Expected $p to be a ${finiteMsg}number greater than ${lo}, got $v.`
+        : undefined
   } else {
-    return obj => (typeof obj !== "number" || obj < lo || obj > hi) ? `Expected $p to be a ${finiteMsg}number in the range [${lo}, ${hi}], inclusive; got $v.` : undefined
+    return obj =>
+      typeof obj !== 'number' || obj < lo || obj > hi
+        ? `Expected $p to be a ${finiteMsg}number in the range [${lo}, ${hi}], inclusive; got $v.`
+        : undefined
   }
 }
 
 function typecheckNumber (obj) {
-  if (typeof obj !== "number")
-    return "Expected $p to be a number, got $v."
+  if (typeof obj !== 'number') return 'Expected $p to be a number, got $v.'
 }
 
 function typecheckFiniteNumber (obj) {
-  if (typeof obj !== "number" || !Number.isFinite(obj))
-    return "Expected $p to be a finite number, got $v."
+  if (typeof obj !== 'number' || !Number.isFinite(obj))
+    return 'Expected $p to be a finite number, got $v.'
 }
 
 function createIntegerTypecheck (check) {
@@ -146,32 +157,37 @@ function createNumberTypecheck (check) {
 }
 
 function booleanTypecheck (obj) {
-  return (typeof obj !== "boolean") ? "Expected $p to be a boolean, got $v." : undefined
+  return typeof obj !== 'boolean'
+    ? 'Expected $p to be a boolean, got $v.'
+    : undefined
 }
 
 function stringTypecheck (obj) {
-  return (typeof obj !== "string") ? "Expected $p to be a string, got $v." : undefined
+  return typeof obj !== 'string'
+    ? 'Expected $p to be a string, got $v.'
+    : undefined
 }
 
 function variableNameTypecheck (obj) {
-  return (!isValidVariableName(obj)) ? "Expected $p to be a valid variable name, got $v. Variable " : undefined
+  return !isValidVariableName(obj)
+    ? 'Expected $p to be a valid variable name, got $v. Variable '
+    : undefined
 }
 
 function createTypecheck (check) {
-  if (typeof check === "string")
-    check = { type: check }
+  if (typeof check === 'string') check = { type: check }
   let type = check.type
 
   switch (type) {
-    case "integer":
-      return createIntegerTypecheck (check)
-    case "number":
-      return createNumberTypecheck (check)
-    case "boolean":
+    case 'integer':
+      return createIntegerTypecheck(check)
+    case 'number':
+      return createNumberTypecheck(check)
+    case 'boolean':
       return booleanTypecheck
-    case "string":
+    case 'string':
       return stringTypecheck
-    case "VariableName":
+    case 'VariableName':
       return variableNameTypecheck
     default:
       throw new Error(`Unrecognized typecheck type ${type}.`)
@@ -188,11 +204,12 @@ function colorConversion (obj) {
 }
 
 function vec2Conversion (obj) {
-  let x=0, y=0
+  let x = 0,
+    y = 0
 
-  if (typeof obj === "number" || typeof obj === "string") {
-    CONVERSION_MSG = "Expected $p to be convertible to a Vec2, got $v."
-  } else if (typeof obj === "object") {
+  if (typeof obj === 'number' || typeof obj === 'string') {
+    CONVERSION_MSG = 'Expected $p to be convertible to a Vec2, got $v.'
+  } else if (typeof obj === 'object') {
     if (Array.isArray(obj)) {
       if (obj.length !== 2) {
         CONVERSION_MSG = `Expected $p to be convertible to a Vec2, got $v (length ${obj.length}).`
@@ -209,7 +226,7 @@ function vec2Conversion (obj) {
   return new Vec2(x, y)
 }
 
-function vec2NonFlatArrayConversion (arr, f32=true) {
+function vec2NonFlatArrayConversion (arr, f32 = true) {
   let ret = new (f32 ? Float32Array : Float64Array)(arr.length / 2)
   let retIndex = -1
 
@@ -221,23 +238,27 @@ function vec2NonFlatArrayConversion (arr, f32=true) {
       ret[++retIndex] = elem.y
     } else if (Array.isArray(elem)) {
       if (elem.length !== 2) {
-        CONVERSION_MSG = `Expected $p to be convertible to a flat array of Vec2s, found element ${relaxedPrint(elem)} at index ${i}`
+        CONVERSION_MSG = `Expected $p to be convertible to a flat array of Vec2s, found element ${relaxedPrint(
+          elem
+        )} at index ${i}`
         return
       }
 
       ret[++retIndex] = elem[0]
       ret[++retIndex] = elem[1]
     } else {
-      CONVERSION_MSG = `Expected $p to be convertible to a flat array of Vec2s, found element ${relaxedPrint(elem)} at index ${i}`
+      CONVERSION_MSG = `Expected $p to be convertible to a flat array of Vec2s, found element ${relaxedPrint(
+        elem
+      )} at index ${i}`
       return
     }
   }
 }
 
-function vec2ArrayConversion (obj, f32=true) {
+function vec2ArrayConversion (obj, f32 = true) {
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; ++i) {
-      if (typeof obj[i] !== "number") {
+      if (typeof obj[i] !== 'number') {
         return vec2NonFlatArrayConversion(obj)
       }
     }
@@ -255,10 +276,8 @@ function vec2ArrayConversion (obj, f32=true) {
       return
     }
 
-    if (f32 && obj instanceof Float32Array)
-      return obj
-    if (!f32 && obj instanceof Float64Array)
-      return obj
+    if (f32 && obj instanceof Float32Array) return obj
+    if (!f32 && obj instanceof Float64Array) return obj
 
     return new (f32 ? Float32Array : Float64Array)(obj)
   }
@@ -270,19 +289,17 @@ function vec2ArrayConversion (obj, f32=true) {
  * @param conversion
  */
 function createConversion (conversion) {
-  if (typeof conversion === "string")
-    conversion = { type: conversion }
-  else if (typeof conversion === "function")
-    return conversion
+  if (typeof conversion === 'string') conversion = { type: conversion }
+  else if (typeof conversion === 'function') return conversion
 
   let type = conversion.type
 
   switch (type) {
-    case "Color":
+    case 'Color':
       return colorConversion
-    case "Vec2":
+    case 'Vec2':
       return vec2Conversion
-    case "f32_vec2_array":
+    case 'f32_vec2_array':
       return vec2ArrayConversion
     default:
       throw new Error(`Unknown conversion type ${type}.`)
@@ -308,7 +325,15 @@ export function constructInterface (description) {
 
     if (needsSetter) {
       let setter = {}
-      let { typecheck, target, setTarget, setAs, conversion, aliases, merge } = desc
+      let {
+        typecheck,
+        target,
+        setTarget,
+        setAs,
+        conversion,
+        aliases,
+        merge
+      } = desc
 
       setAs = Props.toBit(setAs)
 
@@ -320,9 +345,9 @@ export function constructInterface (description) {
 
       setters[name] = setter
 
-      if (aliases) for (const alias of Array.from(aliases)) setters[alias] = setter
+      if (aliases)
+        for (const alias of Array.from(aliases)) setters[alias] = setter
     }
-
 
     if (needsGetter) {
       let getter = {}
@@ -357,14 +382,22 @@ export function constructInterface (description) {
     if (setter.typecheck) {
       let result = setter.typecheck(value)
       if (result)
-        throw new TypeError(`Failed typecheck: ${result.replace("$v", relaxedPrint(value)).replace("$p", 'parameter "' + propName + '"')}`)
+        throw new TypeError(
+          `Failed typecheck: ${result
+            .replace('$v', relaxedPrint(value))
+            .replace('$p', 'parameter "' + propName + '"')}`
+        )
     }
 
     if (setter.conversion) {
       let newValue = setter.conversion(value)
 
       if (newValue === undefined)
-        throw new TypeError(`Failed conversion: ${result.replace("$v", relaxedPrint(value)).replace("$p", 'parameter "' + propName + '"')}`)
+        throw new TypeError(
+          `Failed conversion: ${result
+            .replace('$v', relaxedPrint(value))
+            .replace('$p', 'parameter "' + propName + '"')}`
+        )
 
       value = newValue
     }
@@ -373,16 +406,20 @@ export function constructInterface (description) {
     let merge = !!setter.merge
 
     if (merge) {
-      props.set(setter.target, deepMerge(props.get(setter.target, setAs), value), setAs)
+      props.set(
+        setter.target,
+        deepMerge(props.get(setter.target, setAs), value),
+        setAs
+      )
     } else {
       props.set(setter.target, value, setAs)
     }
   }
 
   function set (elem, propName, value) {
-    if (typeof propName === "object") {
+    if (typeof propName === 'object') {
       setDict(elem.props, propName)
-    } else if (typeof propName === "string") {
+    } else if (typeof propName === 'string') {
       _set(elem.props, propName, value)
     }
   }
@@ -415,13 +452,15 @@ export function constructInterface (description) {
    * @param props
    * @param isInitialized
    */
-  function computeProps (props, isInitialized=true) {
+  function computeProps (props, isInitialized = true) {
     function getDefault (instructions) {
       let def = instructions.default
 
       if (instructions.evaluateDefault) {
-        if (typeof def !== "function")
-          throw new Error("Internal instruction computation instruction says to evaluate the default value, but given default is not a function")
+        if (typeof def !== 'function')
+          throw new Error(
+            'Internal instruction computation instruction says to evaluate the default value, but given default is not a function'
+          )
         return def()
       }
 
@@ -433,13 +472,13 @@ export function constructInterface (description) {
       let computed = instructions.computed
       let doCompose = !!instructions.compose
 
-      if (computed === "none") continue
-      if (computed === "default") {
+      if (computed === 'none') continue
+      if (computed === 'default') {
         // Check whether the current value is undefined. If so, fill it with the default
         if (props.get(propName) === undefined) {
           props.set(propName, getDefault(instructions))
         }
-      } else if (computed === "user") {
+      } else if (computed === 'user') {
         // Check whether the user value is undefined, then the value, then the default
         let store = props.getPropertyStore(propName) // just to make things more efficient
         if (!store) {
@@ -448,9 +487,18 @@ export function constructInterface (description) {
           if (store.userValue !== undefined) {
             if (doCompose) {
               let type = lookupCompositionType(instructions.type)
-              if (!type) throw new Error(`Unknown composition type ${instructions.type}.`)
+              if (!type)
+                throw new Error(
+                  `Unknown composition type ${instructions.type}.`
+                )
 
-              props.set(propName, type.compose(getDefault(instructions) ?? type.default, store.userValue))
+              props.set(
+                propName,
+                type.compose(
+                  getDefault(instructions) ?? type.default,
+                  store.userValue
+                )
+              )
             } else {
               props.set(propName, store.userValue)
             }

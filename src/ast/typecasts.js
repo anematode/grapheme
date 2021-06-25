@@ -1,24 +1,27 @@
-import {Complex} from "../math/complex/complex.js"
+import { Complex } from '../math/complex/complex.js'
 
 export function initTypecasts (TypecastDefinition, typecastList, typecastDict) {
   let intToReal = new TypecastDefinition({
-    from: "int", to: "real",
+    from: 'int',
+    to: 'real',
     evaluators: {
-      generic: "identity"  // Identity conversion
+      generic: 'identity' // Identity conversion
     }
   })
 
   let doubleToComplex = x => new Complex(x, 0)
 
   let intToComplex = new TypecastDefinition({
-    from: "int", to: "complex",
+    from: 'int',
+    to: 'complex',
     evaluators: {
       generic: doubleToComplex
     }
   })
 
   let realToComplex = new TypecastDefinition({
-    from: "real", to: "complex",
+    from: 'real',
+    to: 'complex',
     evaluators: {
       generic: doubleToComplex
     }

@@ -8,7 +8,7 @@ import Gamma from './gamma'
 let ZETA_COEFFS = zeta.coeffs
 let ZETA_N = zeta.n
 
-function Chi(s) {
+function Chi (s) {
   let powers = Multiply(PowZ(2, s), PowZ(Math.PI, Subtract(s, new Complex(1))))
 
   let sine = Sin(s.scale(Math.PI / 2))
@@ -18,7 +18,7 @@ function Chi(s) {
   return Multiply(powers, Multiply(sine, gamma))
 }
 
-function RiemannSiegel(z) {
+function RiemannSiegel (z) {
   let t = z.im
   let m = 10
 
@@ -53,9 +53,8 @@ function RiemannSiegel(z) {
 
 // Implementation of the riemann zeta function for complex numbers
 
-function Zeta(z) {
-  if (Math.abs(z.im) < 1e-17)
-    return new Complex(zeta(z.re))
+function Zeta (z) {
+  if (Math.abs(z.im) < 1e-17) return new Complex(zeta(z.re))
 
   if (z.re < 0.5) {
     // Reflection formula
@@ -63,7 +62,11 @@ function Zeta(z) {
     return Multiply(Chi(z), Zeta(Subtract(new Complex(1), z)))
   }
 
-  if (0 <= z.re && z.re <= 1 && Math.abs(z.im) > 48.005150881167159727942472749427) {
+  if (
+    0 <= z.re &&
+    z.re <= 1 &&
+    Math.abs(z.im) > 48.005150881167159727942472749427
+  ) {
     return RiemannSiegel(z)
   }
 
@@ -82,12 +85,21 @@ function Zeta(z) {
     sign.re *= -1
   }
 
-  return Divide(seriesSum, Multiply(new Complex(ZETA_COEFFS[0]), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))))
+  return Divide(
+    seriesSum,
+    Multiply(
+      new Complex(ZETA_COEFFS[0]),
+      Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))
+    )
+  )
 }
 
 // Dirichlet eta function
-function Eta(z) {
-  return Multiply(Zeta(z), Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z))))
+function Eta (z) {
+  return Multiply(
+    Zeta(z),
+    Subtract(new Complex(1), PowZ(2, Subtract(new Complex(1), z)))
+  )
 }
 
-export {Eta, Zeta}
+export { Eta, Zeta }

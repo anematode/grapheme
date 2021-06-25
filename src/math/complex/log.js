@@ -6,7 +6,7 @@ import { Add, Divide } from './basic_arithmetic'
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Ln = (z) => {
+export const Ln = z => {
   let mag = Math.log(z.magnitude())
   let theta = z.arg()
 
@@ -20,7 +20,7 @@ export const Ln = (z) => {
  * @param branch {number}
  * @returns {Complex}
  */
-export const LnBranched = (z, branch=0) => {
+export const LnBranched = (z, branch = 0) => {
   return Add(Ln(z), Complex.I.scale(2 * Math.PI * branch))
 }
 
@@ -39,7 +39,7 @@ const LN2 = Math.log(2)
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Log10 = (z) => {
+export const Log10 = z => {
   return Ln(z).scale(1 / LN10)
 }
 
@@ -48,7 +48,7 @@ export const Log10 = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Log10Branched = (z, branch=0) => {
+export const Log10Branched = (z, branch = 0) => {
   return LnBranched(z, branch).scale(1 / LN10)
 }
 
@@ -57,7 +57,7 @@ export const Log10Branched = (z, branch=0) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Log2 = (z) => {
+export const Log2 = z => {
   return Ln(z).scale(1 / LN2)
 }
 
@@ -66,7 +66,7 @@ export const Log2 = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Log2Branched = (z, branch=0) => {
+export const Log2Branched = (z, branch = 0) => {
   return LnBranched(z, branch).scale(1 / LN2)
 }
 
@@ -77,8 +77,7 @@ export const Log2Branched = (z, branch=0) => {
  * @returns {Complex}
  */
 export const LogB = (b, z) => {
-  if (b.equals(z))
-    return Complex.One
+  if (b.equals(z)) return Complex.One
 
   return Divide(Ln(z), Ln(b))
 }
@@ -90,9 +89,8 @@ export const LogB = (b, z) => {
  * @param branch {number} Integer, which branch to evaluate
  * @returns {Complex}
  */
-export const LogBBranched = (b, z, branch=0) => {
-  if (branch === 0 && b.equals(z))
-    return Complex.One
+export const LogBBranched = (b, z, branch = 0) => {
+  if (branch === 0 && b.equals(z)) return Complex.One
 
   return Divide(LnBranched(z, branch), LnBranched(b, branch))
 }

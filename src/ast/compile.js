@@ -3,10 +3,10 @@
  * @param root
  * @param opts
  */
-import {getCast, TYPES} from "./operator.js"
+import { getCast, TYPES } from './operator.js'
 import { isValidVariableName } from './parse_string.js'
 
-export function compileNode (root, opts={}) {
+export function compileNode (root, opts = {}) {
   // Whether to do typechecks to passed arguments
   let doTypechecks = !!opts.typechecks
 
@@ -34,7 +34,7 @@ export function compileNode (root, opts={}) {
    * @returns {string}
    */
   function getVarName () {
-    return "$" + (++id)
+    return '$' + ++id
   }
 
   // Map between nodes and information about those nodes (corresponding var names, optimizations, etc.)
@@ -49,7 +49,7 @@ export function compileNode (root, opts={}) {
   let importInfo = new Map()
 
   // Text of the setup code preceding all the exported functions
-  let globalSetup = ""
+  let globalSetup = ''
 
   /**
    * Import a function f and return a constant variable name corresponding to that function, to be placed in
@@ -58,15 +58,16 @@ export function compileNode (root, opts={}) {
    * @returns {string}
    */
   function importFunction (f) {
-    if (typeof f !== "function")
+    if (typeof f !== 'function')
       throw new TypeError(`Unable to import function ${f}`)
 
     let stored = importInfo.get(f)
     if (stored) return stored
 
-    let fName = getVarName() + "_f"
+    let fName = getVarName() + '_f'
 
-    if (doTypechecks) // Make sure f is actually a function
+    if (doTypechecks)
+      // Make sure f is actually a function
       globalSetup += `if (typeof ${fName} !== "function") throw new TypeError("Imported parameter ${fName} is not a function");\n`
 
     importInfo.set(f, fName)
@@ -82,7 +83,7 @@ export function compileNode (root, opts={}) {
     let stored = importInfo.get(c)
     if (stored) return stored
 
-    let cName = getVarName() + "_c"
+    let cName = getVarName() + '_c'
 
     importInfo.set(c, cName)
     return cName
@@ -96,12 +97,26 @@ export function compileNode (root, opts={}) {
   }
 
   // Compile a function which, given a scope, evaluates the function
-  compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getVarName, opts)
+  compileEvaluationFunction(
+    root,
+    nodeInfo,
+    importFunction,
+    importConstant,
+    exportFunction,
+    getVarName,
+    opts
+  )
 
   // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
-  let efText = "return {" + Object.entries(exportedFunctions)
-    .map(([name, info]) => `${name}: function (${info.args.join(',')}) { ${info.body} }`)
-    .join(',') + '}'
+  let efText =
+    'return {' +
+    Object.entries(exportedFunctions)
+      .map(
+        ([name, info]) =>
+          `${name}: function (${info.args.join(',')}) { ${info.body} }`
+      )
+      .join(',') +
+    '}'
 
   let nfText = globalSetup + efText
 
@@ -114,8 +129,15 @@ export function compileNode (root, opts={}) {
   return Function.apply(null, importNames).apply(null, imports)
 }
 
-
-function compileEvaluationFunction (root, nodeInfo, importFunction, importConstant, exportFunction, getUnusedVarName, opts) {
+function compileEvaluationFunction (
+  root,
+  nodeInfo,
+  importFunction,
+  importConstant,
+  exportFunction,
+  getUnusedVarName,
+  opts
+) {
   // Whether to add typechecks to the passed variables
   let doTypechecks = !!opts.typechecks
 
@@ -124,11 +146,14 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
   // object.
   let exportedArgs = opts.args ?? []
 
-  exportedArgs.forEach(a => { if (!isValidVariableName(a)) throw new Error(`Invalid exported variable name ${a}`) });
+  exportedArgs.forEach(a => {
+    if (!isValidVariableName(a))
+      throw new Error(`Invalid exported variable name ${a}`)
+  })
 
-  let scopeVarName = "scope"
+  let scopeVarName = 'scope'
   let scopeUsed = false
-  let fBody = ""
+  let fBody = ''
   let fArgs = [...exportedArgs]
 
   // Mapping between string variable name and information about that variable (varName)
@@ -172,31 +197,56 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
     if (doTypechecks) {
       let typecheck = importFunction(TYPES[type].typecheck.generic.f)
 
-      addLine(`if (${varName} === undefined) throw new Error("Variable ${name} is not defined in this scope");`)
-      addLine(`if (!${typecheck}(${varName})) throw new Error("Expected variable ${name} to have a type of ${type}");`)
+      addLine(
+        `if (${varName} === undefined) throw new Error("Variable ${name} is not defined in this scope");`
+      )
+      addLine(
+        `if (!${typecheck}(${varName})) throw new Error("Expected variable ${name} to have a type of ${type}");`
+      )
     }
   }
 
-  compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts)
+  compileEvaluateVariables(
+    root,
+    nodeInfo,
+    importFunction,
+    importConstant,
+    getScopedVariable,
+    getUnusedVarName,
+    addLine,
+    opts
+  )
   addLine(`return ${nodeInfo.get(root).varName};`)
 
   // Typecheck scope object
   if (doTypechecks && scopeUsed) {
     if (exportedArgs.length === 0) {
-      prependLine(`if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed to evaluate function should be a scope");`)
+      prependLine(
+        `if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed to evaluate function should be a scope");`
+      )
     } else {
-      prependLine(`if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed as last parameter to evaluate function should be a scope; there are undefined variables");`)
+      prependLine(
+        `if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed as last parameter to evaluate function should be a scope; there are undefined variables");`
+      )
     }
   }
 
   // Scope is last argument in function
-  if (scopeUsed)
-    fArgs.push(scopeVarName)
+  if (scopeUsed) fArgs.push(scopeVarName)
 
-  exportFunction("evaluate", fArgs, fBody)
+  exportFunction('evaluate', fArgs, fBody)
 }
 
-function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts) {
+function compileEvaluateVariables (
+  root,
+  nodeInfo,
+  importFunction,
+  importConstant,
+  getScopedVariable,
+  getUnusedVarName,
+  addLine,
+  opts
+) {
   // How much to try and optimize the computations
   let optimizationLevel = opts.o ?? 0
 
@@ -217,10 +267,14 @@ function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant
       if (srcType !== dstType) {
         let cast = getCast(srcType, dstType)
 
-        if (cast.name !== "identity") {
+        if (cast.name !== 'identity') {
           let convertedVarName = getUnusedVarName()
 
-          addLine(`var ${convertedVarName}=${importFunction(cast.evaluators.generic.f)}(${varName});`)
+          addLine(
+            `var ${convertedVarName}=${importFunction(
+              cast.evaluators.generic.f
+            )}(${varName});`
+          )
           varName = convertedVarName
         }
       }
@@ -228,7 +282,7 @@ function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant
       return varName
     })
 
-    if (evaluatorType === "special_binary") {
+    if (evaluatorType === 'special_binary') {
       addLine(`var ${varName}=${args[0]} ${evaluator.binary} ${args[1]};`)
     } else {
       let fName = importFunction(evaluator.f)
@@ -238,29 +292,33 @@ function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant
     return varName
   }
 
-  root.applyAll(node => {
-    let info = nodeInfo.get(node)
-    let nodeType = node.nodeType()
-    let varName
+  root.applyAll(
+    node => {
+      let info = nodeInfo.get(node)
+      let nodeType = node.nodeType()
+      let varName
 
-    switch (nodeType) {
-      case "op":
-        varName = compileOperator(node)
-        break
-      case "var":
-        varName = getScopedVariable(node.name).varName
-        break
-      case "const":
-        varName = importConstant(node.value)
-        break
-      case "group":
-        // Forward the var name from the only child (since this is a grouping)
-        varName = nodeInfo.get(node.children[0]).varName
-        break
-      default:
-        throw new Error(`Unknown node type ${nodeType}`)
-    }
+      switch (nodeType) {
+        case 'op':
+          varName = compileOperator(node)
+          break
+        case 'var':
+          varName = getScopedVariable(node.name).varName
+          break
+        case 'const':
+          varName = importConstant(node.value)
+          break
+        case 'group':
+          // Forward the var name from the only child (since this is a grouping)
+          varName = nodeInfo.get(node.children[0]).varName
+          break
+        default:
+          throw new Error(`Unknown node type ${nodeType}`)
+      }
 
-    info.varName = varName
-  }, false, true /* children first, so bottom up */)
+      info.varName = varName
+    },
+    false,
+    true /* children first, so bottom up */
+  )
 }

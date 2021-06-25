@@ -6,8 +6,9 @@ import { Divide } from './basic_arithmetic'
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Sinh = (z) => {
-  let a = z.re, b = z.im
+export const Sinh = z => {
+  let a = z.re,
+    b = z.im
 
   let sinhA = Math.sinh(a)
   let coshA = Math.sqrt(1 + sinhA * sinhA)
@@ -23,8 +24,9 @@ export const Sinh = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Cosh = (z) => {
-  let a = z.re, b = z.im
+export const Cosh = z => {
+  let a = z.re,
+    b = z.im
 
   let sinhA = Math.sinh(a)
   let coshA = Math.sqrt(1 + sinhA * sinhA)
@@ -40,8 +42,9 @@ export const Cosh = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Tanh = (z) => {
-  let a = 2 * z.re, b = 2 * z.im
+export const Tanh = z => {
+  let a = 2 * z.re,
+    b = 2 * z.im
 
   let sinhA = Math.sinh(a)
   let coshA = Math.sqrt(1 + sinhA * sinhA)
@@ -57,7 +60,7 @@ export const Tanh = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Sech = (z) => {
+export const Sech = z => {
   return Divide(Complex.One, Cosh(z))
 }
 
@@ -66,7 +69,7 @@ export const Sech = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Csch = (z) => {
+export const Csch = z => {
   return Divide(Complex.One, Sinh(z))
 }
 
@@ -75,6 +78,6 @@ export const Csch = (z) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Coth = (z) => {
+export const Coth = z => {
   return Divide(Complex.One, Tanh(z))
 }

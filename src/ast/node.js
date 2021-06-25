@@ -1,11 +1,11 @@
-import {getCast} from "./operator.js"
-import {resolveOperator} from "./operators.js"
+import { getCast } from './operator.js'
+import { resolveOperator } from './operators.js'
 
 class EvaluationError extends Error {
-  constructor(message) {
+  constructor (message) {
     super(message)
 
-    this.name = "EvaluationError"
+    this.name = 'EvaluationError'
   }
 }
 
@@ -13,13 +13,12 @@ class EvaluationError extends Error {
  * Abstract base class for AST nodes
  */
 export class ASTNode {
-  applyAll (func, onlyGroups=true, childrenFirst=false, depth=0) {
-    if (!onlyGroups)
-      func(this, depth)
+  applyAll (func, onlyGroups = true, childrenFirst = false, depth = 0) {
+    if (!onlyGroups) func(this, depth)
   }
 
   nodeType () {
-    return "node"
+    return 'node'
   }
 
   usedVariables () {
@@ -27,9 +26,8 @@ export class ASTNode {
     let types = new Map()
 
     this.applyAll(node => {
-      if (node.nodeType() === "var") {
-        if (!types.has(node.name))
-          types.set(node.name, node.type)
+      if (node.nodeType() === 'var') {
+        if (!types.has(node.name)) types.set(node.name, node.type)
       }
     })
 
@@ -49,7 +47,7 @@ export class ASTGroup extends ASTNode {
    * @param children {Array}
    * @param type {string}
    */
-  constructor (children=[], type=null) {
+  constructor (children = [], type = null) {
     super()
 
     /**
@@ -73,9 +71,8 @@ export class ASTGroup extends ASTNode {
    * @param depth {number}
    * @returns {ASTNode}
    */
-  applyAll (func, onlyGroups=false, childrenFirst=false, depth=0) {
-    if (!childrenFirst)
-      func(this, depth)
+  applyAll (func, onlyGroups = false, childrenFirst = false, depth = 0) {
+    if (!childrenFirst) func(this, depth)
 
     let children = this.children
     for (let i = 0; i < children.length; ++i) {
@@ -85,8 +82,7 @@ export class ASTGroup extends ASTNode {
       }
     }
 
-    if (childrenFirst)
-      func(this, depth)
+    if (childrenFirst) func(this, depth)
 
     return this
   }
@@ -96,7 +92,10 @@ export class ASTGroup extends ASTNode {
    * @returns {ASTGroup}
    */
   clone () {
-    return new ASTGroup(this.children.map(c => c.clone()), this.type)
+    return new ASTGroup(
+      this.children.map(c => c.clone()),
+      this.type
+    )
   }
 
   /**
@@ -114,19 +113,19 @@ export class ASTGroup extends ASTNode {
    * @param typeInfo {{}} Dictionary of variable name -> variable type
    * @param opts {{}}
    */
-  resolveTypes (typeInfo, opts={}) {
+  resolveTypes (typeInfo, opts = {}) {
     this.children.forEach(child => child.resolveTypes(typeInfo, opts))
 
     this.type = this.children[0].type
   }
 
   nodeType () {
-    return "group"
+    return 'group'
   }
 }
 
 export class VariableNode extends ASTNode {
-  constructor (name, type=null) {
+  constructor (name, type = null) {
     super()
 
     this.name = name
@@ -144,7 +143,9 @@ export class VariableNode extends ASTNode {
   evaluate (scope) {
     let val = scope.variables[this.name]
     if (!val)
-      throw new EvaluationError(`Variable ${this.name} was not found in the scope`)
+      throw new EvaluationError(
+        `Variable ${this.name} was not found in the scope`
+      )
 
     return val
   }
@@ -154,18 +155,18 @@ export class VariableNode extends ASTNode {
    * @param typeInfo {{}} Dictionary of variable name -> variable type
    * @param opts {{}}
    */
-  resolveTypes (typeInfo, opts={}) {
+  resolveTypes (typeInfo, opts = {}) {
     let type = typeInfo[this.name]
     let strict = !!opts.strict
 
     if (strict && !type)
       throw new Error(`Type of variable ${this.name} is unknown`)
 
-    this.type = type ?? "real"
+    this.type = type ?? 'real'
   }
 
   nodeType () {
-    return "var"
+    return 'var'
   }
 }
 
@@ -192,25 +193,27 @@ export class OperatorNode extends ASTGroup {
     return node
   }
 
-  getChildrenSignature() {
+  getChildrenSignature () {
     return this.children.map(child => child.type)
   }
 
   evaluate (scope) {
     if (!this.definition)
-      throw new EvaluationError(`Evaluation definition not generated for operator node`)
+      throw new EvaluationError(
+        `Evaluation definition not generated for operator node`
+      )
 
     const children = this.children
     let params = this.children.map(child => child.evaluate(scope))
-    const definition = this.definition, sig = definition.signature
+    const definition = this.definition,
+      sig = definition.signature
 
     // Cast arguments appropriately
     params.forEach((param, i) => {
       let dstType = sig[i]
       let srcType = children[i].type
 
-      if (dstType !== srcType)
-        params[i] = getCast(srcType, dstType)(param)
+      if (dstType !== srcType) params[i] = getCast(srcType, dstType)(param)
     })
 
     return definition.evaluators.generic.f.apply(null, params)
@@ -221,7 +224,7 @@ export class OperatorNode extends ASTGroup {
    * @param typeInfo {{}} Dictionary of variable name -> variable type
    * @param opts {{}}
    */
-  resolveTypes (typeInfo, opts={}) {
+  resolveTypes (typeInfo, opts = {}) {
     // We need to find the function definition that matches
     this.children.forEach(child => child.resolveTypes(typeInfo))
 
@@ -229,7 +232,13 @@ export class OperatorNode extends ASTGroup {
     let definition = resolveOperator(this.op, signature)
 
     if (!definition)
-      throw new Error("Could not find a suitable definition for operator " + this.op + "(" + signature.join(', ') + ').')
+      throw new Error(
+        'Could not find a suitable definition for operator ' +
+          this.op +
+          '(' +
+          signature.join(', ') +
+          ').'
+      )
 
     this.definition = definition
     this.type = definition.returnType
@@ -238,12 +247,12 @@ export class OperatorNode extends ASTGroup {
   }
 
   nodeType () {
-    return "op"
+    return 'op'
   }
 }
 
 export class ConstantNode extends ASTNode {
-  constructor (value, text, type="real") {
+  constructor (value, text, type = 'real') {
     super()
 
     this.value = value
@@ -264,6 +273,6 @@ export class ConstantNode extends ASTNode {
   }
 
   nodeType () {
-    return "const"
+    return 'const'
   }
 }

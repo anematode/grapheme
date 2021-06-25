@@ -14,10 +14,14 @@ import { assertRange } from '../../core/utils.js'
  * @param maxNumerator {number} An integer between 1 and Number.MAX_SAFE_INTEGER
  * @returns {number[]} A three-element array [ p, q, error ], where error is abs(x - p/q) as calculated by JS
  */
-export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SAFE_INTEGER) {
+export function closestRational (
+  x,
+  maxDenominator,
+  maxNumerator = Number.MAX_SAFE_INTEGER
+) {
   if (x < 0) {
-    const [ p, q, error ] = closestRational(-x, maxDenominator, maxNumerator)
-    return [ -p, q, error ]
+    const [p, q, error] = closestRational(-x, maxDenominator, maxNumerator)
+    return [-p, q, error]
   }
 
   assertRange(maxDenominator, 1, Number.MAX_SAFE_INTEGER, 'maxDenominator')
@@ -28,20 +32,22 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
   maxNumerator = Math.round(maxNumerator)
 
   // Some simple cases
-  if (!Number.isFinite(x)) { return [ NaN, NaN, NaN ] }
+  if (!Number.isFinite(x)) {
+    return [NaN, NaN, NaN]
+  }
   if (Number.isInteger(x)) {
     if (x <= maxNumerator) {
-      return [ x, 1, 0 ]
+      return [x, 1, 0]
     }
   } else if (maxDenominator === 1) {
     const rnd = Math.min(maxNumerator, Math.round(x))
 
-    return [ rnd, 1, Math.abs(rnd - x) ]
+    return [rnd, 1, Math.abs(rnd - x)]
   }
 
   if (x > maxNumerator) {
     // Closest we can get, unfortunately
-    return [ maxNumerator, 1, Math.abs(maxNumerator - x) ]
+    return [maxNumerator, 1, Math.abs(maxNumerator - x)]
   }
 
   // Floor and fractional part of x
@@ -51,7 +57,7 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
   const frac = x - flr
 
   // frac = exactFracNum / (exactFracDenWithoutExp * 2 ^ exp) = exactN / exactD (last equality is by definition); exp >= 0 guaranteed
-  const [ exactFracNum, exactFracDenWithoutExp, expN ] = rationalExp(frac)
+  const [exactFracNum, exactFracDenWithoutExp, expN] = rationalExp(frac)
   const exp = -expN
 
   // exactFracDen = exactD; exactFracNum = exactN. Note that x * 2^n is always exactly representable, so exactFracDen
@@ -59,7 +65,7 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
   // that is okay; we just return 0.
   const exactFracDen = exactFracDenWithoutExp * pow2(exp)
 
-  if (exactFracDen === Infinity) return [ 0, 1, x ]
+  if (exactFracDen === Infinity) return [0, 1, x]
 
   // We express frac as a continued fraction. To do this, we start with the definition that frac = exactN/exactD.
   // Then frac = 0 + 1 / (floor(exactD/exactN) + 1 / (exactN / mod(exactD,exactN))). Note that
@@ -97,13 +103,15 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
     // term is equivalent to c_i from Grapheme theory
     let term, rem
 
-    if (i !== 2) { // All steps besides the first
+    if (i !== 2) {
+      // All steps besides the first
       term = Math.floor(contFracGeneratorNum / contFracGeneratorDen)
       rem = contFracGeneratorNum % contFracGeneratorDen
 
       contFracGeneratorNum = contFracGeneratorDen
       contFracGeneratorDen = rem
-    } else { // The first step is special, since we have already specially computed these values
+    } else {
+      // The first step is special, since we have already specially computed these values
       term = flrDN
       rem = modDN
     }
@@ -124,7 +132,9 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
       // term_r * nn + nnm1 <= maxNumerator and term_r * dn + dnm1 <= maxDenominator. Some finagling results in
       // term_r <= (maxNumerator - nnm1) / nn and term_r <= (maxDenominator - dnm1) / dn, thus we have our final ineq,
       // term / 2 < term_r <= Math.min((maxNumerator - nnm1) / nn, (maxDenominator - dnm1) / dn).
-      const maxTermR = Math.floor(Math.min((maxNumerator - nnm1) / nn, (maxDenominator - dnm1) / dn))
+      const maxTermR = Math.floor(
+        Math.min((maxNumerator - nnm1) / nn, (maxDenominator - dnm1) / dn)
+      )
       const minTermR = term / 2
 
       if (maxTermR >= minTermR) {
@@ -161,30 +171,110 @@ export function closestRational (x, maxDenominator, maxNumerator = Number.MAX_SA
 
   const quot = bestN / bestD
 
-  return [ bestN, bestD, Math.abs(quot - x) ]
+  return [bestN, bestD, Math.abs(quot - x)]
 }
 
 // [...Array(53 + 25).keys()].map(n => { n = n - 52; return Math.floor(Math.min(Math.PI * 2 ** (26 - n/2) / 300, Number.MAX_SAFE_INTEGER)) })
 const dnLookupTable = [
-  47161585013522, 33348276574567, 23580792506761, 16674138287283, 11790396253380, 8337069143641, 5895198126690,
-  4168534571820, 2947599063345, 2084267285910, 1473799531672, 1042133642955, 736899765836, 521066821477, 368449882918,
-  260533410738, 184224941459, 130266705369, 92112470729, 65133352684, 46056235364, 32566676342, 23028117682,
-  16283338171, 11514058841, 8141669085, 5757029420, 4070834542, 2878514710, 2035417271, 1439257355, 1017708635,
-  719628677, 508854317, 359814338, 254427158, 179907169, 127213579, 89953584, 63606789, 44976792, 31803394, 22488396,
-  15901697, 11244198, 7950848, 5622099, 3975424, 2811049, 1987712, 1405524, 993856, 702762, 496928, 351381, 248464,
-  175690, 124232, 87845, 62116, 43922, 31058, 21961, 15529, 10980, 7764, 5490, 3882, 2745, 1941, 1372, 970, 686, 485,
-  343, 242, 171, 121
+  47161585013522,
+  33348276574567,
+  23580792506761,
+  16674138287283,
+  11790396253380,
+  8337069143641,
+  5895198126690,
+  4168534571820,
+  2947599063345,
+  2084267285910,
+  1473799531672,
+  1042133642955,
+  736899765836,
+  521066821477,
+  368449882918,
+  260533410738,
+  184224941459,
+  130266705369,
+  92112470729,
+  65133352684,
+  46056235364,
+  32566676342,
+  23028117682,
+  16283338171,
+  11514058841,
+  8141669085,
+  5757029420,
+  4070834542,
+  2878514710,
+  2035417271,
+  1439257355,
+  1017708635,
+  719628677,
+  508854317,
+  359814338,
+  254427158,
+  179907169,
+  127213579,
+  89953584,
+  63606789,
+  44976792,
+  31803394,
+  22488396,
+  15901697,
+  11244198,
+  7950848,
+  5622099,
+  3975424,
+  2811049,
+  1987712,
+  1405524,
+  993856,
+  702762,
+  496928,
+  351381,
+  248464,
+  175690,
+  124232,
+  87845,
+  62116,
+  43922,
+  31058,
+  21961,
+  15529,
+  10980,
+  7764,
+  5490,
+  3882,
+  2745,
+  1941,
+  1372,
+  970,
+  686,
+  485,
+  343,
+  242,
+  171,
+  121
 ]
 
 // Internal function used to convert a double to a rational; does the actual work.
 function _doubleToRational (d) {
-  if (d === 0) { return [ 0, 1 ] } else if (Number.isInteger(d)) { return [ d, 1 ] }
+  if (d === 0) {
+    return [0, 1]
+  } else if (Number.isInteger(d)) {
+    return [d, 1]
+  }
 
   const negative = d < 0
   d = Math.abs(d)
 
   // Early exit conditions
-  if (d <= 1.1102230246251565e-16 /** 2^-53 */ || d > 67108864 /** 2^26 */ || !Number.isFinite(d)) { return [ NaN, NaN ] }
+  if (
+    d <= 1.1102230246251565e-16 /** 2^-53 */ ||
+    d > 67108864 /** 2^26 */ ||
+    !Number.isFinite(d)
+  ) {
+    return [NaN, NaN]
+  }
 
   // Guaranteed that d > 0 and is finite, and that its exponent n is in the range [-52, 25] inclusive.
   const exp = getExponent(d)
@@ -194,17 +284,17 @@ function _doubleToRational (d) {
   const dn = dnLookupTable[exp + 52]
 
   // We find the nearest rational number that satisfies our requirements
-  const [ p, q, err ] = closestRational(d, dn, Number.MAX_SAFE_INTEGER)
+  const [p, q, err] = closestRational(d, dn, Number.MAX_SAFE_INTEGER)
 
   // Return the fraction if close enough, but rigorously so (see Theory)
-  if (err <= pow2(exp - 52)) return [ negative ? -p : p, q ]
+  if (err <= pow2(exp - 52)) return [negative ? -p : p, q]
 
-  return [ NaN, NaN ]
+  return [NaN, NaN]
 }
 
 // Cached values for doubleToRational
 let lastDoubleToRationalArg = 0
-let lastDoubleToRationalRes = [ 0, 1 ]
+let lastDoubleToRationalRes = [0, 1]
 
 /**
  * This function classifies floats, which are all technically rationals (more specifically, dyadic rationals), as

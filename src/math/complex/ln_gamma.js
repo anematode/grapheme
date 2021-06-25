@@ -16,7 +16,10 @@ function LnGamma (z) {
     // Compute via reflection formula
     let reflected = LnGamma(Subtract(Complex.One, z))
 
-    return Subtract(Subtract(new Complex(logPi), Ln(Sin(Multiply(new Complex(Math.PI), z)))), reflected)
+    return Subtract(
+      Subtract(new Complex(logPi), Ln(Sin(Multiply(new Complex(Math.PI), z)))),
+      reflected
+    )
   } else {
     z.re -= 1
 
@@ -25,7 +28,10 @@ function LnGamma (z) {
     var x = new Complex(LANCZOS_COEFFICIENTS[0])
 
     for (var i = 1; i < g + 2; i++) {
-      let component = Divide(new Complex(LANCZOS_COEFFICIENTS[i]), Add(z, new Complex(i)))
+      let component = Divide(
+        new Complex(LANCZOS_COEFFICIENTS[i]),
+        Add(z, new Complex(i))
+      )
 
       x.re += component.re
       x.im += component.im
@@ -33,7 +39,10 @@ function LnGamma (z) {
 
     var t = Add(z, new Complex(g + 0.5))
 
-    return Add(new Complex(logSqrt2Pi), Add(Subtract(Multiply(Ln(t), Add(z, new Complex(0.5))), t), Ln(x)))
+    return Add(
+      new Complex(logSqrt2Pi),
+      Add(Subtract(Multiply(Ln(t), Add(z, new Complex(0.5))), t), Ln(x))
+    )
   }
 }
 

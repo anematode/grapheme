@@ -2,8 +2,8 @@
  * Represents a linear transformation by storing two bounding boxes: one for the plot in CSS pixels, and one for the
  * actual elements in the graph. Some parts of this should be highly optimized, but it needn't be complicated.
  */
-import {BoundingBox} from "./bounding_box.js"
-import { Vec2 } from "./vec/vec2.js"
+import { BoundingBox } from './bounding_box.js'
+import { Vec2 } from './vec/vec2.js'
 
 export class LinearPlot2DTransform {
   /**
@@ -87,13 +87,22 @@ export class LinearPlot2DTransform {
     this.setGraphYBounds(y1, y2)
   }
 
-  clone() {
-    return new LinearPlot2DTransform(this.px1, this.py1, this.pw, this.ph, this.gx1, this.gy1, this.gw, this.gh)
+  clone () {
+    return new LinearPlot2DTransform(
+      this.px1,
+      this.py1,
+      this.pw,
+      this.ph,
+      this.gx1,
+      this.gy1,
+      this.gw,
+      this.gh
+    )
   }
 
   pixelToGraphX (x) {
     // This is not flipped
-    return (x - this.px1) / this.pw * this.gw + this.gx1
+    return ((x - this.px1) / this.pw) * this.gw + this.gx1
   }
 
   pixelToGraphY (y) {
@@ -103,7 +112,7 @@ export class LinearPlot2DTransform {
 
   graphToPixelX (x) {
     // This is not flipped
-    return (x - this.gx1) / this.gw * this.pw + this.px1
+    return ((x - this.gx1) / this.gw) * this.pw + this.px1
   }
 
   graphToPixelY (y) {
@@ -128,22 +137,28 @@ export class LinearPlot2DTransform {
     return {
       xm: pw / gw,
       ym: -ph / gh,
-      xb: -gx1 / gw * pw + px1,
+      xb: (-gx1 / gw) * pw + px1,
       yb: (1 + gy1 / gh) * ph + py1
     }
   }
 }
 
 export class LinearPlot2DTransformConstraints {
-  constructor(params) {
-
-  }
+  constructor (params) {}
 
   limitTransform (oldTransform, newTransform) {
     // For now, just return the oldTransform if the new transform has width 0 or has non-finite numbers
     const { px1, py1, pw, ph, gx1, gy1, gw, gh } = newTransform
 
-    if (gw <= 0 || gh <= 0 || !Number.isFinite(gx1) || !Number.isFinite(gy1) || !Number.isFinite(gw) || !Number.isFinite(gh)) return oldTransform
+    if (
+      gw <= 0 ||
+      gh <= 0 ||
+      !Number.isFinite(gx1) ||
+      !Number.isFinite(gy1) ||
+      !Number.isFinite(gw) ||
+      !Number.isFinite(gh)
+    )
+      return oldTransform
 
     return newTransform
   }

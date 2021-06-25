@@ -4,22 +4,34 @@ import { Sin } from './trig_functions'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
 import { PowN } from './pow'
 
-let coeffs = [[1, 1], [2, 1 / 2], [3, 1 / 6], [5, 1 / 30], [7, 1 / 42], [9, 1 / 30], [11, 5 / 66], [13, 691 / 2730], [15, 7 / 6]]
+let coeffs = [
+  [1, 1],
+  [2, 1 / 2],
+  [3, 1 / 6],
+  [5, 1 / 30],
+  [7, 1 / 42],
+  [9, 1 / 30],
+  [11, 5 / 66],
+  [13, 691 / 2730],
+  [15, 7 / 6]
+]
 
 /**
  *
  * @param z
  * @returns {Complex}
  */
-function Trigamma(z) {
-  if (Math.abs(z.im) < 1e-17)
-    return new Complex(trigamma(z.re))
+function Trigamma (z) {
+  if (Math.abs(z.im) < 1e-17) return new Complex(trigamma(z.re))
 
   if (z.re < 0.5) {
     // psi_1(1-z) + psi_1(z) = pi^2 / (sin^2 pi z)
     // psi_1(z) = pi^2 / (sin^2 pi z) - psi_1(1-z)
 
-    return Subtract(Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)), Trigamma(Subtract(Complex.One, z)))
+    return Subtract(
+      Divide(new Complex(Math.PI * Math.PI), PowN(Sin(z.scale(Math.PI)), 2)),
+      Trigamma(Subtract(Complex.One, z))
+    )
   } else if (z.re < 20) {
     // psi_1(z+1) = psi_1(z) - 1/z^2
     // psi_1(z) = psi_1(z+1) + 1/z^2

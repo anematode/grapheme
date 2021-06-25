@@ -1,7 +1,22 @@
-
-
-export function getDemarcations (xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, includeAxis=false) {
-  if (xStart >= xEnd || !Number.isFinite(xStart) || !Number.isFinite(xEnd) || !Number.isFinite(xLen) || desiredMajorSep < 1 || desiredMinorSep < 1 || subdivisions.length === 0) return []
+export function getDemarcations (
+  xStart,
+  xEnd,
+  xLen,
+  desiredMinorSep,
+  desiredMajorSep,
+  subdivisions,
+  includeAxis = false
+) {
+  if (
+    xStart >= xEnd ||
+    !Number.isFinite(xStart) ||
+    !Number.isFinite(xEnd) ||
+    !Number.isFinite(xLen) ||
+    desiredMajorSep < 1 ||
+    desiredMinorSep < 1 ||
+    subdivisions.length === 0
+  )
+    return []
 
   let xGraphLen = xEnd - xStart
   let estimatedMajors = xLen / desiredMajorSep
@@ -10,15 +25,17 @@ export function getDemarcations (xStart, xEnd, xLen, desiredMinorSep, desiredMaj
   // to the number implied by the desired major sep
   let bestBase = 0
   let bestErr = Infinity
-  let bestSubdivision = [ 1, 1 ]
+  let bestSubdivision = [1, 1]
 
   for (const subdiv of subdivisions) {
     let maj = subdiv[1]
 
-    let desiredBase = Math.log10(maj * xGraphLen / estimatedMajors)
+    let desiredBase = Math.log10((maj * xGraphLen) / estimatedMajors)
     let nearest = Math.round(desiredBase)
 
-    let err = Math.abs(maj * xGraphLen / Math.pow(10, nearest) - estimatedMajors)
+    let err = Math.abs(
+      (maj * xGraphLen) / Math.pow(10, nearest) - estimatedMajors
+    )
 
     if (err < bestErr) {
       bestErr = err
@@ -38,7 +55,7 @@ export function getDemarcations (xStart, xEnd, xLen, desiredMinorSep, desiredMaj
   if (Number.isInteger(lastMultiple)) lastMultiple++
   lastMultiple = Math.ceil(lastMultiple)
 
-  let [ min, maj ] = bestSubdivision
+  let [min, maj] = bestSubdivision
   let minTicks = []
   let majTicks = []
 
@@ -51,11 +68,10 @@ export function getDemarcations (xStart, xEnd, xLen, desiredMinorSep, desiredMaj
     let diff = end - begin
 
     for (let j = 0; j < maj; ++j) {
-      let tick = begin + diff * j / maj
+      let tick = begin + (diff * j) / maj
       if (tick > xEnd) continue
 
-      if ((tick >= xStart) && (includeAxis || tick !== 0))
-        majTicks.push(tick)
+      if (tick >= xStart && (includeAxis || tick !== 0)) majTicks.push(tick)
 
       for (let k = 1; k < min; ++k) {
         tick = begin + diff * ((j + k / min) / maj)
@@ -69,15 +85,42 @@ export function getDemarcations (xStart, xEnd, xLen, desiredMinorSep, desiredMaj
   return { min: minTicks, maj: majTicks }
 }
 
-export function get2DDemarcations (xStart, xEnd, xLen, yStart, yEnd, yLen, {
-  desiredMinorSep = 20,
-  desiredMajorSep = 150,
-  subdivisions = [ [ 4 /* minor */, 5 /* major */ ], [5, 2], [5, 1] ], // permissible subdivisions of the powers of ten into major separators and minor separators
-  emitAxis = true // emit a special case for axis
-} = {}) {
-
-  let x = getDemarcations(xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis)
-  let y = getDemarcations(yStart, yEnd, yLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis)
+export function get2DDemarcations (
+  xStart,
+  xEnd,
+  xLen,
+  yStart,
+  yEnd,
+  yLen,
+  {
+    desiredMinorSep = 20,
+    desiredMajorSep = 150,
+    subdivisions = [
+      [4 /* minor */, 5 /* major */],
+      [5, 2],
+      [5, 1]
+    ], // permissible subdivisions of the powers of ten into major separators and minor separators
+    emitAxis = true // emit a special case for axis
+  } = {}
+) {
+  let x = getDemarcations(
+    xStart,
+    xEnd,
+    xLen,
+    desiredMinorSep,
+    desiredMajorSep,
+    subdivisions,
+    !emitAxis
+  )
+  let y = getDemarcations(
+    yStart,
+    yEnd,
+    yLen,
+    desiredMinorSep,
+    desiredMajorSep,
+    subdivisions,
+    !emitAxis
+  )
 
   let ret = {
     major: {
@@ -92,8 +135,8 @@ export function get2DDemarcations (xStart, xEnd, xLen, yStart, yEnd, yLen, {
 
   if (emitAxis) {
     ret.axis = {
-      x: (xStart <= 0 || xEnd >= 0) ? [0] : [],
-      y: (yStart <= 0 || yEnd >= 0) ? [0] : []
+      x: xStart <= 0 || xEnd >= 0 ? [0] : [],
+      y: yStart <= 0 || yEnd >= 0 ? [0] : []
     }
   }
 

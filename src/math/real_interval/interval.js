@@ -47,7 +47,14 @@ export class RealInterval {
    * @param contMin {boolean} Whether the interval is always continuous.
    * @param contMax {boolean} Whether the interval is potentially continuous.
    */
-  constructor (min, max = min, defMin = true, defMax = true, contMin = true, contMax = true) {
+  constructor (
+    min,
+    max = min,
+    defMin = true,
+    defMax = true,
+    contMin = true,
+    contMax = true
+  ) {
     /**
      * The minimum of the interval.
      * @type {number}
@@ -124,7 +131,14 @@ export class RealInterval {
    * @returns {RealInterval}
    */
   clone () {
-    return new RealInterval(this.min, this.max, this.defMin, this.defMax, this.contMin, this.contMax)
+    return new RealInterval(
+      this.min,
+      this.max,
+      this.defMin,
+      this.defMax,
+      this.contMin,
+      this.contMax
+    )
   }
 
   /**
@@ -133,8 +147,14 @@ export class RealInterval {
    * @returns {boolean}
    */
   equals (int) {
-    return this.min === int.min && this.max === int.max && this.defMin === int.defMin && this.defMax === int.defMax &&
-      this.contMin === int.contMin && this.contMax === int.contMax
+    return (
+      this.min === int.min &&
+      this.max === int.max &&
+      this.defMin === int.defMin &&
+      this.defMax === int.defMax &&
+      this.contMin === int.contMin &&
+      this.contMax === int.contMax
+    )
   }
 
   /**
@@ -148,7 +168,11 @@ export class RealInterval {
     } else {
       // Iff two intervals intersect, then either some of this.contains(int.min), this.contains(int.max) is true, or
       // this interval is a subset of the other one which can be detected via int.contains(this.min)
-      return this.contains(int.min) || this.contains(int.max) || int.contains(this.min)
+      return (
+        this.contains(int.min) ||
+        this.contains(int.max) ||
+        int.contains(this.min)
+      )
     }
   }
 
@@ -170,7 +194,9 @@ export class RealInterval {
 
     const val = parseFloat(x)
 
-    if (Number.isNaN(val)) { return BAD_INTERVAL }
+    if (Number.isNaN(val)) {
+      return BAD_INTERVAL
+    }
 
     return new RealInterval(roundDown(val), roundUp(val))
   }
@@ -181,9 +207,7 @@ export class RealInterval {
  * variety of tags that can be used, and there needs to be a balancing act between more tags for tighter and faster
  * computation, and having too many tags that leads to slow down.
  */
-export class TaggedRealInterval extends RealInterval {
-
-}
+export class TaggedRealInterval extends RealInterval {}
 
 /** <p>Some functions, such as f(x) = 1/x, may
  * have to return wider intervals than ideal for certain inputs. f([-1, 1]) = [-inf, inf, defMin=false, defMin=true],
@@ -249,12 +273,14 @@ export function getIntervals (int) {
   if (int.isSet()) {
     return int.intervals
   } else {
-    return [ int ]
+    return [int]
   }
 }
 
 /** Interval returned when a function is completely undefined. */
-const BAD_INTERVAL = Object.freeze(new RealInterval(NaN, NaN, false, false, false, false))
+const BAD_INTERVAL = Object.freeze(
+  new RealInterval(NaN, NaN, false, false, false, false)
+)
 
 function evalIntervalSet1 (func, int1, furtherArgs) {
   const intervals = []
@@ -264,7 +290,8 @@ function evalIntervalSet1 (func, int1, furtherArgs) {
     if (int.defMax) {
       const res = func(int1, ...furtherArgs)
 
-      if (res.defMax) { // record the interval if it is defined
+      if (res.defMax) {
+        // record the interval if it is defined
         intervals.push(res)
         continue
       }
@@ -307,7 +334,8 @@ function evalIntervalSet2 (func, int1, int2, furtherArgs) {
 
       const res = func(int1, int2, ...furtherArgs)
 
-      if (!res.defMax) { // see explanation above
+      if (!res.defMax) {
+        // see explanation above
         undefinedIntervalNeeded()
       } else {
         intervals.push(res)
@@ -338,7 +366,8 @@ export function wrapIntervalFunction (func, argCount = 2) {
         return func(int1, ...furtherArgs)
       }
     }
-  } else if (argCount === 2) { // the most common case
+  } else if (argCount === 2) {
+    // the most common case
     ret = (int1, int2, ...furtherArgs) => {
       if (int1.isSet() || int2.isSet()) {
         return evalIntervalSet2(func, int1, int2, furtherArgs)

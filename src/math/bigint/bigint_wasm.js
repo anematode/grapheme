@@ -1,5 +1,5 @@
-import { WASM } from "../../wasm/wasm.js"
-import { BigInt } from "./bigint.js"
+import { WASM } from '../../wasm/wasm.js'
+import { BigInt } from './bigint.js'
 
 /**
  * Load a bigint into memory
@@ -7,8 +7,12 @@ import { BigInt } from "./bigint.js"
  * @returns BigInt pointer
  */
 export function loadBigInt (bigint) {
-  let ptr = WASM._grapheme_bigint_external_init(bigint.sign, bigint.wordCount, bigint.wordCount)
-  if (!ptr) throw new Error("Unable to initialize WASM big integer")
+  let ptr = WASM._grapheme_bigint_external_init(
+    bigint.sign,
+    bigint.wordCount,
+    bigint.wordCount
+  )
+  if (!ptr) throw new Error('Unable to initialize WASM big integer')
 
   // Put in the words, the space for which has already been allocated
   let wordsPtr = WASM._grapheme_bigint_get_words(ptr) >> 2
@@ -22,7 +26,10 @@ export function readBigInt (ptr) {
   let wordCount = WASM._grapheme_bigint_get_word_count(ptr)
   let sign = WASM._grapheme_bigint_get_sign(ptr)
 
-  return new BigInt().initFromWords(WASM.HEAP32.subarray(wordsPtr, wordsPtr + wordCount), sign)
+  return new BigInt().initFromWords(
+    WASM.HEAP32.subarray(wordsPtr, wordsPtr + wordCount),
+    sign
+  )
 }
 
 export function createBigIntPtr () {
@@ -30,7 +37,7 @@ export function createBigIntPtr () {
 }
 
 export function hintAllocateWords (ptr, words) {
-  return WASM._grapheme_bigint_allocate_words(ptr, words);
+  return WASM._grapheme_bigint_allocate_words(ptr, words)
 }
 
 export function multiplyBigIntInPlace (ptr, multiplicand) {

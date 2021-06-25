@@ -1,4 +1,3 @@
-
 // Another one of these, yada yada, reinventing the wheel, yay
 class Vec2 {
   constructor (x, y) {
@@ -7,29 +6,38 @@ class Vec2 {
   }
 
   static fromObj (obj) {
-    let x=0, y=0
+    let x = 0,
+      y = 0
 
     if (Array.isArray(obj)) {
       x = obj[0]
       y = obj[1]
-    } else if (typeof obj === "object" && obj.x) {
+    } else if (typeof obj === 'object' && obj.x) {
       x = obj.x
       y = obj.y
-    } else if (typeof obj === "string") {
+    } else if (typeof obj === 'string') {
       switch (obj) {
-        case "N": case "NE": case "NW":
+        case 'N':
+        case 'NE':
+        case 'NW':
           y = 1
           break
-        case "S": case "SE": case "SW":
+        case 'S':
+        case 'SE':
+        case 'SW':
           y = -1
           break
       }
 
       switch (obj) {
-        case "E": case "NE": case "SE":
+        case 'E':
+        case 'NE':
+        case 'SE':
           x = 1
           break
-        case "W": case "NW": case "SW":
+        case 'W':
+        case 'NW':
+        case 'SW':
           x = -1
           break
       }
@@ -53,13 +61,15 @@ class Vec2 {
   }
 
   rot (angle, centre) {
-    let s = Math.sin(angle), c = Math.cos(angle)
+    let s = Math.sin(angle),
+      c = Math.cos(angle)
 
-    if (!centre) return new Vec2(c * this.x - s * this.y, s * this.x + c * this.y)
+    if (!centre)
+      return new Vec2(c * this.x - s * this.y, s * this.x + c * this.y)
   }
 
   rotDeg (angle, centre) {
-    return this.rot(angle * Math.PI / 180, centre)
+    return this.rot((angle * Math.PI) / 180, centre)
   }
 
   unit () {

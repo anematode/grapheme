@@ -17,14 +17,16 @@ const LANCZOS_COEFFICIENTS = [
 ]
 
 // 1, 1, 2, 6, ...
-const INTEGER_FACTORIALS = [ 1 ]
+const INTEGER_FACTORIALS = [1]
 
 // Populate INTEGER_FACTORIALS
 let fact = 1
 for (let i = 1; ; ++i) {
   fact *= i
 
-  if (fact === Infinity) { break }
+  if (fact === Infinity) {
+    break
+  }
 
   INTEGER_FACTORIALS.push(fact)
 }
@@ -81,7 +83,7 @@ export function gamma (x) {
     const t = x + LANCZOS_COUNT + 0.5
     const sqrt2Pi = Math.sqrt(2 * Math.PI) // for performance, since Math.sqrt can be overwritten
 
-    return sqrt2Pi * Math.pow(t, (x + 0.5)) * Math.exp(-t) * z
+    return sqrt2Pi * Math.pow(t, x + 0.5) * Math.exp(-t) * z
   }
 }
 

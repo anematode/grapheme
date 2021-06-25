@@ -48,7 +48,8 @@ export function testBolus (n) {
     next () {
       if (finished) return { value: undefined, done: true }
 
-      for (let j = 0; j <= 1e5; ++i, ++j) { // Sum at most 10000 values
+      for (let j = 0; j <= 1e5; ++i, ++j) {
+        // Sum at most 10000 values
         sum += i
 
         if (i === n) {
@@ -62,9 +63,7 @@ export function testBolus (n) {
   }
 }
 
-export function coatBolus (bolus, stepIndex, stepCount) {
-
-}
+export function coatBolus (bolus, stepIndex, stepCount) {}
 
 class BolusTimeoutError extends Error {
   constructor (message) {
@@ -109,24 +108,31 @@ export function syncDigest (bolus, timeout = -1) {
 
       const startTime = Date.now()
 
-      while (true) { // Iterate through the bolus
+      while (true) {
+        // Iterate through the bolus
         const next = bolus.next()
 
-        if (next.done) { // return the result if done
+        if (next.done) {
+          // return the result if done
           return next.value
         }
 
         const delta = Date.now() - startTime
 
-        if (delta > timeout) { // anger
+        if (delta > timeout) {
+          // anger
           // Clean up if needed
           if (bolus.cleanup) bolus.cleanup()
 
-          throw new BolusTimeoutError('Bolus did not digest within ' + timeout + ' ms.')
+          throw new BolusTimeoutError(
+            'Bolus did not digest within ' + timeout + ' ms.'
+          )
         }
       }
     } else if (timeout !== -1) {
-      throw new RangeError('Invalid timeout, which must be between 1 and 86,400,000 ms, or -1 to signify no timeout.')
+      throw new RangeError(
+        'Invalid timeout, which must be between 1 and 86,400,000 ms, or -1 to signify no timeout.'
+      )
     }
 
     while (true) {
@@ -146,6 +152,4 @@ export function syncDigest (bolus, timeout = -1) {
  * @param onProgress
  * @param timeout
  */
-export function asyncDigest (bolus, onProgress, timeout = -1) {
-
-}
+export function asyncDigest (bolus, onProgress, timeout = -1) {}

@@ -1,8 +1,7 @@
-import {Element} from "./element.js"
-
+import { Element } from './element.js'
 
 export class Group extends Element {
-  constructor (params={}) {
+  constructor (params = {}) {
     super(params)
 
     this.children = []
@@ -18,16 +17,11 @@ export class Group extends Element {
    * @returns {Group}
    */
   add (elem) {
-    if (elem.isScene())
-      throw new Error("Scene cannot be a child")
-    if (elem.parent)
-      throw new Error("Element to be added already has a parent")
-    if (!(elem instanceof Element))
-      throw new TypeError("Element not element")
-    if (elem === this)
-      throw new Error("Can't add self")
-    if (elem.isChild(this))
-      throw new Error("Can't make cycle")
+    if (elem.isScene()) throw new Error('Scene cannot be a child')
+    if (elem.parent) throw new Error('Element to be added already has a parent')
+    if (!(elem instanceof Element)) throw new TypeError('Element not element')
+    if (elem === this) throw new Error("Can't add self")
+    if (elem.isChild(this)) throw new Error("Can't make cycle")
 
     this.children.push(elem)
     elem.parent = this
@@ -60,7 +54,7 @@ export class Group extends Element {
     }
   }
 
-  isChild (elem, recursive=true) {
+  isChild (elem, recursive = true) {
     for (const child of this.children) {
       if (child === elem) return true
       if (recursive && child.isChild(elem, true)) return true
@@ -86,7 +80,7 @@ export class Group extends Element {
       return this
     }
 
-    throw new Error("Not a direct child")
+    throw new Error('Not a direct child')
   }
 
   setScene (scene) {
@@ -96,8 +90,7 @@ export class Group extends Element {
 
   triggerEvent (eventName, data) {
     for (const child of this.children) {
-      if (child.triggerEvent(eventName, data))
-        return true
+      if (child.triggerEvent(eventName, data)) return true
     }
 
     super.triggerEvent(eventName, data)

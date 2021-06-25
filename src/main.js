@@ -29,7 +29,7 @@ export * from './renderer/renderer.js'
 export * from './elements/text_element.js'
 export * from './core/interface.js'
 export * from './elements/point_cloud.js'
-export * from "./algorithm/misc_geometry.js"
+export * from './algorithm/misc_geometry.js'
 export * from './styles/definitions.js'
 export * from './elements/polyline_element.js'
 export * from './math/bigint/bigint.js'

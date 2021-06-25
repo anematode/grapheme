@@ -6,7 +6,16 @@ import { doubleToRational } from './rational.js'
 // Computes the real branch of a ^ (c/d), where c and d are integers.
 function powRational (a, c, d) {
   // Simple return cases
-  if (d === 0 || Number.isNaN(c) || Number.isNaN(d) || !Number.isInteger(c) || !Number.isInteger(d) || Number.isNaN(a)) { return NaN }
+  if (
+    d === 0 ||
+    Number.isNaN(c) ||
+    Number.isNaN(d) ||
+    !Number.isInteger(c) ||
+    !Number.isInteger(d) ||
+    Number.isNaN(a)
+  ) {
+    return NaN
+  }
   if (a === 0) return 0
 
   const evenDenom = d % 2 === 0
@@ -22,7 +31,8 @@ function powRational (a, c, d) {
   // Now we know that a is not NaN, c is an integer, and d is a nonzero positive integer. Also, the answer is not NaN.
   const mag = Math.pow(Math.abs(a), c / d)
 
-  if (a >= 0) { // Can just do Math.pow
+  if (a >= 0) {
+    // Can just do Math.pow
     return mag
   } else if (a === 0) {
     return 0
@@ -41,7 +51,7 @@ function powRational (a, c, d) {
  * @private
  */
 function powSpecial (a, b) {
-  const [ num, den ] = doubleToRational(b)
+  const [num, den] = doubleToRational(b)
 
   // deemed irrational
   if (!den) return NaN

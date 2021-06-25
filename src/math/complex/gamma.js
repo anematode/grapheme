@@ -1,4 +1,3 @@
-
 // Ah, the gamma function.
 import { Sin } from './trig_functions'
 import { Add, Divide, Multiply, Subtract } from './basic_arithmetic'
@@ -7,12 +6,15 @@ import { Pow } from './pow'
 import Exp from './exp'
 import { LANCZOS_COEFFICIENTS, gamma } from '../gamma_function'
 
-function Gamma(z) {
-  if (z.re < 1/2) {
+function Gamma (z) {
+  if (z.re < 1 / 2) {
     // Gamma(z) * Gamma(1-z) = pi / sin(pi * z)
     // Gamma(z) = pi / sin(pi * z) / Gamma(1-z)
 
-    return Divide(new Complex(Math.PI), Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z))))
+    return Divide(
+      new Complex(Math.PI),
+      Multiply(Sin(z.scale(Math.PI)), Gamma(Subtract(Complex.One, z)))
+    )
   }
 
   if (Math.abs(z.im) < 1e-17) {
@@ -46,10 +48,10 @@ function Gamma(z) {
   let t = z.clone()
   t.re += LANCZOS_COEFFICIENTS.length - 1.5
 
-  return Multiply(new Complex(Math.sqrt(2 * Math.PI)),
-    Multiply(x, Multiply(
-      Pow(t, Add(z, new Complex(0.5))),
-      Exp(t.scale(-1)))))
+  return Multiply(
+    new Complex(Math.sqrt(2 * Math.PI)),
+    Multiply(x, Multiply(Pow(t, Add(z, new Complex(0.5))), Exp(t.scale(-1))))
+  )
 }
 
 export default Gamma

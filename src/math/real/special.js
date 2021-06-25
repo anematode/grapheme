@@ -1,5 +1,4 @@
-
-function seriesEval(r) {
+function seriesEval (r) {
   const c = [
     -1.0,
     2.331643981597124203363536062168,
@@ -7,12 +6,12 @@ function seriesEval(r) {
     1.936631114492359755363277457668,
     -2.353551201881614516821543561516,
     3.066858901050631912893148922704,
-    -4.175335600258177138854984177460,
+    -4.17533560025817713885498417746,
     5.858023729874774148815053846119,
     -8.401032217523977370984161688514,
     12.250753501314460424,
     -18.100697012472442755,
-    27.029044799010561650
+    27.02904479901056165
   ]
 
   const t_8 = c[8] + r * (c[9] + r * (c[10] + r * c[11]))
@@ -21,7 +20,7 @@ function seriesEval(r) {
   return c[0] + r * t_1
 }
 
-function approxProductLog(x) {
+function approxProductLog (x) {
   if (x > 1) {
     let logX = Math.log(x)
 
@@ -31,7 +30,7 @@ function approxProductLog(x) {
   return 0
 }
 
-function approxProductLogM1(x) {
+function approxProductLogM1 (x) {
   if (x < -1.0e-6) {
     // Calculate via series
 
@@ -49,11 +48,12 @@ function approxProductLogM1(x) {
   }
 }
 
-function halley(x, w, iters=8) {
+function halley (x, w, iters = 8) {
   for (let i = 0; i < 8; ++i) {
     let eW = Math.exp(w)
 
-    w = w - (w * eW - x) / (eW * (w + 1) - (w + 2) * (w * eW - x) / (2 * w + 2))
+    w =
+      w - (w * eW - x) / (eW * (w + 1) - ((w + 2) * (w * eW - x)) / (2 * w + 2))
   }
 
   return w
@@ -61,10 +61,8 @@ function halley(x, w, iters=8) {
 
 const RECIP_E = -1 / Math.E
 
-function productLog(x) {
-
-  if (x < RECIP_E)
-    return NaN
+function productLog (x) {
+  if (x < RECIP_E) return NaN
 
   // see https://mathworld.wolfram.com/LambertW-Function.html
   let w = approxProductLog(x)
@@ -74,12 +72,10 @@ function productLog(x) {
   return halley(x, w)
 }
 
-function productLogBranched(k, x) {
-  if (k === 0)
-    return productLog(x)
+function productLogBranched (k, x) {
+  if (k === 0) return productLog(x)
   else if (k === -1) {
-    if (x === 0)
-      return Infinity
+    if (x === 0) return Infinity
 
     if (RECIP_E <= x && x < 0) {
       let w = approxProductLogM1(x)

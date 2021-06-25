@@ -5,7 +5,7 @@ import { Complex } from './complex'
  * @param theta {number}
  * @returns {Complex} cis(theta)
  */
-const Cis = (theta) => {
+const Cis = theta => {
   // For real theta
   let c = Math.cos(theta)
   let s = Math.sin(theta)

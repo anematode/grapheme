@@ -3,34 +3,40 @@
  * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
  */
 import { getAngryAt } from './parser_error.js'
-import {ConstantNode, VariableNode, OperatorNode, ASTGroup, ASTNode} from './node.js'
+import {
+  ConstantNode,
+  VariableNode,
+  OperatorNode,
+  ASTGroup,
+  ASTNode
+} from './node.js'
 
 const OperatorSynonyms = {
-  'arcsinh': 'asinh',
-  'arsinh': 'asinh',
-  'arccosh': 'acosh',
-  'arcosh': 'acosh',
-  'arctanh': 'atanh',
-  'artanh': 'atanh',
-  'arcsech': 'asech',
-  'arccsch': 'acsch',
-  'arccoth': 'acoth',
-  'arsech': 'asech',
-  'arcsch': 'acsch',
-  'arcoth': 'acoth',
-  'arcsin': 'asin',
-  'arsin': 'asin',
-  'arccos': 'acos',
-  'arcos': 'acos',
-  'arctan': 'atan',
-  'artan': 'atan',
-  'arcsec': 'asec',
-  'arccsc': 'acsc',
-  'arccot': 'acot',
-  'arsec': 'asec',
-  'arcsc': 'acsc',
-  'arcot': 'acot',
-  'log': 'ln'
+  arcsinh: 'asinh',
+  arsinh: 'asinh',
+  arccosh: 'acosh',
+  arcosh: 'acosh',
+  arctanh: 'atanh',
+  artanh: 'atanh',
+  arcsech: 'asech',
+  arccsch: 'acsch',
+  arccoth: 'acoth',
+  arsech: 'asech',
+  arcsch: 'acsch',
+  arcoth: 'acoth',
+  arcsin: 'asin',
+  arsin: 'asin',
+  arccos: 'acos',
+  arcos: 'acos',
+  arctan: 'atan',
+  artan: 'atan',
+  arcsec: 'asec',
+  arccsc: 'acsc',
+  arccot: 'acot',
+  arsec: 'asec',
+  arcsc: 'acsc',
+  arcot: 'acot',
+  log: 'ln'
 }
 
 const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/
@@ -45,22 +51,23 @@ const string_regex = /^"(?:[^"\\]|\\.)*"/
  * Take a string and check whether its parentheses are balanced, throwing a ParserError if not.
  * @param string
  */
-function checkParensBalanced(string) {
+function checkParensBalanced (string) {
   // Stack of parentheses
   const stack = []
 
   let i = 0
   let err = false
 
-  outer:
-  for (; i < string.length; ++i) {
+  outer: for (; i < string.length; ++i) {
     const chr = string[i]
 
     switch (chr) {
-      case '(': case '[':
+      case '(':
+      case '[':
         stack.push(chr)
         break
-      case ')': case ']':
+      case ')':
+      case ']':
         if (stack.length === 0) {
           err = true
           break outer
@@ -84,26 +91,30 @@ function checkParensBalanced(string) {
     }
   }
 
-  if (stack.length !== 0)
-    err = true
+  if (stack.length !== 0) err = true
 
-  if (err)
-    getAngryAt(string, i, "Unbalanced parentheses/brackets")
+  if (err) getAngryAt(string, i, 'Unbalanced parentheses/brackets')
 }
 
-function unescapeBackslashedEscapes(string) {
-  return string.replace(/\\n/g, "\n")
-    .replace(/\\'/g, "\'")
-    .replace(/\\n/g, "\n")
+function unescapeBackslashedEscapes (string) {
+  return string
+    .replace(/\\n/g, '\n')
+    .replace(/\\'/g, "'")
+    .replace(/\\n/g, '\n')
 }
 
 // Make sure the variable name isn't a member of the empty object
 let testObj = {}
 export function isValidVariableName (str) {
-  return typeof str === "string" && !!str.match(variable_regex) && str[0] !== '$' && !testObj[str]
+  return (
+    typeof str === 'string' &&
+    !!str.match(variable_regex) &&
+    str[0] !== '$' &&
+    !testObj[str]
+  )
 }
 
-function* tokenizer(string) {
+function * tokenizer (string) {
   // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
 
   string = string.trimEnd()
@@ -126,7 +137,7 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "paren",
+          type: 'paren',
           paren: match[0],
           index: i
         }
@@ -137,7 +148,7 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "constant",
+          type: 'constant',
           value: match[0],
           index: i
         }
@@ -148,8 +159,8 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "operator",
-          op: match[0].replace(/\s+/g, ""),
+          type: 'operator',
+          op: match[0].replace(/\s+/g, ''),
           index: i
         }
         break
@@ -159,7 +170,7 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "comma",
+          type: 'comma',
           index: i
         }
         break
@@ -169,13 +180,13 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "function",
+          type: 'function',
           name: match[1],
           index: i
         }
 
         yield {
-          type: "paren",
+          type: 'paren',
           paren: '(',
           index: i + match[1].length
         }
@@ -187,7 +198,7 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "variable",
+          type: 'variable',
           name: match[0],
           index: i
         }
@@ -199,13 +210,13 @@ function* tokenizer(string) {
 
       if (match) {
         yield {
-          type: "string",
+          type: 'string',
           contents: match[0].slice(1, -1),
           index: i
         }
       }
 
-      getAngryAt(original_string, i, "Unrecognized token")
+      getAngryAt(original_string, i, 'Unrecognized token')
     } while (false)
 
     let len = match[0].length
@@ -214,45 +225,64 @@ function* tokenizer(string) {
   }
 }
 
-function checkValid(string, tokens) {
+function checkValid (string, tokens) {
   for (let i = 0; i < tokens.length - 1; ++i) {
     let token1 = tokens[i]
-    let token2 = tokens[i+1]
+    let token2 = tokens[i + 1]
 
-    let token2IsUnary = (token2.op === '-' || token2.op === '+')
+    let token2IsUnary = token2.op === '-' || token2.op === '+'
 
-    if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") &&
-      (!token2IsUnary || i === tokens.length - 2)) {
-      getAngryAt(string, token2.index, "No consecutive operators/commas")
+    if (
+      (token1.type === 'operator' || token1.type === 'comma') &&
+      (token2.type === 'operator' || token2.type === 'comma') &&
+      (!token2IsUnary || i === tokens.length - 2)
+    ) {
+      getAngryAt(string, token2.index, 'No consecutive operators/commas')
     }
-    if (token1.paren === "(" && token2.paren === ")")
-      getAngryAt(string, token2.index, "No empty parentheses")
-    if (token1.paren === "[" && token2.paren === "]")
-      getAngryAt(string, token2.index, "No empty brackets")
-    if (token1.type === "operator" && token2.paren === ")")
-      getAngryAt(string, token2.index, "No operator followed by closing parenthesis")
-    if (token1.type === "operator" && token2.paren === "]")
-      getAngryAt(string, token2.index, "No operator followed by closing bracket")
-    if (token1.type === "comma" && token2.paren === ")")
-      getAngryAt(string, token2.index, "No comma followed by closing parenthesis")
-    if (token1.type === "comma" && token2.paren === "]")
-      getAngryAt(string, token2.index, "No comma followed by closing bracket")
-    if (token1.paren === '(' && token2.type === "comma")
-      getAngryAt(string, token2.index, "No comma after starting parenthesis")
-    if (token1.paren === '[' && token2.type === "comma")
-      getAngryAt(string, token2.index, "No comma after starting bracket")
-    if (token1.paren === '(' && token2.type === "operator" && !token2IsUnary)
-      getAngryAt(string, token2.index, "No operator after starting parenthesis")
-    if (token1.paren === '[' && token2.type === "operator" && !token2IsUnary)
-      getAngryAt(string, token2.index, "No operator after starting bracket")
+    if (token1.paren === '(' && token2.paren === ')')
+      getAngryAt(string, token2.index, 'No empty parentheses')
+    if (token1.paren === '[' && token2.paren === ']')
+      getAngryAt(string, token2.index, 'No empty brackets')
+    if (token1.type === 'operator' && token2.paren === ')')
+      getAngryAt(
+        string,
+        token2.index,
+        'No operator followed by closing parenthesis'
+      )
+    if (token1.type === 'operator' && token2.paren === ']')
+      getAngryAt(
+        string,
+        token2.index,
+        'No operator followed by closing bracket'
+      )
+    if (token1.type === 'comma' && token2.paren === ')')
+      getAngryAt(
+        string,
+        token2.index,
+        'No comma followed by closing parenthesis'
+      )
+    if (token1.type === 'comma' && token2.paren === ']')
+      getAngryAt(string, token2.index, 'No comma followed by closing bracket')
+    if (token1.paren === '(' && token2.type === 'comma')
+      getAngryAt(string, token2.index, 'No comma after starting parenthesis')
+    if (token1.paren === '[' && token2.type === 'comma')
+      getAngryAt(string, token2.index, 'No comma after starting bracket')
+    if (token1.paren === '(' && token2.type === 'operator' && !token2IsUnary)
+      getAngryAt(string, token2.index, 'No operator after starting parenthesis')
+    if (token1.paren === '[' && token2.type === 'operator' && !token2IsUnary)
+      getAngryAt(string, token2.index, 'No operator after starting bracket')
   }
 
-  if (tokens[0].type === "comma" || (tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')))
-    getAngryAt(string, 0, "No starting comma/operator")
+  if (
+    tokens[0].type === 'comma' ||
+    (tokens[0].type === 'operator' &&
+      !(tokens[0].op === '-' || tokens[0].op === '+'))
+  )
+    getAngryAt(string, 0, 'No starting comma/operator')
 
   const last_token = tokens[tokens.length - 1]
-  if (last_token.type === "comma" || last_token.type === "operator")
-    getAngryAt(string, tokens.length - 1, "No ending comma/operator")
+  if (last_token.type === 'comma' || last_token.type === 'operator')
+    getAngryAt(string, tokens.length - 1, 'No ending comma/operator')
 }
 
 /**
@@ -261,15 +291,14 @@ function checkValid(string, tokens) {
  * @param children
  * @returns {number[]}
  */
-function findParenIndices(children) {
-  let startIndex = -1;
+function findParenIndices (children) {
+  let startIndex = -1
 
   for (let i = 0; i < children.length; ++i) {
     let child = children[i]
     if (!child.paren) continue
 
-    if (child.paren === '(' || child.paren === '[')
-      startIndex = i
+    if (child.paren === '(' || child.paren === '[') startIndex = i
 
     if ((child.paren === ')' || child.paren === ']') && startIndex !== -1)
       return [startIndex, i]
@@ -285,16 +314,15 @@ function processConstantsAndVariables (tokens) {
     let token = tokens[i]
 
     switch (token.type) {
-      case "constant":
+      case 'constant':
         let v = parseFloat(token.value)
         let node = new ConstantNode(v, token.value)
 
-        if (Number.isInteger(v))
-          node.type = "int"
+        if (Number.isInteger(v)) node.type = 'int'
         tokens[i] = node
 
         break
-      case "variable":
+      case 'variable':
         tokens[i] = new VariableNode(token.name)
         break
     }
@@ -315,7 +343,11 @@ function processParentheses (rootNode) {
         parensRemaining = true
 
         let newNode = new ASTGroup()
-        let expr = node.children.splice(indices[0], indices[1] - indices[0] + 1, newNode)
+        let expr = node.children.splice(
+          indices[0],
+          indices[1] - indices[0] + 1,
+          newNode
+        )
 
         newNode.children = expr.slice(1, expr.length - 1)
       }
@@ -331,7 +363,7 @@ function processFunctions (rootNode) {
     for (let i = 0; i < children.length; ++i) {
       let token = children[i]
 
-      if (token.type === "function") {
+      if (token.type === 'function') {
         let synonym = OperatorSynonyms[token.name]
         let newNode = new OperatorNode(synonym ?? token.name)
 
@@ -349,7 +381,7 @@ function processFunctions (rootNode) {
 
 // Given a node and an index i of a binary operator, combine the nodes immediately to the left and right of the node
 // into a single binary operator
-function combineBinaryOperator(node, i) {
+function combineBinaryOperator (node, i) {
   const children = node.children
   let newNode = new OperatorNode(children[i].op)
 
@@ -368,23 +400,21 @@ function processUnaryAndExponentiation (root) {
       let child = children[i]
       if (child instanceof ASTNode || !child.op) continue
 
-      if (child.op === "-") {
+      if (child.op === '-') {
         // If the preceding token is an unprocessed non-operator token, or node, then it's a binary expression
-        if (i !== 0 && children[i - 1].type !== "operator")
-          continue
+        if (i !== 0 && children[i - 1].type !== 'operator') continue
 
-        let newNode = new OperatorNode("-")
-        newNode.children = [ children[i + 1] ]
+        let newNode = new OperatorNode('-')
+        newNode.children = [children[i + 1]]
 
         children.splice(i, 2, newNode)
-      } else if (child.op === "+") {
+      } else if (child.op === '+') {
         // See above
-        if (i !== 0 && children[i - 1].type !== "operator")
-          continue
+        if (i !== 0 && children[i - 1].type !== 'operator') continue
 
         // Unary + is a no-op
         children.splice(i, 1)
-      } else if (child.op === "^") {
+      } else if (child.op === '^') {
         combineBinaryOperator(node, i)
 
         --i
@@ -448,16 +478,23 @@ function processComparisonChains (root) {
           // The nodes i, i+2, i+4, ..., j-4, j-2 are all comparison nodes. Thus, all nodes in the range i-1 ... j-1
           // should be included in the comparison chain
 
-          let comparisonChain = new OperatorNode("cchain")
-          let cchainChildren = comparisonChain.children = children.splice(i-1, j-i+1, comparisonChain)
-
+          let comparisonChain = new OperatorNode('cchain')
+          let cchainChildren = (comparisonChain.children = children.splice(
+            i - 1,
+            j - i + 1,
+            comparisonChain
+          ))
 
           for (let i = cchainChildren.length - 2; i >= 0; i -= 2) {
             // Convert operator tokens into constant node corresponding to their enum status
             let token = cchainChildren[i]
             let tokenEnum = comparisonOperators.indexOf(token.op)
 
-            cchainChildren[i] = new ConstantNode(tokenEnum, tokenEnum + '', "int")
+            cchainChildren[i] = new ConstantNode(
+              tokenEnum,
+              tokenEnum + '',
+              'int'
+            )
           }
 
           return
@@ -473,8 +510,7 @@ function removeCommas (root) {
     let children = node.children
     let i = children.length
     while (i--) {
-      if (children[i].type === "comma")
-        children.splice(i, 1)
+      if (children[i].type === 'comma') children.splice(i, 1)
     }
   }, true)
 }
@@ -486,7 +522,7 @@ function removeCommas (root) {
  * @param tokens
  * @returns {ASTNode}
  */
-function parseTokens(tokens) {
+function parseTokens (tokens) {
   processConstantsAndVariables(tokens)
   let root = new ASTGroup(tokens)
 
@@ -495,19 +531,19 @@ function parseTokens(tokens) {
   processUnaryAndExponentiation(root)
 
   // PEMDAS
-  processOperators(root, ['*','/'])
-  processOperators(root, ['-','+'])
+  processOperators(root, ['*', '/'])
+  processOperators(root, ['-', '+'])
 
   processComparisonChains(root)
   processOperators(root, comparisonOperators)
-  processOperators(root, ["and", "or"])
+  processOperators(root, ['and', 'or'])
 
   removeCommas(root)
 
   return root
 }
 
-function parseString(string, types={}) {
+function parseString (string, types = {}) {
   checkParensBalanced(string)
 
   let tokens = []
@@ -523,4 +559,4 @@ function parseString(string, types={}) {
   return node
 }
 
-export {parseString, tokenizer}
+export { parseString, tokenizer }

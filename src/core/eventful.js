@@ -22,8 +22,9 @@ export class Eventful {
       for (const c of callback) this.addEventListener(eventName, c)
 
       return this
-    } else if (typeof callback === "function") {
-      if (typeof eventName !== "string" || !eventName) throw new TypeError("Invalid event name")
+    } else if (typeof callback === 'function') {
+      if (typeof eventName !== 'string' || !eventName)
+        throw new TypeError('Invalid event name')
 
       let listeners = this.eventListeners.get(eventName)
 
@@ -34,7 +35,7 @@ export class Eventful {
 
       if (!listeners.includes(callback)) listeners.push(callback)
       return this
-    } else throw new TypeError("Invalid callback")
+    } else throw new TypeError('Invalid callback')
   }
 
   /**

@@ -1,51 +1,65 @@
-import {Element} from "../core/element.js"
-import {constructInterface} from "../core/interface.js"
-import {LinearPlot2DTransform, LinearPlot2DTransformConstraints} from "../math/plot_transforms.js"
-import {Group} from "../core/group.js"
-import {Vec2} from "../math/vec/vec2.js"
+import { Element } from '../core/element.js'
+import { constructInterface } from '../core/interface.js'
+import {
+  LinearPlot2DTransform,
+  LinearPlot2DTransformConstraints
+} from '../math/plot_transforms.js'
+import { Group } from '../core/group.js'
+import { Vec2 } from '../math/vec/vec2.js'
 
-const defaultView = [ -1, -1, 2, 2 ]
+const defaultView = [-1, -1, 2, 2]
 
 const figureInterface = constructInterface({
   interface: {
-    "interactivity": {
-      description: "Whether interactivity is enabled",
-      typecheck: { type: "boolean" }
+    interactivity: {
+      description: 'Whether interactivity is enabled',
+      typecheck: { type: 'boolean' }
     }
   },
   internal: {
     // Scene dims (inherited from above)
-    "sceneDims": { computed: "none" },
+    sceneDims: { computed: 'none' },
 
     // Bounding box of the entire figure
-    "figureBoundingBox": {computed: "none"},
+    figureBoundingBox: { computed: 'none' },
 
     // Box in which things are actually plotted
-    "plottingBox": {computed: "none"},
+    plottingBox: { computed: 'none' },
 
     // Margin between the plotting box and figure bounding box
-    "margins": {computed: "default", default: {left: 30, right: 30, top: 30, bottom: 30}},
+    margins: {
+      computed: 'default',
+      default: { left: 30, right: 30, top: 30, bottom: 30 }
+    },
 
     // Transformation from pixel to graph coordinates and vice versa
-    "plotTransform": {computed: "default", default: () => new LinearPlot2DTransform(0, 0, 0, 0, ...defaultView), evaluateDefault: true },
+    plotTransform: {
+      computed: 'default',
+      default: () => new LinearPlot2DTransform(0, 0, 0, 0, ...defaultView),
+      evaluateDefault: true
+    },
 
     // Whether to force the plot transform to have a specific aspect ratio
-    "preserveAspectRatio": { computed: "default", default: true },
+    preserveAspectRatio: { computed: 'default', default: true },
 
     // The aspect ratio to force
-    "forceAspectRatio": { computed: "default", default: 1 },
+    forceAspectRatio: { computed: 'default', default: 1 },
 
     // Interactivity
-    "interactivity": { computed: "default", default: true },
+    interactivity: { computed: 'default', default: true },
 
     // Constraints on where the transform can be (min zoom, max zoom, etc.)
-    "transformConstraints": { computed: "default", default: () => new LinearPlot2DTransformConstraints(), evaluateDefault: true }
+    transformConstraints: {
+      computed: 'default',
+      default: () => new LinearPlot2DTransformConstraints(),
+      evaluateDefault: true
+    }
   }
 })
 
 export class Figure extends Group {
-  init() {
-    this.props.configureProperty("plotTransform", { inherit: true })
+  init () {
+    this.props.configureProperty('plotTransform', { inherit: true })
   }
 
   _update () {
@@ -77,82 +91,125 @@ export class Figure extends Group {
   #enableInteractivityListeners () {
     this.#disableInteractivityListeners()
 
-    let int = this.internal, props = this.props
-    let listeners = this.interactivityListeners = {}
+    let int = this.internal,
+      props = this.props
+    let listeners = (this.interactivityListeners = {})
 
-    this.addEventListener("mousedown", listeners.mousedown = evt => {
-      int.mouseDownAt = evt.pos
-      int.graphMouseDownAt = props.get("plotTransform").pixelToGraph(int.mouseDownAt) // try to keep this constant
+    this.addEventListener(
+      'mousedown',
+      (listeners.mousedown = evt => {
+        int.mouseDownAt = evt.pos
+        int.graphMouseDownAt = props
+          .get('plotTransform')
+          .pixelToGraph(int.mouseDownAt) // try to keep this constant
 
-      int.isDragging = true
-    })
+        int.isDragging = true
+      })
+    )
 
-    this.addEventListener("mouseup", listeners.mousedown = () => {
-      int.isDragging = false
-    })
+    this.addEventListener(
+      'mouseup',
+      (listeners.mousedown = () => {
+        int.isDragging = false
+      })
+    )
 
-    this.addEventListener("mousemove", listeners.mousemove = evt => {
-      if (!int.isDragging) return
-      let transform = props.get("plotTransform")
-      let constraints = props.get("transformConstraints")
-      let newTransform = transform.clone()
+    this.addEventListener(
+      'mousemove',
+      (listeners.mousemove = evt => {
+        if (!int.isDragging) return
+        let transform = props.get('plotTransform')
+        let constraints = props.get('transformConstraints')
+        let newTransform = transform.clone()
 
-      // Get where the mouse is currently at and move (graphMouseDownAt) to (mouseDownAt)
-      let graphMouseMoveAt = transform.pixelToGraph(evt.pos)
-      let translationNeeded = int.graphMouseDownAt.sub(graphMouseMoveAt)
+        // Get where the mouse is currently at and move (graphMouseDownAt) to (mouseDownAt)
+        let graphMouseMoveAt = transform.pixelToGraph(evt.pos)
+        let translationNeeded = int.graphMouseDownAt.sub(graphMouseMoveAt)
 
-      newTransform.gx1 += translationNeeded.x
-      newTransform.gy1 += translationNeeded.y
+        newTransform.gx1 += translationNeeded.x
+        newTransform.gy1 += translationNeeded.y
 
-      newTransform = constraints.limitTransform(transform, newTransform)
+        newTransform = constraints.limitTransform(transform, newTransform)
 
-      props.set("plotTransform", newTransform, 0 /* real */, 2 /* deep equality */)
-    })
+        props.set(
+          'plotTransform',
+          newTransform,
+          0 /* real */,
+          2 /* deep equality */
+        )
+      })
+    )
 
     // Scroll handler
-    this.addEventListener("wheel", listeners.wheel = evt => {
-      let transform = props.get("plotTransform")
-      let constraints = props.get("transformConstraints")
-      let newTransform = transform.clone()
+    this.addEventListener(
+      'wheel',
+      (listeners.wheel = evt => {
+        let transform = props.get('plotTransform')
+        let constraints = props.get('transformConstraints')
+        let newTransform = transform.clone()
 
-      let scaleFactor = 1 + Math.cbrt(evt.deltaY) / 500
-      let graphScrollAt = transform.pixelToGraph(evt.pos)
+        let scaleFactor = 1 + Math.cbrt(evt.deltaY) / 500
+        let graphScrollAt = transform.pixelToGraph(evt.pos)
 
-      // We need to scale graphBox at graphScrollAt with a scale factor. We translate it by -graphScrollAt, scale it by
-      // sF, then translate it by graphScrollAt
-      let graphBox = transform.graphBox()
-      graphBox = graphBox.translate(graphScrollAt.mul(-1)).scale(scaleFactor).translate(graphScrollAt)
+        // We need to scale graphBox at graphScrollAt with a scale factor. We translate it by -graphScrollAt, scale it by
+        // sF, then translate it by graphScrollAt
+        let graphBox = transform.graphBox()
+        graphBox = graphBox
+          .translate(graphScrollAt.mul(-1))
+          .scale(scaleFactor)
+          .translate(graphScrollAt)
 
-      newTransform.resizeToGraphBox(graphBox)
-      newTransform = constraints.limitTransform(transform, newTransform)
+        newTransform.resizeToGraphBox(graphBox)
+        newTransform = constraints.limitTransform(transform, newTransform)
 
-      props.set("plotTransform", newTransform, 0 /* real */, 2 /* deep equality */)
-    })
+        props.set(
+          'plotTransform',
+          newTransform,
+          0 /* real */,
+          2 /* deep equality */
+        )
+      })
+    )
   }
 
   toggleInteractivity () {
     let internal = this.internal
-    let interactivity = this.props.get("interactivity")
+    let interactivity = this.props.get('interactivity')
 
     if (!!internal.interactivityListeners !== interactivity) {
-      interactivity ? this.#enableInteractivityListeners() : this.#disableInteractivityListeners()
+      interactivity
+        ? this.#enableInteractivityListeners()
+        : this.#disableInteractivityListeners()
     }
   }
 
   computeBoxes () {
     const { props } = this
 
-    props.set("figureBoundingBox", props.get("sceneDims").getBoundingBox())
+    props.set('figureBoundingBox', props.get('sceneDims').getBoundingBox())
 
-    let margins = props.get("margins")
-    props.set("plottingBox", props.get("figureBoundingBox")
-      .squishAsymmetrically(margins.left, margins.right, margins.bottom, margins.top), 0 /* real */, 2, /* deep equality */)
+    let margins = props.get('margins')
+    props.set(
+      'plottingBox',
+      props
+        .get('figureBoundingBox')
+        .squishAsymmetrically(
+          margins.left,
+          margins.right,
+          margins.bottom,
+          margins.top
+        ),
+      0 /* real */,
+      2 /* deep equality */
+    )
   }
 
   computeScissor () {
     const { props } = this
 
-    this.internal.renderInfo = { contexts: { type: "scissor", scissor: props.get("plottingBox") }}
+    this.internal.renderInfo = {
+      contexts: { type: 'scissor', scissor: props.get('plottingBox') }
+    }
   }
 
   computePlotTransform () {
@@ -175,10 +232,10 @@ export class Figure extends Group {
       let graphBox = plotTransform.graphBox()
     }
 
-    props.markChanged("plotTransform")
+    props.markChanged('plotTransform')
   }
 
-  getInterface() {
+  getInterface () {
     return figureInterface
   }
 }

@@ -1,19 +1,18 @@
-
 // Given a top-level scene, construct a bunch of information about the scene, outputting a map of context ids ->
 // context information and rendering instructions. This is what actually does most of the work regarding optimization
 // and the like; the renderer just *runs* the instructions and keeps track of the used buffers.
 
 // Map: id -> { parent, elem id, info, children: [{ child: id, instructions: [] }, { , version, ... }
 
-import {getStringID, getVersionID} from "../core/utils.js"
-import {convertTriangleStrip} from "../algorithm/polyline_triangulation.js"
+import { getStringID, getVersionID } from '../core/utils.js'
+import { convertTriangleStrip } from '../algorithm/polyline_triangulation.js'
 import {
   generateRectangleDebug,
   generateRectangleTriangleStrip,
   getActualTextLocation
-} from "../algorithm/misc_geometry.js"
-import {BoundingBox} from "../math/bounding_box.js"
-import {Colors} from "../styles/definitions.js"
+} from '../algorithm/misc_geometry.js'
+import { BoundingBox } from '../math/bounding_box.js'
+import { Colors } from '../styles/definitions.js'
 
 /**
  * Validate, shallow clone instructions and change their zIndex, et cetera
@@ -21,7 +20,11 @@ import {Colors} from "../styles/definitions.js"
  */
 function adjustInstruction (instruction) {
   const type = instruction.type
-  if (!type) throw new Error("Instruction does not have a type. Erroneous instruction: " + JSON.stringify(instruction))
+  if (!type)
+    throw new Error(
+      'Instruction does not have a type. Erroneous instruction: ' +
+        JSON.stringify(instruction)
+    )
 
   let out = Object.assign({}, instruction)
   let zIndex = out.zIndex
@@ -29,7 +32,7 @@ function adjustInstruction (instruction) {
 
   // Fill in zIndex value for sorting
   if (zIndex === undefined) {
-    if (type === "text") {
+    if (type === 'text') {
       out.zIndex = Infinity
     } else {
       out.zIndex = 0
@@ -38,13 +41,16 @@ function adjustInstruction (instruction) {
 
   if (escapeContext === undefined) {
     // Default text value
-    if (type === "text") {
-      out.escapeContext = "top"
+    if (type === 'text') {
+      out.escapeContext = 'top'
     }
   } else if (escapeContext) {
     // Validate
-    if (typeof escapeContext !== "string") {
-      throw new Error("Instruction has an invalid escape context value. Erroneous instruction: " + JSON.stringify(instruction))
+    if (typeof escapeContext !== 'string') {
+      throw new Error(
+        'Instruction has an invalid escape context value. Erroneous instruction: ' +
+          JSON.stringify(instruction)
+      )
     }
   }
 
@@ -57,12 +63,15 @@ function adjustInstruction (instruction) {
  * @param escapeContext
  */
 function matchEscapeContext (context, escapeContext) {
-  if (typeof escapeContext === "string") {
+  if (typeof escapeContext === 'string') {
     return context.id === escapeContext
-  } else if (typeof escapeContext === "object") {
+  } else if (typeof escapeContext === 'object') {
     let type = escapeContext.type
 
-    if (!type) throw new Error("escapeContext has insufficient information to determine which context to escape to")
+    if (!type)
+      throw new Error(
+        'escapeContext has insufficient information to determine which context to escape to'
+      )
     return context.info.type !== type
   } else {
     throw new TypeError(`Invalid escapeContext value ${escapeContext}`)
@@ -112,8 +121,14 @@ export class SceneGraph {
     this.destroyAll()
     const contextMap = this.contextMap
 
-    let topContext = { parent: null, id: "top", info: { type: "top" }, children: [], contextDepth: 0 }
-    contextMap.set("top", topContext)
+    let topContext = {
+      parent: null,
+      id: 'top',
+      info: { type: 'top' },
+      children: [],
+      contextDepth: 0
+    }
+    contextMap.set('top', topContext)
 
     let currentContext = topContext
     let contextDepth = 0
@@ -132,20 +147,20 @@ export class SceneGraph {
 
       if (contexts) {
         // Time to build contexts
-        contexts = Array.isArray(contexts) ? contexts : [ contexts ]
+        contexts = Array.isArray(contexts) ? contexts : [contexts]
 
         for (const c of contexts) {
           contextDepth++
 
           let newContext = {
-            type: "context",
-            id: c.id ?? (elem.id + '-' + getVersionID()),
+            type: 'context',
+            id: c.id ?? elem.id + '-' + getVersionID(),
             parent: currentContext,
             children: [],
             info: c,
             zIndex: c.zIndex ?? 0,
             contextDepth,
-            escapeContext: (c.type === "escapeContext") ? c.escapeContext : null
+            escapeContext: c.type === 'escapeContext' ? c.escapeContext : null
           }
 
           contextMap.set(newContext.id, newContext)
@@ -156,7 +171,9 @@ export class SceneGraph {
       }
 
       if (instructions) {
-        instructions = Array.isArray(instructions) ? instructions : [ instructions ]
+        instructions = Array.isArray(instructions)
+          ? instructions
+          : [instructions]
 
         currentContext.children.push({
           id: elem.id,
@@ -182,7 +199,9 @@ export class SceneGraph {
     // For each context compute a list of instructions that the renderer should run
 
     const { contextMap } = this
-    const contexts = Array.from(contextMap.values()).sort((a, b) => b.contextDepth - a.contextDepth)
+    const contexts = Array.from(contextMap.values()).sort(
+      (a, b) => b.contextDepth - a.contextDepth
+    )
 
     for (const c of contexts) {
       const children = c.children
@@ -195,7 +214,12 @@ export class SceneGraph {
       for (const child of children) {
         if (child.children) {
           // Is context
-          let contextInstruction = { type: "context", id: child.id, zIndex: child.zIndex ?? 0, escapeContext: child.escapeContext }
+          let contextInstruction = {
+            type: 'context',
+            id: child.id,
+            zIndex: child.zIndex ?? 0,
+            escapeContext: child.escapeContext
+          }
 
           if (child.escapeContext) {
             escapingInstructions.push(contextInstruction)
@@ -206,8 +230,7 @@ export class SceneGraph {
             for (const inst of child.escapingInstructions) {
               if (matchEscapeContext(c, inst.escapeContext))
                 instructions.push(inst)
-              else
-                escapingInstructions.push(inst)
+              else escapingInstructions.push(inst)
             }
           }
         } else {
@@ -228,7 +251,7 @@ export class SceneGraph {
     }
 
     for (const c of contextMap.values()) {
-      c.instructions.sort((a, b) => (a.zIndex - b.zIndex))
+      c.instructions.sort((a, b) => a.zIndex - b.zIndex)
     }
   }
 
@@ -237,8 +260,7 @@ export class SceneGraph {
    * @param callback
    */
   forEachContext (callback) {
-    for (const context of this.contextMap.values())
-      callback(context)
+    for (const context of this.contextMap.values()) callback(context)
   }
 
   /**
@@ -252,8 +274,7 @@ export class SceneGraph {
       const instructions = c.instructions
 
       for (let i = instructions.length - 1; i >= 0; --i) {
-        if (instructions[i].type === "text")
-          ret.push(instructions[i])
+        if (instructions[i].type === 'text') ret.push(instructions[i])
       }
     })
 
@@ -264,7 +285,7 @@ export class SceneGraph {
     const renderer = this.renderer
     const gl = renderer.gl
 
-    let name = "__" + this.id + "-text"
+    let name = '__' + this.id + '-text'
     let texture = renderer.getTexture(name)
     let needsInitialize = !texture
 
@@ -275,14 +296,18 @@ export class SceneGraph {
     gl.bindTexture(gl.TEXTURE_2D, texture)
 
     if (needsInitialize) {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     }
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
 
-    this.resources.textAtlas = { id: name, width: img.width, height: img.height }
+    this.resources.textAtlas = {
+      id: name,
+      width: img.width,
+      height: img.height
+    }
   }
 
   freeCompiledInstructions (inst) {
@@ -304,7 +329,10 @@ export class SceneGraph {
     // textures. Until this step, the scene graph is independent of the renderer.
 
     const renderer = this.renderer
-    if (!renderer) throw new Error("Compiling a scene graph requires the graph to be attached to a renderer.")
+    if (!renderer)
+      throw new Error(
+        'Compiling a scene graph requires the graph to be attached to a renderer.'
+      )
 
     const gl = renderer.gl
     const textRenderer = renderer.textRenderer
@@ -315,16 +343,15 @@ export class SceneGraph {
       this.loadTextAtlas(textRenderer.canvas)
     }
 
-    this.forEachContext (context => {
+    this.forEachContext(context => {
       this.freeCompiledInstructions(context.compiledInstructions)
 
       const instructions = context.instructions
       const compiledInstructions = []
 
-
       switch (context.info.type) {
-        case "scene":
-        case "scissor":
+        case 'scene':
+        case 'scissor':
           compiledInstructions.push(context.info)
           break
       }
@@ -332,11 +359,14 @@ export class SceneGraph {
       // Super simple (and hella inefficient) for now
       for (const instruction of instructions) {
         switch (instruction.type) {
-          case "context":
+          case 'context':
             compiledInstructions.push(instruction)
             break
-          case "polyline": {
-            let vertices = convertTriangleStrip(instruction.vertices, instruction.pen)
+          case 'polyline': {
+            let vertices = convertTriangleStrip(
+              instruction.vertices,
+              instruction.pen
+            )
             let color = instruction.pen.color
 
             let buffName = context.id + '-' + getVersionID()
@@ -354,7 +384,7 @@ export class SceneGraph {
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 
             let compiled = {
-              type: "triangle_strip",
+              type: 'triangle_strip',
               vao: vaoName,
               buffers: [buffName],
               vertexCount: vertices.length / 2,
@@ -364,7 +394,7 @@ export class SceneGraph {
 
             break
           }
-          case "text": {
+          case 'text': {
             let tcName = context.id + '-' + getVersionID()
             let scName = context.id + '-' + getVersionID()
             let vaoName = context.id + '-' + getVersionID()
@@ -384,16 +414,24 @@ export class SceneGraph {
             rect.x |= 0
             rect.y |= 0
 
-            gl.bufferData(gl.ARRAY_BUFFER, generateRectangleTriangleStrip(rect), gl.STATIC_DRAW)
+            gl.bufferData(
+              gl.ARRAY_BUFFER,
+              generateRectangleTriangleStrip(rect),
+              gl.STATIC_DRAW
+            )
 
             gl.bindBuffer(gl.ARRAY_BUFFER, textureCoords)
             gl.enableVertexAttribArray(1 /* texture coords buffer */)
             gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0)
 
-            gl.bufferData(gl.ARRAY_BUFFER, generateRectangleTriangleStrip(instruction.rect), gl.STATIC_DRAW)
+            gl.bufferData(
+              gl.ARRAY_BUFFER,
+              generateRectangleTriangleStrip(instruction.rect),
+              gl.STATIC_DRAW
+            )
 
             let compiled = {
-              type: "text",
+              type: 'text',
               vao: vaoName,
               buffers: [tcName, scName],
               vertexCount: 4,
@@ -403,7 +441,7 @@ export class SceneGraph {
 
             break
           }
-          case "triangle_strip": {
+          case 'triangle_strip': {
             let vertices = instruction.vertices
             let color = instruction.color
 
@@ -422,7 +460,7 @@ export class SceneGraph {
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 
             let compiled = {
-              type: "triangle_strip",
+              type: 'triangle_strip',
               vao: vaoName,
               buffers: [buffName],
               vertexCount: vertices.length / 2,
@@ -431,7 +469,7 @@ export class SceneGraph {
             compiledInstructions.push(compiled)
             break
           }
-          case "debug": {
+          case 'debug': {
             let buffName = context.id + '-' + getVersionID()
             let vaoName = context.id + '-' + getVersionID()
 
@@ -447,17 +485,17 @@ export class SceneGraph {
             let vertices
             if (instruction.rect) {
               let rect = BoundingBox.fromObj(instruction.rect)
-              if (!rect) throw new Error("Invalid rectangle debug instruction")
+              if (!rect) throw new Error('Invalid rectangle debug instruction')
 
               vertices = generateRectangleDebug(rect)
             } else {
-              throw new Error("Unrecognized debug instruction")
+              throw new Error('Unrecognized debug instruction')
             }
 
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
 
             let compiled = {
-              type: "line_strip",
+              type: 'line_strip',
               vao: vaoName,
               buffers: [buffName],
               vertexCount: vertices.length / 2,
@@ -474,19 +512,19 @@ export class SceneGraph {
 
       gl.bindVertexArray(null)
 
-      compiledInstructions.push({ type: "pop_context" })
+      compiledInstructions.push({ type: 'pop_context' })
 
       context.compiledInstructions = compiledInstructions
     })
   }
 
   // Yield a list of all compiled instructions
-  forEachCompiledInstruction (callback, contextID="top") {
+  forEachCompiledInstruction (callback, contextID = 'top') {
     let ctx = this.contextMap.get(contextID)
 
     if (ctx.compiledInstructions) {
       for (const instruction of ctx.compiledInstructions) {
-        if (instruction.type === "context") {
+        if (instruction.type === 'context') {
           this.forEachCompiledInstruction(callback, instruction.id)
         } else {
           callback(instruction)
@@ -498,11 +536,11 @@ export class SceneGraph {
   /**
    * Get pre-rendering info so the renderer knows what to expect. This includes, notably, text
    */
-  getPreRenderingInfo () {
-
-  }
+  getPreRenderingInfo () {}
 
   destroy () {
-    this.forEachContext(c => this.freeCompiledInstructions(c.compiledInstructions))
+    this.forEachContext(c =>
+      this.freeCompiledInstructions(c.compiledInstructions)
+    )
   }
 }

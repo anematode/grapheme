@@ -1,6 +1,6 @@
-import {isTypedArray, mod} from "../core/utils.js"
-import {Vec2} from "../math/vec/vec2.js"
-import {BoundingBox} from "../math/bounding_box.js"
+import { isTypedArray, mod } from '../core/utils.js'
+import { Vec2 } from '../math/vec/vec2.js'
+import { BoundingBox } from '../math/bounding_box.js'
 
 function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
   'use asm'
@@ -27,11 +27,15 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     return abs(x) * sqrt(1.0 + quot * quot)
   }
 
-  function fastAtan2(y, x) {
+  function fastAtan2 (y, x) {
     y = +y
     x = +x
 
-    var abs_x = 0.0, abs_y = 0.0, a = 0.0, s = 0.0, r = 0.0
+    var abs_x = 0.0,
+      abs_y = 0.0,
+      a = 0.0,
+      s = 0.0,
+      r = 0.0
 
     abs_x = abs(x)
     abs_y = abs(y)
@@ -40,12 +44,9 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     s = a * a
     r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a
 
-    if (abs_y > abs_x)
-      r = 1.57079637 - r
-    if (x < 0.0)
-      r = 3.14159265 - r
-    if (y < 0.0)
-      r = -r
+    if (abs_y > abs_x) r = 1.57079637 - r
+    if (x < 0.0) r = 3.14159265 - r
+    if (y < 0.0) r = -r
 
     return r
   }
@@ -59,7 +60,12 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     bx = +bx
     by = +by
 
-    var t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0
+    var t = 0.0,
+      tx = 0.0,
+      ty = 0.0,
+      d = 0.0,
+      xd = 0.0,
+      yd = 0.0
 
     if (ax == bx) {
       if (ay == by) {
@@ -92,11 +98,25 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     start = start | 0
     end = end | 0
 
-    var p = 0, q = 0, min_distance = 0.0, distance = 0.0
+    var p = 0,
+      q = 0,
+      min_distance = 0.0,
+      distance = 0.0
     min_distance = Infinity
 
-    for (p = start << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-      distance = +point_line_segment_distance(px, py, +values[p >> 3], +values[(p + 8) >> 3], +values[(p + 16) >> 3], +values[(p + 24) >> 3])
+    for (
+      p = start << 3, q = (end - 2) << 3;
+      (p | 0) < (q | 0);
+      p = (p + 16) | 0
+    ) {
+      distance = +point_line_segment_distance(
+        px,
+        py,
+        +values[p >> 3],
+        +values[(p + 8) >> 3],
+        +values[(p + 16) >> 3],
+        +values[(p + 24) >> 3]
+      )
 
       if (distance < min_distance) {
         min_distance = distance
@@ -115,7 +135,12 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     bx = +bx
     by = +by
 
-    var t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0
+    var t = 0.0,
+      tx = 0.0,
+      ty = 0.0,
+      d = 0.0,
+      xd = 0.0,
+      yd = 0.0
 
     if (ax == bx) {
       if (ay == by) {
@@ -152,11 +177,27 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     start = start | 0
     end = end | 0
 
-    var p = 0, q = 0, min_distance = 0.0, distance = 0.0, cx = 0.0, cy = 0.0
+    var p = 0,
+      q = 0,
+      min_distance = 0.0,
+      distance = 0.0,
+      cx = 0.0,
+      cy = 0.0
     min_distance = Infinity
 
-    for (p = start << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-      distance = +point_line_segment_closest(px, py, +values[p >> 3], +values[(p + 8) >> 3], +values[(p + 16) >> 3], +values[(p + 24) >> 3])
+    for (
+      p = start << 3, q = (end - 2) << 3;
+      (p | 0) < (q | 0);
+      p = (p + 16) | 0
+    ) {
+      distance = +point_line_segment_closest(
+        px,
+        py,
+        +values[p >> 3],
+        +values[(p + 8) >> 3],
+        +values[(p + 16) >> 3],
+        +values[(p + 24) >> 3]
+      )
 
       if (distance < min_distance) {
         min_distance = distance
@@ -241,18 +282,28 @@ function GeometryASMFunctionsCreate (stdlib, foreign, buffer) {
     threshold = +threshold
     aspectRatio = +aspectRatio
 
-    var p = 0, q = 0, res = 0, indx = 0
+    var p = 0,
+      q = 0,
+      res = 0,
+      indx = 0
 
-    for (p = (start + 2) << 3, q = ((end - 2) << 3); (p | 0) < (q | 0); p = (p + 16) | 0) {
-      res = needs_refinement(+values[(p - 16) >> 3],
-        +(values[(p - 8) >> 3] * aspectRatio),
-        +values[p >> 3],
-        +(values[(p + 8) >> 3] * aspectRatio),
-        +values[(p + 16) >> 3],
-        +(values[(p + 24) >> 3] * aspectRatio),
-        +threshold) | 0
+    for (
+      p = (start + 2) << 3, q = (end - 2) << 3;
+      (p | 0) < (q | 0);
+      p = (p + 16) | 0
+    ) {
+      res =
+        needs_refinement(
+          +values[(p - 16) >> 3],
+          +(values[(p - 8) >> 3] * aspectRatio),
+          +values[p >> 3],
+          +(values[(p + 8) >> 3] * aspectRatio),
+          +values[(p + 16) >> 3],
+          +(values[(p + 24) >> 3] * aspectRatio),
+          +threshold
+        ) | 0
 
-      indx = (((p - 4) >> 1)) | 0
+      indx = ((p - 4) >> 1) | 0
 
       values[indx >> 3] = +(res | 0)
     }
@@ -272,10 +323,14 @@ function _point_line_segment_compute (px, py, polyline_vertices, func) {
   }
 
   let f64 = ASMViews.f64
-  let is_typed_array = polyline_vertices instanceof Float64Array || polyline_vertices instanceof Float32Array
+  let is_typed_array =
+    polyline_vertices instanceof Float64Array ||
+    polyline_vertices instanceof Float32Array
 
   if (polyline_vertices.length > BufferSizes.f64) {
-    let i, j, min_distance = Infinity
+    let i,
+      j,
+      min_distance = Infinity
 
     for (i = 0; i < polyline_vertices.length / BufferSizes.f64 + 1; ++i) {
       let offset = i * BufferSizes.f64
@@ -314,11 +369,21 @@ function _point_line_segment_compute (px, py, polyline_vertices, func) {
 }
 
 function pointLineSegmentMinDistance (px, py, polyline_vertices) {
-  return _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_distance)
+  return _point_line_segment_compute(
+    px,
+    py,
+    polyline_vertices,
+    GeometryASMFunctions.point_line_segment_min_distance
+  )
 }
 
 function pointLineSegmentClosest (px, py, polyline_vertices) {
-  let distance = _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_closest)
+  let distance = _point_line_segment_compute(
+    px,
+    py,
+    polyline_vertices,
+    GeometryASMFunctions.point_line_segment_min_closest
+  )
 
   let x = ASMViews.f64[0]
   let y = ASMViews.f64[1]
@@ -335,7 +400,10 @@ function anglesBetween (polyline_vertices, threshold = 0.03, aspectRatio = 1) {
     throw new Error('Polyline too numerous')
   }
 
-  if (polyline_vertices instanceof Float32Array || polyline_vertices instanceof Float64Array) {
+  if (
+    polyline_vertices instanceof Float32Array ||
+    polyline_vertices instanceof Float64Array
+  ) {
     ASMViews.f64.set(polyline_vertices)
   }
 
@@ -387,7 +455,10 @@ function pointsCCW (x1, y1, x2, y2, x3, y3) {
  * @param y4
  */
 function lineSegmentIntersect (x1, y1, x2, y2, x3, y3, x4, y4) {
-  return (pointsCCW(x1, y1, x3, y3, x4, y4) !== pointsCCW(x2, y2, x3, y3, x4, y4)) && (pointsCCW(x1, y1, x2, y2, x3, y3) !== pointsCCW(x1, y1, x2, y2, x4, y4))
+  return (
+    pointsCCW(x1, y1, x3, y3, x4, y4) !== pointsCCW(x2, y2, x3, y3, x4, y4) &&
+    pointsCCW(x1, y1, x2, y2, x3, y3) !== pointsCCW(x1, y1, x2, y2, x4, y4)
+  )
 }
 
 // Credit to cortijon on StackOverflow! Thanks bro/sis
@@ -399,13 +470,16 @@ function getLineIntersection (p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
   s2_x = p3_x - p2_x
   s2_y = p3_y - p2_y
 
-  const s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y)
-  const t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y)
+  const s =
+    (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) /
+    (-s2_x * s1_y + s1_x * s2_y)
+  const t =
+    (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y)
 
   if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
     // Collision detected
-    const intX = p0_x + (t * s1_x)
-    const intY = p0_y + (t * s1_y)
+    const intX = p0_x + t * s1_x
+    const intY = p0_y + t * s1_y
 
     return [intX, intY]
   }
@@ -413,7 +487,16 @@ function getLineIntersection (p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
   return null
 }
 
-function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2) {
+function lineSegmentIntersectsBox (
+  x1,
+  y1,
+  x2,
+  y2,
+  box_x1,
+  box_y1,
+  box_x2,
+  box_y2
+) {
   // Return the component of the line segment that resides inside a box with boundaries x in (box_x1 .. box_x2), y in
   // (box_y1 .. box_y2), which may potentially be the entire line segment.
 
@@ -427,22 +510,14 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
   }
 
   // Infinities cause weird problems with getLineIntersection, so we just approximate them lol
-  if (x1 === Infinity)
-    x1 = 1e6
-  else if (x1 === -Infinity)
-    x1 = -1e6
-  if (x2 === Infinity)
-    x2 = 1e6
-  else if (x2 === -Infinity)
-    x2 = -1e6
-  if (y1 === Infinity)
-    y1 = 1e6
-  else if (y1 === -Infinity)
-    y1 = -1e6
-  if (y2 === Infinity)
-    y2 = 1e6
-  else if (y2 === -Infinity)
-    y2 = -1e6
+  if (x1 === Infinity) x1 = 1e6
+  else if (x1 === -Infinity) x1 = -1e6
+  if (x2 === Infinity) x2 = 1e6
+  else if (x2 === -Infinity) x2 = -1e6
+  if (y1 === Infinity) y1 = 1e6
+  else if (y1 === -Infinity) y1 = -1e6
+  if (y2 === Infinity) y2 = 1e6
+  else if (y2 === -Infinity) y2 = -1e6
 
   let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1)
   let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2)
@@ -459,7 +534,6 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
   let intersections = [int1, int2, int3, int4]
 
   if (!pt1InBox && !pt2InBox) {
-
     // Both points are outside of the box, but the segment intersects the box. I'm frustrated! We must RESTRICT by finding the pair of intersections with
     // maximal separation. This deals with annoying corner cases. Thankfully this code doesn't need to be too efficient
     // since this is a rare case.
@@ -489,7 +563,7 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
 
     // Swap the order if necessary. We need the result of this calculation to be in the same order as the points
     // that went in, since this will be used in the dashed line logic.
-    if (((n_x1 < n_x2) === (x1 > x2)) || ((n_y1 < n_y2) === (y1 > y2))) {
+    if (n_x1 < n_x2 === x1 > x2 || n_y1 < n_y2 === y1 > y2) {
       let tmp = n_x1
       n_x1 = n_x2
       n_x2 = tmp
@@ -502,33 +576,36 @@ function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2
     return [n_x1, n_y1, n_x2, n_y2]
   }
 
-
   if (pt1InBox) {
     for (let i = 0; i < 4; ++i) {
       let intersection = intersections[i]
 
-      if (intersection)
-        return [x1, y1, intersection[0], intersection[1]]
+      if (intersection) return [x1, y1, intersection[0], intersection[1]]
     }
   } else if (pt2InBox) {
     for (let i = 0; i < 4; ++i) {
       let intersection = intersections[i]
 
-      if (intersection)
-        return [intersection[0], intersection[1], x2, y2]
+      if (intersection) return [intersection[0], intersection[1], x2, y2]
     }
   }
 
   return [x1, y1, x2, y2]
 }
 
-export function generateCircleTriangleStrip (radius, x=0, y=0, samples=8) {
+export function generateCircleTriangleStrip (
+  radius,
+  x = 0,
+  y = 0,
+  samples = 8
+) {
   const points = []
 
   for (let i = 0; i <= samples; ++i) {
-    const angle = i / samples * 2 * Math.PI
+    const angle = (i / samples) * 2 * Math.PI
 
-    const xc = x + radius * Math.cos(angle), yc = y + radius * Math.sin(angle)
+    const xc = x + radius * Math.cos(angle),
+      yc = y + radius * Math.sin(angle)
 
     if (i % 2 === 0) {
       points.push(xc, yc)
@@ -544,7 +621,7 @@ export function generateCircleTriangleStrip (radius, x=0, y=0, samples=8) {
 }
 
 export function generateRectangleTriangleStrip (rect) {
-  const {x, y, w, h} = rect
+  const { x, y, w, h } = rect
 
   const points = [x, y, x + w, y, x, y + h, x + w, y + h]
 
@@ -557,7 +634,7 @@ export function generateRectangleTriangleStrip (rect) {
  * @returns {Float32Array}
  */
 export function generateRectangleCycle (rect) {
-  const {x, y, w, h} = rect
+  const { x, y, w, h } = rect
 
   const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y]
 
@@ -565,9 +642,9 @@ export function generateRectangleCycle (rect) {
 }
 
 export function generateRectangleDebug (rect) {
-  const {x, y, w, h} = rect
+  const { x, y, w, h } = rect
 
-  const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y, x+w, y+w]
+  const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y, x + w, y + w]
 
   return new Float32Array(points)
 }
@@ -576,15 +653,15 @@ export function generateRectangleDebug (rect) {
 export function combineTriangleStrips (verticesBuff) {
   let index = 0
 
-  return (arr) => {
+  return arr => {
     if (arr.length === 0) return
 
     // Repeat previous vertex
     if (index > 0) {
-      verticesBuff[index] = verticesBuff[index-2]
-      verticesBuff[index+1] = verticesBuff[index-1]
-      verticesBuff[index+2] = arr[0]
-      verticesBuff[index+3] = arr[1]
+      verticesBuff[index] = verticesBuff[index - 2]
+      verticesBuff[index + 1] = verticesBuff[index - 1]
+      verticesBuff[index + 2] = arr[0]
+      verticesBuff[index + 3] = arr[1]
 
       index += 4
     }
@@ -597,25 +674,29 @@ export function combineTriangleStrips (verticesBuff) {
 export function combineColoredTriangleStrips (verticesBuff, colorBuff) {
   let index = 0
 
-  return (arr, { r=0, g=0, b=0, a=0 }) => {
+  return (arr, { r = 0, g = 0, b = 0, a = 0 }) => {
     if (arr.length === 0) return
 
     // Repeat previous vertex
     if (index > 0) {
-      verticesBuff[index] = verticesBuff[index-2]
-      verticesBuff[index+1] = verticesBuff[index-1]
-      verticesBuff[index+2] = arr[0]
-      verticesBuff[index+3] = arr[1]
+      verticesBuff[index] = verticesBuff[index - 2]
+      verticesBuff[index + 1] = verticesBuff[index - 1]
+      verticesBuff[index + 2] = arr[0]
+      verticesBuff[index + 3] = arr[1]
 
       index += 4
     }
 
     verticesBuff.set(arr, index)
-    fillRepeating(colorBuff, [ r/255, g/255, b/255, a/255 ], index * 2, 2 * (index + arr.length))
+    fillRepeating(
+      colorBuff,
+      [r / 255, g / 255, b / 255, a / 255],
+      index * 2,
+      2 * (index + arr.length)
+    )
     index += arr.length
   }
 }
-
 
 /**
  * Fill the TypedArray arr with a given pattern throughout [startIndex, endIndex). Works if either is out of bounds.
@@ -628,10 +709,17 @@ export function combineColoredTriangleStrips (verticesBuff, colorBuff) {
  * @param patternStride {number} Offset to begin copying the pattern
  * @returns The original array
  */
-export function fillRepeating (arr, pattern, startIndex=0, endIndex=arr.length, patternStride=0) {
+export function fillRepeating (
+  arr,
+  pattern,
+  startIndex = 0,
+  endIndex = arr.length,
+  patternStride = 0
+) {
   if (endIndex <= startIndex) return arr
 
-  let patternLen = pattern.length, arrLen = arr.length
+  let patternLen = pattern.length,
+    arrLen = arr.length
   if (patternLen === 0) return arr
 
   endIndex = Math.min(endIndex, arrLen)
@@ -647,7 +735,11 @@ export function fillRepeating (arr, pattern, startIndex=0, endIndex=arr.length, 
   let filledEndIndex = Math.min(endIndex, startIndex + patternLen)
 
   let i, j
-  for (i = startIndex, j = patternStride; i < filledEndIndex && j < patternLen; ++i, ++j) {
+  for (
+    i = startIndex, j = patternStride;
+    i < filledEndIndex && j < patternLen;
+    ++i, ++j
+  ) {
     arr[i] = pattern[j]
   }
 
@@ -674,7 +766,7 @@ export function fillRepeating (arr, pattern, startIndex=0, endIndex=arr.length, 
   }
 }
 
-function _flattenVec2ArrayInternal(arr) {
+function _flattenVec2ArrayInternal (arr) {
   const out = []
 
   for (let i = 0; i < arr.length; ++i) {
@@ -687,8 +779,11 @@ function _flattenVec2ArrayInternal(arr) {
     } else if (item[0] !== undefined) {
       out.push(+item[0], item[1] ?? 0)
     } else {
-      if (typeof item === "number") out.push (item)
-      else throw new TypeError(`Error when converting array to flattened Vec2 array: Unknown item ${item} at index ${i} in given array`)
+      if (typeof item === 'number') out.push(item)
+      else
+        throw new TypeError(
+          `Error when converting array to flattened Vec2 array: Unknown item ${item} at index ${i} in given array`
+        )
     }
   }
 
@@ -701,7 +796,7 @@ export function flattenVec2Array (arr) {
   if (isTypedArray(arr)) return arr
 
   for (let i = 0; i < arr.length; ++i) {
-    if (typeof arr[i] !== "number") return _flattenVec2ArrayInternal(arr)
+    if (typeof arr[i] !== 'number') return _flattenVec2ArrayInternal(arr)
   }
 
   return arr
@@ -721,7 +816,7 @@ export function getActualTextLocation (textRect, anchor, anchorDir, spacing) {
 
   const { w, h } = textRect
 
-  anchor = Vec2.fromObj(anchor) ?? new Vec2(0,0)
+  anchor = Vec2.fromObj(anchor) ?? new Vec2(0, 0)
   anchorDir = Vec2.fromObj(anchorDir) ?? new Vec2(0, 0)
   spacing = spacing ?? 0
 
@@ -734,4 +829,11 @@ export function getActualTextLocation (textRect, anchor, anchorDir, spacing) {
 // Merging geometries of various types is a very common operation because we want to minimize bufferData and drawArrays
 // calls at nearly all costs.
 
-export { pointLineSegmentMinDistance, pointLineSegmentClosest, anglesBetween, getLineIntersection, lineSegmentIntersect, lineSegmentIntersectsBox }
+export {
+  pointLineSegmentMinDistance,
+  pointLineSegmentClosest,
+  anglesBetween,
+  getLineIntersection,
+  lineSegmentIntersect,
+  lineSegmentIntersectsBox
+}

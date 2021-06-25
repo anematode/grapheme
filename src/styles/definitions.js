@@ -1,4 +1,3 @@
-
 // Principles: Some things in Grapheme have styling information that may be shared or may be composed from other bits of
 // information. Tracking the "changed" values of different parts of this information is generally not useful, except in
 // the case of colors on elements, but that can be dealt with via caching if REALLY needed. We basically define a shared
@@ -8,8 +7,6 @@ import * as utils from '../core/utils.js'
 
 // Implementation of basic color functions
 // Could use a library, but... good experience for me too
-
-
 
 class Color {
   constructor ({ r = 0, g = 0, b = 0, a = 255 } = {}) {
@@ -39,7 +36,9 @@ class Color {
 
   hex () {
     const rnd = this.rounded()
-    return `#${[rnd.r, rnd.g, rnd.b, rnd.a].map((x) => utils.leftZeroPad(x.toString(16), 2)).join('')}`
+    return `#${[rnd.r, rnd.g, rnd.b, rnd.a]
+      .map(x => utils.leftZeroPad(x.toString(16), 2))
+      .join('')}`
   }
 
   glColor () {
@@ -93,7 +92,7 @@ class Color {
 
   static fromCss (cssColorString) {
     function throwBadColor () {
-      throw new Error("Unrecognized colour " + cssColorString)
+      throw new Error('Unrecognized colour ' + cssColorString)
     }
 
     cssColorString = cssColorString.toLowerCase().replace(/\s+/g, '')
@@ -111,13 +110,13 @@ class Color {
 
     let args = argsMatch[1].split(',').map(parseFloat)
 
-    if (cssColorString.startsWith("rgb")) {
+    if (cssColorString.startsWith('rgb')) {
       return Color.rgb(...args.map(s => s * 255))
-    } else if (cssColorString.startsWith("rgba")) {
+    } else if (cssColorString.startsWith('rgba')) {
       return Color.rgba(...args.map(s => s * 255))
-    } else if (cssColorString.startsWith("hsl")) {
+    } else if (cssColorString.startsWith('hsl')) {
       return Color.hsl(...args)
-    } else if (cssColorString.startsWith("hsla")) {
+    } else if (cssColorString.startsWith('hsla')) {
       return Color.hsla(...args)
     }
 
@@ -125,7 +124,7 @@ class Color {
   }
 
   static fromObj (obj) {
-    if (typeof obj === "string") {
+    if (typeof obj === 'string') {
       return Color.fromCss(obj)
     }
 
@@ -134,13 +133,13 @@ class Color {
 }
 
 // Credit to https://stackoverflow.com/a/11508164/13458117
-function hexToRgb(hex) {
-  let bigint = parseInt(hex.replace('#', ''), 16);
-  let r = (bigint >> 16) & 255;
-  let g = (bigint >> 8) & 255;
-  let b = bigint & 255;
+function hexToRgb (hex) {
+  let bigint = parseInt(hex.replace('#', ''), 16)
+  let r = (bigint >> 16) & 255
+  let g = (bigint >> 8) & 255
+  let b = bigint & 255
 
-  return {r, g, b}
+  return { r, g, b }
 }
 
 function hue2rgb (p, q, t) {
@@ -591,10 +590,10 @@ const Colors = {
   },
   get RANDOM () {
     var keys = Object.keys(Colors)
-    return Colors[keys[keys.length * Math.random() << 0]]
+    return Colors[keys[(keys.length * Math.random()) << 0]]
   },
   get TRANSPARENT () {
-    return new Color({r: 0, g: 0, b: 0, a: 0})
+    return new Color({ r: 0, g: 0, b: 0, a: 0 })
   }
 }
 
@@ -608,7 +607,7 @@ export const Pen = {
 
     for (let i = 0; i < args.length; ++i) {
       let arg = args[i]
-      if (typeof arg === "string") {
+      if (typeof arg === 'string') {
         arg = { color: Color.fromObj(arg) }
       }
 
@@ -619,27 +618,27 @@ export const Pen = {
 
     return ret
   },
-  create: (params) => {
+  create: params => {
     return Pen.compose(Pen.default, params)
   },
   signature: {
-    color: "color",
-    thickness: "number"
+    color: 'color',
+    thickness: 'number'
   },
   default: utils.deepFreeze({
-    color: { r: 0, g: 0, b: 0, a: 255},
+    color: { r: 0, g: 0, b: 0, a: 255 },
     thickness: 2,
     dashPattern: [],
     dashOffset: 0,
-    endcap: "round",
+    endcap: 'round',
     endcapRes: 1,
-    join: "miter",
+    join: 'miter',
     joinRes: 1,
     useNative: false,
     visible: true
   }),
   fromObj (strOrObj) {
-    if (typeof strOrObj === "string") return _interpretStringAsPen(strOrObj)
+    if (typeof strOrObj === 'string') return _interpretStringAsPen(strOrObj)
 
     return Pen.compose(Pen.default, strOrObj)
   }
@@ -661,7 +660,7 @@ export const Pens = {
       }
     }
   },
-  create: (params) => {
+  create: params => {
     return Pens.compose(Pens.default, params)
   },
   default: Object.freeze({})
@@ -692,17 +691,17 @@ export const TextStyle = {
 
     return ret
   },
-  create: (params) => {
+  create: params => {
     return TextStyle.compose(TextStyle.default, params)
   },
   default: utils.deepFreeze({
     color: { r: 0, g: 0, b: 0, a: 255 },
     shadowColor: { r: 255, g: 255, b: 255, a: 255 },
-    font: "Cambria",
+    font: 'Cambria',
     fontSize: 12,
     shadowRadius: 0,
-    align: "left",
-    baseline: "bottom"
+    align: 'left',
+    baseline: 'bottom'
   })
 }
 
@@ -715,7 +714,7 @@ export const LabelPosition = {
     for (let i = 0; i < args.length; ++i) {
       let arg = args[i]
 
-      if (typeof arg === "string") {
+      if (typeof arg === 'string') {
         ret.x = arg
         ret.y = arg
       } else {
@@ -725,12 +724,12 @@ export const LabelPosition = {
 
     return ret
   },
-  create: (params) => {
+  create: params => {
     return LabelPosition.compose(LabelPosition.default, params)
   },
   default: utils.deepFreeze({
-    x: "dynamic",
-    y: "dynamic"
+    x: 'dynamic',
+    y: 'dynamic'
   })
 }
 
@@ -744,7 +743,7 @@ export const GenericObject = {
 
     return ret
   },
-  create: (params) => {
+  create: params => {
     return GenericObject.compose(GenericObject.default, params)
   },
   default: Object.freeze({})
@@ -756,7 +755,7 @@ export const BooleanDict = {
 
     for (let i = 0; i < args.length; ++i) {
       let arg = args[i]
-      if (typeof arg === "boolean") {
+      if (typeof arg === 'boolean') {
         for (let key in ret) {
           ret[key] = arg
         }
@@ -765,7 +764,7 @@ export const BooleanDict = {
 
     return ret
   },
-  create: (params) => {
+  create: params => {
     return GenericObject.compose(GenericObject.default, params)
   },
   default: Object.freeze({})
@@ -773,17 +772,17 @@ export const BooleanDict = {
 
 export function lookupCompositionType (type) {
   switch (type) {
-    case "TextStyle":
+    case 'TextStyle':
       return TextStyle
-    case "Pen":
+    case 'Pen':
       return Pen
-    case "Pens":
+    case 'Pens':
       return Pens
-    case "LabelPosition":
+    case 'LabelPosition':
       return LabelPosition
-    case "Object":
+    case 'Object':
       return GenericObject
-    case "BooleanDict":
+    case 'BooleanDict':
       return BooleanDict
   }
 }
@@ -800,9 +799,17 @@ function _interpretStringAsPen (str) {
 }
 
 export const DefaultStyles = {
-  gridlinesMajor: Pen.create({ thickness: 2, color: Color.rgba(0, 0, 0, 127), endcap: "butt" }),
-  gridlinesMinor: Pen.create({ thickness: 1, color: Color.rgba(0, 0, 0, 80), endcap: "butt" }),
-  gridlinesAxis: Pen.create({ thickness: 4, endcap: "butt" }),
+  gridlinesMajor: Pen.create({
+    thickness: 2,
+    color: Color.rgba(0, 0, 0, 127),
+    endcap: 'butt'
+  }),
+  gridlinesMinor: Pen.create({
+    thickness: 1,
+    color: Color.rgba(0, 0, 0, 80),
+    endcap: 'butt'
+  }),
+  gridlinesAxis: Pen.create({ thickness: 4, endcap: 'butt' }),
   plotLabelPositions: LabelPosition.default,
   Pen: Pen.default,
   label: TextStyle.create({ fontSize: 16, shadowRadius: 2 })

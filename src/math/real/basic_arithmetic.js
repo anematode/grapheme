@@ -65,8 +65,12 @@ export function Gcd (a, b) {
   a = Math.abs(a)
   b = Math.abs(b)
 
-  if (a === 0) { return b }
-  if (b === 0) { return a }
+  if (a === 0) {
+    return b
+  }
+  if (b === 0) {
+    return a
+  }
 
   if (b > a) {
     const tmp = a
@@ -75,11 +79,15 @@ export function Gcd (a, b) {
   }
 
   while (true) {
-    if (b === 0) { return a }
+    if (b === 0) {
+      return a
+    }
 
     a %= b
 
-    if (a === 0) { return b }
+    if (a === 0) {
+      return b
+    }
 
     b %= a
   }
@@ -95,9 +103,13 @@ export function Gcd (a, b) {
  * @memberOf RealFunctions
  */
 export function Lcm (a, b) {
-  if (a === 0) { return Math.abs(b) }
-  if (b === 0) { return Math.abs(a) }
+  if (a === 0) {
+    return Math.abs(b)
+  }
+  if (b === 0) {
+    return Math.abs(a)
+  }
 
   const abGCD = gcd(a, b)
-  return Math.abs(a / abGCD * b)
+  return Math.abs((a / abGCD) * b)
 }

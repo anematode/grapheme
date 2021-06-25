@@ -1,5 +1,4 @@
-import {Element} from "../core/element.js"
-
+import { Element } from '../core/element.js'
 
 class Cow extends Element {
   constructor (params) {

@@ -1,7 +1,7 @@
-import {Group} from "./group"
+import { Group } from './group'
 
 describe('Group', () => {
-  test("Prevent a group cycle from being formed", () => {
+  test('Prevent a group cycle from being formed', () => {
     let g1 = new Group()
     let g2 = new Group()
     let g3 = new Group()

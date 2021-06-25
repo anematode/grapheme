@@ -20,7 +20,10 @@ export function benchmark (callback, iterations = 100, name) {
 
   const duration = performance.now() - start
 
-  console.log(`Function ${name ?? callback.name} took ${duration / iterations} ms` + ((iterations === 1) ? '.' : ' per call.'))
+  console.log(
+    `Function ${name ?? callback.name} took ${duration / iterations} ms` +
+      (iterations === 1 ? '.' : ' per call.')
+  )
 }
 
 export function time (callback, output = console.log) {
@@ -33,13 +36,17 @@ export function time (callback, output = console.log) {
     result = 'threw'
     throw e
   } finally {
-    output(`Function ${callback.name} ${result} in ${performance.now() - start} ms.`)
+    output(
+      `Function ${callback.name} ${result} in ${performance.now() - start} ms.`
+    )
   }
 }
 
 export function assertRange (num, min, max, variableName = 'Unknown variable') {
   if (num < min || num > max || Number.isNaN(num)) {
-    throw new RangeError(`${variableName} must be in the range [${min}, ${max}]`)
+    throw new RangeError(
+      `${variableName} must be in the range [${min}, ${max}]`
+    )
   }
 }
 
@@ -50,11 +57,11 @@ export function isPrimitive (obj) {
 // Generate an id of the form xxxx-xxxx
 // TODO: guarantee no collisions via LFSR or something similar
 export function getStringID () {
-  function randLetter() {
+  function randLetter () {
     return String.fromCharCode(Math.round(Math.random() * 25 + 97))
   }
 
-  function randFourLetter() {
+  function randFourLetter () {
     return randLetter() + randLetter() + randLetter() + randLetter()
   }
 
@@ -63,7 +70,7 @@ export function getStringID () {
 
 // Simple deep equals. Uses Object.is-type equality, though. Doesn't handle circularity or any of the fancy new containers
 export function deepEquals (x, y) {
-  if (typeof x !== "object" || x === null) return Object.is(x, y)
+  if (typeof x !== 'object' || x === null) return Object.is(x, y)
   if (x.constructor !== y.constructor) return false
 
   if (Array.isArray(x) && Array.isArray(y)) {
@@ -84,7 +91,11 @@ export function deepEquals (x, y) {
         const xv = x[i]
 
         // What a beautiful way to test for same valueness between floats!
-        if ((xv !== y[i] && !(xv !== xv && y[i] !== y[i])) || (xv === 0 && 1 / xv !== 1 / y[i])) return false
+        if (
+          (xv !== y[i] && !(xv !== xv && y[i] !== y[i])) ||
+          (xv === 0 && 1 / xv !== 1 / y[i])
+        )
+          return false
       }
     } else {
       for (let i = x.length - 1; i >= 0; --i) {
@@ -104,8 +115,7 @@ export function deepEquals (x, y) {
   for (const key of keys) {
     // fails if y is Object.create(null)
     if (!y.hasOwnProperty(key)) return false
-    if (!deepEquals(x[key], y[key]))
-      return false
+    if (!deepEquals(x[key], y[key])) return false
   }
 
   return true
@@ -117,7 +127,7 @@ export function deepEquals (x, y) {
  * @param source {{}}
  * @param opts
  */
-export function deepAssign (target, source, opts={}) {
+export function deepAssign (target, source, opts = {}) {
   opts.cloneArrays = opts.cloneArrays ?? true
   opts.assignUndefined = opts.assignUndefined ?? false
 
@@ -125,7 +135,8 @@ export function deepAssign (target, source, opts={}) {
 }
 
 function deepAssignInternal (target, source, opts) {
-  if (typeof source !== "object") return (source !== undefined || opts.assignUndefined) ? source : target
+  if (typeof source !== 'object')
+    return source !== undefined || opts.assignUndefined ? source : target
 
   if (Array.isArray(target) || isTypedArray(target))
     return opts.cloneArrays ? deepClone(source) : source
@@ -138,14 +149,15 @@ function deepAssignInternal (target, source, opts) {
         let val = target[key]
         let sourceIsArray = Array.isArray(sourceVal) || isTypedArray(sourceVal)
 
-        if (typeof val === "object" && !Array.isArray(val)) {
-          if (typeof sourceVal === "object" && !sourceIsArray) {
+        if (typeof val === 'object' && !Array.isArray(val)) {
+          if (typeof sourceVal === 'object' && !sourceIsArray) {
             deepAssign(val, sourceVal, opts)
             continue
           }
         }
 
-        target[key] = (sourceIsArray && opts.cloneArrays) ? deepClone(sourceVal) : sourceVal
+        target[key] =
+          sourceIsArray && opts.cloneArrays ? deepClone(sourceVal) : sourceVal
       }
     }
   }
@@ -159,7 +171,7 @@ function deepAssignInternal (target, source, opts) {
  * @param source {{}}
  * @param opts
  */
-export function deepMerge (target, source, opts={}) {
+export function deepMerge (target, source, opts = {}) {
   if (target === undefined) return deepClone(source, opts)
 
   return deepAssign(deepClone(target, opts), source, opts)
@@ -170,17 +182,19 @@ export function deepMerge (target, source, opts={}) {
  * @param object
  * @param opts
  */
-export function deepClone (object, opts={}) {
+export function deepClone (object, opts = {}) {
   opts.cloneArrays = opts.cloneArrays ?? true
 
   return deepCloneInternal(object, opts)
 }
 
-function deepCloneInternal (object, opts={}) {
-  if (typeof object !== "object") return object
+function deepCloneInternal (object, opts = {}) {
+  if (typeof object !== 'object') return object
 
   if (Array.isArray(object)) {
-    return opts.cloneArrays ? object.map(val => deepCloneInternal(val, opts)) : object
+    return opts.cloneArrays
+      ? object.map(val => deepCloneInternal(val, opts))
+      : object
   } else if (isTypedArray(object)) {
     return opts.cloneArrays ? new object.constructor(object) : object
   }
@@ -196,7 +210,7 @@ function deepCloneInternal (object, opts={}) {
 }
 
 export function isTypedArray (arr) {
-  return (ArrayBuffer.isView(arr)) && !(arr instanceof DataView)
+  return ArrayBuffer.isView(arr) && !(arr instanceof DataView)
 }
 
 export function mod (n, m) {
@@ -204,7 +218,7 @@ export function mod (n, m) {
 }
 
 export function nextPowerOfTwo (n) {
-  return 1 << (Math.ceil(Math.log2(n)))
+  return 1 << Math.ceil(Math.log2(n))
 }
 
 /**
@@ -215,20 +229,20 @@ export function deepFreeze (obj) {
   Object.freeze(obj)
 
   Object.values(obj).forEach(value => {
-    if (typeof value === "function" || typeof value === "object")
+    if (typeof value === 'function' || typeof value === 'object')
       deepFreeze(value)
   })
 
   return obj
 }
 
-export function leftZeroPad (str, len, char='0') {
+export function leftZeroPad (str, len, char = '0') {
   if (str.length >= len) return str
 
   return char.repeat(len - str.length) + str
 }
 
-export function rightZeroPad (str, len, char='0') {
+export function rightZeroPad (str, len, char = '0') {
   if (str.length >= len) return str
 
   return str + char.repeat(len - str.length)
@@ -238,95 +252,95 @@ export function rightZeroPad (str, len, char='0') {
  * Credit to https://github.com/gustf/js-levenshtein/blob/master/index.js. Find the Levenshtein distance between two
  * strings.
  */
-export const levenshtein = (function() {
+export const levenshtein = (function () {
   function _min (d0, d1, d2, bx, ay) {
     return d0 < d1 || d2 < d1
       ? d0 > d2
         ? d2 + 1
         : d0 + 1
       : bx === ay
-        ? d1
-        : d1 + 1;
+      ? d1
+      : d1 + 1
   }
 
   return function (a, b) {
     if (a === b) {
-      return 0;
+      return 0
     }
 
     if (a.length > b.length) {
-      var tmp = a;
-      a = b;
-      b = tmp;
+      var tmp = a
+      a = b
+      b = tmp
     }
 
-    var la = a.length;
-    var lb = b.length;
+    var la = a.length
+    var lb = b.length
 
-    while (la > 0 && (a.charCodeAt(la - 1) === b.charCodeAt(lb - 1))) {
-      la--;
-      lb--;
+    while (la > 0 && a.charCodeAt(la - 1) === b.charCodeAt(lb - 1)) {
+      la--
+      lb--
     }
 
-    var offset = 0;
+    var offset = 0
 
-    while (offset < la && (a.charCodeAt(offset) === b.charCodeAt(offset))) {
-      offset++;
+    while (offset < la && a.charCodeAt(offset) === b.charCodeAt(offset)) {
+      offset++
     }
 
-    la -= offset;
-    lb -= offset;
+    la -= offset
+    lb -= offset
 
     if (la === 0 || lb < 3) {
-      return lb;
+      return lb
     }
 
-    var x = 0;
-    var y, d0, d1, d2, d3, dd, dy, ay, bx0, bx1, bx2, bx3;
+    var x = 0
+    var y, d0, d1, d2, d3, dd, dy, ay, bx0, bx1, bx2, bx3
 
-    var vector = [];
+    var vector = []
 
     for (y = 0; y < la; y++) {
-      vector.push(y + 1);
-      vector.push(a.charCodeAt(offset + y));
+      vector.push(y + 1)
+      vector.push(a.charCodeAt(offset + y))
     }
 
-    var len = vector.length - 1;
+    var len = vector.length - 1
 
-    for (; x < lb - 3;) {
-      bx0 = b.charCodeAt(offset + (d0 = x));
-      bx1 = b.charCodeAt(offset + (d1 = x + 1));
-      bx2 = b.charCodeAt(offset + (d2 = x + 2));
-      bx3 = b.charCodeAt(offset + (d3 = x + 3));
-      dd = (x += 4);
+    for (; x < lb - 3; ) {
+      bx0 = b.charCodeAt(offset + (d0 = x))
+      bx1 = b.charCodeAt(offset + (d1 = x + 1))
+      bx2 = b.charCodeAt(offset + (d2 = x + 2))
+      bx3 = b.charCodeAt(offset + (d3 = x + 3))
+      dd = x += 4
       for (y = 0; y < len; y += 2) {
-        dy = vector[y];
-        ay = vector[y + 1];
-        d0 = _min(dy, d0, d1, bx0, ay);
-        d1 = _min(d0, d1, d2, bx1, ay);
-        d2 = _min(d1, d2, d3, bx2, ay);
-        dd = _min(d2, d3, dd, bx3, ay);
-        vector[y] = dd;
-        d3 = d2;
-        d2 = d1;
-        d1 = d0;
-        d0 = dy;
+        dy = vector[y]
+        ay = vector[y + 1]
+        d0 = _min(dy, d0, d1, bx0, ay)
+        d1 = _min(d0, d1, d2, bx1, ay)
+        d2 = _min(d1, d2, d3, bx2, ay)
+        dd = _min(d2, d3, dd, bx3, ay)
+        vector[y] = dd
+        d3 = d2
+        d2 = d1
+        d1 = d0
+        d0 = dy
       }
     }
 
-    for (; x < lb;) {
-      bx0 = b.charCodeAt(offset + (d0 = x));
-      dd = ++x;
+    for (; x < lb; ) {
+      bx0 = b.charCodeAt(offset + (d0 = x))
+      dd = ++x
       for (y = 0; y < len; y += 2) {
-        dy = vector[y];
-        vector[y] = dd = _min(dy, d0, dd, bx0, vector[y + 1]);
-        d0 = dy;
+        dy = vector[y]
+        vector[y] = dd = _min(dy, d0, dd, bx0, vector[y + 1])
+        d0 = dy
       }
     }
 
-    return dd;
-  };
-})();
+    return dd
+  }
+})()
 
 const onReadyCallbacks = []
 export function onReady (callback) {

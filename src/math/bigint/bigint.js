@@ -1,12 +1,12 @@
-import {isTypedArray, leftZeroPad} from "../../core/utils.js"
-import {integerExp, rationalExp} from "../real/fp_manip.js"
-import { ROUNDING_MODE } from "../rounding_modes.js"
+import { isTypedArray, leftZeroPad } from '../../core/utils.js'
+import { integerExp, rationalExp } from '../real/fp_manip.js'
+import { ROUNDING_MODE } from '../rounding_modes.js'
 
 const BIGINT_WORD_BITS = 30
 const BIGINT_WORD_PART_BITS = BIGINT_WORD_BITS / 2
 
-const BIGINT_WORD_BIT_MASK = 0x3FFFFFFF          // get the last 30 bits of a given word (removing the two junk bits)
-const BIGINT_WORD_LOW_PART_BIT_MASK = 0x7FFF     // get the last 15 bits of a given word. Getting the high part is just >> 15
+const BIGINT_WORD_BIT_MASK = 0x3fffffff // get the last 30 bits of a given word (removing the two junk bits)
+const BIGINT_WORD_LOW_PART_BIT_MASK = 0x7fff // get the last 15 bits of a given word. Getting the high part is just >> 15
 const BIGINT_WORD_OVERFLOW_BIT_MASK = 0x40000000 // get the overflow bit of a given word (aka the 31st bit)
 
 const BIGINT_WORD_SIZE = 2 ** BIGINT_WORD_BITS
@@ -43,10 +43,12 @@ export function mulAddWords (word1, word2, word3) {
   let word1Hi = word1 >> BIGINT_WORD_PART_BITS
   let word2Hi = word2 >> BIGINT_WORD_PART_BITS
 
-  let low = Math.imul(word1Lo, word2Lo), high = Math.imul(word1Hi, word2Hi)
+  let low = Math.imul(word1Lo, word2Lo),
+    high = Math.imul(word1Hi, word2Hi)
   let middle = Math.imul(word2Lo, word1Hi) + Math.imul(word1Lo, word2Hi)
 
-  low += ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) + word3
+  low +=
+    ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) + word3
   low >>>= 0
 
   if (low > BIGINT_WORD_OVERFLOW_BIT_MASK) {
@@ -56,10 +58,10 @@ export function mulAddWords (word1, word2, word3) {
 
   high += middle >> BIGINT_WORD_PART_BITS // add the high part of middle
 
-  return [ low, high ]
+  return [low, high]
 }
 
-export function multiplyBigInts(int1, int2) {
+export function multiplyBigInts (int1, int2) {
   if (int1.isZero() || int2.isZero()) return new BigInt(0)
 
   const { words: int1words, wordCount: int1wordCount, sign: int1sign } = int1
@@ -85,10 +87,14 @@ export function multiplyBigInts(int1, int2) {
       let word2Lo = word2 & BIGINT_WORD_LOW_PART_BIT_MASK
       let word2Hi = word2 >> BIGINT_WORD_PART_BITS
 
-      let low = Math.imul(word1Lo, word2Lo), high = Math.imul(word1Hi, word2Hi)
+      let low = Math.imul(word1Lo, word2Lo),
+        high = Math.imul(word1Hi, word2Hi)
       let middle = Math.imul(word2Lo, word1Hi) + Math.imul(word1Lo, word2Hi)
 
-      low += ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) + carry + out[outIndex]
+      low +=
+        ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) +
+        carry +
+        out[outIndex]
       low >>>= 0
 
       if (low > BIGINT_WORD_OVERFLOW_BIT_MASK) {
@@ -119,14 +125,16 @@ function trimTrailingZeroes (array) {
     }
     if (i === -1) return isArray ? [0] : new Int32Array(1)
 
-    return isArray ? array.slice(0, i+1) : array.subarray(0, i+1)
+    return isArray ? array.slice(0, i + 1) : array.subarray(0, i + 1)
   } else {
-    throw new TypeError("trimTrailingZeroes only operates on Arrays and TypedArrays")
+    throw new TypeError(
+      'trimTrailingZeroes only operates on Arrays and TypedArrays'
+    )
   }
 }
 
 // lol
-const NativeBigInt = (0n).constructor
+const NativeBigInt = 0n.constructor
 
 /**
  * Big integers in JS! I would use the native implementation or JSBI, but I want a pretty customized setup for fast
@@ -143,11 +151,11 @@ const NativeBigInt = (0n).constructor
  */
 export class BigInt {
   constructor (arg1, arg2) {
-    if (typeof arg1 === "number") {
+    if (typeof arg1 === 'number') {
       this.initFromNumber(arg1)
-    } else if (typeof arg1 === "string") {
+    } else if (typeof arg1 === 'string') {
       this.initFromString(arg1, arg2)
-    } else if (typeof arg1 === "bigint") {
+    } else if (typeof arg1 === 'bigint') {
       this.initFromNativeBigint(arg1)
     } else if (arg1 instanceof BigInt) {
       this.initFromBigint(arg1)
@@ -169,7 +177,7 @@ export class BigInt {
     const { words: otherWords, wordCount: otherWordCount } = num
     const { words, wordCount } = this
 
-      // Add the other bigint's words to this one
+    // Add the other bigint's words to this one
     for (let i = 0; i < otherWordCount; ++i) {
       words[i] += otherWords[i]
     }
@@ -177,7 +185,8 @@ export class BigInt {
     // We need to check the words between [0, i] for carries
     let checkCarryCount = Math.min(otherWordCount, wordCount)
 
-    let carry = 0, i = 0
+    let carry = 0,
+      i = 0
     for (; i < words.length; ++i) {
       let word = words[i] + carry
 
@@ -207,9 +216,10 @@ export class BigInt {
     if (num <= BIGINT_WORD_MAX) {
       // For small nums, we just add and carry. It's super similar to the longer case, but we have this for speed since
       // incrementing and such is a very common operation
-      const {words, wordCount} = this
+      const { words, wordCount } = this
 
-      let carry = num, i = 0
+      let carry = num,
+        i = 0
       for (; i < wordCount; ++i) {
         let word = words[i] + carry
 
@@ -258,7 +268,8 @@ export class BigInt {
         return this
       }
 
-      let carry = num, i = 0
+      let carry = num,
+        i = 0
       for (; i < wordCount; ++i) {
         let word = words[i] - carry
 
@@ -277,7 +288,7 @@ export class BigInt {
     }
   }
 
-  _subtractSameSignInPlace(num) {
+  _subtractSameSignInPlace (num) {
     if (num instanceof BigInt) {
       this.allocateBits(Math.max(this.bitCount(), num.bitCount()))
       let spaceship = this.magnitudeSpaceship(num) // -1 if we're less than num, 0 if equal, 1 if greater
@@ -292,7 +303,8 @@ export class BigInt {
 
       let maxCarryIndex = 0
 
-      if (spaceship === 1) { // If we're greater, just subtract from our words
+      if (spaceship === 1) {
+        // If we're greater, just subtract from our words
         for (let i = 0; i < otherWordCount; ++i) {
           if ((words[i] -= otherWords[i]) < 0) {
             maxCarryIndex = i
@@ -331,8 +343,8 @@ export class BigInt {
     }
   }
 
-  addInPlace (num, flipSign=false) {
-    if (typeof num === "number") {
+  addInPlace (num, flipSign = false) {
+    if (typeof num === 'number') {
       if (num === 0) return this
 
       if (this.sign === 0) {
@@ -454,31 +466,39 @@ export class BigInt {
    * @returns {boolean}
    * @private
    */
-  _compare (bigint, lessThan=true, orEqual=false, onlyEqual=false) {
+  _compare (bigint, lessThan = true, orEqual = false, onlyEqual = false) {
     if (bigint instanceof BigInt) {
-      let sign = this.sign, otherSign = bigint.sign
+      let sign = this.sign,
+        otherSign = bigint.sign
 
       if (sign < otherSign) return lessThan && !onlyEqual
       if (sign > otherSign) return !lessThan && !onlyEqual
       if (sign === 0) return orEqual
 
-      let bitcount = this.bitCount(), otherBitcount = bigint.bitCount()
+      let bitcount = this.bitCount(),
+        otherBitcount = bigint.bitCount()
 
-      if (bitcount < otherBitcount) return ((sign === 1) === lessThan) && !onlyEqual
-      if (bitcount > otherBitcount) return ((sign === 1) !== lessThan) && !onlyEqual
+      if (bitcount < otherBitcount)
+        return (sign === 1) === lessThan && !onlyEqual
+      if (bitcount > otherBitcount)
+        return (sign === 1) !== lessThan && !onlyEqual
 
-      let wordCount = this.wordCount, words = this.words, otherWords = bigint.words
+      let wordCount = this.wordCount,
+        words = this.words,
+        otherWords = bigint.words
 
       for (let i = wordCount; i >= 0; --i) {
-        let word = words[i], otherWord = otherWords[i]
-        if (word > otherWord) return ((sign === 1) !== lessThan) && !onlyEqual
-        if (word < otherWord) return ((sign === 1) === lessThan) && !onlyEqual
+        let word = words[i],
+          otherWord = otherWords[i]
+        if (word > otherWord) return (sign === 1) !== lessThan && !onlyEqual
+        if (word < otherWord) return (sign === 1) === lessThan && !onlyEqual
       }
 
       return orEqual
-    } else if (typeof bigint === "number") {
+    } else if (typeof bigint === 'number') {
       if (!Number.isFinite(bigint)) return false
-      let sign = this.sign, otherSign = Math.sign(bigint)
+      let sign = this.sign,
+        otherSign = Math.sign(bigint)
 
       if (sign < otherSign) return lessThan && !onlyEqual
       if (sign > otherSign) return !lessThan && !onlyEqual
@@ -490,8 +510,8 @@ export class BigInt {
         if (this.wordCount > 1) return false
         let diff = this.words[0] - bigint
 
-        if (diff > 0) return ((sign === 1) !== lessThan) && !onlyEqual
-        if (diff < 0) return ((sign === 1) === lessThan) && !onlyEqual
+        if (diff > 0) return (sign === 1) !== lessThan && !onlyEqual
+        if (diff < 0) return (sign === 1) === lessThan && !onlyEqual
         return orEqual
       }
 
@@ -499,8 +519,10 @@ export class BigInt {
       let givenBitCount = Math.log2(bigint) + 1
 
       // Give some leniency in case of rounding errors (which shouldn't technically happen, but ehh I don't want to prove it)
-      if (bitCount < Math.floor(givenBitCount) - 1) return ((sign === 1) === lessThan) && !onlyEqual
-      else if (bitCount > Math.ceil(givenBitCount) + 1) return ((sign === 1) !== lessThan) && !onlyEqual
+      if (bitCount < Math.floor(givenBitCount) - 1)
+        return (sign === 1) === lessThan && !onlyEqual
+      else if (bitCount > Math.ceil(givenBitCount) + 1)
+        return (sign === 1) !== lessThan && !onlyEqual
     }
 
     // Fallback for other types
@@ -513,22 +535,27 @@ export class BigInt {
    * @returns {boolean|number|*}
    */
   magnitudeSpaceship (bigint) {
-    let sign = this.sign, otherSign = bigint.sign
+    let sign = this.sign,
+      otherSign = bigint.sign
     if (sign === 0) {
-      return (otherSign === 0) ? 0 : -1
+      return otherSign === 0 ? 0 : -1
     } else if (otherSign === 0) {
-      return (sign === 0) ? 0 : 1
+      return sign === 0 ? 0 : 1
     }
 
-    let bitcount = this.bitCount(), otherBitcount = bigint.bitCount()
+    let bitcount = this.bitCount(),
+      otherBitcount = bigint.bitCount()
 
     if (bitcount < otherBitcount) return -1
     if (bitcount > otherBitcount) return 1
 
-    let wordCount = this.wordCount, words = this.words, otherWords = bigint.words
+    let wordCount = this.wordCount,
+      words = this.words,
+      otherWords = bigint.words
 
     for (let i = wordCount; i >= 0; --i) {
-      let word = words[i], otherWord = otherWords[i]
+      let word = words[i],
+        otherWord = otherWords[i]
       if (word > otherWord) return 1
       if (word < otherWord) return -1
     }
@@ -589,18 +616,21 @@ export class BigInt {
    * @param val
    */
   initFromNumber (val) {
-    if (!Number.isFinite(val)) throw new RangeError("Numeric value passed to BigInt constructor must be finite")
+    if (!Number.isFinite(val))
+      throw new RangeError(
+        'Numeric value passed to BigInt constructor must be finite'
+      )
 
-    val = Math.trunc(val)           // Guaranteed to be an integer
+    val = Math.trunc(val) // Guaranteed to be an integer
     const sign = Math.sign(val) + 0 // convert -0 to +0 :D
 
     val *= sign
 
-    if (val <= BIGINT_WORD_MAX) { // can initialize directly=
-      this.initFromWords( [ val ], sign)
+    if (val <= BIGINT_WORD_MAX) {
+      // can initialize directly=
+      this.initFromWords([val], sign)
       return
     }
-
 
     // We now convert the number into the form [i, e] where i is an integer within the 2^53 range and e is an exponent.
     // The bit pattern of the number is thus
@@ -610,15 +640,18 @@ export class BigInt {
     // Funnily enough, all integers are represented in this way, even if they aren't massive. But it is consistent.
     // Thus, we initialize with two words corresponding to the upper and lower halves of the 53-bit integer i, then
     // left shift the bits by the exponent e times.
-    let [ integer, exponent ] = integerExp(val)
+    let [integer, exponent] = integerExp(val)
 
-    this.initFromWords([ integer % BIGINT_WORD_SIZE, Math.floor(integer / BIGINT_WORD_SIZE) ], sign)
+    this.initFromWords(
+      [integer % BIGINT_WORD_SIZE, Math.floor(integer / BIGINT_WORD_SIZE)],
+      sign
+    )
     this.leftShiftInPlace(exponent)
 
     return this
   }
 
-  initFromSingleWord (word, sign=1) {
+  initFromSingleWord (word, sign = 1) {
     this.words = new Int32Array([word])
     this.sign = sign
     this.wordCount = 1
@@ -633,49 +666,89 @@ export class BigInt {
    * @param str
    * @param radix
    */
-  initFromString (str, radix=10) {
-    if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError("Radix must be an integer between 2 and 36")
+  initFromString (str, radix = 10) {
+    if (!Number.isInteger(radix) || radix < 2 || radix > 36)
+      throw new RangeError('Radix must be an integer between 2 and 36')
 
-    function throwInvalidDigitError(digit, index) {
-      throw new RangeError(`Invalid digit '${String.fromCharCode(digit)}' in base-${radix} string at index ${index}`)
+    function throwInvalidDigitError (digit, index) {
+      throw new RangeError(
+        `Invalid digit '${String.fromCharCode(
+          digit
+        )}' in base-${radix} string at index ${index}`
+      )
     }
 
     const CHUNKING_EXPONENTS = [
-      29, 536870912,
-      18, 387420489,
-      14, 268435456,
-      12, 244140625,
-      11, 362797056,
-      10, 282475249,
-      9, 134217728,
-      9, 387420489,
-      9, 1000000000,
-      8, 214358881,
-      8, 429981696,
-      8, 815730721,
-      7, 105413504,
-      7, 170859375,
-      7, 268435456,
-      7, 410338673,
-      7, 612220032,
-      7, 893871739,
-      6, 64000000,
-      6, 85766121,
-      6, 113379904,
-      6, 148035889,
-      6, 191102976,
-      6, 244140625,
-      6, 308915776,
-      6, 387420489,
-      6, 481890304,
-      6, 594823321,
-      6, 729000000,
-      6, 887503681,
-      5, 33554432,
-      5, 39135393,
-      5, 45435424,
-      5, 52521875,
-      5, 60466176
+      29,
+      536870912,
+      18,
+      387420489,
+      14,
+      268435456,
+      12,
+      244140625,
+      11,
+      362797056,
+      10,
+      282475249,
+      9,
+      134217728,
+      9,
+      387420489,
+      9,
+      1000000000,
+      8,
+      214358881,
+      8,
+      429981696,
+      8,
+      815730721,
+      7,
+      105413504,
+      7,
+      170859375,
+      7,
+      268435456,
+      7,
+      410338673,
+      7,
+      612220032,
+      7,
+      893871739,
+      6,
+      64000000,
+      6,
+      85766121,
+      6,
+      113379904,
+      6,
+      148035889,
+      6,
+      191102976,
+      6,
+      244140625,
+      6,
+      308915776,
+      6,
+      387420489,
+      6,
+      481890304,
+      6,
+      594823321,
+      6,
+      729000000,
+      6,
+      887503681,
+      5,
+      33554432,
+      5,
+      39135393,
+      5,
+      45435424,
+      5,
+      52521875,
+      5,
+      60466176
     ]
 
     const CHUNKING_EXPONENT = CHUNKING_EXPONENTS[2 * radix - 4]
@@ -703,8 +776,7 @@ export class BigInt {
         throwInvalidDigitError(digit, i)
       }
 
-      if (val >= radix)
-        throwInvalidDigitError(digit, i)
+      if (val >= radix) throwInvalidDigitError(digit, i)
 
       digits.push(val)
     }
@@ -712,7 +784,9 @@ export class BigInt {
     this.allocateBits(Math.ceil(Math.log2(radix) * digits.length))
 
     // Initial word
-    let initialGroupSize = (digits.length - 1) % CHUNKING_EXPONENT + 1, i = 0, chunk = 0
+    let initialGroupSize = ((digits.length - 1) % CHUNKING_EXPONENT) + 1,
+      i = 0,
+      chunk = 0
     for (; i < initialGroupSize; ++i) {
       chunk *= radix
       chunk += digits[i]
@@ -723,7 +797,8 @@ export class BigInt {
     for (let j = i; j < digits.length; j += CHUNKING_EXPONENT) {
       this.multiplyInPlace(CHUNK_SIZE)
 
-      let chunk = 0, jEnd = j + CHUNKING_EXPONENT
+      let chunk = 0,
+        jEnd = j + CHUNKING_EXPONENT
       for (let k = j; k < jEnd; ++k) {
         chunk *= radix
         chunk += digits[k]
@@ -748,7 +823,7 @@ export class BigInt {
    * @param words
    * @param sign
    */
-  initFromWords(words, sign=1) {
+  initFromWords (words, sign = 1) {
     words = trimTrailingZeroes(words)
 
     this.words = new Int32Array(words)
@@ -775,7 +850,8 @@ export class BigInt {
   leftShiftInPlace (count) {
     count = count | 0
 
-    if (!Number.isInteger(count) || count < 0) throw new RangeError("Left shift count must be a nonnegative integer")
+    if (!Number.isInteger(count) || count < 0)
+      throw new RangeError('Left shift count must be a nonnegative integer')
     if (count === 0) return
 
     // Number of bits after shifting
@@ -826,7 +902,7 @@ export class BigInt {
    * @param val
    */
   multiplyInPlace (val) {
-    if (typeof val === "number" && Math.abs(val) <= BIGINT_WORD_MAX) {
+    if (typeof val === 'number' && Math.abs(val) <= BIGINT_WORD_MAX) {
       if (val === 0) {
         this.setZero()
         return
@@ -849,10 +925,13 @@ export class BigInt {
         let word1Lo = word & BIGINT_WORD_LOW_PART_BIT_MASK
         let word1Hi = word >> BIGINT_WORD_PART_BITS
 
-        let low = Math.imul(word1Lo, word2Lo), high = Math.imul(word1Hi, word2Hi)
+        let low = Math.imul(word1Lo, word2Lo),
+          high = Math.imul(word1Hi, word2Hi)
         let middle = Math.imul(word2Lo, word1Hi) + Math.imul(word1Lo, word2Hi)
 
-        low += ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) + carry
+        low +=
+          ((middle & BIGINT_WORD_LOW_PART_BIT_MASK) << BIGINT_WORD_PART_BITS) +
+          carry
         low >>>= 0
 
         if (low > BIGINT_WORD_OVERFLOW_BIT_MASK) {
@@ -898,7 +977,8 @@ export class BigInt {
   rightShiftInPlace (count) {
     count = count | 0
 
-    if (!Number.isInteger(count) || count < 0) throw new RangeError("Right shift count must be a nonnegative integer")
+    if (!Number.isInteger(count) || count < 0)
+      throw new RangeError('Right shift count must be a nonnegative integer')
     if (count === 0) return
 
     // Number of bits after shifting
@@ -919,7 +999,8 @@ export class BigInt {
     return this
   }
 
-  toBigint () { // Not too hard, we just construct it from the words in order
+  toBigint () {
+    // Not too hard, we just construct it from the words in order
     const { words } = this
 
     let out = 0n
@@ -943,13 +1024,21 @@ export class BigInt {
   toLargeRadixInternal (radix) {
     radix = +radix
 
-    if (!Number.isInteger(radix) || radix <= 4294967296 || radix >= 4503599627370496) throw new RangeError("Base of radix conversion must be an integer between 4294967296 and 4503599627370496, inclusive.")
+    if (
+      !Number.isInteger(radix) ||
+      radix <= 4294967296 ||
+      radix >= 4503599627370496
+    )
+      throw new RangeError(
+        'Base of radix conversion must be an integer between 4294967296 and 4503599627370496, inclusive.'
+      )
 
     const digitsOut = [0]
     const { words } = this
 
     for (let wordIndex = words.length - 1; wordIndex >= 0; --wordIndex) {
-      let carry = 0, i = 0
+      let carry = 0,
+        i = 0
       for (; i < digitsOut.length; ++i) {
         let digit = digitsOut[i] * BIGINT_WORD_SIZE // Because we're working with floats, this operation is exact
 
@@ -980,7 +1069,8 @@ export class BigInt {
     }
 
     // Carry any remaining stuff
-    let carry = 0, i = 0
+    let carry = 0,
+      i = 0
     for (; i < digitsOut.length; ++i) {
       digitsOut[i] += carry
 
@@ -997,7 +1087,6 @@ export class BigInt {
 
     return digitsOut
   }
-
 
   /**
    * Convert the bigint to its closest double representation with the given rounding mode. We do this by abstracting a
@@ -1038,7 +1127,10 @@ export class BigInt {
   toRadixInternal (radix) {
     radix = +radix
 
-    if (!Number.isInteger(radix) || radix <= 1 || radix >= 1125899906842600) throw new RangeError("Base of radix conversion must be an integer between 2 and 1125899906842600, inclusive.")
+    if (!Number.isInteger(radix) || radix <= 1 || radix >= 1125899906842600)
+      throw new RangeError(
+        'Base of radix conversion must be an integer between 2 and 1125899906842600, inclusive.'
+      )
 
     // We construct the output via decomposing the integer into a series of operations of either x * 2 or x + 1,
     // applying each to the digitsOut array. These operations correspond to the bits of the BigInt in reverse order.
@@ -1052,10 +1144,11 @@ export class BigInt {
     function doMultiplications () {
       while (queuedMultiplications > 0) {
         if (queuedMultiplications > 2 && canMultiplyBy8) {
-          let carry = 0, i = 0
+          let carry = 0,
+            i = 0
           for (; i < digitsOut.length; ++i) {
             let currentDigit = digitsOut[i]
-            let newDigit = (currentDigit * 8) + carry
+            let newDigit = currentDigit * 8 + carry
 
             if (newDigit < radix) {
               carry = 0
@@ -1088,10 +1181,11 @@ export class BigInt {
 
           queuedMultiplications -= 3
         } else if (queuedMultiplications > 1 && canMultiplyBy4) {
-          let carry = 0, i = 0
+          let carry = 0,
+            i = 0
           for (; i < digitsOut.length; ++i) {
             let currentDigit = digitsOut[i]
-            let newDigit = (currentDigit * 4) + carry
+            let newDigit = currentDigit * 4 + carry
 
             if (newDigit < radix) {
               carry = 0
@@ -1112,10 +1206,11 @@ export class BigInt {
 
           queuedMultiplications -= 2
         } else {
-          let carry = 0, i = 0
+          let carry = 0,
+            i = 0
           for (; i < digitsOut.length; ++i) {
             let currentDigit = digitsOut[i]
-            let newDigit = (currentDigit * 2) + carry
+            let newDigit = currentDigit * 2 + carry
 
             if (newDigit >= radix) {
               newDigit -= radix
@@ -1148,7 +1243,8 @@ export class BigInt {
           // Run the queued multiplications
           doMultiplications()
 
-          let carry = 1, i = 0
+          let carry = 1,
+            i = 0
           for (; i < digitsOut.length; ++i) {
             let currentDigit = digitsOut[i]
             let newDigit = currentDigit + carry
@@ -1179,55 +1275,94 @@ export class BigInt {
    * @param radix {number}
    * @returns {string}
    */
-  toString (radix=10) {
+  toString (radix = 10) {
     // The algorithm is as follows: We calculate the digits of the integer in a base (radix)^n, where n is chosen so that
     // the base fits nicely into a JS number. We then go chunk by chunk and convert to string, then concatenate
     // everything into a single output
 
-    if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError("Base of radix conversion must be an integer between 2 and 36, inclusive.")
+    if (!Number.isInteger(radix) || radix < 2 || radix > 36)
+      throw new RangeError(
+        'Base of radix conversion must be an integer between 2 and 36, inclusive.'
+      )
 
     const CHUNKING_EXPONENTS = [
-      50, 1125899906842624,
-      31, 617673396283947,
-      25, 1125899906842624,
-      21, 476837158203125,
-      19, 609359740010496,
-      17, 232630513987207,
-      16, 281474976710656,
-      15, 205891132094649,
-      15, 1000000000000000,   // for example, we convert to base 10^15 instead of 10 first
-      14, 379749833583241,
-      13, 106993205379072,
-      13, 302875106592253,
-      13, 793714773254144,
-      12, 129746337890625,
-      12, 281474976710656,
-      12, 582622237229761,
-      11, 64268410079232,
-      11, 116490258898219,
-      11, 204800000000000,
-      11, 350277500542221,
-      11, 584318301411328,
-      11, 952809757913927,
-      10, 63403380965376,
-      10, 95367431640625,
-      10, 141167095653376,
-      10, 205891132094649,
-      10, 296196766695424,
-      10, 420707233300201,
-      10, 590490000000000,
-      10, 819628286980801,
-      10, 1125899906842624,
-      9, 46411484401953,
-      9, 60716992766464,
-      9, 78815638671875,
-      9, 101559956668416
+      50,
+      1125899906842624,
+      31,
+      617673396283947,
+      25,
+      1125899906842624,
+      21,
+      476837158203125,
+      19,
+      609359740010496,
+      17,
+      232630513987207,
+      16,
+      281474976710656,
+      15,
+      205891132094649,
+      15,
+      1000000000000000, // for example, we convert to base 10^15 instead of 10 first
+      14,
+      379749833583241,
+      13,
+      106993205379072,
+      13,
+      302875106592253,
+      13,
+      793714773254144,
+      12,
+      129746337890625,
+      12,
+      281474976710656,
+      12,
+      582622237229761,
+      11,
+      64268410079232,
+      11,
+      116490258898219,
+      11,
+      204800000000000,
+      11,
+      350277500542221,
+      11,
+      584318301411328,
+      11,
+      952809757913927,
+      10,
+      63403380965376,
+      10,
+      95367431640625,
+      10,
+      141167095653376,
+      10,
+      205891132094649,
+      10,
+      296196766695424,
+      10,
+      420707233300201,
+      10,
+      590490000000000,
+      10,
+      819628286980801,
+      10,
+      1125899906842624,
+      9,
+      46411484401953,
+      9,
+      60716992766464,
+      9,
+      78815638671875,
+      9,
+      101559956668416
     ]
 
     const CHUNK_EXPONENT = CHUNKING_EXPONENTS[2 * radix - 4]
     const digits = this.toLargeRadixInternal(CHUNKING_EXPONENTS[2 * radix - 3])
 
-    let out = (this.sign < 0 ? '-' : '') + digits[digits.length - 1].toString(radix)
+    let out =
+      (this.sign < 0 ? '-' : '') + digits[digits.length - 1].toString(radix)
     for (let i = digits.length - 2; i >= 0; --i) {
       out += leftZeroPad(digits[i].toString(radix), CHUNK_EXPONENT, '0')
     }
@@ -1235,4 +1370,3 @@ export class BigInt {
     return out
   }
 }
-

@@ -1,39 +1,44 @@
-import {Group} from "./group.js"
-import {BoundingBox} from "../math/bounding_box.js"
-import {attachGettersAndSetters, constructInterface} from "./interface.js"
-import {Color, Colors} from "../styles/definitions.js"
+import { Group } from './group.js'
+import { BoundingBox } from '../math/bounding_box.js'
+import { attachGettersAndSetters, constructInterface } from './interface.js'
+import { Color, Colors } from '../styles/definitions.js'
 
 // Example interface
 const sceneInterface = constructInterface({
   interface: {
     width: {
-      description: "The width of the scene",
-      typecheck: {type: "integer", min: 100, max: 16384}
+      description: 'The width of the scene',
+      typecheck: { type: 'integer', min: 100, max: 16384 }
     },
     height: {
-      description: "The height of the scene",
-      typecheck: {type: "integer", min: 100, max: 16384}
+      description: 'The height of the scene',
+      typecheck: { type: 'integer', min: 100, max: 16384 }
     },
     dpr: {
-      description: "The device pixel ratio of the scene",
-      typecheck: {type: "number", min: 1 / 32, max: 32},
+      description: 'The device pixel ratio of the scene',
+      typecheck: { type: 'number', min: 1 / 32, max: 32 }
       //setAs: "user"
     },
     backgroundColor: {
-      description: "The color of the scene background",
-      setAs: "user",
-      conversion: { type: "Color" }
+      description: 'The color of the scene background',
+      setAs: 'user',
+      conversion: { type: 'Color' }
     },
     sceneDims: {
-      description: "The dimensions of the scene",
+      description: 'The dimensions of the scene',
       readOnly: true
     }
-  }, internal: {
-    width: {type: "number", computed: "default", default: 640},
-    height: {type: "number", computed: "default", default: 480},
-    dpr: {type: "number", computed: "default", default: 1},
-    backgroundColor: {type: "Color", computed: "user", default: Colors.TRANSPARENT},
-    sceneDims: { type: "SceneDimensions", computed: "none" }
+  },
+  internal: {
+    width: { type: 'number', computed: 'default', default: 640 },
+    height: { type: 'number', computed: 'default', default: 480 },
+    dpr: { type: 'number', computed: 'default', default: 1 },
+    backgroundColor: {
+      type: 'Color',
+      computed: 'user',
+      default: Colors.TRANSPARENT
+    },
+    sceneDims: { type: 'SceneDimensions', computed: 'none' }
   }
 })
 
@@ -66,14 +71,14 @@ class SceneDimensions {
  * element knows its scene directly as its .scene property.
  */
 export class Scene extends Group {
-  getInterface() {
+  getInterface () {
     return sceneInterface
   }
 
   init () {
     this.scene = this
 
-    this.props.setPropertyInheritance("sceneDims", true)
+    this.props.setPropertyInheritance('sceneDims', true)
   }
 
   /**
@@ -82,12 +87,17 @@ export class Scene extends Group {
   calculateSceneDimensions () {
     const { props } = this
 
-    if (props.haveChanged(["width", "height", "dpr"])) {
+    if (props.haveChanged(['width', 'height', 'dpr'])) {
       const { width, height, dpr } = props.proxy
       const sceneDimensions = new SceneDimensions(width, height, dpr)
 
       // Equality check of 2 for deep comparison, in case width, height, dpr have not actually changed
-      props.set("sceneDims", sceneDimensions, 0 /* real */, 2 /* equality check */)
+      props.set(
+        'sceneDims',
+        sceneDimensions,
+        0 /* real */,
+        2 /* equality check */
+      )
     }
   }
 
@@ -109,9 +119,9 @@ export class Scene extends Group {
 
     this.internal.renderInfo = {
       contexts: {
-        type: "scene",
-        dims: this.get("sceneDims"),
-        backgroundColor: this.get("backgroundColor")
+        type: 'scene',
+        dims: this.get('sceneDims'),
+        backgroundColor: this.get('backgroundColor')
       }
     }
   }
@@ -121,12 +131,13 @@ export class Scene extends Group {
    * inheritable properties, as unchanged.
    */
   updateAll () {
-    this.apply(child => { child.update() })
+    this.apply(child => {
+      child.update()
+    })
 
     // Mark the update as completed (WIP)
     this.apply(child => child.props.markGlobalUpdateComplete())
   }
-
 }
 
-attachGettersAndSetters (Scene.prototype, sceneInterface)
+attachGettersAndSetters(Scene.prototype, sceneInterface)

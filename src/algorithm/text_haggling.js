@@ -1,4 +1,3 @@
-
 // The concept of text haggling is quite simple: we want to put text labels in optimal locations where they are not
 // covering up or clashing with important elements, or just being put in odd locations. We also don't want the labels
 // themselves to interact too much. The solution is a somewhat physics-based system of text, which are modeled as simple

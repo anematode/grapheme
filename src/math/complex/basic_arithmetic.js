@@ -47,7 +47,7 @@ export const Subtract = (a, b) => {
  * @param z
  * @returns {number}
  */
-export const Re = (z) => {
+export const Re = z => {
   return z.re
 }
 
@@ -56,7 +56,7 @@ export const Re = (z) => {
  * @param z
  * @returns {number}
  */
-export const Im = (z) => {
+export const Im = z => {
   return z.im
 }
 
@@ -67,32 +67,29 @@ export const Im = (z) => {
  * @returns {Complex}
  * @constructor
  */
-export const Construct = (a, b=0) => {
+export const Construct = (a, b = 0) => {
   return new Complex(a, b)
 }
 
-export const UnaryMinus = (a) => {
+export const UnaryMinus = a => {
   return new Complex(-a.re, -a.im)
 }
 
 const piecewise = (val1, cond, ...args) => {
-  if (cond)
-    return val1
+  if (cond) return val1
   if (args.length === 0) {
-    if (cond === undefined)
-      return val1
-    else
-      return new Complex(0)
+    if (cond === undefined) return val1
+    else return new Complex(0)
   }
 
   return piecewise(...args)
 }
 
-export const Abs = (z) => {
+export const Abs = z => {
   return z.magnitude()
 }
 
-export const IsFinite = (z) => {
+export const IsFinite = z => {
   return isFinite(z.re) && isFinite(z.im)
 }
 

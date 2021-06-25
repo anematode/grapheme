@@ -1,21 +1,20 @@
-import {Scene} from "./scene.js"
-import {constructInterface} from "./interface.js"
-import {deepClone} from "./utils.js"
-import {Vec2} from "../math/vec/vec2.js"
+import { Scene } from './scene.js'
+import { constructInterface } from './interface.js'
+import { deepClone } from './utils.js'
+import { Vec2 } from '../math/vec/vec2.js'
 
 let sceneInterface = Scene.prototype.getInterface()
 
 let interactiveSceneInterface = {
   interface: {
     ...sceneInterface.description.interface,
-    interactivity: {typecheck: {type: "boolean"}}
+    interactivity: { typecheck: { type: 'boolean' } }
   },
   internal: {
     ...sceneInterface.description.internal,
-    interactivity: {type: "boolean", computed: "default", default: true}
+    interactivity: { type: 'boolean', computed: 'default', default: true }
   }
 }
-
 
 interactiveSceneInterface = constructInterface(interactiveSceneInterface)
 
@@ -26,8 +25,8 @@ export class InteractiveScene extends Scene {
   init (params) {
     super.init(params)
 
-    this.domElement = document.createElement("canvas")
-    this.bitmapRenderer = this.domElement.getContext("bitmaprenderer")
+    this.domElement = document.createElement('canvas')
+    this.bitmapRenderer = this.domElement.getContext('bitmaprenderer')
   }
 
   #disableInteractivityListeners () {
@@ -47,7 +46,7 @@ export class InteractiveScene extends Scene {
 
   #enableInteractivityListeners () {
     this.#disableInteractivityListeners()
-    let listeners = this.internal.interactivityListeners = {}
+    let listeners = (this.internal.interactivityListeners = {})
 
     // Convert mouse event coords (which are relative to the top left corner of the page) to canvas coords
     const getSceneCoords = evt => {
@@ -55,12 +54,15 @@ export class InteractiveScene extends Scene {
       return new Vec2(evt.clientX - rect.x, evt.clientY - rect.y)
     }
 
-    ;[ "mousedown", "mousemove", "mouseup", "wheel" ].forEach(eventName => {
+    ;['mousedown', 'mousemove', 'mouseup', 'wheel'].forEach(eventName => {
       let listener
 
-      if (eventName === "wheel") {
+      if (eventName === 'wheel') {
         listener = evt => {
-          this.triggerEvent(eventName, { pos: getSceneCoords(evt), deltaY: evt.deltaY })
+          this.triggerEvent(eventName, {
+            pos: getSceneCoords(evt),
+            deltaY: evt.deltaY
+          })
           evt.preventDefault()
         }
       } else {
@@ -70,16 +72,21 @@ export class InteractiveScene extends Scene {
         }
       }
 
-      this.domElement.addEventListener(eventName, listeners[eventName] = listener)
+      this.domElement.addEventListener(
+        eventName,
+        (listeners[eventName] = listener)
+      )
     })
   }
 
   toggleInteractivity () {
     let internal = this.internal
-    let interactivity = this.props.get("interactivity")
+    let interactivity = this.props.get('interactivity')
 
     if (!!internal.interactivityListeners !== interactivity) {
-      interactivity ? this.#enableInteractivityListeners() : this.#disableInteractivityListeners()
+      interactivity
+        ? this.#enableInteractivityListeners()
+        : this.#disableInteractivityListeners()
     }
   }
 

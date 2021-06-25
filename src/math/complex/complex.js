@@ -8,7 +8,7 @@ class Complex {
    * @param re The real part of the complex number.
    * @param im The imaginary part of the complex number.
    */
-  constructor(re, im=0) {
+  constructor (re, im = 0) {
     this.re = re
     this.im = im
   }
@@ -18,7 +18,7 @@ class Complex {
    * @returns {Complex} i.
    * @constructor
    */
-  static get I() {
+  static get I () {
     return new Complex(0, 1)
   }
 
@@ -27,7 +27,7 @@ class Complex {
    * @returns {Complex} 1.
    * @constructor
    */
-  static get One() {
+  static get One () {
     return new Complex(1, 0)
   }
 
@@ -35,7 +35,7 @@ class Complex {
    * Return the complex argument (principal value) corresponding to the complex number.
    * @returns {number} The complex argument Arg(z).
    */
-  arg() {
+  arg () {
     return Math.atan2(this.im, this.re)
   }
 
@@ -43,7 +43,7 @@ class Complex {
    * Returns |z|.
    * @returns {number} The complex magnitude |z|.
    */
-  magnitude() {
+  magnitude () {
     return Math.hypot(this.re, this.im)
   }
 
@@ -51,7 +51,7 @@ class Complex {
    * Returns |z|^2.
    * @returns {number} The square of the complex magnitude |z|^2.
    */
-  magnitudeSquared() {
+  magnitudeSquared () {
     return this.re * this.re + this.im * this.im
   }
 
@@ -59,7 +59,7 @@ class Complex {
    * Returns z bar.
    * @returns {Complex} The conjugate of z.
    */
-  conj() {
+  conj () {
     return new Complex(this.re, -this.im)
   }
 
@@ -67,7 +67,7 @@ class Complex {
    * Clone this complex number.
    * @returns {Complex} Clone of z.
    */
-  clone() {
+  clone () {
     return new Complex(this.re, this.im)
   }
 
@@ -75,7 +75,7 @@ class Complex {
    * Scale this complex number by the real factor r.
    * @param r {number} The scaling factor.
    */
-  scale(r) {
+  scale (r) {
     return new Complex(this.re * r, this.im * r)
   }
 
@@ -83,15 +83,15 @@ class Complex {
    * Check whether this complex number is equal to another.
    * @param z {Complex} Complex number to compare with.
    */
-  equals(z) {
-    return (this.re === z.re) && (this.im === z.im)
+  equals (z) {
+    return this.re === z.re && this.im === z.im
   }
 
   /**
    * Return a complex number pointing in the same direction, with magnitude 1.
    * @returns {Complex}
    */
-  normalize() {
+  normalize () {
     let mag = this.magnitude()
 
     return this.scale(1 / mag)

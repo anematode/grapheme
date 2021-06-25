@@ -1,39 +1,39 @@
-import {levenshtein} from "../core/utils.js"
-import {initTypecasts} from "./typecasts.js"
+import { levenshtein } from '../core/utils.js'
+import { initTypecasts } from './typecasts.js'
 import { Vec2 } from '../math/vec/vec2.js'
 
 // List of valid types in Grapheme math language (as distinct from the props and stuff)
 export const TYPES = {
-  "bool": {
+  bool: {
     typecheck: {
       generic: {
-        f: x => (typeof x === "boolean")
+        f: x => typeof x === 'boolean'
       }
     }
   },
-  "int": {
+  int: {
     typecheck: {
       generic: {
         f: Number.isInteger
       }
     }
   },
-  "real": {
+  real: {
     typecheck: {
       generic: {
-        f: x => (typeof x === "number")
+        f: x => typeof x === 'number'
       }
     }
   },
-  "complex": true,
-  "vec2": {
+  complex: true,
+  vec2: {
     typecheck: {
       generic: {
         f: x => x instanceof Vec2
       }
     }
   },
-  "null": true
+  null: true
 }
 
 /**
@@ -46,13 +46,11 @@ export const TYPES = {
 export function getCast (from, to) {
   let candidates = typecastDict[from]
 
-  if (!candidates)
-    return
+  if (!candidates) return
 
   for (let i = candidates.length - 1; i >= 0; --i) {
     let candidate = candidates[i]
-    if (candidate.to === to)
-      return candidate
+    if (candidate.to === to) return candidate
   }
 }
 
@@ -65,8 +63,8 @@ export function canCast (from, to) {
  * @param typename {string}
  * @returns {boolean}
  */
-function isValidType(typename) {
-  return (typeof typename === "string") && (typename in TYPES)
+function isValidType (typename) {
+  return typeof typename === 'string' && typename in TYPES
 }
 
 /**
@@ -74,14 +72,15 @@ function isValidType(typename) {
  * @param typename {string}
  * @returns {boolean}
  */
-function throwInvalidType(typename) {
+function throwInvalidType (typename) {
   if (!isValidType(typename)) {
-    if (typeof typename !== "string")
-      throw new Error("Non-string passed as typename")
+    if (typeof typename !== 'string')
+      throw new Error('Non-string passed as typename')
 
-    let didYouMean = ""
+    let didYouMean = ''
 
-    let minDistance = Infinity, closestType
+    let minDistance = Infinity,
+      closestType
     Object.keys(TYPES).forEach(type => {
       let dist = levenshtein(typename, type)
       if (dist < minDistance) {
@@ -91,7 +90,7 @@ function throwInvalidType(typename) {
     })
 
     if (minDistance < 2) {
-      didYouMean = ". Did you mean " + closestType + "?"
+      didYouMean = '. Did you mean ' + closestType + '?'
     } else {
       didYouMean = `; valid types are ${Object.keys(TYPES).join(', ')}.`
     }
@@ -104,8 +103,8 @@ function throwInvalidType(typename) {
  * Abstract class: definition of an evaluable operator
  */
 export class OperatorDefinition {
-  constructor (params={}) {
-    throwInvalidType(this.returnType = params.returnType)
+  constructor (params = {}) {
+    throwInvalidType((this.returnType = params.returnType))
 
     /**
      * Mapping of evaluation mode -> evaluator which can evaluate the operator in that mode. "generic" accepts arguments
@@ -131,43 +130,43 @@ function signatureNormalize (obj) {
   } else {
     throwInvalidType(obj)
 
-    return [ obj ]
+    return [obj]
   }
 }
 
 const specialEvaluators = {
   identity: {
-    type: "special",
-    name: "identity",
+    type: 'special',
+    name: 'identity',
     f: x => x
   },
   addition: {
-    type: "special_binary",
+    type: 'special_binary',
     binary: '+',
     f: (a, b) => a + b
   },
   subtraction: {
-    type: "special_binary",
+    type: 'special_binary',
     binary: '-',
     f: (a, b) => a - b
   },
   unary_subtraction: {
-    type: "special",
+    type: 'special',
     f: a => -a
   },
   multiplication: {
-    type: "special_binary",
+    type: 'special_binary',
     binary: '*',
     f: (a, b) => a * b
   },
   division: {
-    type: "special_binary",
+    type: 'special_binary',
     binary: '/',
     f: (a, b) => a / b
   },
   pow: {
-    type: "special",
-    name: "pow",
+    type: 'special',
+    name: 'pow',
     f: Math.pow
   }
 }
@@ -178,15 +177,15 @@ const specialEvaluators = {
  * @param obj
  */
 function evaluatorNormalize (obj) {
-  if (typeof obj === "string") {
+  if (typeof obj === 'string') {
     let evaluator = specialEvaluators[obj]
 
     if (!obj) throw new Error(`Unknown special evaluator ${obj}`)
 
     return evaluator
-  } else if (typeof obj === "function") {
+  } else if (typeof obj === 'function') {
     return {
-      type: "normal",
+      type: 'normal',
       f: obj
     }
   }
@@ -212,7 +211,7 @@ function evaluatorsNormalize (obj) {
  * Operator with a fixed type signature and type output
  */
 export class FixedOperatorDefinition extends OperatorDefinition {
-  constructor (params={}) {
+  constructor (params = {}) {
     super(params)
 
     this.signature = signatureNormalize(params.signature)
@@ -237,14 +236,15 @@ export class FixedOperatorDefinition extends OperatorDefinition {
 }
 
 // List of typecasts and dict from (source type) -> (dst type)
-let typecastList = [], typecastDict = {}
+let typecastList = [],
+  typecastDict = {}
 
 class TypecastDefinition extends FixedOperatorDefinition {
-  constructor(params = {}) {
+  constructor (params = {}) {
     let from = params.from
     let to = params.to
 
-    super({...params, returnType: to, signature: from})
+    super({ ...params, returnType: to, signature: from })
 
     this.from = from
     this.to = to
@@ -252,4 +252,3 @@ class TypecastDefinition extends FixedOperatorDefinition {
 }
 
 initTypecasts(TypecastDefinition, typecastList, typecastDict)
-

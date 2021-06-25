@@ -20,8 +20,11 @@ export const Pow = (z, w) => {
  * @param branch {number}
  * @returns {Complex}
  */
-export const PowBranched = (z, w, branch=0) => {
-  return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))))
+export const PowBranched = (z, w, branch = 0) => {
+  return Multiply(
+    Pow(z, w),
+    Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch)))
+  )
 }
 
 /**
@@ -31,18 +34,17 @@ export const PowBranched = (z, w, branch=0) => {
  * @returns {Complex}
  */
 export const PowR = (z, r) => {
-  if (r === 0)
-    return new Complex(1)
-  else if (r === 1)
-    return z.clone()
-  else if (r === 2)
-    return Multiply(z, z)
+  if (r === 0) return new Complex(1)
+  else if (r === 1) return z.clone()
+  else if (r === 2) return Multiply(z, z)
 
   return Pow(z, new Complex(r))
 }
 
 export const PowZ = (r, z) => {
-  return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)))
+  return Exp(
+    Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI))
+  )
 }
 
 /**
@@ -52,7 +54,7 @@ export const PowZ = (r, z) => {
  * @param branch {number}
  * @returns {Complex}
  */
-export const PowRBranched = (z, r, branch=0) => {
+export const PowRBranched = (z, r, branch = 0) => {
   return PowBranched(z, new Complex(r), branch)
 }
 
@@ -87,7 +89,7 @@ export const PowN = (z, n) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Sqrt = (z) => {
+export const Sqrt = z => {
   // Handle real z specially
   if (Math.abs(z.im) < 1e-17) {
     let r = z.re
@@ -112,7 +114,7 @@ export const Sqrt = (z) => {
  * @param branch {number}
  * @returns {Complex}
  */
-export const SqrtBranched = (z, branch=0) => {
+export const SqrtBranched = (z, branch = 0) => {
   if (branch % 2 === 0) {
     return Sqrt(z)
   } else {
@@ -125,8 +127,8 @@ export const SqrtBranched = (z, branch=0) => {
  * @param z {Complex}
  * @returns {Complex}
  */
-export const Cbrt = (z) => {
-  return PowR(z, 1/3)
+export const Cbrt = z => {
+  return PowR(z, 1 / 3)
 }
 
 /**
@@ -135,6 +137,6 @@ export const Cbrt = (z) => {
  * @param branch {number}
  * @returns {Complex}
  */
-export const CbrtBranched = (z, branch=0) => {
-  return PowRBranched(z, 1/3, branch)
+export const CbrtBranched = (z, branch = 0) => {
+  return PowRBranched(z, 1 / 3, branch)
 }
