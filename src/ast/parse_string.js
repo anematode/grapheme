@@ -3,7 +3,7 @@
  * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
  */
 import { getAngryAt } from './parser_error.js'
-import {ConstantNode, VariableNode, OperatorNode, ASTGroup, ASTNode} from './new_node.js'
+import {ConstantNode, VariableNode, OperatorNode, ASTGroup, ASTNode} from './node.js'
 
 const OperatorSynonyms = {
   'arcsinh': 'asinh',
@@ -95,6 +95,12 @@ function unescapeBackslashedEscapes(string) {
   return string.replace(/\\n/g, "\n")
     .replace(/\\'/g, "\'")
     .replace(/\\n/g, "\n")
+}
+
+// Make sure the variable name isn't a member of the empty object
+let testObj = {}
+export function isValidVariableName (str) {
+  return typeof str === "string" && !!str.match(variable_regex) && str[0] !== '$' && !testObj[str]
 }
 
 function* tokenizer(string) {

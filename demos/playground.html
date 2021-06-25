@@ -7,7 +7,11 @@
 <body>
 
 <script id="setup">
+    var expr = "vec2(x^2,y^2)"
+    var node = Grapheme.parseString(expr).resolveTypes()
+    var compiled = Grapheme.compileNode(node, { args: ['x', 'y'], typechecks: true })
 
+    console.log(compiled.evaluate(2, 3))
 
 </script>
 

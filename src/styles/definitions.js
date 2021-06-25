@@ -607,7 +607,12 @@ export const Pen = {
     let ret = {}
 
     for (let i = 0; i < args.length; ++i) {
-      Object.assign(ret, args[i])
+      let arg = args[i]
+      if (typeof arg === "string") {
+        arg = { color: Color.fromObj(arg) }
+      }
+
+      Object.assign(ret, arg)
     }
 
     ret.color = Color.fromObj(ret.color)

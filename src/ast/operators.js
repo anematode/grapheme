@@ -1,12 +1,17 @@
 import {FixedOperatorDefinition} from "./operator.js"
-import { Vec2 } from '../math/vec/vec2'
+import { Vec2 } from '../math/vec/vec2.js'
 
+/**
+ * Mapping of operator name to list of operators with that name
+ */
 export const Operators = {}
 
 /**
- * Find the operator of a given name which matches a signature
- * @param name {string}
- * @param signature {string[]}
+ * Find the operator of a given name which matches a signature--a list of types. If types can be successfully casted,
+ * then it is a match (the signatures don't have to be identical, just compatible).
+ * @param name {string} The operator name (ex. +)
+ * @param signature {string[]} The type signature to call the function (ex. ["real", "real"])
+ * @returns {OperatorDefinition|undefined} The OperatorDefinition corresponding to that function call, if it exists
  */
 export function resolveOperator (name, signature) {
   let candidates = Operators[name]

@@ -185,8 +185,9 @@ export class FigureBaubles extends Group {
     const { props } = this
 
     if (props.hasChanged("plotTransform")) {
-      let tr = props.get("plotTransform")
-      let ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, { emitAxis: props.get("generateGridlinesAxis")})
+      let tr = props.get("plotTransform"), ticks
+      if (tr)
+        ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, { emitAxis: props.get("generateGridlinesAxis")})
 
       props.set("ticks", ticks)
     }
@@ -198,7 +199,7 @@ export class FigureBaubles extends Group {
     if (this.props.haveChanged(["ticks", "showLabels"])) {
       let { ticks, plotTransform } = this.props.proxy
 
-      for (let style of ["major"]) {
+      if (ticks && plotTransform) for (let style of ["major"]) {
         let entries = ticks[style]
 
         let x = entries.x, y = entries.y
@@ -223,25 +224,27 @@ export class FigureBaubles extends Group {
     if (this.props.haveChanged(["ticks", "showGridlines", "sharpenGridlines"])) {
       let { showGridlines, ticks, gridlinePens, plotTransform, sharpenGridlines } = this.props.proxy
 
-      this.internal.gridlinesInstructions = generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines)
+      this.internal.gridlinesInstructions = (ticks && plotTransform) ? generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines) : []
     }
   }
 
   toggleOutline () {
     let { showOutline, plotTransform, outlinePen: pen } = this.props.proxy
+    let int = this.internal
 
     if (showOutline && plotTransform) {
       // We inset the box by the thickness of the line so that it doesn't jut out
       let box = plotTransform.pixelBox().squish(pen.thickness / 2)
       let vertices = generateRectangleCycle(box)
 
-      this.internal.outlineInstruction = { type: "polyline", vertices, pen }
+      int.outlineInstruction = { type: "polyline", vertices, pen }
     } else {
-      this.internal.outlineInstruction = null
+      int.outlineInstruction = null
     }
   }
 
   computeRenderInfo () {
-    this.internal.renderInfo = { instructions: [ this.internal.outlineInstruction, ...this.internal.labelInstructions, ...this.internal.gridlinesInstructions ] }
+    let int = this.internal
+    int.renderInfo = { instructions: [ int.outlineInstruction, ...int.labelInstructions, ...int.gridlinesInstructions ] }
   }
 }

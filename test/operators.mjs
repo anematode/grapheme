@@ -1,4 +1,4 @@
-import {FixedOperatorDefinition, OperatorDefinition} from "../src/ast/new_operators.js"
+import {FixedOperatorDefinition, OperatorDefinition} from "../src/ast/operator.js"
 import { expect } from "chai"
 
 describe("OperatorDefinition", () => {

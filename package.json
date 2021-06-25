@@ -1,9 +1,9 @@
 {
   "name": "grapheme",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "JavaScript graphing library",
   "main": "build/grapheme.js",
-  "module": "src/main.js",
+  "type": "module",
   "scripts": {
     "test": "npx mocha --reporter spec",
     "start": "http-server -a localhost -p 8000 --ext js",
@@ -49,10 +49,11 @@
       }
     }
   },
-  "type": "module",
   "directories": {
     "doc": "docs",
     "test": "test"
   },
-  "dependencies": {}
+  "dependencies": {
+    "esm": "^3.2.25"
+  }
 }

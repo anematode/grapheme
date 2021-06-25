@@ -1,6 +1,6 @@
 import {levenshtein} from "../core/utils.js"
 import {initTypecasts} from "./typecasts.js"
-import { Vec2 } from '../math/vec/vec2'
+import { Vec2 } from '../math/vec/vec2.js'
 
 // List of valid types in Grapheme math language (as distinct from the props and stuff)
 export const TYPES = {
@@ -29,7 +29,7 @@ export const TYPES = {
   "vec2": {
     typecheck: {
       generic: {
-        f: x instanceof Vec2
+        f: x => x instanceof Vec2
       }
     }
   },

@@ -1,6 +1,5 @@
-import {castableIntoMultiple, getCastingFunction, Operators, retrieveEvaluationFunction} from "./operators.js"
-import {getCast} from "./new_operator.js"
-import {resolveOperator} from "./new_operators.js"
+import {getCast} from "./operator.js"
+import {resolveOperator} from "./operators.js"
 
 class EvaluationError extends Error {
   constructor(message) {
@@ -93,6 +92,14 @@ export class ASTGroup extends ASTNode {
   }
 
   /**
+   * Deep clone this ASTGroup.
+   * @returns {ASTGroup}
+   */
+  clone () {
+    return new ASTGroup(this.children.map(c => c.clone()), this.type)
+  }
+
+  /**
    * Evaluate the value of this node using a given scope, which gives the evaluation parameters (values of the
    * variables) among other things
    * @param scope {{}}
@@ -104,10 +111,11 @@ export class ASTGroup extends ASTNode {
 
   /**
    * Given the types of variables, construct function definitions, et cetera
-   * @param typeInfo
+   * @param typeInfo {{}} Dictionary of variable name -> variable type
+   * @param opts {{}}
    */
-  resolveTypes (typeInfo) {
-    this.children.forEach(child => child.resolveTypes(typeInfo))
+  resolveTypes (typeInfo, opts={}) {
+    this.children.forEach(child => child.resolveTypes(typeInfo, opts))
 
     this.type = this.children[0].type
   }
@@ -125,6 +133,14 @@ export class VariableNode extends ASTNode {
     this.type = type
   }
 
+  /**
+   * Deep clone this node.
+   * @returns {VariableNode}
+   */
+  clone () {
+    return new VariableNode(this.name, this.type)
+  }
+
   evaluate (scope) {
     let val = scope.variables[this.name]
     if (!val)
@@ -133,8 +149,17 @@ export class VariableNode extends ASTNode {
     return val
   }
 
-  resolveTypes (typeInfo) {
+  /**
+   * Given the types of variables, construct function definitions, et cetera
+   * @param typeInfo {{}} Dictionary of variable name -> variable type
+   * @param opts {{}}
+   */
+  resolveTypes (typeInfo, opts={}) {
     let type = typeInfo[this.name]
+    let strict = !!opts.strict
+
+    if (strict && !type)
+      throw new Error(`Type of variable ${this.name} is unknown`)
 
     this.type = type ?? "real"
   }
@@ -150,6 +175,21 @@ export class OperatorNode extends ASTGroup {
 
     this.op = operator
     this.definition = null // One of the definitions in operators.js is actually going to be used to evaluate the node
+  }
+
+  /**
+   * Deep clone this node.
+   * @returns {OperatorNode}
+   */
+  clone () {
+    let children = this.children.map(c => c.clone())
+    let node = new OperatorNode(this.op)
+
+    node.children = children
+    node.type = this.type
+    node.definition = this.definition
+
+    return node
   }
 
   getChildrenSignature() {
@@ -176,7 +216,12 @@ export class OperatorNode extends ASTGroup {
     return definition.evaluators.generic.f.apply(null, params)
   }
 
-  resolveTypes (typeInfo={}) {
+  /**
+   * Given the types of variables, construct function definitions, et cetera
+   * @param typeInfo {{}} Dictionary of variable name -> variable type
+   * @param opts {{}}
+   */
+  resolveTypes (typeInfo, opts={}) {
     // We need to find the function definition that matches
     this.children.forEach(child => child.resolveTypes(typeInfo))
 
@@ -206,12 +251,16 @@ export class ConstantNode extends ASTNode {
     this.type = type
   }
 
+  clone () {
+    return new ConstantNode(this.value, this.text, this.type)
+  }
+
   evaluate (scope) {
     return this.value
   }
 
-  resolveTypes (typeInfo) {
-
+  resolveTypes (typeInfo, opts) {
+    // Nothing to do here
   }
 
   nodeType () {

@@ -17,13 +17,14 @@ import {Vec2} from "../math/vec/vec2.js"
 import {deepMerge, isTypedArray} from "./utils.js"
 import {Color, lookupCompositionType} from "../styles/definitions.js"
 import {Props} from "./props.js"
+import { isValidVariableName } from '../ast/parse_string'
 
 /**
  * Print object to string in a way that isn't too painful (limit the length of the string to 100 chars or so)
  * @param obj
  * @param limit {number} (Estimated) number of characters to restrict the display to
  */
-function relaxedPrint (obj, limit=100) {
+export function relaxedPrint (obj, limit=100) {
   if (typeof obj === "number" || typeof obj === "boolean") {
     return '' + obj
   } else if (typeof obj === "function") {
@@ -152,6 +153,10 @@ function stringTypecheck (obj) {
   return (typeof obj !== "string") ? "Expected $p to be a string, got $v." : undefined
 }
 
+function variableNameTypecheck (obj) {
+  return (!isValidVariableName(obj)) ? "Expected $p to be a valid variable name, got $v. Variable " : undefined
+}
+
 function createTypecheck (check) {
   if (typeof check === "string")
     check = { type: check }
@@ -166,6 +171,8 @@ function createTypecheck (check) {
       return booleanTypecheck
     case "string":
       return stringTypecheck
+    case "VariableName":
+      return variableNameTypecheck
     default:
       throw new Error(`Unrecognized typecheck type ${type}.`)
   }

@@ -3,7 +3,8 @@
  * @param root
  * @param opts
  */
-import {getCast, TYPES} from "./new_operator.js"
+import {getCast, TYPES} from "./operator.js"
+import { isValidVariableName } from './parse_string.js'
 
 export function compileNode (root, opts={}) {
   // Whether to do typechecks to passed arguments
@@ -118,9 +119,17 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
   // Whether to add typechecks to the passed variables
   let doTypechecks = !!opts.typechecks
 
+  // List of arguments to be placed BEFORE the scope variable. For example, we might do
+  // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
+  // object.
+  let exportedArgs = opts.args ?? []
+
+  exportedArgs.forEach(a => { if (!isValidVariableName(a)) throw new Error(`Invalid exported variable name ${a}`) });
+
   let scopeVarName = "scope"
+  let scopeUsed = false
   let fBody = ""
-  let fArgs = [scopeVarName]
+  let fArgs = [...exportedArgs]
 
   // Mapping between string variable name and information about that variable (varName)
   let varInfo = new Map()
@@ -139,13 +148,13 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
     return stored
   }
 
+  function prependLine (code) {
+    fBody = code + '\n' + fBody
+  }
+
   function addLine (code) {
     fBody += code + '\n'
   }
-
-  // Typecheck scope object
-  if (doTypechecks)
-    addLine(`if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed to evaluate function should be a scope");`)
 
   // Import and typecheck variables
   let requiredVariables = root.usedVariables()
@@ -153,7 +162,12 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
     let varInfo = getScopedVariable(name)
     let varName = varInfo.varName
 
-    addLine(`var ${varName}=${scopeVarName}.${name};`)
+    if (exportedArgs.includes(name)) {
+      addLine(`var ${varName}=${name};`)
+    } else {
+      scopeUsed = true
+      addLine(`var ${varName}=${scopeVarName}.${name};`)
+    }
 
     if (doTypechecks) {
       let typecheck = importFunction(TYPES[type].typecheck.generic.f)
@@ -165,6 +179,19 @@ function compileEvaluationFunction (root, nodeInfo, importFunction, importConsta
 
   compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts)
   addLine(`return ${nodeInfo.get(root).varName};`)
+
+  // Typecheck scope object
+  if (doTypechecks && scopeUsed) {
+    if (exportedArgs.length === 0) {
+      prependLine(`if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed to evaluate function should be a scope");`)
+    } else {
+      prependLine(`if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed as last parameter to evaluate function should be a scope; there are undefined variables");`)
+    }
+  }
+
+  // Scope is last argument in function
+  if (scopeUsed)
+    fArgs.push(scopeVarName)
 
   exportFunction("evaluate", fArgs, fBody)
 }

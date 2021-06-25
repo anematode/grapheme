@@ -9,7 +9,8 @@ const pointInterface = constructInterface({
     position: {
       description: "Position of the point, potentially under a plot transformation",
       conversion: {type: "Vec2"},
-      target: "pos"
+      target: "pos",
+      aliases: [ "pos" ]
     },
     color: {
       description: "Color of the point",
