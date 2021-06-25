@@ -802,30 +802,6 @@ export function flattenVec2Array (arr) {
   return arr
 }
 
-/**
- * Get the actual bounding rectangle of a piece of text with a given vector anchor and spacing from that anchor. For
- * example, getActualTextLocation( { x: 0, y: 0, w: 10, h: 10 }, { x: 50, y: 50 }, "S", 3 ) is { x: 45, y: 37, w: 10, h: 10 } )
- * @param textRect {BoundingBox} The bounding box of the text rectangle (x and y are ignored)
- * @param anchor {Vec2} The position to anchor to
- * @param anchorDir {Vec2} The direction of the anchor
- * @param spacing {number} The additional constant spacing from the anchor
- * @returns {BoundingBox}
- */
-export function getActualTextLocation (textRect, anchor, anchorDir, spacing) {
-  // We get the center of the rectangle, starting at anchor and adding anchorDir * textRect.wh / 4 * (1 + spacing / norm(textRect.wh) / 2).
-
-  const { w, h } = textRect
-
-  anchor = Vec2.fromObj(anchor) ?? new Vec2(0, 0)
-  anchorDir = Vec2.fromObj(anchorDir) ?? new Vec2(0, 0)
-  spacing = spacing ?? 0
-
-  let centerX = anchor.x + anchorDir.x * (textRect.w / 4 + spacing)
-  let centerY = anchor.y + anchorDir.y * (textRect.h / 4 + spacing)
-
-  return BoundingBox.fromObj({ cx: centerX, cy: centerY, w, h })
-}
-
 // Merging geometries of various types is a very common operation because we want to minimize bufferData and drawArrays
 // calls at nearly all costs.
 

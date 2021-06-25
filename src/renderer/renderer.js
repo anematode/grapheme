@@ -406,12 +406,10 @@ export class WebGLRenderer {
    * @param dpr
    * @param clear {Color}
    */
-  clearAndResizeCanvas (width, height, dpr = 1, clear = Colors.TRANSPARENT) {
+  clearAndResizeCanvas (width, height, dpr=1, clear = Colors.TRANSPARENT) {
     const { canvas } = this
 
     this.dpr = dpr
-    width *= dpr
-    height *= dpr
 
     if (canvas.width === width && canvas.height === height) {
       this.clearCanvas(clear)
@@ -441,7 +439,9 @@ export class WebGLRenderer {
   }
 
   getXYScale () {
-    return [2 / this.canvas.width, -2 / this.canvas.height]
+    let { canvas, dpr } = this
+
+    return [2 / canvas.width * dpr, -2 / canvas.height * dpr]
   }
 
   renderScene (scene, log = false) {
@@ -481,6 +481,8 @@ export class WebGLRenderer {
       scissorTest = enabled
       scissorBox = box
 
+      let dpr = this.dpr
+
       if (enabled) {
         gl.enable(gl.SCISSOR_TEST)
       } else {
@@ -488,8 +490,9 @@ export class WebGLRenderer {
       }
 
       if (box) {
-        // GL scissoring is from bottom left corner, not top left
-        gl.scissor(box.x, this.canvas.height - box.y - box.h, box.w, box.h)
+        // GL scissoring is from bottom left corner, not top left. One of those annoying cases where we care about dpr
+        // since we're working in pixels, not CSS pixels
+        gl.scissor(dpr * box.x, this.canvas.height - dpr * (box.y + box.h), dpr * box.w, dpr * box.h)
       }
     }
 
@@ -497,6 +500,9 @@ export class WebGLRenderer {
 
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+    let sceneWidth
+    let sceneHeight
 
     graph.forEachCompiledInstruction(instruction => {
       let drawMode = 0

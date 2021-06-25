@@ -4,6 +4,7 @@ import { DefaultStyles, Pen, TextStyle } from '../styles/definitions.js'
 import { generateRectangleCycle } from '../algorithm/misc_geometry.js'
 import { get2DDemarcations } from '../algorithm/tick_allocator.js'
 import { Vec2 } from '../math/vec/vec2.js'
+import { genTextInstruction, genTextRect } from '../other/text_utils.js'
 
 const DefaultOutlinePen = Pen.create({ endcap: 'square' })
 const DefaultGridlinePens = {
@@ -265,27 +266,15 @@ export class FigureBaubles extends Group {
           for (let i = 0; i < x.length; ++i) {
             let pos = plotTransform
               .graphToPixel(new Vec2(x[i], 0))
-              .add(new Vec2(0, 10))
 
-            instructions.push({
-              type: 'text',
-              text: standardLabelFunction(x[i]),
-              pos,
-              style: DefaultStyles.label
-            })
+            instructions.push(genTextInstruction(standardLabelFunction(x[i]), DefaultStyles.label, pos, 'S', 3))
           }
 
           for (let i = 0; i < y.length; ++i) {
             let pos = plotTransform
               .graphToPixel(new Vec2(0, y[i]))
-              .add(new Vec2(-30, 0))
 
-            instructions.push({
-              type: 'text',
-              text: standardLabelFunction(y[i]),
-              pos,
-              style: DefaultStyles.label
-            })
+            instructions.push(genTextInstruction(standardLabelFunction(y[i]), DefaultStyles.label, pos, 'E', 3))
           }
         }
 

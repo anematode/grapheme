@@ -43,7 +43,7 @@ const parametricPlotInterface = constructInterface({
 
     function: { type: 'ASTNode', computed: 'none' },
 
-    samples: { type: 'number', computed: 'default', default: 100 }
+    samples: { type: 'number', computed: 'default', default: 1000 }
   }
 })
 

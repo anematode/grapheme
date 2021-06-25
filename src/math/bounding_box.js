@@ -174,6 +174,10 @@ export class BoundingBox {
   get y2 () {
     return this.getY2()
   }
+
+  tl () {
+    return new Vec2(this.x, this.y)
+  }
 }
 
 const boundingBoxTransform = {

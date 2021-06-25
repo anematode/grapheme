@@ -8,8 +8,7 @@ import { getStringID, getVersionID } from '../core/utils.js'
 import { convertTriangleStrip } from '../algorithm/polyline_triangulation.js'
 import {
   generateRectangleDebug,
-  generateRectangleTriangleStrip,
-  getActualTextLocation
+  generateRectangleTriangleStrip
 } from '../algorithm/misc_geometry.js'
 import { BoundingBox } from '../math/bounding_box.js'
 import { Colors } from '../styles/definitions.js'
@@ -409,10 +408,10 @@ export class SceneGraph {
             gl.enableVertexAttribArray(0 /* position buffer */)
             gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 
-            let rect = getActualTextLocation(instruction.rect, instruction.pos)
+            let pos = instruction.pos, rect = instruction.rect
 
-            rect.x |= 0
-            rect.y |= 0
+            // Round to pixels so it looks nicer
+            rect = { x: pos.x | 0, y: pos.y | 0, w: rect.w, h: rect.h }
 
             gl.bufferData(
               gl.ARRAY_BUFFER,
