@@ -309,6 +309,14 @@ export class SceneGraph {
     }
   }
 
+  destroyTextAtlas () {
+    const renderer = this.renderer
+    const gl = renderer.gl
+
+    let name = '__' + this.id + '-text'
+    renderer.deleteTexture(name)
+  }
+
   freeCompiledInstructions (inst) {
     if (!inst) return
 
@@ -541,5 +549,7 @@ export class SceneGraph {
     this.forEachContext(c =>
       this.freeCompiledInstructions(c.compiledInstructions)
     )
+
+    this.destroyTextAtlas()
   }
 }
