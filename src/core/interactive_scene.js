@@ -72,7 +72,8 @@ export class InteractiveScene extends Scene {
         }
       }
 
-      this.domElement.addEventListener(
+      let elem = eventName === "mouseup" ? document : this.domElement
+      elem.addEventListener(
         eventName,
         (listeners[eventName] = listener)
       )

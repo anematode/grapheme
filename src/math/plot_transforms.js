@@ -141,6 +141,17 @@ export class LinearPlot2DTransform {
       yb: (1 + gy1 / gh) * ph + py1
     }
   }
+
+  graphToPixelArrInPlace (arr) {
+    let { xm, ym, xb, yb } = this.getReducedGraphToPixelTransform()
+
+    for (let i = 0; i < arr.length; i += 2) {
+      arr[i] = xm * arr[i] + xb
+      arr[i+1] = ym * arr[i+1] + yb
+    }
+
+    return arr
+  }
 }
 
 export class LinearPlot2DTransformConstraints {

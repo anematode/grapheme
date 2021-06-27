@@ -17,7 +17,7 @@
     var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(t, cos(t))", t: [ -9, 9 ], pen: { thickness: 5, color: "blue" } })
     var plot2 = new Grapheme.ParametricPlot2D({ f: "vec2(t, 1-t^2/2)", t: [ -9, 9 ], pen: { thickness: 5, color: "green" }})
 
-    scene.add(figure.add(plot1).add(plot2).add(baubles))
+    scene.add(figure.add(plot1).add(baubles))
     document.body.appendChild(scene.domElement)
 
     function render() {

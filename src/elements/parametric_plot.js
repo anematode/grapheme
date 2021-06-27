@@ -4,6 +4,7 @@ import { DefaultStyles } from '../styles/definitions.js'
 import { parseString } from '../ast/parse_string.js'
 import { ASTNode } from '../ast/node.js'
 import { compileNode } from '../ast/compile.js'
+import { parametricPlot2D } from '../algorithm/graphing.js'
 
 const parametricPlotInterface = constructInterface({
   interface: {
@@ -43,7 +44,7 @@ const parametricPlotInterface = constructInterface({
 
     function: { type: 'ASTNode', computed: 'none' },
 
-    samples: { type: 'number', computed: 'default', default: 1000 }
+    samples: { type: 'number', computed: 'default', default: 10000 }
   }
 })
 
@@ -101,22 +102,9 @@ export class ParametricPlot2D extends Element {
     }
 
     let rangeStart = range[0],
-      rangeEnd = range[1],
-      rangeLen = rangeEnd - rangeStart
-    let pts = new Float32Array(2 * samples)
-    let { xm, ym, xb, yb } = plotTransform.getReducedGraphToPixelTransform()
+      rangeEnd = range[1]
 
-    let indx = 0
-
-    for (let i = 0; i < samples; ++i) {
-      let t = (i / (samples - 1)) * rangeLen + rangeStart
-      let res = f.evaluate(t)
-
-      pts[indx] = xm * res.x + xb
-      pts[indx + 1] = ym * res.y + yb
-
-      indx += 2
-    }
+    let pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, { samples, adaptive: false }))
 
     this.internal.renderInfo = {
       instructions: { type: 'polyline', vertices: pts, pen }
