@@ -51,6 +51,8 @@ function fastAtan2 (y, x) {
   return r
 }
 
+const glVertices = new Float32Array(1e6)
+
 /**
  * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
  * @param vertices {Array} The vertices of the polyline.
@@ -76,10 +78,7 @@ export function convertTriangleStrip (vertices, pen) {
     return { glVertices: null, vertexCount: 0 }
   }
 
-  let glVertices = []
-
-  let index = 0
-
+  let index = -1
   let origVertexCount = vertices.length / 2
 
   let th = pen.thickness / 2
@@ -108,7 +107,8 @@ export function convertTriangleStrip (vertices, pen) {
     y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN // Next vertex
 
     if (isNaN(x2) || isNaN(y2)) {
-      glVertices.push(NaN, NaN)
+      glVertices[++index] = NaN
+      glVertices[++index] = NaN
     }
 
     if (isNaN(x1) || isNaN(y1)) {
@@ -141,30 +141,26 @@ export function convertTriangleStrip (vertices, pen) {
         for (let i = 1; i <= steps_needed; ++i) {
           let theta_c = theta + (i / steps_needed) * Math.PI
 
-          glVertices.push(
-            x2 + th * fastCos(theta_c),
-            y2 + th * fastSin(theta_c),
-            o_x,
-            o_y
-          )
+          glVertices[++index] = x2 + th * fastCos(theta_c)
+          glVertices[++index] = y2 + th * fastSin(theta_c)
+          glVertices[++index] = o_x
+          glVertices[++index] = o_y
         }
         continue
       } else if (endcap === 2) {
-        glVertices.push(
-          x2 - th * v2x + th * v2y,
-          y2 - th * v2y - th * v2x,
-          x2 - th * v2x - th * v2y,
-          y2 - th * v2y + th * v2x
-        )
+        glVertices[++index] = x2 - th * v2x + th * v2y
+        glVertices[++index] = y2 - th * v2y - th * v2x
+        glVertices[++index] = x2 - th * v2x - th * v2y
+        glVertices[++index] = y2 - th * v2y + th * v2x
+
         continue
       } else {
         // no endcap
-        glVertices.push(
-          x2 + th * v2y,
-          y2 - th * v2x,
-          x2 - th * v2y,
-          y2 + th * v2x
-        )
+        glVertices[++index] = x2 + th * v2y
+        glVertices[++index] = y2 - th * v2x
+        glVertices[++index] = x2 - th * v2y
+        glVertices[++index] = y2 + th * v2x
+
         continue
       }
     }
@@ -188,12 +184,11 @@ export function convertTriangleStrip (vertices, pen) {
         continue
       } // undefined >:(
 
-      glVertices.push(
-        x2 + th * v1y,
-        y2 - th * v1x,
-        x2 - th * v1y,
-        y2 + th * v1x
-      )
+
+      glVertices[++index] =  x2 + th * v1y
+      glVertices[++index] =  y2 - th * v1x
+      glVertices[++index] =  x2 - th * v1y
+      glVertices[++index] =  y2 + th * v1x
 
       if (endcap === 1) {
         let theta = fastAtan2(v1y, v1x) + (3 * Math.PI) / 2
@@ -205,12 +200,12 @@ export function convertTriangleStrip (vertices, pen) {
         for (let i = 1; i <= steps_needed; ++i) {
           let theta_c = theta + (i / steps_needed) * Math.PI
 
-          glVertices.push(
-            x2 + th * fastCos(theta_c),
-            y2 + th * fastSin(theta_c),
-            o_x,
-            o_y
-          )
+
+          glVertices[++index] = x2 + th * fastCos(theta_c)
+          glVertices[++index] = y2 + th * fastSin(theta_c)
+          glVertices[++index] = o_x
+          glVertices[++index] = o_y
+
         }
       }
 
@@ -249,7 +244,10 @@ export function convertTriangleStrip (vertices, pen) {
         b1_x *= scale
         b1_y *= scale
 
-        glVertices.push(x2 - b1_x, y2 - b1_y, x2 + b1_x, y2 + b1_y)
+        glVertices[++index] = x2 - b1_x
+        glVertices[++index] = y2 - b1_y
+        glVertices[++index] = x2 + b1_x
+        glVertices[++index] = y2 + b1_y
 
         continue
       }
@@ -279,7 +277,10 @@ export function convertTriangleStrip (vertices, pen) {
       v1y /= dis
     }
 
-    glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x)
+    glVertices[++index] = x2 + th * v1y
+    glVertices[++index] = y2 - th * v1x
+    glVertices[++index] = x2 - th * v1y
+    glVertices[++index] = y2 + th * v1x
 
     if (join === 1 || join === 3) {
       let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2
@@ -305,17 +306,18 @@ export function convertTriangleStrip (vertices, pen) {
       for (let i = 0; i <= steps_needed; ++i) {
         let theta_c = start_a + (angle_subtended * i) / steps_needed
 
-        glVertices.push(
-          x2 + th * fastCos(theta_c),
-          y2 + th * fastSin(theta_c),
-          x2,
-          y2
-        )
+        glVertices[++index] = x2 + th * fastCos(theta_c)
+        glVertices[++index] = y2 + th * fastSin(theta_c)
+        glVertices[++index] = x2
+        glVertices[++index] = y2
       }
     }
 
-    glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x)
+    glVertices[++index] = x2 + th * v2y
+    glVertices[++index] = y2 - th * v2x
+    glVertices[++index] = x2 - th * v2y
+    glVertices[++index] = y2 + th * v2x
   }
 
-  return new Float32Array(glVertices)
+  return new Float32Array(glVertices.subarray(0, index))
 }
