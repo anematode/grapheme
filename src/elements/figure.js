@@ -148,7 +148,7 @@ export class Figure extends Group {
         let constraints = props.get('transformConstraints')
         let newTransform = transform.clone()
 
-        let scaleFactor = Math.exp(evt.deltaY / 40000)
+        let scaleFactor = Math.exp(evt.deltaY / 1.5e5)
         let graphScrollAt = transform.pixelToGraph(evt.pos)
 
         // We need to scale graphBox at graphScrollAt with a scale factor. We translate it by -graphScrollAt, scale it by
