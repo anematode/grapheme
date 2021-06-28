@@ -44,7 +44,7 @@ const parametricPlotInterface = constructInterface({
 
     function: { type: 'ASTNode', computed: 'none' },
 
-    samples: { type: 'number', computed: 'default', default: 10000 }
+    samples: { type: 'number', computed: 'default', default: 100 }
   }
 })
 
@@ -104,7 +104,7 @@ export class ParametricPlot2D extends Element {
     let rangeStart = range[0],
       rangeEnd = range[1]
 
-    let pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, { samples, adaptive: false }))
+    let pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, { samples, minRes: plotTransform.graphPixelSize() / 2 }))
 
     this.internal.renderInfo = {
       instructions: { type: 'polyline', vertices: pts, pen }

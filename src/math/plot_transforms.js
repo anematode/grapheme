@@ -152,6 +152,13 @@ export class LinearPlot2DTransform {
 
     return arr
   }
+
+  /**
+   * The size, in graph units, of a single pixel
+   */
+  graphPixelSize () {
+    return this.gh / this.ph
+  }
 }
 
 export class LinearPlot2DTransformConstraints {

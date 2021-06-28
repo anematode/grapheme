@@ -412,7 +412,7 @@ function approxAngleBetween (x1, y1, x2, y2, x3, y3) {
   let x3d = x2 - x3
   let y3d = y2 - y3
 
-  let res = Math.abs(fastAtan2(y3d, x3d) - fastAtan2(x1d, y1d))
+  let res = Math.abs(fastAtan2(y3d, x3d) - fastAtan2(y1d, x1d))
   if (res > Math.PI) {
     return 2 * Math.PI - res
   }

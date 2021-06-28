@@ -632,7 +632,7 @@ export const Pen = {
     dashOffset: 0,
     endcap: 'round',
     endcapRes: 1,
-    join: 'miter',
+    join: 'dynamic',
     joinRes: 1,
     useNative: false,
     visible: true
