@@ -1,5 +1,7 @@
 import { mod } from '../core/utils.js'
-import { getDashedPolyline, fastHypot } from './dashed_polyline.js'
+import { getDashedPolyline} from './dashed_polyline.js'
+import { HEAPF32 } from './heap.js'
+import { fastHypot } from './misc_geometry.js'
 
 const ENDCAP_TYPES = {
   butt: 0,
@@ -51,7 +53,7 @@ function fastAtan2 (y, x) {
   return r
 }
 
-const glVertices = new Float32Array(1e6)
+const glVertices = HEAPF32
 
 /**
  * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
@@ -67,7 +69,6 @@ export function calculatePolylineVertices (vertices, pen, box = null) {
   }
 }
 
-// TODO convert to float array. Arrays are surprisingly memory inefficient (8 to 16x), not sure why
 export function convertTriangleStrip (vertices, pen) {
   if (
     pen.thickness <= 0 ||
@@ -92,20 +93,26 @@ export function convertTriangleStrip (vertices, pen) {
   }
 
   // p1 -- p2 -- p3, generating vertices for point p2
-  let x1 = 0, x2 = 0, x3 = 0, y1 = 0, y2 = 0, y3 = 0
-  let v1x = 0, v1y = 0, v2x = 0, v2y = 0, v1l = 0, v2l = 0, b1_x, b1_y, scale, dis, needsDup=false // whether a vertex needs to be duplicated
+  let x1 = 0, x2, x3 = vertices[0], y1 = 0, y2, y3 = vertices[1]
+  let v1x = 0, v1y = 0, v2x = 0, v2y = 0, v1l = 0, v2l = 0, b1_x, b1_y, scale, dis
   let chunkPos = 0
 
   for (let i = 0; i < origVertexCount; ++i) {
     chunkPos++
 
     x1 = i !== 0 ? x2 : NaN // Previous vertex
-    x2 = vertices[2 * i] // Current vertex
+    x2 = x3 // Current vertex
     x3 = i !== origVertexCount - 1 ? vertices[2 * i + 2] : NaN // Next vertex
 
     y1 = i !== 0 ? y2 : NaN // Previous vertex
-    y2 = vertices[2 * i + 1] // Current vertex
+    y2 = y3 // Current vertex
     y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN // Next vertex
+
+    if (Math.abs(x3) > 16384 || Math.abs(y3) > 16384) {
+      // Temporary
+      x3 = NaN
+      y3 = NaN
+    }
 
     if (isNaN(x2) || isNaN(y2)) {
       continue
@@ -341,10 +348,6 @@ export function convertTriangleStrip (vertices, pen) {
     glVertices[++index] = y2 + th * v2x
   }
 
-  for (let i = 0; i < index; ++i) {
-    if (Number.isNaN(glVertices[i]))
-      console.log('hi')
-  }
-
-  return new Float32Array(glVertices.subarray(0, index))
+  let ret = new Float32Array((index >= 0) ? glVertices.subarray(0, index) : [])
+  return ret
 }

@@ -10,13 +10,13 @@
 
 <script id="setup">
     var renderer = new Grapheme.WebGLRenderer()
-    var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000 })
+    var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
 
     var figure = new Grapheme.Figure({ interactivity: true })
     var baubles = new Grapheme.FigureBaubles()
-    var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(t,tan(5*t))", t: [ -2, 2 ], pen: { thickness: 5, color: "blue" } })
+    var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(t,sin(t))", t: [ -5, 5 ], pen: { thickness: 2, color: "blue" }, samples: 500 })
 
-    scene.add(figure.add(plot1).add(baubles))
+    scene.add(figure.add(baubles).add(plot1))
     document.body.appendChild(scene.domElement)
 
     function render() {

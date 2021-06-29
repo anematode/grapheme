@@ -1,18 +1,6 @@
 // This code is pretty old, but surprisingly effective!
-import { lineSegmentIntersectsBox } from './misc_geometry.js'
+import { fastHypot, lineSegmentIntersectsBox } from './misc_geometry.js'
 import { BoundingBox } from '../math/bounding_box.js'
-
-/**
- * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
- * handle overflows and underflows with much accuracy at all. We can thus use the straightforward calculation.
- * Chrome: 61.9 ms/iteration for 1e7 calculations for fastHypot; 444 ms/iteration for Math.hypot
- * @param x {number}
- * @param y {number}
- * @returns {number} hypot(x, y)
- */
-export function fastHypot (x, y) {
-  return Math.sqrt(x * x + y * y)
-}
 
 /**
  * The maximum number of vertices to be emitted by getDashedPolyline. This condition is here just to prevent dashed

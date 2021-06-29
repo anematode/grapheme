@@ -420,9 +420,76 @@ function approxAngleBetween (x1, y1, x2, y2, x3, y3) {
   return res
 }
 
+/**
+ * Distance
+ * @param px
+ * @param py
+ * @param ax
+ * @param ay
+ * @param bx
+ * @param by
+ * @returns {number}
+ */
+function pointLineSegmentDistanceSquared (px, py, ax, ay, bx, by) {
+  // Copied from asm.js code, that's why
+  px = +px
+  py = +py
+  ax = +ax
+  ay = +ay
+  bx = +bx
+  by = +by
+
+  let t = 0.0, tx = 0.0, ty = 0.0, d = 0.0, xd = 0.0, yd = 0.0
+  tx = px - ax
+  ty = py - ay
+
+  if (ax !== bx || ay !== by) {
+    xd = bx - ax
+    yd = by - ay
+
+    t = (xd * (px - ax) + yd * (py - ay)) / (xd * xd + yd * yd)
+
+    // Clamp t to [0, 1]
+    if (t < 0.0) {
+      t = 0.0
+    } else if (t > 1.0) {
+      t = 1.0
+    }
+
+    tx = ax + t * (bx - ax)
+    ty = ay + t * (by - ay)
+
+    tx = px - tx
+    ty = py - ty
+  }
+
+  return tx * tx + ty * ty
+}
+
+function distanceSquared(x1, y1, x2, y2) {
+  let tx = x2 - x1
+  let ty = y2 - y1
+
+  return tx * tx + ty * ty
+}
+
 export {
   getLineIntersection,
   lineSegmentIntersect,
   lineSegmentIntersectsBox,
-  approxAngleBetween
+  approxAngleBetween,
+  pointLineSegmentDistanceSquared,
+  distanceSquared
+}
+
+/**
+ * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
+ * handle overflows and underflows with much accuracy at all. We can thus use the straightforward calculation.
+ * Chrome: 61.9 ms/iteration for 1e7 calculations for fastHypot; 444 ms/iteration for Math.hypot
+ * @param x {number}
+ * @param y {number}
+ * @returns {number} hypot(x, y)
+ */
+export function fastHypot (x, y) {
+  return Math.sqrt(x * x + y * y)
 }

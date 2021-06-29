@@ -5,6 +5,7 @@ import { parseString } from '../ast/parse_string.js'
 import { ASTNode } from '../ast/node.js'
 import { compileNode } from '../ast/compile.js'
 import { parametricPlot2D } from '../algorithm/graphing.js'
+import { benchmark } from '../core/utils.js'
 
 const parametricPlotInterface = constructInterface({
   interface: {
@@ -104,8 +105,14 @@ export class ParametricPlot2D extends Element {
     let rangeStart = range[0],
       rangeEnd = range[1]
 
-    let pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, { samples, minRes: plotTransform.graphPixelSize() / 2 }))
+    let pts
 
+    pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
+      samples, minRes: plotTransform.graphPixelSize() / 20,
+      adaptive: true
+    }))
+
+    this.internal.pts = pts
     this.internal.renderInfo = {
       instructions: { type: 'polyline', vertices: pts, pen }
     }
