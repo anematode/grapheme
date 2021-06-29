@@ -129,8 +129,6 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
       }
     }
 
-    console.log(newSamples.length)
-
     samples = new Float64Array(newSamples)
   }
 

@@ -91,28 +91,28 @@ export function convertTriangleStrip (vertices, pen) {
     throw new Error('Undefined endcap or join.')
   }
 
-  let x1, x2, x3, y1, y2, y3
-  let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis
+  // p1 -- p2 -- p3, generating vertices for point p2
+  let x1 = 0, x2 = 0, x3 = 0, y1 = 0, y2 = 0, y3 = 0
+  let v1x = 0, v1y = 0, v2x = 0, v2y = 0, v1l = 0, v2l = 0, b1_x, b1_y, scale, dis, needsDup=false // whether a vertex needs to be duplicated
   let chunkPos = 0
 
   for (let i = 0; i < origVertexCount; ++i) {
     chunkPos++
 
-    x1 = i !== 0 ? vertices[2 * i - 2] : NaN // Previous vertex
+    x1 = i !== 0 ? x2 : NaN // Previous vertex
     x2 = vertices[2 * i] // Current vertex
     x3 = i !== origVertexCount - 1 ? vertices[2 * i + 2] : NaN // Next vertex
 
-    y1 = i !== 0 ? vertices[2 * i - 1] : NaN // Previous vertex
+    y1 = i !== 0 ? y2 : NaN // Previous vertex
     y2 = vertices[2 * i + 1] // Current vertex
     y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN // Next vertex
 
     if (isNaN(x2) || isNaN(y2)) {
-      glVertices[++index] = NaN
-      glVertices[++index] = NaN
+      continue
     }
 
     if (isNaN(x1) || isNaN(y1)) {
-      // starting endcap
+      // The start of every endcap has two duplicate vertices for triangle strip reasons
       v2x = x3 - x2
       v2y = y3 - y2
 
@@ -138,7 +138,18 @@ export function convertTriangleStrip (vertices, pen) {
         let o_x = x2 - th * v2y,
           o_y = y2 + th * v2x
 
-        for (let i = 1; i <= steps_needed; ++i) {
+        let theta_c = theta + (1 / steps_needed) * Math.PI
+
+        // Duplicate first vertex
+        let x = glVertices[++index] = x2 + th * fastCos(theta_c)
+        let y = glVertices[++index] = y2 + th * fastSin(theta_c)
+
+        glVertices[++index] = x
+        glVertices[++index] = y
+        glVertices[++index] = o_x
+        glVertices[++index] = o_y
+
+        for (let i = 2; i <= steps_needed; ++i) {
           let theta_c = theta + (i / steps_needed) * Math.PI
 
           glVertices[++index] = x2 + th * fastCos(theta_c)
@@ -148,16 +159,24 @@ export function convertTriangleStrip (vertices, pen) {
         }
         continue
       } else if (endcap === 2) {
-        glVertices[++index] = x2 - th * v2x + th * v2y
-        glVertices[++index] = y2 - th * v2y - th * v2x
+        let x = glVertices[++index] = x2 - th * v2x + th * v2y
+        let y = glVertices[++index] = y2 - th * v2y - th * v2x
+
+        glVertices[++index] = x
+        glVertices[++index] = y
+
         glVertices[++index] = x2 - th * v2x - th * v2y
         glVertices[++index] = y2 - th * v2y + th * v2x
 
         continue
       } else {
         // no endcap
-        glVertices[++index] = x2 + th * v2y
-        glVertices[++index] = y2 - th * v2x
+        let x = glVertices[++index] = x2 + th * v2y
+        let y = glVertices[++index] = y2 - th * v2x
+
+        glVertices[++index] = x
+        glVertices[++index] = y
+
         glVertices[++index] = x2 - th * v2y
         glVertices[++index] = y2 + th * v2x
 
@@ -184,11 +203,10 @@ export function convertTriangleStrip (vertices, pen) {
         continue
       } // undefined >:(
 
-
-      glVertices[++index] =  x2 + th * v1y
-      glVertices[++index] =  y2 - th * v1x
-      glVertices[++index] =  x2 - th * v1y
-      glVertices[++index] =  y2 + th * v1x
+      glVertices[++index] = x2 + th * v1y
+      glVertices[++index] = y2 - th * v1x
+      glVertices[++index] = x2 - th * v1y
+      glVertices[++index] = y2 + th * v1x
 
       if (endcap === 1) {
         let theta = fastAtan2(v1y, v1x) + (3 * Math.PI) / 2
@@ -200,14 +218,18 @@ export function convertTriangleStrip (vertices, pen) {
         for (let i = 1; i <= steps_needed; ++i) {
           let theta_c = theta + (i / steps_needed) * Math.PI
 
-
           glVertices[++index] = x2 + th * fastCos(theta_c)
           glVertices[++index] = y2 + th * fastSin(theta_c)
           glVertices[++index] = o_x
           glVertices[++index] = o_y
-
         }
       }
+
+      // Duplicate last vertex of ending endcap
+      glVertices[index + 1] = glVertices[index - 1]
+      glVertices[index + 2] = glVertices[index]
+
+      index += 2
 
       continue
     }
@@ -317,6 +339,11 @@ export function convertTriangleStrip (vertices, pen) {
     glVertices[++index] = y2 - th * v2x
     glVertices[++index] = x2 - th * v2y
     glVertices[++index] = y2 + th * v2x
+  }
+
+  for (let i = 0; i < index; ++i) {
+    if (Number.isNaN(glVertices[i]))
+      console.log('hi')
   }
 
   return new Float32Array(glVertices.subarray(0, index))
