@@ -221,17 +221,17 @@
     if (n !== 0) {
       let x = n; // Suck off groups of 16 bits, then 8 bits, et cetera
 
-      if ((x & 0x0000FFFF) === 0) {
+      if ((x & 0x0000ffff) === 0) {
         bits += 16;
         x >>>= 16;
       }
 
-      if ((x & 0x000000FF) === 0) {
+      if ((x & 0x000000ff) === 0) {
         bits += 8;
         x >>>= 8;
       }
 
-      if ((x & 0x0000000F) === 0) {
+      if ((x & 0x0000000f) === 0) {
         bits += 4;
         x >>>= 4;
       }
@@ -444,7 +444,7 @@
   } // Simple deep equals. Uses Object.is-type equality, though. Doesn't handle circularity or any of the fancy new containers
 
   function deepEquals(x, y) {
-    if (typeof x !== "object" || x === null) return Object.is(x, y);
+    if (typeof x !== 'object' || x === null) return Object.is(x, y);
     if (x.constructor !== y.constructor) return false;
 
     if (Array.isArray(x) && Array.isArray(y)) {
@@ -506,7 +506,7 @@
   }
 
   function deepAssignInternal(target, source, opts) {
-    if (typeof source !== "object") return source !== undefined || opts.assignUndefined ? source : target;
+    if (typeof source !== 'object') return source !== undefined || opts.assignUndefined ? source : target;
     if (Array.isArray(target) || isTypedArray(target)) return opts.cloneArrays ? deepClone(source) : source;
 
     for (const key in source) {
@@ -517,8 +517,8 @@
           let val = target[key];
           let sourceIsArray = Array.isArray(sourceVal) || isTypedArray(sourceVal);
 
-          if (typeof val === "object" && !Array.isArray(val)) {
-            if (typeof sourceVal === "object" && !sourceIsArray) {
+          if (typeof val === 'object' && !Array.isArray(val)) {
+            if (typeof sourceVal === 'object' && !sourceIsArray) {
               deepAssign(val, sourceVal, opts);
               continue;
             }
@@ -557,7 +557,7 @@
   }
 
   function deepCloneInternal(object, opts = {}) {
-    if (typeof object !== "object") return object;
+    if (typeof object !== 'object') return object;
 
     if (Array.isArray(object)) {
       return opts.cloneArrays ? object.map(val => deepCloneInternal(val, opts)) : object;
@@ -579,6 +579,18 @@
   function isTypedArray(arr) {
     return ArrayBuffer.isView(arr) && !(arr instanceof DataView);
   }
+  function isFloatArray(arr) {
+    let type = getTypedArrayType(arr);
+    return type === "f32" || type === "f64";
+  }
+  function getTypedArrayType(arr) {
+    if (arr instanceof Float32Array) return "f32";
+    if (arr instanceof Float64Array) return "f64";
+  }
+  function getTypedArrayConstructor(type) {
+    if (type === "f32") return Float32Array;
+    if (type === "f64") return Float64Array;
+  }
   function mod(n, m) {
     return (n % m + m) % m;
   }
@@ -593,7 +605,7 @@
   function deepFreeze(obj) {
     Object.freeze(obj);
     Object.values(obj).forEach(value => {
-      if (typeof value === "function" || typeof value === "object") deepFreeze(value);
+      if (typeof value === 'function' || typeof value === 'object') deepFreeze(value);
     });
     return obj;
   }
@@ -715,6 +727,9 @@
     deepMerge: deepMerge,
     deepClone: deepClone,
     isTypedArray: isTypedArray,
+    isFloatArray: isFloatArray,
+    getTypedArrayType: getTypedArrayType,
+    getTypedArrayConstructor: getTypedArrayConstructor,
     mod: mod,
     nextPowerOfTwo: nextPowerOfTwo,
     deepFreeze: deepFreeze,
@@ -773,18 +788,6 @@
     return target;
   }
 
-  function _taggedTemplateLiteral(strings, raw) {
-    if (!raw) {
-      raw = strings.slice(0);
-    }
-
-    return Object.freeze(Object.defineProperties(strings, {
-      raw: {
-        value: Object.freeze(raw)
-      }
-    }));
-  }
-
   function _classPrivateMethodGet(receiver, privateSet, fn) {
     if (!privateSet.has(receiver)) {
       throw new TypeError("attempted to get private field on non-instance");
@@ -792,570 +795,6 @@
 
     return fn;
   }
-
-  /**
-   * @file Basic functions for common operations on floating-point numbers.
-   */
-
-  /**
-   * Returns x + y.
-   * @param x {number}
-   * @param y {number}
-   * @returns {number}
-   * @function add
-   * @memberOf RealFunctions
-   */
-  function Add$1(x, y) {
-    return x + y;
-  }
-  /**
-   * Returns x - y.
-   * @param x {number}
-   * @param y {number}
-   * @returns {number}
-   * @function subtract
-   * @memberOf RealFunctions
-   */
-
-  function Subtract$1(x, y) {
-    return x - y;
-  }
-  /**
-   * Returns x * y.
-   * @param x {number}
-   * @param y {number}
-   * @returns {number}
-   * @function multiply
-   * @memberOf RealFunctions
-   */
-
-  function Multiply$1(x, y) {
-    return x * y;
-  }
-  /**
-   * Returns x / y.
-   * @param x {number}
-   * @param y {number}
-   * @returns {number}
-   * @function divide
-   * @memberOf RealFunctions
-   */
-
-  function Divide$1(x, y) {
-    return x / y;
-  }
-  /**
-   * Returns the greatest common divisor of a and b. Uses the Euclidean algorithm. Returns NaN if one of them is not an
-   * integer, and the non-zero argument if one of them is zero (0 if both are zero).
-   * @param a {number}
-   * @param b {number}
-   * @returns {number}
-   * @function gcd
-   * @memberOf RealFunctions
-   */
-
-  function Gcd(a, b) {
-    if (!Number.isInteger(a) || !Number.isInteger(b)) return NaN;
-    a = Math.abs(a);
-    b = Math.abs(b);
-
-    if (a === 0) {
-      return b;
-    }
-
-    if (b === 0) {
-      return a;
-    }
-
-    if (b > a) {
-      const tmp = a;
-      a = b;
-      b = tmp;
-    }
-
-    while (true) {
-      if (b === 0) {
-        return a;
-      }
-
-      a %= b;
-
-      if (a === 0) {
-        return b;
-      }
-
-      b %= a;
-    }
-  }
-  /**
-   * Returns the least common multiple of two a and b. Returns NaN if one of them is not an integer, and returns the
-   * non-zero argument if one of them is zero (0 if both are zero).
-   * @param a {number}
-   * @param b {number}
-   * @returns {number}
-   * @function lcm
-   * @memberOf RealFunctions
-   */
-
-  function Lcm(a, b) {
-    if (a === 0) {
-      return Math.abs(b);
-    }
-
-    if (b === 0) {
-      return Math.abs(a);
-    }
-
-    const abGCD = gcd(a, b);
-    return Math.abs(a / abGCD * b);
-  }
-
-  var BASIC_ARITHMETIC = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    Add: Add$1,
-    Subtract: Subtract$1,
-    Multiply: Multiply$1,
-    Divide: Divide$1,
-    Gcd: Gcd,
-    Lcm: Lcm
-  });
-
-  /**
-   * @file This file implements the gamma function and related functions, though not to least-significant-bit accuracy.
-   */
-  // Lanczos approximation data
-  const LANCZOS_COUNT = 7;
-  const LANCZOS_COEFFICIENTS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7]; // 1, 1, 2, 6, ...
-
-  const INTEGER_FACTORIALS = [1]; // Populate INTEGER_FACTORIALS
-
-  let fact = 1;
-
-  for (let i = 1;; ++i) {
-    fact *= i;
-
-    if (fact === Infinity) {
-      break;
-    }
-
-    INTEGER_FACTORIALS.push(fact);
-  }
-
-  const INTEGER_FACTORIAL_LEN = INTEGER_FACTORIALS.length;
-  /**
-   * This function accepts a real-valued number x and returns the value of the gamma function evaluated at
-   * x. If there is a pole at x, NaN is returned. NaN is returned instead of Infinity to distinguish a pole
-   * (at -1, -2, ...) from a massive value (e.g. at 100). The function is relatively accurate and fast, though I
-   * would like to assess its accuracy at some point.
-   * <br>
-   * The algorithm works based on the Lanczos approximation. The original code was written in Python by
-   * Fredrik Johansson and published to Wikipedia, which means it is compatible license-wise with this
-   * project. The relevant diff (on the Swedish Wikipedia) is at
-   * {@link https://sv.wikipedia.org/w/index.php?title=Gammafunktionen&diff=1146966&oldid=1146894}.
-   * Values below 0.5 are calculated using the reflection formula, see
-   * {@link https://en.wikipedia.org/wiki/Gamma_function#General}.
-   * @param x {number} The argument to the gamma function
-   * @returns {number} gamma(x), approximately
-   * @function gamma
-   * @memberOf RealFunctions
-   */
-
-  function gamma(x) {
-    // Special cases
-    if (Number.isNaN(x)) return NaN;
-    if (x === Infinity) return Infinity;
-    if (x === -Infinity) return NaN; // Define gamma specially for integral values
-
-    if (Number.isInteger(x)) {
-      // Gamma function undefined for negative integers
-      if (x <= 0) return NaN; // Gamma function too large, return Infinity
-
-      if (x > INTEGER_FACTORIAL_LEN) return Infinity;
-      return INTEGER_FACTORIALS[x - 1];
-    }
-
-    if (x < 0.5) {
-      // Reflection formula
-      return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
-    } else {
-      // Lanczos approximation
-      x -= 1; // The value of A_g(x), see https://en.wikipedia.org/wiki/Lanczos_approximation#Introduction
-
-      let z = LANCZOS_COEFFICIENTS[0];
-
-      for (let i = 1; i < LANCZOS_COUNT + 2; ++i) {
-        z += LANCZOS_COEFFICIENTS[i] / (x + i);
-      }
-
-      const t = x + LANCZOS_COUNT + 0.5;
-      const sqrt2Pi = Math.sqrt(2 * Math.PI); // for performance, since Math.sqrt can be overwritten
-
-      return sqrt2Pi * Math.pow(t, x + 0.5) * Math.exp(-t) * z;
-    }
-  }
-  /**
-   * The factorial of x. This function accepts all numerical values and just internally uses the gamma function.
-   * @param x {number} The argument to the factorial function
-   * @returns {number} factorial(x), approximately (but exact if possible for integer x)
-   * @function factorial
-   * @memberOf RealFunctions
-   */
-
-  function factorial(x) {
-    return gamma(x + 1);
-  }
-  /**
-   * The log-gamma or ln-gamma function, commonly used because the gamma function blows up fast and it is
-   * useful to work with its larger values. It is just the natural logarithm of the gamma function. The
-   * algorithm is identical to the above, except there is no special case for positive integers > 2 (since
-   * there is little point, and the list would have to be enormous).
-   * <br>
-   * Handling of special values: NaN -> NaN, Infinity -> Infinity, -Infinity -> NaN
-   * @param x {number} The argument to the lnGamma function
-   * @returns {number} lnGamma(x), approximately
-   * @function lnGamma
-   * @memberOf RealFunctions
-   */
-
-  function lnGamma(x) {
-    // Special cases
-    if (Number.isNaN(x)) return NaN;
-    if (x === Infinity) return Infinity;
-    if (x === -Infinity) return NaN;
-
-    if (x <= 0) {
-      // Handle negative numbers
-      if (Number.isInteger(x)) return NaN; // If the floor of x is an odd number, then gamma(x) is negative and thus NaN should be returned.
-
-      if (Math.floor(x) % 2 === 1) return NaN;
-    } // lnGamma(1) = lnGamma(2) = 0; the algorithm is inexact for the former
-
-
-    if (x === 1 || x === 2) return 0;
-
-    if (x < 0.5) {
-      // Reflection formula, as above
-      const reflected = lnGamma(1 - x);
-      const lnPi = Math.log(Math.PI); // for performance, since Math.log can be overwritten
-
-      return lnPi - Math.log(Math.sin(Math.PI * x)) - reflected;
-    } else {
-      // See above for explanation
-      x -= 1;
-      let z = LANCZOS_COEFFICIENTS[0];
-
-      for (let i = 1; i < LANCZOS_COUNT + 2; ++i) {
-        z += LANCZOS_COEFFICIENTS[i] / (x + i);
-      }
-
-      const t = x + LANCZOS_COUNT + 0.5;
-      const lnSqrt2Pi = Math.log(2 * Math.PI) / 2; // for performance, since Math.log can be overwritten
-
-      return lnSqrt2Pi + Math.log(t) * (x + 0.5) - t + Math.log(z);
-    }
-  }
-
-  /**
-   * @file This file allows floating-point numbers to be recognized consistently as rational or irrational, with a
-   * customizable error rate.
-   */
-  /**
-   * Return the closest rational number p/q to x where 1 <= q <= maxDenominator and |p| <= maxNumerator. The algorithm is
-   * described in Grapheme Theory, but the basic idea is that we express the given floating-point number as an exact
-   * fraction, then expand its continued fraction and use it to find the best approximation.
-   * @param x {number} The number to find rational numbers near
-   * @param maxDenominator {number} An integer between 1 and Number.MAX_SAFE_INTEGER
-   * @param maxNumerator {number} An integer between 1 and Number.MAX_SAFE_INTEGER
-   * @returns {number[]} A three-element array [ p, q, error ], where error is abs(x - p/q) as calculated by JS
-   */
-
-  function closestRational(x, maxDenominator, maxNumerator = Number.MAX_SAFE_INTEGER) {
-    if (x < 0) {
-      const [p, q, error] = closestRational(-x, maxDenominator, maxNumerator);
-      return [-p, q, error];
-    }
-
-    assertRange(maxDenominator, 1, Number.MAX_SAFE_INTEGER, 'maxDenominator');
-    assertRange(maxNumerator, 1, Number.MAX_SAFE_INTEGER, 'maxNumerator'); // Make integers
-
-    maxDenominator = Math.round(maxDenominator);
-    maxNumerator = Math.round(maxNumerator); // Some simple cases
-
-    if (!Number.isFinite(x)) {
-      return [NaN, NaN, NaN];
-    }
-
-    if (Number.isInteger(x)) {
-      if (x <= maxNumerator) {
-        return [x, 1, 0];
-      }
-    } else if (maxDenominator === 1) {
-      const rnd = Math.min(maxNumerator, Math.round(x));
-      return [rnd, 1, Math.abs(rnd - x)];
-    }
-
-    if (x > maxNumerator) {
-      // Closest we can get, unfortunately
-      return [maxNumerator, 1, Math.abs(maxNumerator - x)];
-    } // Floor and fractional part of x
-
-
-    const flr = Math.floor(x); // Guaranteed to be in (0, 1) and to be exact
-
-    const frac = x - flr; // frac = exactFracNum / (exactFracDenWithoutExp * 2 ^ exp) = exactN / exactD (last equality is by definition); exp >= 0 guaranteed
-
-    const [exactFracNum, exactFracDenWithoutExp, expN] = rationalExp(frac);
-    const exp = -expN; // exactFracDen = exactD; exactFracNum = exactN. Note that x * 2^n is always exactly representable, so exactFracDen
-    // is exact even though it may be greater than MAX_SAFE_INTEGER. Occasionally, this will overflow to Infinity, but
-    // that is okay; we just return 0.
-
-    const exactFracDen = exactFracDenWithoutExp * pow2(exp);
-    if (exactFracDen === Infinity) return [0, 1, x]; // We express frac as a continued fraction. To do this, we start with the definition that frac = exactN/exactD.
-    // Then frac = 0 + 1 / (floor(exactD/exactN) + 1 / (exactN / mod(exactD,exactN))). Note that
-    // the term mod(eD,eN) / eN is always representable exactly, since eN <= MAX_SAFE_INTEGER, and the rest of the
-    // continued fraction can be evaluated. The calculation of floor(exactD/exactN) is troublesome given that exactD may
-    // be greater than Number.MAX_SAFE_INTEGER, and that the calculation MUST be exact. What may indeed happen is that
-    // exactD/exactN will have a value below an integer, but close to that integer, and then will round to that integer.
-    // We get around this by using the calculated value for modDN, which IS exact, to nudge it towards the real answer.
-    // Eventually I will prove this will always work, but it's worth pointing out that if the quotient is MASSIVE so that
-    // the nudging makes no difference, then a small error doesn't matter because the convergent will be too big for
-    // consideration anyway.
-
-    const modDN = exactFracDen % exactFracNum;
-    const flrDN = Math.round(exactFracDen / exactFracNum - modDN / exactFracNum);
-    let contFracGeneratorNum = exactFracNum;
-    let contFracGeneratorDen = modDN; // Define a recursive function d(i+1) = c_(i+1) * d(i) + d(i-1), where c_i is the ith term (indexed from 1) of the
-    // continued fraction, as well as n(i+1) = c_(i+1) * n(i) + n(i-1). Then n(i+1) / d(i+1) is indeed the (i+1)th
-    // convergent of the continued fraction. Thus, we store the previous two numerators and denominators, which is all we
-    // need to calculate the next convergent.
-    // n_(i-1), n_i, d_(i-1), d_i, starting at i = 1
-
-    let nnm1 = 1;
-    let nn = flr;
-    let dnm1 = 0;
-    let dn = 1; // Store the best numerators and denominators found so far
-
-    let bestN = Math.round(x);
-    let bestD = 1; // Same indexing variable as Grapheme Theory. In case there's a bug I don't know about; it should terminate in < 55 steps
-
-    for (let i = 2; i < 100; ++i) {
-      // term is equivalent to c_i from Grapheme theory
-      let term, rem;
-
-      if (i !== 2) {
-        // All steps besides the first
-        term = Math.floor(contFracGeneratorNum / contFracGeneratorDen);
-        rem = contFracGeneratorNum % contFracGeneratorDen;
-        contFracGeneratorNum = contFracGeneratorDen;
-        contFracGeneratorDen = rem;
-      } else {
-        // The first step is special, since we have already specially computed these values
-        term = flrDN;
-        rem = modDN;
-      } // nnp1 and dnp1 are equivalent to Grapheme Theory's n_i and d_i
-
-
-      let nnp1 = term * nn + nnm1;
-      let dnp1 = term * dn + dnm1; // Having computed the next convergent, we see if it meets our criteria. If it does not, we see whether a reduction
-      // of that convergent can produce a fraction of better accuracy. If that is so, we return this reduced
-      // value; otherwise, we return bestN/bestD, which we know to be a valid (and best possible) approximation.
-
-      if (nnp1 <= maxNumerator && dnp1 <= maxDenominator) {
-        bestN = nnp1;
-        bestD = dnp1;
-      } else {
-        // Check for reduced. term_r is a valid reduction if term_reduced > term / 2 (except for a special case
-        // which we'll deal with shortly) and the resulting values of nnp1 and dnp1 are within bounds. Thus,
-        // term_r * nn + nnm1 <= maxNumerator and term_r * dn + dnm1 <= maxDenominator. Some finagling results in
-        // term_r <= (maxNumerator - nnm1) / nn and term_r <= (maxDenominator - dnm1) / dn, thus we have our final ineq,
-        // term / 2 < term_r <= Math.min((maxNumerator - nnm1) / nn, (maxDenominator - dnm1) / dn).
-        const maxTermR = Math.floor(Math.min((maxNumerator - nnm1) / nn, (maxDenominator - dnm1) / dn));
-        const minTermR = term / 2;
-
-        if (maxTermR >= minTermR) {
-          // reduced semiconvergent (maybe) possible
-          nnp1 = maxTermR * nn + nnm1;
-          dnp1 = maxTermR * dn + dnm1;
-
-          if (maxTermR > minTermR) {
-            bestN = nnp1;
-            bestD = dnp1;
-          } else {
-            // rare special case. We check whether bestN/bestD is a BETTER convergent than this, and select the better one.
-            const reduced = nnp1 / dnp1;
-            const oldBest = bestN / bestD;
-
-            if (Math.abs(reduced - x) < Math.abs(oldBest - x)) {
-              bestN = nnp1;
-              bestD = dnp1;
-            }
-          }
-        }
-
-        break;
-      }
-
-      if (rem === 0) break; // Store history of values
-
-      nnm1 = nn;
-      nn = nnp1;
-      dnm1 = dn;
-      dn = dnp1;
-    }
-
-    const quot = bestN / bestD;
-    return [bestN, bestD, Math.abs(quot - x)];
-  } // [...Array(53 + 25).keys()].map(n => { n = n - 52; return Math.floor(Math.min(Math.PI * 2 ** (26 - n/2) / 300, Number.MAX_SAFE_INTEGER)) })
-
-  const dnLookupTable = [47161585013522, 33348276574567, 23580792506761, 16674138287283, 11790396253380, 8337069143641, 5895198126690, 4168534571820, 2947599063345, 2084267285910, 1473799531672, 1042133642955, 736899765836, 521066821477, 368449882918, 260533410738, 184224941459, 130266705369, 92112470729, 65133352684, 46056235364, 32566676342, 23028117682, 16283338171, 11514058841, 8141669085, 5757029420, 4070834542, 2878514710, 2035417271, 1439257355, 1017708635, 719628677, 508854317, 359814338, 254427158, 179907169, 127213579, 89953584, 63606789, 44976792, 31803394, 22488396, 15901697, 11244198, 7950848, 5622099, 3975424, 2811049, 1987712, 1405524, 993856, 702762, 496928, 351381, 248464, 175690, 124232, 87845, 62116, 43922, 31058, 21961, 15529, 10980, 7764, 5490, 3882, 2745, 1941, 1372, 970, 686, 485, 343, 242, 171, 121]; // Internal function used to convert a double to a rational; does the actual work.
-
-  function _doubleToRational(d) {
-    if (d === 0) {
-      return [0, 1];
-    } else if (Number.isInteger(d)) {
-      return [d, 1];
-    }
-
-    const negative = d < 0;
-    d = Math.abs(d); // Early exit conditions
-
-    if (d <= 1.1102230246251565e-16
-    /** 2^-53 */
-    || d > 67108864
-    /** 2^26 */
-    || !Number.isFinite(d)) {
-      return [NaN, NaN];
-    } // Guaranteed that d > 0 and is finite, and that its exponent n is in the range [-52, 25] inclusive.
-
-
-    const exp = getExponent(d); // We now look up the corresponding value of d_n, as explained in Grapheme Theory. It is offset by 52 because arrays
-    // start from 0
-
-    const dn = dnLookupTable[exp + 52]; // We find the nearest rational number that satisfies our requirements
-
-    const [p, q, err] = closestRational(d, dn, Number.MAX_SAFE_INTEGER); // Return the fraction if close enough, but rigorously so (see Theory)
-
-    if (err <= pow2(exp - 52)) return [negative ? -p : p, q];
-    return [NaN, NaN];
-  } // Cached values for doubleToRational
-
-
-  let lastDoubleToRationalArg = 0;
-  let lastDoubleToRationalRes = [0, 1];
-  /**
-   * This function classifies floats, which are all technically rationals (more specifically, dyadic rationals), as
-   * rational or irrational numbers. See Grapheme Theory, "Intelligent Pow" for more information. In short, at most
-   * 1/10000 of floats are classified as rational, and the potential returned rational numbers vary depending on the
-   * magnitude of d. The technique expounded is very general, and any fraction of floats being rational can be pretty
-   * much guaranteed. Takes about 0.0004 ms / call on my computer.
-   * @param d {number} The number to convert to a rational
-   * @param cache {boolean} Whether to cache the result to speed up later calls
-   * @returns {number[]} Two-element array; first is the numerator, second is the denominator
-   */
-
-  function doubleToRational(d, cache = true) {
-    if (d === lastDoubleToRationalArg) return lastDoubleToRationalRes;
-
-    const res = _doubleToRational(d);
-
-    if (cache) {
-      lastDoubleToRationalRes = res;
-      lastDoubleToRationalArg = d;
-    }
-
-    return res;
-  }
-
-  /**
-   * @file This file allows the computation of pow with "near-rational" numbers.
-   */
-
-  function powRational(a, c, d) {
-    // Simple return cases
-    if (d === 0 || Number.isNaN(c) || Number.isNaN(d) || !Number.isInteger(c) || !Number.isInteger(d) || Number.isNaN(a)) {
-      return NaN;
-    }
-
-    if (a === 0) return 0;
-    const evenDenom = d % 2 === 0;
-    const evenNumer = c % 2 === 0;
-    if (evenDenom && a < 0) return NaN;
-
-    if (d < 0) {
-      c = -c;
-      d = -d;
-    } // Now we know that a is not NaN, c is an integer, and d is a nonzero positive integer. Also, the answer is not NaN.
-
-
-    const mag = Math.pow(Math.abs(a), c / d);
-
-    if (a >= 0) {
-      // Can just do Math.pow
-      return mag;
-    } else if (a === 0) {
-      return 0;
-    } else {
-      // We know that evenDenom is false
-      return evenNumer ? mag : -mag;
-    }
-  }
-  /**
-   * Given a < 0 and non-integer b, try to compute a ^ b. We try to convert b to a nearby rational number. If there is no
-   * such rational number, we assume that b is irrational and simply return NaN. If there is such a rational number p/q,
-   * then we return NaN if q is even, and otherwise return the mathematical value.
-   * @param a {number} The base of the exponential
-   * @param b {number} The exponent
-   * @private
-   */
-
-
-  function powSpecial(a, b) {
-    const [num, den] = doubleToRational(b); // deemed irrational
-
-    if (!den) return NaN; // integer, just use <i>Math.pow</i> directly
-
-    if (den === 1) return Math.pow(a, num);
-    return powRational(a, num, den);
-  }
-  /**
-   * This function computes a^b, where a and b are floats, but does not always return NaN for a < 0 and b ≠ Z. The
-   * method by which this is bodged is specified in Grapheme Theory. The idea is that something like pow(-1, 1/3), instead
-   * of returning NaN, returns -1. For the special cases, it takes about 0.006 ms per evaluation on my computer.
-   *
-   * There are some special cases:
-   *   a. if a === b === 0, 1 is returned (this is same as <i>Math.pow</i>)
-   *   b. if a is NaN or b is NaN, NaN is returned
-   *   c. if a < 0, b not an integer, a special algorithm is used (see above)
-   *   d. The rest of the cases are identical to <i>Math.pow</i>.
-   *
-   * Contrast these cases with <i>Math.pow</i> at https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate
-   * @param a {number} The base of the exponential
-   * @param b {number} The exponent
-   * @returns {number} a ^ b as described
-   * @function pow
-   * @memberOf RealFunctions
-   */
-
-
-  function pow(a, b) {
-    if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
-    if (a < 0 && a > -Infinity && !Number.isInteger(b)) return powSpecial(a, b);
-    return Math.pow(a, b);
-  }
-
-  /**
-   * Functions that accept double-precision floating point numbers as arguments. Common functions not here are likely
-   * provided by Math, so use those instead. Note that {@link RealFunctions.pow} is functionally different than
-   * <i>Math.pow</i>.
-   * @namespace RealFunctions
-   */
-
-  const RealFunctions = Object.freeze(_objectSpread2(_objectSpread2({}, BASIC_ARITHMETIC), {}, {
-    Gamma: gamma,
-    LnGamma: lnGamma,
-    Factorial: factorial,
-    Pow: pow
-  }));
 
   /**
    * A base class to use for event listeners and the like. Supports things like addEventListener(eventName, callback),
@@ -1379,8 +818,8 @@
         for (const c of callback) this.addEventListener(eventName, c);
 
         return this;
-      } else if (typeof callback === "function") {
-        if (typeof eventName !== "string" || !eventName) throw new TypeError("Invalid event name");
+      } else if (typeof callback === 'function') {
+        if (typeof eventName !== 'string' || !eventName) throw new TypeError('Invalid event name');
         let listeners = this.eventListeners.get(eventName);
 
         if (!listeners) {
@@ -1390,7 +829,7 @@
 
         if (!listeners.includes(callback)) listeners.push(callback);
         return this;
-      } else throw new TypeError("Invalid callback");
+      } else throw new TypeError('Invalid callback');
     }
     /**
      * Get the event listeners under "eventName", cloned so that they can be derped around with
@@ -1472,166 +911,6 @@
     }
 
   }
-
-  /**
-   * The concept here is to allow the execution of expensive functions both synchronously and asynchronously, without the
-   * need for a web worker or other heavyweight techniques. There are benefits to both synchronous and asynchronous
-   * execution; some functions are so oft-executed and take such a short time that there is no point to using setTimeout
-   * and making it asynchronous. I fear that the proliferation of asynchronous APIs all over the Internet discourages
-   * simple, effective code. Also, the current asynchronous APIs aren't the most versatile. For example, how could we
-   * track the progress of a render, or cancel the render, via Promises alone?
-   *
-   * Web workers, while useful (I plan to eventually implement them), are difficult. They can't really do rendering work,
-   * and if the function in question takes an absurdly long amount of time to execute, it cannot be terminated gracefully;
-   * the entire worker needs to be terminated and then restarted.
-   *
-   * We use a generator-like object called a "bolus". Why? Because I like that word. Also, it makes it feel
-   * like the evaluation of these expensive functions is like digestion. We consume a bolus and digest it asynchronously;
-   * it's not like while we're digesting, we can't do anything else. We do get periodic interruptions—stomach cramps,
-   * defecation—but it does not control our life. If digestion is taking too long, we can go to the doctor and get a
-   * laxative. Using a Web Worker is like giving the bolus to a chemical digester (or another person), and then eating the
-   * digested remains; not appetizing, and the process of transferring a disgusting bolus soup is not pleasant. If we find
-   * out the bolus is poisonous (aka, we don't want to fully digest it), we can vomit up the bolus, but this is not
-   * guaranteed. If this bolus is extremely poisonous, we may die; similarly, if a Grapheme bolus is poorly made, it may
-   * still crash the webpage. (Okay, henceforth every "bolus" is a Grapheme bolus.)
-   *
-   * The bolus may accept any number of arguments. If it is detected to be a normal function (that is, one whose return
-   * value does not have a "next" function), its result is given if it's synchronously evaluated, or given as a Promise if
-   * asynchronously evaluated. If it is a generator, then during its execution it may periodically yield. If synchronously
-   * evaluated, the wrapper will simply keep calling .next() (digestion) until it returns, and then return this value.
-   * If asynchronously evaluated, the wrapper will keep calling .next() until some amount of time has elapsed (default is
-   * 8 ms, since a frame is 1/60 s) since the function call, or the function returns; in the former case, a timeout will
-   * be called to unblock, and in the latter case, the result of the function resolves the Promise.
-   *
-   * There are additional things that may be given to the wrapper functions for convenience. For example, both sync and
-   * asyncEvaluate can be told to throw an error (and thus in the latter case, reject the Promise) if too much time has
-   * elapsed. Note that this won't prevent an errant function which enters an infinite loop and NEVER yields from crashing
-   * the browser, but in the case of syncEvaluate, it can prevent crashes. Furthermore, asyncEvaluate may be given an
-   * additional "onProgress" callback function along with the bolus, which is called based on the estimated time for a
-   * bolus to finish, and the Promise it returns is equipped with a special function .cancel() which may be called to
-   * terminate the function (and call reject()) before it actually ends. This is useful for things like cancelling
-   * expensive updates.
-   */
-  // Find the sum of integers from 1 to n in bolus form
-  function testBolus(n) {
-    let i = 0;
-    let sum = 0;
-    let finished = false;
-    return {
-      next() {
-        if (finished) return {
-          value: undefined,
-          done: true
-        };
-
-        for (let j = 0; j <= 1e5; ++i, ++j) {
-          // Sum at most 10000 values
-          sum += i;
-
-          if (i === n) {
-            finished = true;
-            return {
-              value: sum,
-              done: true
-            };
-          }
-        }
-
-        return {
-          value: i / n,
-          done: false
-        };
-      }
-
-    };
-  }
-  function coatBolus(bolus, stepIndex, stepCount) {}
-
-  class BolusTimeoutError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = 'BolusTimeoutError';
-    }
-
-  }
-  /**
-   * A Bolus is any object with a next() function and potentially a cleanup() function. The cleanup() function is called
-   * only if the bolus is terminated early. If the bolus is cancelled after completing digestion, cleanup() is not called.
-   * next() returns { value: ..., done: false/true }. cleanup() is optional, and will be called if the generator finishes,
-   * is canceled, or throws. value is a number between 0 and 1 representing the progress so far.
-   * @typedef Bolus {Object}
-   * @property {function} next
-   * @property {function} cleanup
-   */
-
-  /**
-   * Digest a bolus directly, which is ideal for some quickly evaluated boluses. A timeout may also be provided which will
-   * terminate the bolus early if necessary. Note that if the bolus finishes and more than timeout ms have elapsed, an
-   * error will not be thrown, but if the bolus has yielded without finishing and more than timeout ms have elapsed, it
-   * will throw a BolusTimeoutError.
-   *
-   * Functions may return a bolus or, if they are exceedingly cheap, may return the value. Thus, syncDigest forwards non-
-   * boluses directly.
-   * @param bolus {Bolus} The bolus to evaluate, which may be a normal function or a generator.
-   * @param timeout {number} Timeout length in milliseconds
-   */
-
-
-  function syncDigest(bolus, timeout = -1) {
-    if (typeof (bolus === null || bolus === void 0 ? void 0 : bolus.next) !== 'function') return bolus;
-
-    try {
-      // Allow timeouts between one ms and one day
-      if (timeout >= 1 && timeout <= 8.64e7) {
-        /**
-         * Note: this code is not safe for time changes, which perhaps we can fix at some point.
-         * Also, there are some browser features (notably Firefox's privacy.resistFingerprinting) that artificially rounds
-         * the Date.now() and performance.now() values. Indeed, their accuracy is never guaranteed. That is unfortunately
-         * a fundamental limitation with Grapheme as it presently stands.
-         */
-        const startTime = Date.now();
-
-        while (true) {
-          // Iterate through the bolus
-          const next = bolus.next();
-
-          if (next.done) {
-            // return the result if done
-            return next.value;
-          }
-
-          const delta = Date.now() - startTime;
-
-          if (delta > timeout) {
-            // anger
-            // Clean up if needed
-            if (bolus.cleanup) bolus.cleanup();
-            throw new BolusTimeoutError('Bolus did not digest within ' + timeout + ' ms.');
-          }
-        }
-      } else if (timeout !== -1) {
-        throw new RangeError('Invalid timeout, which must be between 1 and 86,400,000 ms, or -1 to signify no timeout.');
-      }
-
-      while (true) {
-        const next = bolus.next();
-        if (next.done) return next.value;
-      }
-    } finally {
-      var _bolus$cleanup;
-
-      // Potentially clean up
-      (_bolus$cleanup = bolus.cleanup) === null || _bolus$cleanup === void 0 ? void 0 : _bolus$cleanup.call(bolus);
-    }
-  }
-  /**
-   * Digest a bolus asynchronously.
-   * @param bolus
-   * @param onProgress
-   * @param timeout
-   */
-
-  function asyncDigest(bolus, onProgress, timeout = -1) {}
 
   // The general form of a prop store is { value: , changed: , userValue: , }
   const proxyHandlers = {
@@ -1793,14 +1072,14 @@
 
     static toBit(as) {
       switch (as) {
-        case "program":
+        case 'program':
           return 2;
 
-        case "user":
+        case 'user':
           return 1;
 
-        case "real":
-        case "default":
+        case 'real':
+        case 'default':
           return 0;
       }
     } // Access functions, in case we want to switch to Object.create(null)
@@ -2261,34 +1540,34 @@
       if (Array.isArray(obj)) {
         x = obj[0];
         y = obj[1];
-      } else if (typeof obj === "object" && obj.x) {
+      } else if (typeof obj === 'object' && obj.x) {
         x = obj.x;
         y = obj.y;
-      } else if (typeof obj === "string") {
+      } else if (typeof obj === 'string') {
         switch (obj) {
-          case "N":
-          case "NE":
-          case "NW":
+          case 'N':
+          case 'NE':
+          case 'NW':
             y = 1;
             break;
 
-          case "S":
-          case "SE":
-          case "SW":
+          case 'S':
+          case 'SE':
+          case 'SW':
             y = -1;
             break;
         }
 
         switch (obj) {
-          case "E":
-          case "NE":
-          case "SE":
+          case 'E':
+          case 'NE':
+          case 'SE':
             x = 1;
             break;
 
-          case "W":
-          case "NW":
-          case "SW":
+          case 'W':
+          case 'NW':
+          case 'SW':
             x = -1;
             break;
         }
@@ -2424,7 +1703,7 @@
 
     static fromCss(cssColorString) {
       function throwBadColor() {
-        throw new Error("Unrecognized colour " + cssColorString);
+        throw new Error('Unrecognized colour ' + cssColorString);
       }
 
       cssColorString = cssColorString.toLowerCase().replace(/\s+/g, '');
@@ -2442,13 +1721,13 @@
 
       let args = argsMatch[1].split(',').map(parseFloat);
 
-      if (cssColorString.startsWith("rgb")) {
+      if (cssColorString.startsWith('rgb')) {
         return Color.rgb(...args.map(s => s * 255));
-      } else if (cssColorString.startsWith("rgba")) {
+      } else if (cssColorString.startsWith('rgba')) {
         return Color.rgba(...args.map(s => s * 255));
-      } else if (cssColorString.startsWith("hsl")) {
+      } else if (cssColorString.startsWith('hsl')) {
         return Color.hsl(...args);
-      } else if (cssColorString.startsWith("hsla")) {
+      } else if (cssColorString.startsWith('hsla')) {
         return Color.hsla(...args);
       }
 
@@ -2456,7 +1735,7 @@
     }
 
     static fromObj(obj) {
-      if (typeof obj === "string") {
+      if (typeof obj === 'string') {
         return Color.fromCss(obj);
       }
 
@@ -3088,7 +2367,15 @@
       let ret = {};
 
       for (let i = 0; i < args.length; ++i) {
-        Object.assign(ret, args[i]);
+        let arg = args[i];
+
+        if (typeof arg === 'string') {
+          arg = {
+            color: Color.fromObj(arg)
+          };
+        }
+
+        Object.assign(ret, arg);
       }
 
       ret.color = Color.fromObj(ret.color);
@@ -3098,8 +2385,8 @@
       return Pen.compose(Pen.default, params);
     },
     signature: {
-      color: "color",
-      thickness: "number"
+      color: 'color',
+      thickness: 'number'
     },
     default: deepFreeze({
       color: {
@@ -3111,16 +2398,16 @@
       thickness: 2,
       dashPattern: [],
       dashOffset: 0,
-      endcap: "round",
+      endcap: 'round',
       endcapRes: 1,
-      join: "miter",
+      join: 'dynamic',
       joinRes: 1,
       useNative: false,
       visible: true
     }),
 
     fromObj(strOrObj) {
-      if (typeof strOrObj === "string") return _interpretStringAsPen(strOrObj);
+      if (typeof strOrObj === 'string') return _interpretStringAsPen(strOrObj);
       return Pen.compose(Pen.default, strOrObj);
     }
 
@@ -3184,11 +2471,11 @@
         b: 255,
         a: 255
       },
-      font: "Cambria",
+      font: 'Cambria',
       fontSize: 12,
       shadowRadius: 0,
-      align: "left",
-      baseline: "bottom"
+      align: 'left',
+      baseline: 'bottom'
     })
   }; // Object of the form { x: ("dynamic"|"none"|"axis"|"outside"|"inside"|"bottom"|"top"), y: ( ..., "left"|"right") } (might change later)
 
@@ -3199,7 +2486,7 @@
       for (let i = 0; i < args.length; ++i) {
         let arg = args[i];
 
-        if (typeof arg === "string") {
+        if (typeof arg === 'string') {
           ret.x = arg;
           ret.y = arg;
         } else {
@@ -3213,8 +2500,8 @@
       return LabelPosition.compose(LabelPosition.default, params);
     },
     default: deepFreeze({
-      x: "dynamic",
-      y: "dynamic"
+      x: 'dynamic',
+      y: 'dynamic'
     })
   };
   const GenericObject = {
@@ -3239,7 +2526,7 @@
       for (let i = 0; i < args.length; ++i) {
         let arg = args[i];
 
-        if (typeof arg === "boolean") {
+        if (typeof arg === 'boolean') {
           for (let key in ret) {
             ret[key] = arg;
           }
@@ -3255,22 +2542,22 @@
   };
   function lookupCompositionType(type) {
     switch (type) {
-      case "TextStyle":
+      case 'TextStyle':
         return TextStyle;
 
-      case "Pen":
+      case 'Pen':
         return Pen;
 
-      case "Pens":
+      case 'Pens':
         return Pens;
 
-      case "LabelPosition":
+      case 'LabelPosition':
         return LabelPosition;
 
-      case "Object":
+      case 'Object':
         return GenericObject;
 
-      case "BooleanDict":
+      case 'BooleanDict':
         return BooleanDict;
     }
   } // Fun Asymptote Vector Graphics–like thing :) We break up str into tokens which each have some meaning TODO
@@ -3290,16 +2577,16 @@
     gridlinesMajor: Pen.create({
       thickness: 2,
       color: Color.rgba(0, 0, 0, 127),
-      endcap: "butt"
+      endcap: 'butt'
     }),
     gridlinesMinor: Pen.create({
       thickness: 1,
       color: Color.rgba(0, 0, 0, 80),
-      endcap: "butt"
+      endcap: 'butt'
     }),
     gridlinesAxis: Pen.create({
       thickness: 4,
-      endcap: "butt"
+      endcap: 'butt'
     }),
     plotLabelPositions: LabelPosition.default,
     Pen: Pen.default,
@@ -3309,6 +2596,1242 @@
     })
   };
 
+  /**
+   * Error thrown when a parser gets pissed
+   */
+  class ParserError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'ParserError';
+    }
+
+  }
+  /**
+   * Helper function to throw an error at a specific index in a string.
+   * @param string {String} The string to complain about
+   * @param index {number} The index in the string where the error occurred
+   * @param message {String} The error message
+   */
+
+  function getAngryAt(string, index = 0, message = "I'm angry!") {
+    // Spaces to offset the caret to the correct place along the string
+    const spaces = ' '.repeat(index);
+    throw new ParserError(message + ' at index ' + index + ':\n' + string + '\n' + spaces + '^');
+  }
+
+  /**
+   * Represents a complex number, with a real part and an imaginary part both represented by floats.
+   */
+  class Complex {
+    /**
+     * Construct a new complex number.
+     * @param re The real part of the complex number.
+     * @param im The imaginary part of the complex number.
+     */
+    constructor(re, im = 0) {
+      this.re = re;
+      this.im = im;
+    }
+    /**
+     * Get i.
+     * @returns {Complex} i.
+     * @constructor
+     */
+
+
+    static get I() {
+      return new Complex(0, 1);
+    }
+    /**
+     * Get 1.
+     * @returns {Complex} 1.
+     * @constructor
+     */
+
+
+    static get One() {
+      return new Complex(1, 0);
+    }
+    /**
+     * Return the complex argument (principal value) corresponding to the complex number.
+     * @returns {number} The complex argument Arg(z).
+     */
+
+
+    arg() {
+      return Math.atan2(this.im, this.re);
+    }
+    /**
+     * Returns |z|.
+     * @returns {number} The complex magnitude |z|.
+     */
+
+
+    magnitude() {
+      return Math.hypot(this.re, this.im);
+    }
+    /**
+     * Returns |z|^2.
+     * @returns {number} The square of the complex magnitude |z|^2.
+     */
+
+
+    magnitudeSquared() {
+      return this.re * this.re + this.im * this.im;
+    }
+    /**
+     * Returns z bar.
+     * @returns {Complex} The conjugate of z.
+     */
+
+
+    conj() {
+      return new Complex(this.re, -this.im);
+    }
+    /**
+     * Clone this complex number.
+     * @returns {Complex} Clone of z.
+     */
+
+
+    clone() {
+      return new Complex(this.re, this.im);
+    }
+    /**
+     * Scale this complex number by the real factor r.
+     * @param r {number} The scaling factor.
+     */
+
+
+    scale(r) {
+      return new Complex(this.re * r, this.im * r);
+    }
+    /**
+     * Check whether this complex number is equal to another.
+     * @param z {Complex} Complex number to compare with.
+     */
+
+
+    equals(z) {
+      return this.re === z.re && this.im === z.im;
+    }
+    /**
+     * Return a complex number pointing in the same direction, with magnitude 1.
+     * @returns {Complex}
+     */
+
+
+    normalize() {
+      let mag = this.magnitude();
+      return this.scale(1 / mag);
+    }
+
+  }
+
+  function initTypecasts(TypecastDefinition, typecastList, typecastDict) {
+    let intToReal = new TypecastDefinition({
+      from: 'int',
+      to: 'real',
+      evaluators: {
+        generic: 'identity' // Identity conversion
+
+      }
+    });
+
+    let doubleToComplex = x => new Complex(x, 0);
+
+    let intToComplex = new TypecastDefinition({
+      from: 'int',
+      to: 'complex',
+      evaluators: {
+        generic: doubleToComplex
+      }
+    });
+    let realToComplex = new TypecastDefinition({
+      from: 'real',
+      to: 'complex',
+      evaluators: {
+        generic: doubleToComplex
+      }
+    });
+    typecastList.push(intToReal, intToComplex, realToComplex); // For simplicity, we convert the list of all typecasts into a dict of from -> to, so that it can be very quickly
+    // searched during signature matching.
+
+    for (const typecast of typecastList) {
+      let from = typecast.from;
+
+      if (typecastDict[from]) {
+        typecastDict[from].push(typecast);
+      } else {
+        typecastDict[from] = [typecast];
+      }
+    }
+  }
+
+  const TYPES = {
+    bool: {
+      typecheck: {
+        generic: {
+          f: x => typeof x === 'boolean'
+        }
+      }
+    },
+    int: {
+      typecheck: {
+        generic: {
+          f: Number.isInteger
+        }
+      }
+    },
+    real: {
+      typecheck: {
+        generic: {
+          f: x => typeof x === 'number'
+        }
+      }
+    },
+    complex: true,
+    vec2: {
+      typecheck: {
+        generic: {
+          f: x => x instanceof Vec2
+        }
+      }
+    },
+    null: true
+  };
+  /**
+   * Get typecast definition between two types--if the definition exists. Can also be used as a boolean test for whether
+   * two types are castable. The list of allowed casts is generated in typecasts.js
+   * @param from {string}
+   * @param to {string}
+   * @returns {TypecastDefinition|*}
+   */
+
+  function getCast(from, to) {
+    let candidates = typecastDict[from];
+    if (!candidates) return;
+
+    for (let i = candidates.length - 1; i >= 0; --i) {
+      let candidate = candidates[i];
+      if (candidate.to === to) return candidate;
+    }
+  }
+  function canCast(from, to) {
+    return from === to || !!getCast(from, to);
+  }
+  /**
+   * Whether a type is valid
+   * @param typename {string}
+   * @returns {boolean}
+   */
+
+  function isValidType(typename) {
+    return typeof typename === 'string' && typename in TYPES;
+  }
+  /**
+   * Throw a (hopefully helpful) error when a type is invalid
+   * @param typename {string}
+   * @returns {boolean}
+   */
+
+
+  function throwInvalidType(typename) {
+    if (!isValidType(typename)) {
+      if (typeof typename !== 'string') throw new Error('Non-string passed as typename');
+      let didYouMean = '';
+      let minDistance = Infinity,
+          closestType;
+      Object.keys(TYPES).forEach(type => {
+        let dist = levenshtein(typename, type);
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestType = type;
+        }
+      });
+
+      if (minDistance < 2) {
+        didYouMean = '. Did you mean ' + closestType + '?';
+      } else {
+        didYouMean = "; valid types are ".concat(Object.keys(TYPES).join(', '), ".");
+      }
+
+      throw new Error("Unrecognized type \"".concat(typename, "\"").concat(didYouMean));
+    }
+  }
+  /**
+   * Abstract class: definition of an evaluable operator
+   */
+
+
+  class OperatorDefinition {
+    constructor(params = {}) {
+      var _params$evaluators;
+
+      throwInvalidType(this.returnType = params.returnType);
+      /**
+       * Mapping of evaluation mode -> evaluator which can evaluate the operator in that mode. "generic" accepts arguments
+       * of various types--that is the intent
+       * @type {{}}
+       */
+
+      this.evaluators = (_params$evaluators = params.evaluators) !== null && _params$evaluators !== void 0 ? _params$evaluators : {};
+    }
+
+  }
+  /**
+   * Taking in a signature argument like "real", ["real", "complex"], or undefined and converting it to a normalized form
+   * @param obj {string[]|string|undefined}
+   * @returns {string[]}
+   */
+
+  function signatureNormalize(obj) {
+    if (Array.isArray(obj)) {
+      obj.forEach(throwInvalidType);
+      return obj;
+    } else if (!obj) {
+      return [];
+    } else {
+      throwInvalidType(obj);
+      return [obj];
+    }
+  }
+
+  const specialEvaluators = {
+    identity: {
+      type: 'special',
+      name: 'identity',
+      f: x => x
+    },
+    addition: {
+      type: 'special_binary',
+      binary: '+',
+      f: (a, b) => a + b
+    },
+    subtraction: {
+      type: 'special_binary',
+      binary: '-',
+      f: (a, b) => a - b
+    },
+    unary_subtraction: {
+      type: 'special',
+      f: a => -a
+    },
+    multiplication: {
+      type: 'special_binary',
+      binary: '*',
+      f: (a, b) => a * b
+    },
+    division: {
+      type: 'special_binary',
+      binary: '/',
+      f: (a, b) => a / b
+    },
+    pow: {
+      type: 'special',
+      name: 'pow',
+      f: Math.pow
+    }
+  };
+  /**
+   * Given an evaluator description, return a normalized evaluator of the form { type: (str), f: (function) } and
+   * potentially more information that the compiler can use to optimize the evaluator (identity, piecewiseness, etc.)
+   * @param obj
+   */
+
+  function evaluatorNormalize(obj) {
+    if (typeof obj === 'string') {
+      let evaluator = specialEvaluators[obj];
+      if (!obj) throw new Error("Unknown special evaluator ".concat(obj));
+      return evaluator;
+    } else if (typeof obj === 'function') {
+      return {
+        type: 'normal',
+        f: obj
+      };
+    }
+
+    return obj;
+  }
+  /**
+   * Normalize the form of evaluators in an evaluator dictionary. Modifies the passed object.
+   * @param obj {{}}
+   */
+
+
+  function evaluatorsNormalize(obj) {
+    for (let key in obj) {
+      if (!obj.hasOwnProperty(key)) continue;
+      obj[key] = evaluatorNormalize(obj[key]);
+    }
+
+    return obj;
+  }
+  /**
+   * Operator with a fixed type signature and type output
+   */
+
+
+  class FixedOperatorDefinition extends OperatorDefinition {
+    constructor(params = {}) {
+      super(params);
+      this.signature = signatureNormalize(params.signature);
+      this.evaluators = evaluatorsNormalize(params.evaluators);
+    }
+
+    argCount() {
+      return this.signature.length;
+    }
+    /**
+     * Return whether a given signature is compatible with this operator definition
+     * @param signature {string[]}
+     * @returns {boolean}
+     */
+
+
+    signatureWorks(signature) {
+      let match = this.signature;
+      if (match.length !== signature.length) return false;
+      return match.every((type, i) => canCast(signature[i], type));
+    }
+
+  } // List of typecasts and dict from (source type) -> (dst type)
+
+  let typecastList = [],
+      typecastDict = {};
+
+  class TypecastDefinition extends FixedOperatorDefinition {
+    constructor(params = {}) {
+      let from = params.from;
+      let to = params.to;
+      super(_objectSpread2(_objectSpread2({}, params), {}, {
+        returnType: to,
+        signature: from
+      }));
+      this.from = from;
+      this.to = to;
+    }
+
+  }
+
+  initTypecasts(TypecastDefinition, typecastList, typecastDict);
+
+  /**
+   * Mapping of operator name to list of operators with that name
+   */
+
+  const Operators = {};
+  /**
+   * Find the operator of a given name which matches a signature--a list of types. If types can be successfully casted,
+   * then it is a match (the signatures don't have to be identical, just compatible).
+   * @param name {string} The operator name (ex. +)
+   * @param signature {string[]} The type signature to call the function (ex. ["real", "real"])
+   * @returns {OperatorDefinition|undefined} The OperatorDefinition corresponding to that function call, if it exists
+   */
+
+  function resolveOperator(name, signature) {
+    let candidates = Operators[name];
+    if (!candidates) return;
+
+    for (let candidate of candidates) {
+      if (candidate.signatureWorks(signature)) {
+        return candidate;
+      }
+    }
+  }
+  /**
+   * Given the name of an operator and its definition, place it into the register of operators
+   * @param name {string}
+   * @param ops {OperatorDefinition[]}
+   */
+
+  function registerOperator(name, ...ops) {
+    if (Operators[name]) {
+      Operators[name].push(...ops);
+    } else {
+      Operators[name] = ops;
+    }
+  }
+
+  function defineSimpleBinaryOperator(type, name, generic) {
+    registerOperator(name, new FixedOperatorDefinition({
+      signature: [type, type],
+      returnType: type,
+      evaluators: {
+        generic
+      }
+    }));
+  }
+
+  defineSimpleBinaryOperator('int', '+', 'addition');
+  defineSimpleBinaryOperator('int', '-', 'subtraction');
+  defineSimpleBinaryOperator('int', '*', 'multiplication');
+  defineSimpleBinaryOperator('int', '^', Math.pow);
+  defineSimpleBinaryOperator('real', '+', 'addition');
+  defineSimpleBinaryOperator('real', '-', 'subtraction');
+  defineSimpleBinaryOperator('real', '*', 'multiplication');
+  defineSimpleBinaryOperator('real', '/', 'division');
+  defineSimpleBinaryOperator('real', '^', Math.pow);
+  registerOperator('-', new FixedOperatorDefinition({
+    signature: ['int'],
+    returnType: 'int',
+    evaluators: {
+      generic: 'unary_subtraction'
+    }
+  }));
+  registerOperator('-', new FixedOperatorDefinition({
+    signature: ['real'],
+    returnType: 'real',
+    evaluators: {
+      generic: 'unary_subtraction'
+    }
+  }));
+
+  function defineUnaryReal(name, evaluator) {
+    registerOperator(name, new FixedOperatorDefinition({
+      signature: ['real'],
+      returnType: 'real',
+      evaluators: {
+        generic: evaluator
+      }
+    }));
+  }
+
+  defineUnaryReal('sin', Math.sin);
+  defineUnaryReal('cos', Math.cos);
+  defineUnaryReal('tan', Math.tan);
+  defineUnaryReal('asin', Math.asin);
+  defineUnaryReal('acos', Math.acos);
+  defineUnaryReal('atan', Math.atan);
+  defineUnaryReal('sinh', Math.sinh);
+  defineUnaryReal('cosh', Math.cosh);
+  defineUnaryReal('tanh', Math.tanh);
+  defineUnaryReal('asinh', Math.asinh);
+  defineUnaryReal('acosh', Math.acosh);
+  defineUnaryReal('atanh', Math.atanh);
+  defineUnaryReal('sqrt', Math.sqrt);
+  defineUnaryReal('cbrt', Math.cbrt);
+  registerOperator('vec2', new FixedOperatorDefinition({
+    signature: ['real', 'real'],
+    returnType: 'vec2',
+    evaluators: {
+      generic: (a, b) => new Vec2(a, b)
+    }
+  }));
+
+  class EvaluationError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'EvaluationError';
+    }
+
+  }
+  /**
+   * Abstract base class for AST nodes
+   */
+
+
+  class ASTNode {
+    applyAll(func, onlyGroups = true, childrenFirst = false, depth = 0) {
+      if (!onlyGroups) func(this, depth);
+    }
+
+    nodeType() {
+      return 'node';
+    }
+
+    usedVariables() {
+      // Map var -> type
+      let types = new Map();
+      this.applyAll(node => {
+        if (node.nodeType() === 'var') {
+          if (!types.has(node.name)) types.set(node.name, node.type);
+        }
+      });
+      return types;
+    }
+
+  }
+  /**
+   * Base class for a node in a Grapheme expression. Has children and a string type (returnType).
+   *
+   * A node can be one of a variety of types. A plain ASTNode signifies grouping, i.e. parentheses. Extended ASTNodes,
+   * like constant nodes and operator nodes have more complexity.
+   */
+
+  class ASTGroup extends ASTNode {
+    /**
+     * A relatively simple base constructor, taking in only the children and the return type, which is "any" by default.
+     * @param children {Array}
+     * @param type {string}
+     */
+    constructor(children = [], type = null) {
+      super();
+      /**
+       * Children of this node, which should also be ASTNodes
+       * @type {Array}
+       */
+
+      this.children = children;
+      /**
+       * Type of this ASTNode (real, complex, etc.)
+       * @type {string}
+       */
+
+      this.type = type;
+    }
+    /**
+     * Apply a function to this node and all of its children, recursively.
+     * @param func {Function} The callback function. We call it each time with (node, depth) as arguments
+     * @param onlyGroups
+     * @param childrenFirst {boolean} Whether to call the callback function for each child first, or for the parent first.
+     * @param depth {number}
+     * @returns {ASTNode}
+     */
+
+
+    applyAll(func, onlyGroups = false, childrenFirst = false, depth = 0) {
+      if (!childrenFirst) func(this, depth);
+      let children = this.children;
+
+      for (let i = 0; i < children.length; ++i) {
+        let child = children[i];
+
+        if (child instanceof ASTNode) {
+          child.applyAll(func, onlyGroups, childrenFirst, depth + 1);
+        }
+      }
+
+      if (childrenFirst) func(this, depth);
+      return this;
+    }
+    /**
+     * Deep clone this ASTGroup.
+     * @returns {ASTGroup}
+     */
+
+
+    clone() {
+      return new ASTGroup(this.children.map(c => c.clone()), this.type);
+    }
+    /**
+     * Evaluate the value of this node using a given scope, which gives the evaluation parameters (values of the
+     * variables) among other things
+     * @param scope {{}}
+     * @returns {*}
+     */
+
+
+    evaluate(scope) {
+      return this.children[0].evaluate(scope);
+    }
+    /**
+     * Given the types of variables, construct function definitions, et cetera
+     * @param typeInfo {{}} Dictionary of variable name -> variable type
+     * @param opts {{}}
+     */
+
+
+    resolveTypes(typeInfo, opts = {}) {
+      this.children.forEach(child => child.resolveTypes(typeInfo, opts));
+      this.type = this.children[0].type;
+    }
+
+    nodeType() {
+      return 'group';
+    }
+
+  }
+  class VariableNode extends ASTNode {
+    constructor(name, type = null) {
+      super();
+      this.name = name;
+      this.type = type;
+    }
+    /**
+     * Deep clone this node.
+     * @returns {VariableNode}
+     */
+
+
+    clone() {
+      return new VariableNode(this.name, this.type);
+    }
+
+    evaluate(scope) {
+      let val = scope.variables[this.name];
+      if (!val) throw new EvaluationError("Variable ".concat(this.name, " was not found in the scope"));
+      return val;
+    }
+    /**
+     * Given the types of variables, construct function definitions, et cetera
+     * @param typeInfo {{}} Dictionary of variable name -> variable type
+     * @param opts {{}}
+     */
+
+
+    resolveTypes(typeInfo, opts = {}) {
+      let type = typeInfo[this.name];
+      let strict = !!opts.strict;
+      if (strict && !type) throw new Error("Type of variable ".concat(this.name, " is unknown"));
+      this.type = type !== null && type !== void 0 ? type : 'real';
+    }
+
+    nodeType() {
+      return 'var';
+    }
+
+  }
+  class OperatorNode extends ASTGroup {
+    constructor(operator) {
+      super();
+      this.op = operator;
+      this.definition = null; // One of the definitions in operators.js is actually going to be used to evaluate the node
+    }
+    /**
+     * Deep clone this node.
+     * @returns {OperatorNode}
+     */
+
+
+    clone() {
+      let children = this.children.map(c => c.clone());
+      let node = new OperatorNode(this.op);
+      node.children = children;
+      node.type = this.type;
+      node.definition = this.definition;
+      return node;
+    }
+
+    getChildrenSignature() {
+      return this.children.map(child => child.type);
+    }
+
+    evaluate(scope) {
+      if (!this.definition) throw new EvaluationError("Evaluation definition not generated for operator node");
+      const children = this.children;
+      let params = this.children.map(child => child.evaluate(scope));
+      const definition = this.definition,
+            sig = definition.signature; // Cast arguments appropriately
+
+      params.forEach((param, i) => {
+        let dstType = sig[i];
+        let srcType = children[i].type;
+        if (dstType !== srcType) params[i] = getCast(srcType, dstType)(param);
+      });
+      return definition.evaluators.generic.f.apply(null, params);
+    }
+    /**
+     * Given the types of variables, construct function definitions, et cetera
+     * @param typeInfo {{}} Dictionary of variable name -> variable type
+     * @param opts {{}}
+     */
+
+
+    resolveTypes(typeInfo, opts = {}) {
+      // We need to find the function definition that matches
+      this.children.forEach(child => child.resolveTypes(typeInfo));
+      let signature = this.getChildrenSignature();
+      let definition = resolveOperator(this.op, signature);
+      if (!definition) throw new Error('Could not find a suitable definition for operator ' + this.op + '(' + signature.join(', ') + ').');
+      this.definition = definition;
+      this.type = definition.returnType;
+      return this;
+    }
+
+    nodeType() {
+      return 'op';
+    }
+
+  }
+  class ConstantNode extends ASTNode {
+    constructor(value, text, type = 'real') {
+      super();
+      this.value = value;
+      this.text = text;
+      this.type = type;
+    }
+
+    clone() {
+      return new ConstantNode(this.value, this.text, this.type);
+    }
+
+    evaluate(scope) {
+      return this.value;
+    }
+
+    resolveTypes(typeInfo, opts) {// Nothing to do here
+    }
+
+    nodeType() {
+      return 'const';
+    }
+
+  }
+
+  /**
+   * In this file, we convert strings representing expressions in Grapheme into their ASTNode counterparts. For example,
+   * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
+   */
+  const OperatorSynonyms = {
+    arcsinh: 'asinh',
+    arsinh: 'asinh',
+    arccosh: 'acosh',
+    arcosh: 'acosh',
+    arctanh: 'atanh',
+    artanh: 'atanh',
+    arcsech: 'asech',
+    arccsch: 'acsch',
+    arccoth: 'acoth',
+    arsech: 'asech',
+    arcsch: 'acsch',
+    arcoth: 'acoth',
+    arcsin: 'asin',
+    arsin: 'asin',
+    arccos: 'acos',
+    arcos: 'acos',
+    arctan: 'atan',
+    artan: 'atan',
+    arcsec: 'asec',
+    arccsc: 'acsc',
+    arccot: 'acot',
+    arsec: 'asec',
+    arcsc: 'acsc',
+    arcot: 'acot',
+    log: 'ln'
+  };
+  const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/;
+  const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
+  const constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/;
+  const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
+  const paren_regex = /^[()\[\]]/;
+  const comma_regex = /^,/;
+  const string_regex = /^"(?:[^"\\]|\\.)*"/;
+  /**
+   * Take a string and check whether its parentheses are balanced, throwing a ParserError if not.
+   * @param string
+   */
+
+  function checkParensBalanced(string) {
+    // Stack of parentheses
+    const stack = [];
+    let i = 0;
+    let err = false;
+
+    outer: for (; i < string.length; ++i) {
+      const chr = string[i];
+
+      switch (chr) {
+        case '(':
+        case '[':
+          stack.push(chr);
+          break;
+
+        case ')':
+        case ']':
+          if (stack.length === 0) {
+            err = true;
+            break outer;
+          }
+
+          if (chr === ')') {
+            let pop = stack.pop();
+
+            if (pop !== '(') {
+              err = true;
+              break outer;
+            }
+          } else {
+            let pop = stack.pop();
+
+            if (pop !== '[') {
+              err = true;
+              break outer;
+            }
+          }
+
+      }
+    }
+
+    if (stack.length !== 0) err = true;
+    if (err) getAngryAt(string, i, 'Unbalanced parentheses/brackets');
+  }
+
+
+  let testObj = {};
+  function isValidVariableName(str) {
+    return typeof str === 'string' && !!str.match(variable_regex) && str[0] !== '$' && !testObj[str];
+  }
+
+  function* tokenizer(string) {
+    // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
+    string = string.trimEnd();
+    let i = 0;
+    let prev_len = string.length;
+    let original_string = string;
+
+    while (string) {
+      string = string.trim();
+      i += prev_len - string.length;
+      prev_len = string.length;
+      let match;
+
+      do {
+        match = string.match(paren_regex);
+
+        if (match) {
+          yield {
+            type: 'paren',
+            paren: match[0],
+            index: i
+          };
+          break;
+        }
+
+        match = string.match(constant_regex);
+
+        if (match) {
+          yield {
+            type: 'constant',
+            value: match[0],
+            index: i
+          };
+          break;
+        }
+
+        match = string.match(operator_regex);
+
+        if (match) {
+          yield {
+            type: 'operator',
+            op: match[0].replace(/\s+/g, ''),
+            index: i
+          };
+          break;
+        }
+
+        match = string.match(comma_regex);
+
+        if (match) {
+          yield {
+            type: 'comma',
+            index: i
+          };
+          break;
+        }
+
+        match = string.match(function_regex);
+
+        if (match) {
+          yield {
+            type: 'function',
+            name: match[1],
+            index: i
+          };
+          yield {
+            type: 'paren',
+            paren: '(',
+            index: i + match[1].length
+          };
+          break;
+        }
+
+        match = string.match(variable_regex);
+
+        if (match) {
+          yield {
+            type: 'variable',
+            name: match[0],
+            index: i
+          };
+          break;
+        }
+
+        match = string.match(string_regex);
+
+        if (match) {
+          yield {
+            type: 'string',
+            contents: match[0].slice(1, -1),
+            index: i
+          };
+        }
+
+        getAngryAt(original_string, i, 'Unrecognized token');
+      } while (false);
+
+      let len = match[0].length;
+      string = string.slice(len);
+    }
+  }
+
+  function checkValid(string, tokens) {
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      let token1 = tokens[i];
+      let token2 = tokens[i + 1];
+      let token2IsUnary = token2.op === '-' || token2.op === '+';
+
+      if ((token1.type === 'operator' || token1.type === 'comma') && (token2.type === 'operator' || token2.type === 'comma') && (!token2IsUnary || i === tokens.length - 2)) {
+        getAngryAt(string, token2.index, 'No consecutive operators/commas');
+      }
+
+      if (token1.paren === '(' && token2.paren === ')') getAngryAt(string, token2.index, 'No empty parentheses');
+      if (token1.paren === '[' && token2.paren === ']') getAngryAt(string, token2.index, 'No empty brackets');
+      if (token1.type === 'operator' && token2.paren === ')') getAngryAt(string, token2.index, 'No operator followed by closing parenthesis');
+      if (token1.type === 'operator' && token2.paren === ']') getAngryAt(string, token2.index, 'No operator followed by closing bracket');
+      if (token1.type === 'comma' && token2.paren === ')') getAngryAt(string, token2.index, 'No comma followed by closing parenthesis');
+      if (token1.type === 'comma' && token2.paren === ']') getAngryAt(string, token2.index, 'No comma followed by closing bracket');
+      if (token1.paren === '(' && token2.type === 'comma') getAngryAt(string, token2.index, 'No comma after starting parenthesis');
+      if (token1.paren === '[' && token2.type === 'comma') getAngryAt(string, token2.index, 'No comma after starting bracket');
+      if (token1.paren === '(' && token2.type === 'operator' && !token2IsUnary) getAngryAt(string, token2.index, 'No operator after starting parenthesis');
+      if (token1.paren === '[' && token2.type === 'operator' && !token2IsUnary) getAngryAt(string, token2.index, 'No operator after starting bracket');
+    }
+
+    if (tokens[0].type === 'comma' || tokens[0].type === 'operator' && !(tokens[0].op === '-' || tokens[0].op === '+')) getAngryAt(string, 0, 'No starting comma/operator');
+    const last_token = tokens[tokens.length - 1];
+    if (last_token.type === 'comma' || last_token.type === 'operator') getAngryAt(string, tokens.length - 1, 'No ending comma/operator');
+  }
+  /**
+   * Find a pair of parentheses in a list of tokens, namely the first one as indexed by the closing paren/bracket. For
+   * example, in (x(y(z)(w))) it will find (z).
+   * @param children
+   * @returns {number[]}
+   */
+
+
+  function findParenIndices(children) {
+    let startIndex = -1;
+
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i];
+      if (!child.paren) continue;
+      if (child.paren === '(' || child.paren === '[') startIndex = i;
+      if ((child.paren === ')' || child.paren === ']') && startIndex !== -1) return [startIndex, i];
+    }
+  }
+  /**
+   * Convert constants and variables to their ASTNode counterparts
+   * @param tokens {Array}
+   */
+
+
+  function processConstantsAndVariables(tokens) {
+    for (let i = 0; i < tokens.length; ++i) {
+      let token = tokens[i];
+
+      switch (token.type) {
+        case 'constant':
+          let v = parseFloat(token.value);
+          let node = new ConstantNode(v, token.value);
+          if (Number.isInteger(v)) node.type = 'int';
+          tokens[i] = node;
+          break;
+
+        case 'variable':
+          tokens[i] = new VariableNode(token.name);
+          break;
+      }
+    }
+  } // To process parentheses, we find pairs of them and combine them into ASTNodes containing the nodes and
+  // tokens between them. We already know the parentheses are balanced, which is a huge help here. We basically go
+  // through each node recursively and convert all paren pairs to a node, then recurse into those new nodes
+
+
+  function processParentheses(rootNode) {
+    rootNode.applyAll(node => {
+      let parensRemaining = true;
+
+      while (parensRemaining) {
+        parensRemaining = false;
+        let indices = findParenIndices(node.children);
+
+        if (indices) {
+          parensRemaining = true;
+          let newNode = new ASTGroup();
+          let expr = node.children.splice(indices[0], indices[1] - indices[0] + 1, newNode);
+          newNode.children = expr.slice(1, expr.length - 1);
+        }
+      }
+    }, true);
+  } // Turn function tokens followed by ASTNodes into OperatorNodes
+
+
+  function processFunctions(rootNode) {
+    rootNode.applyAll(node => {
+      let children = node.children;
+
+      for (let i = 0; i < children.length; ++i) {
+        let token = children[i];
+
+        if (token.type === 'function') {
+          let synonym = OperatorSynonyms[token.name];
+          let newNode = new OperatorNode(synonym !== null && synonym !== void 0 ? synonym : token.name);
+          children[i] = newNode; // Take children from the node coming immediately after
+
+          newNode.children = children[i + 1].children; // Remove the node immediately after
+
+          children.splice(i + 1, 1);
+        }
+      }
+    }, true);
+  } // Given a node and an index i of a binary operator, combine the nodes immediately to the left and right of the node
+  // into a single binary operator
+
+
+  function combineBinaryOperator(node, i) {
+    const children = node.children;
+    let newNode = new OperatorNode(children[i].op);
+    newNode.children = [children[i - 1], children[i + 1]];
+    children.splice(i - 1, 3, newNode);
+  } // Process the highest precedence operators. Note that e^x^2 = (e^x)^2 and e^-x^2 = e^(-x^2).
+
+
+  function processUnaryAndExponentiation(root) {
+    root.applyAll(node => {
+      let children = node.children; // We iterate backwards
+
+      for (let i = children.length - 1; i >= 0; --i) {
+        let child = children[i];
+        if (child instanceof ASTNode || !child.op) continue;
+
+        if (child.op === '-') {
+          // If the preceding token is an unprocessed non-operator token, or node, then it's a binary expression
+          if (i !== 0 && children[i - 1].type !== 'operator') continue;
+          let newNode = new OperatorNode('-');
+          newNode.children = [children[i + 1]];
+          children.splice(i, 2, newNode);
+        } else if (child.op === '+') {
+          // See above
+          if (i !== 0 && children[i - 1].type !== 'operator') continue; // Unary + is a no-op
+
+          children.splice(i, 1);
+        } else if (child.op === '^') {
+          combineBinaryOperator(node, i);
+          --i;
+        }
+      }
+    }, true);
+  } // Combine binary operators, going from left to right, with equal precedence for all
+
+
+  function processOperators(root, operators) {
+    root.applyAll(node => {
+      let children = node.children;
+
+      for (let i = 0; i < children.length; ++i) {
+        let child = children[i];
+        if (child instanceof ASTNode || !child.op) continue;
+
+        if (operators.includes(child.op)) {
+          combineBinaryOperator(node, i);
+          --i;
+        }
+      }
+    }, true);
+  } // The index of each operator is also an enum, which is used in comparison chains to describe which operator is being used
+
+
+  const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>']; // Process "comparison chains", which are sequences of the form 0 <= x < 2. Internally these are transformed into
+  // "cchain" operators, which have the form cchain(0, 1 (enum comparison), x, 0 (enum comparison), 2). Gross, but
+  // it's hard to cleanly represent these comparison chains otherwise. You *could* represent them using boolean operations,
+  // but that duplicates the internal nodes which is inefficient
+
+  function processComparisonChains(root) {
+    root.applyAll(node => {
+      const children = node.children;
+
+      for (let i = 0; i < children.length; ++i) {
+        let child = children[i];
+        if (child instanceof ASTNode || !child.op) continue;
+
+        if (comparisonOperators.includes(children[i].op)) {
+          let comparisonChainFound = false; // Found a comparison operator token; we now check for whether the tokens +2, +4, etc. ahead of it are also
+          // comparison tokens. If so, we emit a comparison chain
+          // Index of the last comparison token, plus 2
+
+          let j = i + 2;
+
+          for (; j < children.length; j += 2) {
+            let nextChild = children[j];
+            if (nextChild instanceof ASTNode || !nextChild.op) continue;
+
+            if (comparisonOperators.includes(children[j].op)) {
+              comparisonChainFound = true;
+            } else {
+              break;
+            }
+          }
+
+          if (comparisonChainFound) {
+            // The nodes i, i+2, i+4, ..., j-4, j-2 are all comparison nodes. Thus, all nodes in the range i-1 ... j-1
+            // should be included in the comparison chain
+            let comparisonChain = new OperatorNode('cchain');
+            let cchainChildren = comparisonChain.children = children.splice(i - 1, j - i + 1, comparisonChain);
+
+            for (let i = cchainChildren.length - 2; i >= 0; i -= 2) {
+              // Convert operator tokens into constant node corresponding to their enum status
+              let token = cchainChildren[i];
+              let tokenEnum = comparisonOperators.indexOf(token.op);
+              cchainChildren[i] = new ConstantNode(tokenEnum, tokenEnum + '', 'int');
+            }
+
+            return;
+          }
+        }
+      }
+    }, true);
+  } // Remove residual commas from the node
+
+
+  function removeCommas(root) {
+    root.applyAll(node => {
+      let children = node.children;
+      let i = children.length;
+
+      while (i--) {
+        if (children[i].type === 'comma') children.splice(i, 1);
+      }
+    }, true);
+  }
+  /**
+   * Parse a given list of tokens, returning a single ASTNode. At this point, the tokens are a list of the form
+   * { type: "function"|"variable"|"paren"|"operator"|"constant"|"comma", index: <index of the token in the original string>,
+   *  op?: <operator>, name?: <name of variable>, paren?: <type of paren> }
+   * @param tokens
+   * @returns {ASTNode}
+   */
+
+
+  function parseTokens(tokens) {
+    processConstantsAndVariables(tokens);
+    let root = new ASTGroup(tokens);
+    processParentheses(root);
+    processFunctions(root);
+    processUnaryAndExponentiation(root); // PEMDAS
+
+    processOperators(root, ['*', '/']);
+    processOperators(root, ['-', '+']);
+    processComparisonChains(root);
+    processOperators(root, comparisonOperators);
+    processOperators(root, ['and', 'or']);
+    removeCommas(root);
+    return root;
+  }
+
+  function parseString(string, types = {}) {
+    checkParensBalanced(string);
+    let tokens = [];
+
+    for (let token of tokenizer(string)) {
+      tokens.push(token);
+    }
+
+    checkValid(string, tokens);
+    let node = parseTokens(tokens).children[0];
+    return node;
+  }
+
   // Defines an interface between a user-facing getter/setter and the internal properties of an element. There is not a
   /**
    * Print object to string in a way that isn't too painful (limit the length of the string to 100 chars or so)
@@ -3317,18 +3840,18 @@
    */
 
   function relaxedPrint(obj, limit = 100) {
-    if (typeof obj === "number" || typeof obj === "boolean") {
+    if (typeof obj === 'number' || typeof obj === 'boolean') {
       return '' + obj;
-    } else if (typeof obj === "function") {
+    } else if (typeof obj === 'function') {
       let name = obj.name;
-      let ret = name ? "[function " + name : "[function]";
-      if (ret.length > limit) return "...";
+      let ret = name ? '[function ' + name : '[function]';
+      if (ret.length > limit) return '...';
       return ret;
-    } else if (typeof obj === "object") {
+    } else if (typeof obj === 'object') {
       let keys = Object.keys(obj).slice(0, 3);
 
       if (keys.length === 0) {
-        return "{}";
+        return '{}';
       }
 
       let keysUsed = 0;
@@ -3345,9 +3868,9 @@
       }
 
       if (keysUsed === 0) {
-        return "{ ... }";
+        return '{ ... }';
       } else {
-        let ret = "{ ";
+        let ret = '{ ';
 
         for (let i = 0; i < keysUsed; ++i) {
           ret += keys[i];
@@ -3356,12 +3879,12 @@
           if (i !== keysUsed - 1) ret += ', ';
         }
 
-        return ret + " }";
+        return ret + ' }';
       }
-    } else if (typeof obj === "string") {
+    } else if (typeof obj === 'string') {
       if (obj.length <= limit - 2) return "\"".concat(obj, "\"");
       let len = Math.max((limit / 2 | 0) - 4, 0);
-      return '"' + obj.slice(0, len) + " ... " + obj.slice(obj.length - len) + '"';
+      return '"' + obj.slice(0, len) + ' ... ' + obj.slice(obj.length - len) + '"';
     }
   }
 
@@ -3376,27 +3899,27 @@
   }
 
   function typecheckInteger(obj) {
-    if (!Number.isInteger(obj)) return "Expected $p to be an integer, not $v.";
+    if (!Number.isInteger(obj)) return 'Expected $p to be an integer, not $v.';
   }
 
   function genTypecheckRangedNumber(lo, hi, finite) {
-    let finiteMsg = finite ? "finite " : "";
+    let finiteMsg = finite ? 'finite ' : '';
 
     if (lo === undefined) {
-      return obj => typeof obj !== "number" || obj > hi || finite && !Number.isFinite(obj) ? "Expected $p to be a ".concat(finiteMsg, "number less than ").concat(hi, ", got $v.") : undefined;
+      return obj => typeof obj !== 'number' || obj > hi || finite && !Number.isFinite(obj) ? "Expected $p to be a ".concat(finiteMsg, "number less than ").concat(hi, ", got $v.") : undefined;
     } else if (hi === undefined) {
-      return obj => typeof obj !== "number" || obj < lo ? "Expected $p to be a ".concat(finiteMsg, "number greater than ").concat(lo, ", got $v.") : undefined;
+      return obj => typeof obj !== 'number' || obj < lo ? "Expected $p to be a ".concat(finiteMsg, "number greater than ").concat(lo, ", got $v.") : undefined;
     } else {
-      return obj => typeof obj !== "number" || obj < lo || obj > hi ? "Expected $p to be a ".concat(finiteMsg, "number in the range [").concat(lo, ", ").concat(hi, "], inclusive; got $v.") : undefined;
+      return obj => typeof obj !== 'number' || obj < lo || obj > hi ? "Expected $p to be a ".concat(finiteMsg, "number in the range [").concat(lo, ", ").concat(hi, "], inclusive; got $v.") : undefined;
     }
   }
 
   function typecheckNumber(obj) {
-    if (typeof obj !== "number") return "Expected $p to be a number, got $v.";
+    if (typeof obj !== 'number') return 'Expected $p to be a number, got $v.';
   }
 
   function typecheckFiniteNumber(obj) {
-    if (typeof obj !== "number" || !Number.isFinite(obj)) return "Expected $p to be a finite number, got $v.";
+    if (typeof obj !== 'number' || !Number.isFinite(obj)) return 'Expected $p to be a finite number, got $v.';
   }
 
   function createIntegerTypecheck(check) {
@@ -3427,31 +3950,38 @@
   }
 
   function booleanTypecheck(obj) {
-    return typeof obj !== "boolean" ? "Expected $p to be a boolean, got $v." : undefined;
+    return typeof obj !== 'boolean' ? 'Expected $p to be a boolean, got $v.' : undefined;
   }
 
   function stringTypecheck(obj) {
-    return typeof obj !== "string" ? "Expected $p to be a string, got $v." : undefined;
+    return typeof obj !== 'string' ? 'Expected $p to be a string, got $v.' : undefined;
+  }
+
+  function variableNameTypecheck(obj) {
+    return !isValidVariableName(obj) ? 'Expected $p to be a valid variable name, got $v. Variable ' : undefined;
   }
 
   function createTypecheck(check) {
-    if (typeof check === "string") check = {
+    if (typeof check === 'string') check = {
       type: check
     };
     let type = check.type;
 
     switch (type) {
-      case "integer":
+      case 'integer':
         return createIntegerTypecheck(check);
 
-      case "number":
+      case 'number':
         return createNumberTypecheck(check);
 
-      case "boolean":
+      case 'boolean':
         return booleanTypecheck;
 
-      case "string":
+      case 'string':
         return stringTypecheck;
+
+      case 'VariableName':
+        return variableNameTypecheck;
 
       default:
         throw new Error("Unrecognized typecheck type ".concat(type, "."));
@@ -3467,7 +3997,7 @@
     let x = 0,
         y = 0;
 
-    if (typeof obj === "number" || typeof obj === "string") ; else if (typeof obj === "object") {
+    if (typeof obj === 'number' || typeof obj === 'string') ; else if (typeof obj === 'object') {
       if (Array.isArray(obj)) {
         if (obj.length !== 2) {
           "Expected $p to be convertible to a Vec2, got $v (length ".concat(obj.length, ").");
@@ -3514,7 +4044,7 @@
   function vec2ArrayConversion(obj, f32 = true) {
     if (Array.isArray(obj)) {
       for (let i = 0; i < obj.length; ++i) {
-        if (typeof obj[i] !== "number") {
+        if (typeof obj[i] !== 'number') {
           return vec2NonFlatArrayConversion(obj);
         }
       } // Obj is just an array of numbers
@@ -3545,19 +4075,19 @@
 
 
   function createConversion(conversion) {
-    if (typeof conversion === "string") conversion = {
+    if (typeof conversion === 'string') conversion = {
       type: conversion
-    };else if (typeof conversion === "function") return conversion;
+    };else if (typeof conversion === 'function') return conversion;
     let type = conversion.type;
 
     switch (type) {
-      case "Color":
+      case 'Color':
         return colorConversion;
 
-      case "Vec2":
+      case 'Vec2':
         return vec2Conversion;
 
-      case "f32_vec2_array":
+      case 'f32_vec2_array':
         return vec2ArrayConversion;
 
       default:
@@ -3637,12 +4167,12 @@
 
       if (setter.typecheck) {
         let result = setter.typecheck(value);
-        if (result) throw new TypeError("Failed typecheck: ".concat(result.replace("$v", relaxedPrint(value)).replace("$p", 'parameter "' + propName + '"')));
+        if (result) throw new TypeError("Failed typecheck: ".concat(result.replace('$v', relaxedPrint(value)).replace('$p', 'parameter "' + propName + '"')));
       }
 
       if (setter.conversion) {
         let newValue = setter.conversion(value);
-        if (newValue === undefined) throw new TypeError("Failed conversion: ".concat(result.replace("$v", relaxedPrint(value)).replace("$p", 'parameter "' + propName + '"')));
+        if (newValue === undefined) throw new TypeError("Failed conversion: ".concat(result.replace('$v', relaxedPrint(value)).replace('$p', 'parameter "' + propName + '"')));
         value = newValue;
       }
 
@@ -3659,9 +4189,9 @@
     }
 
     function set(elem, propName, value) {
-      if (typeof propName === "object") {
+      if (typeof propName === 'object') {
         setDict(elem.props, propName);
-      } else if (typeof propName === "string") {
+      } else if (typeof propName === 'string') {
         _set(elem.props, propName, value);
       }
     }
@@ -3701,7 +4231,7 @@
         let def = instructions.default;
 
         if (instructions.evaluateDefault) {
-          if (typeof def !== "function") throw new Error("Internal instruction computation instruction says to evaluate the default value, but given default is not a function");
+          if (typeof def !== 'function') throw new Error('Internal instruction computation instruction says to evaluate the default value, but given default is not a function');
           return def();
         }
 
@@ -3712,14 +4242,14 @@
         let instructions = internal[propName];
         let computed = instructions.computed;
         let doCompose = !!instructions.compose;
-        if (computed === "none") continue;
+        if (computed === 'none') continue;
 
-        if (computed === "default") {
+        if (computed === 'default') {
           // Check whether the current value is undefined. If so, fill it with the default
           if (props.get(propName) === undefined) {
             props.set(propName, getDefault(instructions));
           }
-        } else if (computed === "user") {
+        } else if (computed === 'user') {
           // Check whether the user value is undefined, then the value, then the default
           let store = props.getPropertyStore(propName); // just to make things more efficient
 
@@ -3780,7 +4310,7 @@
        */
 
       this.id = (_params$id = params.id) !== null && _params$id !== void 0 ? _params$id : getStringID();
-      if (typeof this.id !== "string" || this.id.length === 0) throw new TypeError("The element id must be a non-empty string.");
+      if (typeof this.id !== 'string' || this.id.length === 0) throw new TypeError('The element id must be a non-empty string.');
       /**
        * The parent of this element; null if it has no parent
        * @type{Element|null}
@@ -3914,9 +4444,9 @@
 
 
     add(elem) {
-      if (elem.isScene()) throw new Error("Scene cannot be a child");
-      if (elem.parent) throw new Error("Element to be added already has a parent");
-      if (!(elem instanceof Element)) throw new TypeError("Element not element");
+      if (elem.isScene()) throw new Error('Scene cannot be a child');
+      if (elem.parent) throw new Error('Element to be added already has a parent');
+      if (!(elem instanceof Element)) throw new TypeError('Element not element');
       if (elem === this) throw new Error("Can't add self");
       if (elem.isChild(this)) throw new Error("Can't make cycle");
       this.children.push(elem);
@@ -3973,7 +4503,7 @@
         return this;
       }
 
-      throw new Error("Not a direct child");
+      throw new Error('Not a direct child');
     }
 
     setScene(scene) {
@@ -4100,7 +4630,7 @@
         finalY1 = obj[1];
         finalX2 = obj[2] + finalX1;
         finalY2 = obj[3] + finalY1;
-      } else if (typeof obj === "object") {
+      } else if (typeof obj === 'object') {
         var _x, _y, _w, _h, _cx, _cy;
 
         let {
@@ -4152,6 +4682,10 @@
       return this.getY2();
     }
 
+    tl() {
+      return new Vec2(this.x, this.y);
+    }
+
   }
   const boundingBoxTransform = {
     X: (x, box1, box2, flipX) => {
@@ -4193,7 +4727,7 @@
 
         return xy;
       } else {
-        throw new Error("No");
+        throw new Error('No');
       }
     },
 
@@ -4253,66 +4787,66 @@
   const sceneInterface$1 = constructInterface({
     interface: {
       width: {
-        description: "The width of the scene",
+        description: 'The width of the scene',
         typecheck: {
-          type: "integer",
+          type: 'integer',
           min: 100,
           max: 16384
         }
       },
       height: {
-        description: "The height of the scene",
+        description: 'The height of the scene',
         typecheck: {
-          type: "integer",
+          type: 'integer',
           min: 100,
           max: 16384
         }
       },
       dpr: {
-        description: "The device pixel ratio of the scene",
+        description: 'The device pixel ratio of the scene',
         typecheck: {
-          type: "number",
+          type: 'number',
           min: 1 / 32,
           max: 32
         } //setAs: "user"
 
       },
       backgroundColor: {
-        description: "The color of the scene background",
-        setAs: "user",
+        description: 'The color of the scene background',
+        setAs: 'user',
         conversion: {
-          type: "Color"
+          type: 'Color'
         }
       },
       sceneDims: {
-        description: "The dimensions of the scene",
+        description: 'The dimensions of the scene',
         readOnly: true
       }
     },
     internal: {
       width: {
-        type: "number",
-        computed: "default",
+        type: 'number',
+        computed: 'default',
         default: 640
       },
       height: {
-        type: "number",
-        computed: "default",
+        type: 'number',
+        computed: 'default',
         default: 480
       },
       dpr: {
-        type: "number",
-        computed: "default",
+        type: 'number',
+        computed: 'default',
         default: 1
       },
       backgroundColor: {
-        type: "Color",
-        computed: "user",
+        type: 'Color',
+        computed: 'user',
         default: Colors.TRANSPARENT
       },
       sceneDims: {
-        type: "SceneDimensions",
-        computed: "none"
+        type: 'SceneDimensions',
+        computed: 'none'
       }
     }
   });
@@ -4354,7 +4888,7 @@
 
     init() {
       this.scene = this;
-      this.props.setPropertyInheritance("sceneDims", true);
+      this.props.setPropertyInheritance('sceneDims', true);
     }
     /**
      * Compute the internal property "sceneDimensions"
@@ -4366,7 +4900,7 @@
         props
       } = this;
 
-      if (props.haveChanged(["width", "height", "dpr"])) {
+      if (props.haveChanged(['width', 'height', 'dpr'])) {
         const {
           width,
           height,
@@ -4374,7 +4908,7 @@
         } = props.proxy;
         const sceneDimensions = new SceneDimensions(width, height, dpr); // Equality check of 2 for deep comparison, in case width, height, dpr have not actually changed
 
-        props.set("sceneDims", sceneDimensions, 0
+        props.set('sceneDims', sceneDimensions, 0
         /* real */
         , 2
         /* equality check */
@@ -4400,9 +4934,9 @@
       this.updateProps();
       this.internal.renderInfo = {
         contexts: {
-          type: "scene",
-          dims: this.get("sceneDims"),
-          backgroundColor: this.get("backgroundColor")
+          type: 'scene',
+          dims: this.get('sceneDims'),
+          backgroundColor: this.get('backgroundColor')
         }
       };
     }
@@ -4421,98 +4955,6 @@
     }
 
   }
-
-  function _point_line_segment_compute(px, py, polyline_vertices, func) {
-    if (polyline_vertices.length < 4) {
-      return Infinity;
-    }
-
-    let f64 = ASMViews.f64;
-    let is_typed_array = polyline_vertices instanceof Float64Array || polyline_vertices instanceof Float32Array;
-
-    if (polyline_vertices.length > BufferSizes.f64) {
-      let i,
-          j,
-          min_distance = Infinity;
-
-      for (i = 0; i < polyline_vertices.length / BufferSizes.f64 + 1; ++i) {
-        let offset = i * BufferSizes.f64;
-        let cnt = polyline_vertices.length - offset;
-        let elem_c = Math.min(BufferSizes.f64, cnt);
-
-        if (is_typed_array) {
-          f64.set(polyline_vertices.subarray(offset, offset + elem_c));
-        } else {
-          for (j = 0; j < elem_c; ++j) {
-            f64[j] = polyline_vertices[offset + j];
-          }
-        }
-
-        let distance = func(px, py, 0, elem_c);
-
-        if (distance < min_distance) {
-          min_distance = distance;
-        }
-      }
-
-      return min_distance;
-    }
-
-    let i;
-
-    if (is_typed_array) {
-      ASMViews.f64.set(polyline_vertices);
-    } else {
-      for (i = 0; i < polyline_vertices.length; ++i) {
-        ASMViews.f64[i] = polyline_vertices[i];
-      }
-    }
-
-    return func(px, py, 0, polyline_vertices.length);
-  }
-
-  function pointLineSegmentMinDistance(px, py, polyline_vertices) {
-    return _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_distance);
-  }
-
-  function pointLineSegmentClosest(px, py, polyline_vertices) {
-    let distance = _point_line_segment_compute(px, py, polyline_vertices, GeometryASMFunctions.point_line_segment_min_closest);
-
-    let x = ASMViews.f64[0];
-    let y = ASMViews.f64[1];
-    return {
-      x,
-      y,
-      distance
-    };
-  }
-
-  function anglesBetween(polyline_vertices, threshold = 0.03, aspectRatio = 1) {
-    if (polyline_vertices.length >= BufferSizes.f64) {
-      throw new Error('Polyline too numerous');
-    }
-
-    if (polyline_vertices instanceof Float32Array || polyline_vertices instanceof Float64Array) {
-      ASMViews.f64.set(polyline_vertices);
-    }
-
-    let i;
-
-    for (i = 0; i < polyline_vertices.length; ++i) {
-      ASMViews.f64[i] = polyline_vertices[i];
-    }
-
-    GeometryASMFunctions.angles_between(0, i, threshold, aspectRatio);
-    return ASMViews.f64.subarray(0, i / 2 - 2);
-  }
-
-  let heap = new ArrayBuffer(0x200000);
-  let ASMViews = {
-    f64: new Float64Array(heap)
-  };
-  let BufferSizes = {
-    f64: ASMViews.f64.length
-  }; //var GeometryASMFunctions = GeometryASMFunctionsCreate(stdlib, null, heap)
 
   /**
    * Test whether three points are in counterclockwise order
@@ -4816,7 +5258,7 @@
 
         out.push(+item[0], (_item$ = item[1]) !== null && _item$ !== void 0 ? _item$ : 0);
       } else {
-        if (typeof item === "number") out.push(item);else throw new TypeError("Error when converting array to flattened Vec2 array: Unknown item ".concat(item, " at index ").concat(i, " in given array"));
+        if (typeof item === 'number') out.push(item);else throw new TypeError("Error when converting array to flattened Vec2 array: Unknown item ".concat(item, " at index ").concat(i, " in given array"));
       }
     }
 
@@ -4829,43 +5271,104 @@
     if (isTypedArray(arr)) return arr;
 
     for (let i = 0; i < arr.length; ++i) {
-      if (typeof arr[i] !== "number") return _flattenVec2ArrayInternal(arr);
+      if (typeof arr[i] !== 'number') return _flattenVec2ArrayInternal(arr);
     }
 
     return arr;
   }
+  function fastAtan2$1(y, x) {
+    let abs_x = Math.abs(x);
+    let abs_y = Math.abs(y);
+    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x; // atan(x) is about x - x^3 / 3 + x^5 / 5. We also note that atan(1/x) = pi/2 - atan(x) for x > 0, etc.
+
+    let s = a * a;
+    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+    if (abs_y > abs_x) r = 1.57079637 - r;
+    if (x < 0.0) r = 3.14159265 - r;
+    if (y < 0.0) r = -r;
+    return r;
+  }
   /**
-   * Get the actual bounding rectangle of a piece of text with a given vector anchor and spacing from that anchor. For
-   * example, getActualTextLocation( { x: 0, y: 0, w: 10, h: 10 }, { x: 50, y: 50 }, "S", 3 ) is { x: 45, y: 37, w: 10, h: 10 } )
-   * @param textRect {BoundingBox} The bounding box of the text rectangle (x and y are ignored)
-   * @param anchor {Vec2} The position to anchor to
-   * @param anchorDir {Vec2} The direction of the anchor
-   * @param spacing {number} The additional constant spacing from the anchor
-   * @returns {BoundingBox}
+   * Get the approximate angle between (x1, y1), (x2, y2) and (x3, y3), an operation which should ideally be extremely
+   * fast because it will be used repeatedly to know whether to refine a graph while assuming local linearity. The returned
+   * angle should be between 0 and Math.PI; the closer to Math.PI, the closer to linear. I'm going to write a faster
+   * version of this function soon.
+   * @param x1 {number}
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
    */
 
-  function getActualTextLocation(textRect, anchor, anchorDir, spacing) {
-    var _Vec2$fromObj, _Vec2$fromObj2, _spacing;
+  function approxAngleBetween(x1, y1, x2, y2, x3, y3) {
+    // (x1d, y1d) = p1 ---> p2
+    let x1d = x2 - x1;
+    let y1d = y2 - y1; // (x3d, y3d) = p3 ---> p2
 
-    // We get the center of the rectangle, starting at anchor and adding anchorDir * textRect.wh / 4 * (1 + spacing / norm(textRect.wh) / 2).
-    const {
-      w,
-      h
-    } = textRect;
-    anchor = (_Vec2$fromObj = Vec2.fromObj(anchor)) !== null && _Vec2$fromObj !== void 0 ? _Vec2$fromObj : new Vec2(0, 0);
-    anchorDir = (_Vec2$fromObj2 = Vec2.fromObj(anchorDir)) !== null && _Vec2$fromObj2 !== void 0 ? _Vec2$fromObj2 : new Vec2(0, 0);
-    spacing = (_spacing = spacing) !== null && _spacing !== void 0 ? _spacing : 0;
-    let centerX = anchor.x + anchorDir.x * (textRect.w / 4 + spacing);
-    let centerY = anchor.y + anchorDir.y * (textRect.h / 4 + spacing);
-    return BoundingBox.fromObj({
-      cx: centerX,
-      cy: centerY,
-      w,
-      h
-    });
-  } // Merging geometries of various types is a very common operation because we want to minimize bufferData and drawArrays
+    let x3d = x2 - x3;
+    let y3d = y2 - y3;
+    let res = Math.abs(fastAtan2$1(y3d, x3d) - fastAtan2$1(y1d, x1d));
 
-  // This code is pretty old, but surprisingly effective!
+    if (res > Math.PI) {
+      return 2 * Math.PI - res;
+    }
+
+    return res;
+  }
+  /**
+   * Distance
+   * @param px
+   * @param py
+   * @param ax
+   * @param ay
+   * @param bx
+   * @param by
+   * @returns {number}
+   */
+
+
+  function pointLineSegmentDistanceSquared(px, py, ax, ay, bx, by) {
+    // Copied from asm.js code, that's why
+    px = +px;
+    py = +py;
+    ax = +ax;
+    ay = +ay;
+    bx = +bx;
+    by = +by;
+    let t = 0.0,
+        tx = 0.0,
+        ty = 0.0,
+        xd = 0.0,
+        yd = 0.0;
+    tx = px - ax;
+    ty = py - ay;
+
+    if (ax !== bx || ay !== by) {
+      xd = bx - ax;
+      yd = by - ay;
+      t = (xd * (px - ax) + yd * (py - ay)) / (xd * xd + yd * yd); // Clamp t to [0, 1]
+
+      if (t < 0.0) {
+        t = 0.0;
+      } else if (t > 1.0) {
+        t = 1.0;
+      }
+
+      tx = ax + t * (bx - ax);
+      ty = ay + t * (by - ay);
+      tx = px - tx;
+      ty = py - ty;
+    }
+
+    return tx * tx + ty * ty;
+  }
+
+  function distanceSquared(x1, y1, x2, y2) {
+    let tx = x2 - x1;
+    let ty = y2 - y1;
+    return tx * tx + ty * ty;
+  }
   /**
    * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
    * handle overflows and underflows with much accuracy at all. We can thus use the straightforward calculation.
@@ -4878,6 +5381,8 @@
   function fastHypot(x, y) {
     return Math.sqrt(x * x + y * y);
   }
+
+  // This code is pretty old, but surprisingly effective!
   /**
    * The maximum number of vertices to be emitted by getDashedPolyline. This condition is here just to prevent dashed
    * polyline from causing a crash from OOM or just taking forever to finish.
@@ -5037,22 +5542,30 @@
 
       generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
       if (!pt2Contained) recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
-      if (result.length > MAX_DASHED_POLYLINE_VERTICES) throw new Error("Too many generated vertices in getDashedPolyline.");
+      if (result.length > MAX_DASHED_POLYLINE_VERTICES) throw new Error('Too many generated vertices in getDashedPolyline.');
     }
 
     return result;
   }
 
+  // Thanks Emscripten for the names!
+  // Scratch buffer for large operations where the length of the resultant array is unknown. There is no "malloc" here, so
+  // operations should copy their result to a new array once they are done (which should be relatively fast, since
+  // it's just a memcpy)
+  let HEAP = new ArrayBuffer(0x1000000);
+  let HEAPF32 = new Float32Array(HEAP);
+  let HEAPF64 = new Float64Array(HEAP);
+
   const ENDCAP_TYPES = {
-    'butt': 0,
-    'round': 1,
-    'square': 2
+    butt: 0,
+    round: 1,
+    square: 2
   };
   const JOIN_TYPES = {
-    'bevel': 0,
-    'miter': 2,
-    'round': 1,
-    'dynamic': 3
+    bevel: 0,
+    miter: 2,
+    round: 1,
+    dynamic: 3
   };
 
   const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
@@ -5082,6 +5595,8 @@
     if (y < 0) r = -r;
     return r;
   }
+
+  const glVertices = HEAPF32;
   /**
    * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
    * @param vertices {Array} The vertices of the polyline.
@@ -5089,15 +5604,13 @@
    * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
    */
 
-
   function calculatePolylineVertices(vertices, pen, box = null) {
     if (pen.dashPattern.length === 0) {
       return convertTriangleStrip(vertices, pen);
     } else {
       return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen);
     }
-  } // TODO convert to float array. Arrays are surprisingly memory inefficient (8 to 16x), not sure why
-
+  }
   function convertTriangleStrip(vertices, pen) {
     if (pen.thickness <= 0 || pen.endcapRes < MIN_RES_ANGLE || pen.joinRes < MIN_RES_ANGLE || vertices.length <= 3) {
       return {
@@ -5106,7 +5619,7 @@
       };
     }
 
-    let glVertices = [];
+    let index = -1;
     let origVertexCount = vertices.length / 2;
     let th = pen.thickness / 2;
     let maxMiterLength = th / fastCos(pen.joinRes / 2);
@@ -5114,31 +5627,52 @@
     let join = JOIN_TYPES[pen.join];
 
     if (endcap === undefined || join === undefined) {
-      throw new Error("Undefined endcap or join.");
-    }
+      throw new Error('Undefined endcap or join.');
+    } // p1 -- p2 -- p3, generating vertices for point p2
 
-    let x1, x2, x3, y1, y2, y3;
-    let v1x, v1y, v2x, v2y, v1l, v2l, b1_x, b1_y, scale, dis;
+
+    let x1 = 0,
+        x2,
+        x3 = vertices[0],
+        y1 = 0,
+        y2,
+        y3 = vertices[1];
+    let v1x = 0,
+        v1y = 0,
+        v2x = 0,
+        v2y = 0,
+        v1l = 0,
+        v2l = 0,
+        b1_x,
+        b1_y,
+        scale,
+        dis;
 
     for (let i = 0; i < origVertexCount; ++i) {
-      x1 = i !== 0 ? vertices[2 * i - 2] : NaN; // Previous vertex
+      x1 = i !== 0 ? x2 : NaN; // Previous vertex
 
-      x2 = vertices[2 * i]; // Current vertex
+      x2 = x3; // Current vertex
 
       x3 = i !== origVertexCount - 1 ? vertices[2 * i + 2] : NaN; // Next vertex
 
-      y1 = i !== 0 ? vertices[2 * i - 1] : NaN; // Previous vertex
+      y1 = i !== 0 ? y2 : NaN; // Previous vertex
 
-      y2 = vertices[2 * i + 1]; // Current vertex
+      y2 = y3; // Current vertex
 
       y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN; // Next vertex
 
+      if (Math.abs(x3) > 16384 || Math.abs(y3) > 16384) {
+        // Temporary
+        x3 = NaN;
+        y3 = NaN;
+      }
+
       if (isNaN(x2) || isNaN(y2)) {
-        glVertices.push(NaN, NaN);
+        continue;
       }
 
       if (isNaN(x1) || isNaN(y1)) {
-        // starting endcap
+        // The start of every endcap has two duplicate vertices for triangle strip reasons
         v2x = x3 - x2;
         v2y = y3 - y2;
         v2l = fastHypot(v2x, v2y);
@@ -5162,19 +5696,40 @@
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
           let o_x = x2 - th * v2y,
               o_y = y2 + th * v2x;
+          let theta_c = theta + 1 / steps_needed * Math.PI; // Duplicate first vertex
 
-          for (let i = 1; i <= steps_needed; ++i) {
+          let x = glVertices[++index] = x2 + th * fastCos(theta_c);
+          let y = glVertices[++index] = y2 + th * fastSin(theta_c);
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = o_x;
+          glVertices[++index] = o_y;
+
+          for (let i = 2; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
-            glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), o_x, o_y);
+            glVertices[++index] = x2 + th * fastCos(theta_c);
+            glVertices[++index] = y2 + th * fastSin(theta_c);
+            glVertices[++index] = o_x;
+            glVertices[++index] = o_y;
           }
 
           continue;
         } else if (endcap === 2) {
-          glVertices.push(x2 - th * v2x + th * v2y, y2 - th * v2y - th * v2x, x2 - th * v2x - th * v2y, y2 - th * v2y + th * v2x);
+          let x = glVertices[++index] = x2 - th * v2x + th * v2y;
+          let y = glVertices[++index] = y2 - th * v2y - th * v2x;
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = x2 - th * v2x - th * v2y;
+          glVertices[++index] = y2 - th * v2y + th * v2x;
           continue;
         } else {
           // no endcap
-          glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x);
+          let x = glVertices[++index] = x2 + th * v2y;
+          let y = glVertices[++index] = y2 - th * v2x;
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = x2 - th * v2y;
+          glVertices[++index] = y2 + th * v2x;
           continue;
         }
       }
@@ -5198,7 +5753,10 @@
         } // undefined >:(
 
 
-        glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x);
+        glVertices[++index] = x2 + th * v1y;
+        glVertices[++index] = y2 - th * v1x;
+        glVertices[++index] = x2 - th * v1y;
+        glVertices[++index] = y2 + th * v1x;
 
         if (endcap === 1) {
           let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2;
@@ -5208,10 +5766,17 @@
 
           for (let i = 1; i <= steps_needed; ++i) {
             let theta_c = theta + i / steps_needed * Math.PI;
-            glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), o_x, o_y);
+            glVertices[++index] = x2 + th * fastCos(theta_c);
+            glVertices[++index] = y2 + th * fastSin(theta_c);
+            glVertices[++index] = o_x;
+            glVertices[++index] = o_y;
           }
-        }
+        } // Duplicate last vertex of ending endcap
 
+
+        glVertices[index + 1] = glVertices[index - 1];
+        glVertices[index + 2] = glVertices[index];
+        index += 2;
         continue;
       } // all vertices are defined, time to draw a joinerrrrr
 
@@ -5242,7 +5807,10 @@
           // Draw a miter. But the length of the miter is massive and we're in dynamic mode (3), we exit this if statement and do a rounded join
           b1_x *= scale;
           b1_y *= scale;
-          glVertices.push(x2 - b1_x, y2 - b1_y, x2 + b1_x, y2 + b1_y);
+          glVertices[++index] = x2 - b1_x;
+          glVertices[++index] = y2 - b1_y;
+          glVertices[++index] = x2 + b1_x;
+          glVertices[++index] = y2 + b1_y;
           continue;
         }
       }
@@ -5271,7 +5839,10 @@
         v1y /= dis;
       }
 
-      glVertices.push(x2 + th * v1y, y2 - th * v1x, x2 - th * v1y, y2 + th * v1x);
+      glVertices[++index] = x2 + th * v1y;
+      glVertices[++index] = y2 - th * v1x;
+      glVertices[++index] = x2 - th * v1y;
+      glVertices[++index] = y2 + th * v1x;
 
       if (join === 1 || join === 3) {
         let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2;
@@ -5294,14 +5865,190 @@
 
         for (let i = 0; i <= steps_needed; ++i) {
           let theta_c = start_a + angle_subtended * i / steps_needed;
-          glVertices.push(x2 + th * fastCos(theta_c), y2 + th * fastSin(theta_c), x2, y2);
+          glVertices[++index] = x2 + th * fastCos(theta_c);
+          glVertices[++index] = y2 + th * fastSin(theta_c);
+          glVertices[++index] = x2;
+          glVertices[++index] = y2;
         }
       }
 
-      glVertices.push(x2 + th * v2y, y2 - th * v2x, x2 - th * v2y, y2 + th * v2x);
+      glVertices[++index] = x2 + th * v2y;
+      glVertices[++index] = y2 - th * v2x;
+      glVertices[++index] = x2 - th * v2y;
+      glVertices[++index] = y2 + th * v2x;
     }
 
-    return new Float32Array(glVertices);
+    let ret = new Float32Array(index >= 0 ? glVertices.subarray(0, index) : []);
+    return ret;
+  }
+
+  /**
+   * Contour representing a part of a polyline. Should be contiguous; contains no NaNs
+   */
+
+  class Contour {
+    constructor(data) {
+      this.data = data;
+    }
+
+    type() {
+      return this.data instanceof Float64Array ? 'f64' : 'f32';
+    }
+
+  }
+  /**
+   * Convert an array of polyline contours into a single float array with NaN spacings
+   * @param contourArray {Contour[]}
+   * @param type {string} Data type of the resulting flattened float array
+   */
+
+
+  function fromContours(contourArray, type = 'f32') {
+    // Convert an array of contours into a polyline array, with NaN spacings
+    let len = 0;
+
+    for (const contour of contourArray) {
+      len += contour.data.length;
+    }
+
+    len += 2 * contourArray.length - 2;
+    let ret = new (type === 'f32' ? Float32Array : Float64Array)(len);
+    let index = 0;
+
+    for (let i = 0; i < contourArray.length; ++i) {
+      const contour = contourArray[i];
+      ret.set(contour.data, index);
+      index += contour.data.length;
+
+      if (i !== contourArray.length - 1) {
+        ret[index] = NaN;
+        ret[index + 1] = NaN;
+      }
+
+      index += 2;
+    }
+
+    return ret;
+  }
+  /**
+   * Convert a flattened polyline array into a contour array
+   * @param array {Float32Array|Float64Array|Array} Flattened array of elements, potentially including NaN buffers
+   * @param type {string} Whether to create contours of an f32 or f64 variety
+   * @param cloneSubarrays {boolean} Whether to clone the subarrays
+   * @returns {Array}
+   */
+
+  function toContours(array, type = 'f32', cloneSubarrays = true) {
+    let arrType = type === 'f32' ? Float32Array : Float64Array;
+    let isF32 = array instanceof Float32Array;
+    let isF64 = array instanceof Float64Array;
+
+    if (!(isF32 && type === 'f32' || isF64 && type === 'f64')) {
+      cloneSubarrays = true;
+    }
+
+    if (!isF32 && !isF64) {
+      array = new arrType(array);
+      cloneSubarrays = false;
+    }
+
+    let contours = [];
+    /**
+     * Given a subarray of the original array, add a contour
+     * @param subarray {Float32Array|Float64Array}
+     */
+
+    function addContour(subarray) {
+      let contour = cloneSubarrays ? new arrType(subarray) : subarray;
+      contours.push(new Contour(contour));
+    }
+
+    let firstDefIndex = -1; // index of the first defined element
+
+    for (let i = 0; i < array.length; i += 2) {
+      let x = array[i];
+      let y = array[i + 1];
+
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        if (firstDefIndex !== -1) {
+          addContour(array.subarray(firstDefIndex, i));
+        }
+
+        firstDefIndex = -1;
+      } else {
+        if (firstDefIndex === -1) firstDefIndex = i;
+      }
+    }
+
+    if (firstDefIndex !== -1) addContour(array.subarray(firstDefIndex));
+    return contours;
+  }
+  /**
+   * Convert a polyline into a simplified form by trimming vertices which are unnecessary or otherwise manipulating it
+   * @param polyline {Float32Array|Float64Array}
+   */
+
+  function simplifyPolyline(polyline, {
+    type,
+    // type of the output; if not specified, assumed to be the same as the polyline (f32 or f64)
+    minRes = 0.5 // maximum deviation from a line that is considered non-linear
+
+  } = {}) {
+    if (!type) {
+      type = getTypedArrayType(polyline);
+
+      if (!type) {
+        type = 'f32';
+        polyline = new Float32Array(polyline);
+      }
+    }
+
+    let HEAP = type === 'f32' ? HEAPF32 : HEAPF64;
+    let x1,
+        y1,
+        x2 = polyline[0],
+        y2 = polyline[1],
+        x3 = polyline[2],
+        y3 = polyline[3],
+        minResSquared = minRes * minRes;
+    let outIndex = -1; // There are three simplifications to be made: eliding NaNs, compacting linear portions, and removing/faking vertices
+    // outside a bounding box. For now, let's focus on the second one
+
+    for (let i = 2; i < polyline.length; i += 2) {
+      x1 = x2;
+      y1 = y2;
+      x2 = x3;
+      y2 = y3;
+      x3 = polyline[i];
+      y3 = polyline[i + 1];
+      HEAP[++outIndex] = x1;
+      HEAP[++outIndex] = y1;
+      let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+
+      if (dstSquared < minResSquared) {
+        // We may be able to compact the vertices coming after x1, y1. For now, we just skip one vertex
+        let intermediateVertices = [x2, y2];
+
+        loop: for (; i < polyline.length; i += 2) {
+          x2 = x3;
+          y2 = y3;
+          intermediateVertices.push(x2, y2);
+          x3 = polyline[i];
+          y3 = polyline[i + 1];
+
+          for (let j = 0; j < intermediateVertices.length; j += 2) {
+            let x2 = intermediateVertices[j];
+            let y2 = intermediateVertices[j + 1];
+            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+            if (dstSquared >= minResSquared) break loop;
+          }
+        }
+      }
+    }
+
+    HEAP[++outIndex] = x2;
+    HEAP[++outIndex] = y2;
+    return new (getTypedArrayConstructor(type))(HEAP.subarray(0, outIndex + 1));
   }
 
   /**
@@ -5443,6 +6190,30 @@
       };
     }
 
+    graphToPixelArrInPlace(arr) {
+      let {
+        xm,
+        ym,
+        xb,
+        yb
+      } = this.getReducedGraphToPixelTransform();
+
+      for (let i = 0; i < arr.length; i += 2) {
+        arr[i] = xm * arr[i] + xb;
+        arr[i + 1] = ym * arr[i + 1] + yb;
+      }
+
+      return arr;
+    }
+    /**
+     * The size, in graph units, of a single pixel
+     */
+
+
+    graphPixelSize() {
+      return this.gh / this.ph;
+    }
+
   }
   class LinearPlot2DTransformConstraints {
     constructor(params) {}
@@ -5468,29 +6239,29 @@
   const defaultView = [-1, -1, 2, 2];
   const figureInterface = constructInterface({
     interface: {
-      "interactivity": {
-        description: "Whether interactivity is enabled",
+      interactivity: {
+        description: 'Whether interactivity is enabled',
         typecheck: {
-          type: "boolean"
+          type: 'boolean'
         }
       }
     },
     internal: {
       // Scene dims (inherited from above)
-      "sceneDims": {
-        computed: "none"
+      sceneDims: {
+        computed: 'none'
       },
       // Bounding box of the entire figure
-      "figureBoundingBox": {
-        computed: "none"
+      figureBoundingBox: {
+        computed: 'none'
       },
       // Box in which things are actually plotted
-      "plottingBox": {
-        computed: "none"
+      plottingBox: {
+        computed: 'none'
       },
       // Margin between the plotting box and figure bounding box
-      "margins": {
-        computed: "default",
+      margins: {
+        computed: 'default',
         default: {
           left: 30,
           right: 30,
@@ -5499,29 +6270,29 @@
         }
       },
       // Transformation from pixel to graph coordinates and vice versa
-      "plotTransform": {
-        computed: "default",
+      plotTransform: {
+        computed: 'default',
         default: () => new LinearPlot2DTransform(0, 0, 0, 0, ...defaultView),
         evaluateDefault: true
       },
       // Whether to force the plot transform to have a specific aspect ratio
-      "preserveAspectRatio": {
-        computed: "default",
+      preserveAspectRatio: {
+        computed: 'default',
         default: true
       },
       // The aspect ratio to force
-      "forceAspectRatio": {
-        computed: "default",
+      forceAspectRatio: {
+        computed: 'default',
         default: 1
       },
       // Interactivity
-      "interactivity": {
-        computed: "default",
+      interactivity: {
+        computed: 'default',
         default: true
       },
       // Constraints on where the transform can be (min zoom, max zoom, etc.)
-      "transformConstraints": {
-        computed: "default",
+      transformConstraints: {
+        computed: 'default',
         default: () => new LinearPlot2DTransformConstraints(),
         evaluateDefault: true
       }
@@ -5532,7 +6303,7 @@
 
   var _enableInteractivityListeners$1 = new WeakSet();
 
-  class NewFigure extends Group {
+  class Figure extends Group {
     constructor(...args) {
       super(...args);
 
@@ -5542,7 +6313,7 @@
     }
 
     init() {
-      this.props.configureProperty("plotTransform", {
+      this.props.configureProperty('plotTransform', {
         inherit: true
       });
     }
@@ -5558,7 +6329,7 @@
 
     toggleInteractivity() {
       let internal = this.internal;
-      let interactivity = this.props.get("interactivity");
+      let interactivity = this.props.get('interactivity');
 
       if (!!internal.interactivityListeners !== interactivity) {
         interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners$1, _enableInteractivityListeners2$1).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
@@ -5569,9 +6340,9 @@
       const {
         props
       } = this;
-      props.set("figureBoundingBox", props.get("sceneDims").getBoundingBox());
-      let margins = props.get("margins");
-      props.set("plottingBox", props.get("figureBoundingBox").squishAsymmetrically(margins.left, margins.right, margins.bottom, margins.top), 0
+      props.set('figureBoundingBox', props.get('sceneDims').getBoundingBox());
+      let margins = props.get('margins');
+      props.set('plottingBox', props.get('figureBoundingBox').squishAsymmetrically(margins.left, margins.right, margins.bottom, margins.top), 0
       /* real */
       , 2
       /* deep equality */
@@ -5584,8 +6355,8 @@
       } = this;
       this.internal.renderInfo = {
         contexts: {
-          type: "scissor",
-          scissor: props.get("plottingBox")
+          type: 'scissor',
+          scissor: props.get('plottingBox')
         }
       };
     }
@@ -5613,7 +6384,7 @@
         plotTransform.graphBox();
       }
 
-      props.markChanged("plotTransform");
+      props.markChanged('plotTransform');
     }
 
     getInterface() {
@@ -5641,19 +6412,19 @@
     let int = this.internal,
         props = this.props;
     let listeners = this.interactivityListeners = {};
-    this.addEventListener("mousedown", listeners.mousedown = evt => {
+    this.addEventListener('mousedown', listeners.mousedown = evt => {
       int.mouseDownAt = evt.pos;
-      int.graphMouseDownAt = props.get("plotTransform").pixelToGraph(int.mouseDownAt); // try to keep this constant
+      int.graphMouseDownAt = props.get('plotTransform').pixelToGraph(int.mouseDownAt); // try to keep this constant
 
       int.isDragging = true;
     });
-    this.addEventListener("mouseup", listeners.mousedown = () => {
+    this.addEventListener('mouseup', listeners.mousedown = () => {
       int.isDragging = false;
     });
-    this.addEventListener("mousemove", listeners.mousemove = evt => {
+    this.addEventListener('mousemove', listeners.mousemove = evt => {
       if (!int.isDragging) return;
-      let transform = props.get("plotTransform");
-      let constraints = props.get("transformConstraints");
+      let transform = props.get('plotTransform');
+      let constraints = props.get('transformConstraints');
       let newTransform = transform.clone(); // Get where the mouse is currently at and move (graphMouseDownAt) to (mouseDownAt)
 
       let graphMouseMoveAt = transform.pixelToGraph(evt.pos);
@@ -5661,18 +6432,18 @@
       newTransform.gx1 += translationNeeded.x;
       newTransform.gy1 += translationNeeded.y;
       newTransform = constraints.limitTransform(transform, newTransform);
-      props.set("plotTransform", newTransform, 0
+      props.set('plotTransform', newTransform, 0
       /* real */
       , 2
       /* deep equality */
       );
     }); // Scroll handler
 
-    this.addEventListener("wheel", listeners.wheel = evt => {
-      let transform = props.get("plotTransform");
-      let constraints = props.get("transformConstraints");
+    this.addEventListener('wheel', listeners.wheel = evt => {
+      let transform = props.get('plotTransform');
+      let constraints = props.get('transformConstraints');
       let newTransform = transform.clone();
-      let scaleFactor = 1 + Math.atanh(evt.deltaY / 300) / 300;
+      let scaleFactor = Math.exp(evt.deltaY / 1.5e5);
       let graphScrollAt = transform.pixelToGraph(evt.pos); // We need to scale graphBox at graphScrollAt with a scale factor. We translate it by -graphScrollAt, scale it by
       // sF, then translate it by graphScrollAt
 
@@ -5680,7 +6451,7 @@
       graphBox = graphBox.translate(graphScrollAt.mul(-1)).scale(scaleFactor).translate(graphScrollAt);
       newTransform.resizeToGraphBox(graphBox);
       newTransform = constraints.limitTransform(transform, newTransform);
-      props.set("plotTransform", newTransform, 0
+      props.set('plotTransform', newTransform, 0
       /* real */
       , 2
       /* deep equality */
@@ -6131,10 +6902,10 @@
 
   class TextRenderer {
     constructor() {
-      this.canvas = document.createElement("canvas");
-      let ctx = this.ctx = this.canvas.getContext("2d");
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
+      this.canvas = document.createElement('canvas');
+      let ctx = this.ctx = this.canvas.getContext('2d');
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
     }
     /**
      * Clear out all previous text stores. In the future, when doing a dynamic text packing, this will be called sometimes
@@ -6164,8 +6935,8 @@
       const {
         ctx
       } = this;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
     }
 
     drawText(textInfos) {
@@ -6204,7 +6975,7 @@
             canvasHeight = nextPowerOfTwo(packedHeight);
       this.resizeCanvas(canvasWidth, canvasHeight);
       this.clearText();
-      ctx.fillStyle = "black"; // Each draw is now { metrics: TextMetrics, rect: {w, h, x, y}, text, style }
+      ctx.fillStyle = 'black'; // Each draw is now { metrics: TextMetrics, rect: {w, h, x, y}, text, style }
 
       for (const draw of textInfos) {
         var _draw$style$shadowRad;
@@ -6216,10 +6987,10 @@
         let y = draw.rect.y + draw.metrics.actualBoundingBoxAscent + shadowRadius; // Stroke text behind the text with white
 
         if (shadowRadius) {
-          ctx.strokeStyle = "white";
+          ctx.strokeStyle = 'white';
           ctx.lineWidth = shadowRadius;
           ctx.strokeText(draw.text, x, y);
-          ctx.fillStyle = "black";
+          ctx.fillStyle = 'black';
         }
 
         ctx.fillText(draw.text, x, y); // The actual texture coordinates used should be minus the padding (which is only used for potpack)
@@ -6236,14 +7007,14 @@
     interface: _objectSpread2(_objectSpread2({}, sceneInterface.description.interface), {}, {
       interactivity: {
         typecheck: {
-          type: "boolean"
+          type: 'boolean'
         }
       }
     }),
     internal: _objectSpread2(_objectSpread2({}, sceneInterface.description.internal), {}, {
       interactivity: {
-        type: "boolean",
-        computed: "default",
+        type: 'boolean',
+        computed: 'default',
         default: true
       }
     })
@@ -6268,13 +7039,13 @@
 
     init(params) {
       super.init(params);
-      this.domElement = document.createElement("canvas");
-      this.bitmapRenderer = this.domElement.getContext("bitmaprenderer");
+      this.domElement = document.createElement('canvas');
+      this.bitmapRenderer = this.domElement.getContext('bitmaprenderer');
     }
 
     toggleInteractivity() {
       let internal = this.internal;
-      let interactivity = this.props.get("interactivity");
+      let interactivity = this.props.get('interactivity');
 
       if (!!internal.interactivityListeners !== interactivity) {
         interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners, _enableInteractivityListeners2).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
@@ -6294,17 +7065,15 @@
 
     resizeCanvas() {
       const {
-        width,
-        height,
-        dpr
+        sceneDims
       } = this.props.proxy;
       const {
         domElement
       } = this;
-      domElement.width = width * dpr;
-      domElement.height = height * dpr;
-      domElement.style.width = width + 'px';
-      domElement.style.height = height + 'px';
+      domElement.width = sceneDims.canvasWidth;
+      domElement.height = sceneDims.canvasWidth;
+      domElement.style.width = sceneDims.width + 'px';
+      domElement.style.height = sceneDims.height + 'px';
     }
 
   }
@@ -6332,10 +7101,10 @@
       return new Vec2(evt.clientX - rect.x, evt.clientY - rect.y);
     };
 
-    ["mousedown", "mousemove", "mouseup", "wheel"].forEach(eventName => {
+    ['mousedown', 'mousemove', 'mouseup', 'wheel'].forEach(eventName => {
       let listener;
 
-      if (eventName === "wheel") {
+      if (eventName === 'wheel') {
         listener = evt => {
           this.triggerEvent(eventName, {
             pos: getSceneCoords(evt),
@@ -6352,7 +7121,8 @@
         };
       }
 
-      this.domElement.addEventListener(eventName, listeners[eventName] = listener);
+      let elem = eventName === "mouseup" ? document : this.domElement;
+      elem.addEventListener(eventName, listeners[eventName] = listener);
     });
   };
 
@@ -6364,13 +7134,13 @@
 
   function adjustInstruction(instruction) {
     const type = instruction.type;
-    if (!type) throw new Error("Instruction does not have a type. Erroneous instruction: " + JSON.stringify(instruction));
+    if (!type) throw new Error('Instruction does not have a type. Erroneous instruction: ' + JSON.stringify(instruction));
     let out = Object.assign({}, instruction);
     let zIndex = out.zIndex;
     let escapeContext = out.escapeContext; // Fill in zIndex value for sorting
 
     if (zIndex === undefined) {
-      if (type === "text") {
+      if (type === 'text') {
         out.zIndex = Infinity;
       } else {
         out.zIndex = 0;
@@ -6379,13 +7149,13 @@
 
     if (escapeContext === undefined) {
       // Default text value
-      if (type === "text") {
-        out.escapeContext = "top";
+      if (type === 'text') {
+        out.escapeContext = 'top';
       }
     } else if (escapeContext) {
       // Validate
-      if (typeof escapeContext !== "string") {
-        throw new Error("Instruction has an invalid escape context value. Erroneous instruction: " + JSON.stringify(instruction));
+      if (typeof escapeContext !== 'string') {
+        throw new Error('Instruction has an invalid escape context value. Erroneous instruction: ' + JSON.stringify(instruction));
       }
     }
 
@@ -6399,11 +7169,11 @@
 
 
   function matchEscapeContext(context, escapeContext) {
-    if (typeof escapeContext === "string") {
+    if (typeof escapeContext === 'string') {
       return context.id === escapeContext;
-    } else if (typeof escapeContext === "object") {
+    } else if (typeof escapeContext === 'object') {
       let type = escapeContext.type;
-      if (!type) throw new Error("escapeContext has insufficient information to determine which context to escape to");
+      if (!type) throw new Error('escapeContext has insufficient information to determine which context to escape to');
       return context.info.type !== type;
     } else {
       throw new TypeError("Invalid escapeContext value ".concat(escapeContext));
@@ -6454,14 +7224,14 @@
       const contextMap = this.contextMap;
       let topContext = {
         parent: null,
-        id: "top",
+        id: 'top',
         info: {
-          type: "top"
+          type: 'top'
         },
         children: [],
         contextDepth: 0
       };
-      contextMap.set("top", topContext);
+      contextMap.set('top', topContext);
       let currentContext = topContext;
       let contextDepth = 0;
       recursivelyBuild(scene); // Recurse through the scene elements, not yet handling zIndex and escapeContext
@@ -6482,14 +7252,14 @@
 
             contextDepth++;
             let newContext = {
-              type: "context",
+              type: 'context',
               id: (_c$id = c.id) !== null && _c$id !== void 0 ? _c$id : elem.id + '-' + getVersionID(),
               parent: currentContext,
               children: [],
               info: c,
               zIndex: (_c$zIndex = c.zIndex) !== null && _c$zIndex !== void 0 ? _c$zIndex : 0,
               contextDepth,
-              escapeContext: c.type === "escapeContext" ? c.escapeContext : null
+              escapeContext: c.type === 'escapeContext' ? c.escapeContext : null
             };
             contextMap.set(newContext.id, newContext);
             currentContext.children.push(newContext);
@@ -6539,7 +7309,7 @@
 
             // Is context
             let contextInstruction = {
-              type: "context",
+              type: 'context',
               id: child.id,
               zIndex: (_child$zIndex = child.zIndex) !== null && _child$zIndex !== void 0 ? _child$zIndex : 0,
               escapeContext: child.escapeContext
@@ -6596,7 +7366,7 @@
         const instructions = c.instructions;
 
         for (let i = instructions.length - 1; i >= 0; --i) {
-          if (instructions[i].type === "text") ret.push(instructions[i]);
+          if (instructions[i].type === 'text') ret.push(instructions[i]);
         }
       });
       return ret;
@@ -6605,7 +7375,7 @@
     loadTextAtlas(img) {
       const renderer = this.renderer;
       const gl = renderer.gl;
-      let name = "__" + this.id + "-text";
+      let name = '__' + this.id + '-text';
       let texture = renderer.getTexture(name);
       let needsInitialize = !texture;
 
@@ -6629,6 +7399,13 @@
       };
     }
 
+    destroyTextAtlas() {
+      const renderer = this.renderer;
+      renderer.gl;
+      let name = '__' + this.id + '-text';
+      renderer.deleteTexture(name);
+    }
+
     freeCompiledInstructions(inst) {
       if (!inst) return;
 
@@ -6647,7 +7424,7 @@
       // Convert context instructions into a series of renderable instructions, generating appropriate vertex arrays and
       // textures. Until this step, the scene graph is independent of the renderer.
       const renderer = this.renderer;
-      if (!renderer) throw new Error("Compiling a scene graph requires the graph to be attached to a renderer.");
+      if (!renderer) throw new Error('Compiling a scene graph requires the graph to be attached to a renderer.');
       const gl = renderer.gl;
       const textRenderer = renderer.textRenderer;
       const textInstructions = this.getTextInstructions();
@@ -6663,8 +7440,8 @@
         const compiledInstructions = [];
 
         switch (context.info.type) {
-          case "scene":
-          case "scissor":
+          case 'scene':
+          case 'scissor':
             compiledInstructions.push(context.info);
             break;
         } // Super simple (and hella inefficient) for now
@@ -6672,11 +7449,11 @@
 
         for (const instruction of instructions) {
           switch (instruction.type) {
-            case "context":
+            case 'context':
               compiledInstructions.push(instruction);
               break;
 
-            case "polyline":
+            case 'polyline':
               {
                 let vertices = convertTriangleStrip(instruction.vertices, instruction.pen);
                 let color = instruction.pen.color;
@@ -6692,7 +7469,7 @@
                 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
                 gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
                 let compiled = {
-                  type: "triangle_strip",
+                  type: 'triangle_strip',
                   vao: vaoName,
                   buffers: [buffName],
                   vertexCount: vertices.length / 2,
@@ -6702,7 +7479,7 @@
                 break;
               }
 
-            case "text":
+            case 'text':
               {
                 let tcName = context.id + '-' + getVersionID();
                 let scName = context.id + '-' + getVersionID();
@@ -6716,9 +7493,15 @@
                 /* position buffer */
                 );
                 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-                let rect = getActualTextLocation(instruction.rect, instruction.pos);
-                rect.x |= 0;
-                rect.y |= 0;
+                let pos = instruction.pos,
+                    rect = instruction.rect; // Round to pixels so it looks nicer
+
+                rect = {
+                  x: pos.x | 0,
+                  y: pos.y | 0,
+                  w: rect.w,
+                  h: rect.h
+                };
                 gl.bufferData(gl.ARRAY_BUFFER, generateRectangleTriangleStrip(rect), gl.STATIC_DRAW);
                 gl.bindBuffer(gl.ARRAY_BUFFER, textureCoords);
                 gl.enableVertexAttribArray(1
@@ -6727,7 +7510,7 @@
                 gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
                 gl.bufferData(gl.ARRAY_BUFFER, generateRectangleTriangleStrip(instruction.rect), gl.STATIC_DRAW);
                 let compiled = {
-                  type: "text",
+                  type: 'text',
                   vao: vaoName,
                   buffers: [tcName, scName],
                   vertexCount: 4,
@@ -6737,7 +7520,7 @@
                 break;
               }
 
-            case "triangle_strip":
+            case 'triangle_strip':
               {
                 let vertices = instruction.vertices;
                 let color = instruction.color;
@@ -6753,7 +7536,7 @@
                 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
                 gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
                 let compiled = {
-                  type: "triangle_strip",
+                  type: 'triangle_strip',
                   vao: vaoName,
                   buffers: [buffName],
                   vertexCount: vertices.length / 2,
@@ -6763,7 +7546,7 @@
                 break;
               }
 
-            case "debug":
+            case 'debug':
               {
                 let buffName = context.id + '-' + getVersionID();
                 let vaoName = context.id + '-' + getVersionID();
@@ -6779,15 +7562,15 @@
 
                 if (instruction.rect) {
                   let rect = BoundingBox.fromObj(instruction.rect);
-                  if (!rect) throw new Error("Invalid rectangle debug instruction");
+                  if (!rect) throw new Error('Invalid rectangle debug instruction');
                   vertices = generateRectangleDebug(rect);
                 } else {
-                  throw new Error("Unrecognized debug instruction");
+                  throw new Error('Unrecognized debug instruction');
                 }
 
                 gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
                 let compiled = {
-                  type: "line_strip",
+                  type: 'line_strip',
                   vao: vaoName,
                   buffers: [buffName],
                   vertexCount: vertices.length / 2,
@@ -6804,19 +7587,19 @@
 
         gl.bindVertexArray(null);
         compiledInstructions.push({
-          type: "pop_context"
+          type: 'pop_context'
         });
         context.compiledInstructions = compiledInstructions;
       });
     } // Yield a list of all compiled instructions
 
 
-    forEachCompiledInstruction(callback, contextID = "top") {
+    forEachCompiledInstruction(callback, contextID = 'top') {
       let ctx = this.contextMap.get(contextID);
 
       if (ctx.compiledInstructions) {
         for (const instruction of ctx.compiledInstructions) {
-          if (instruction.type === "context") {
+          if (instruction.type === 'context') {
             this.forEachCompiledInstruction(callback, instruction.id);
           } else {
             callback(instruction);
@@ -6833,6 +7616,7 @@
 
     destroy() {
       this.forEachContext(c => this.freeCompiledInstructions(c.compiledInstructions));
+      this.destroyTextAtlas();
     }
 
   }
@@ -6949,8 +7733,8 @@
 
   class WebGLRenderer {
     constructor() {
-      const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl2");
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2');
       /**
        * The main rendering buffer
        * @type {HTMLCanvasElement}
@@ -7113,11 +7897,11 @@
     }
 
     monochromaticGeometryProgram() {
-      let program = this.getProgram("__MonochromaticGeometry");
+      let program = this.getProgram('__MonochromaticGeometry');
 
       if (!program) {
         const programDesc = MonochromaticGeometryProgram;
-        program = this.createProgram("__MonochromaticGeometry", programDesc.vert, programDesc.frag, {
+        program = this.createProgram('__MonochromaticGeometry', programDesc.vert, programDesc.frag, {
           vertexPosition: 0
         }, ['xyScale', 'color']);
       }
@@ -7126,14 +7910,14 @@
     }
 
     textProgram() {
-      let program = this.getProgram("__Text");
+      let program = this.getProgram('__Text');
 
       if (!program) {
         const programDesc = TextProgram;
-        program = this.createProgram("__Text", programDesc.vert, programDesc.frag, {
+        program = this.createProgram('__Text', programDesc.vert, programDesc.frag, {
           vertexPosition: 0,
           texCoords: 1
-        }, ["textureSize", "xyScale", "textAtlas", "color"]);
+        }, ['textureSize', 'xyScale', 'textAtlas', 'color']);
       }
 
       return program;
@@ -7152,8 +7936,6 @@
         canvas
       } = this;
       this.dpr = dpr;
-      width *= dpr;
-      height *= dpr;
 
       if (canvas.width === width && canvas.height === height) {
         this.clearCanvas(clear);
@@ -7178,7 +7960,11 @@
     }
 
     getXYScale() {
-      return [2 / this.canvas.width, -2 / this.canvas.height];
+      let {
+        canvas,
+        dpr
+      } = this;
+      return [2 / canvas.width * dpr, -2 / canvas.height * dpr];
     }
 
     renderScene(scene, log = false) {
@@ -7209,6 +7995,7 @@
       const setScissor = (enabled, box) => {
         scissorTest = enabled;
         scissorBox = box;
+        let dpr = this.dpr;
 
         if (enabled) {
           gl.enable(gl.SCISSOR_TEST);
@@ -7217,8 +8004,9 @@
         }
 
         if (box) {
-          // GL scissoring is from bottom left corner, not top left
-          gl.scissor(box.x, this.canvas.height - box.y - box.h, box.w, box.h);
+          // GL scissoring is from bottom left corner, not top left. One of those annoying cases where we care about dpr
+          // since we're working in pixels, not CSS pixels
+          gl.scissor(dpr * box.x, this.canvas.height - dpr * (box.y + box.h), dpr * box.w, dpr * box.h);
         }
       };
 
@@ -7229,7 +8017,7 @@
         let drawMode = 0;
 
         switch (instruction.type) {
-          case "scene":
+          case 'scene':
             {
               const {
                 dims,
@@ -7240,10 +8028,10 @@
               break;
             }
 
-          case "scissor":
+          case 'scissor':
             {
               contexts.push({
-                type: "set_scissor",
+                type: 'set_scissor',
                 enable: scissorTest,
                 scissor: scissorBox
               });
@@ -7251,7 +8039,7 @@
               break;
             }
 
-          case "text":
+          case 'text':
             {
               const program = this.textProgram();
               gl.useProgram(program.glProgram);
@@ -7271,17 +8059,17 @@
               break;
             }
 
-          case "triangle_strip":
+          case 'triangle_strip':
             // LOL
             drawMode++;
 
-          case "triangles":
+          case 'triangles':
             drawMode++;
 
-          case "line_strip":
+          case 'line_strip':
             drawMode += 2;
 
-          case "lines":
+          case 'lines':
             drawMode++;
             {
               const program = this.monochromaticGeometryProgram();
@@ -7294,13 +8082,13 @@
               break;
             }
 
-          case "pop_context":
+          case 'pop_context':
             {
               const popped = contexts.pop();
               if (!popped) break;
 
               switch (popped.type) {
-                case "set_scissor":
+                case 'set_scissor':
                   {
                     setScissor(popped.enabled, popped.scissor);
                     break;
@@ -7331,30 +8119,30 @@
   let textElementInterface = constructInterface({
     interface: {
       style: {
-        description: "The style of the text.",
-        setAs: "user",
+        description: 'The style of the text.',
+        setAs: 'user',
         merge: true
       },
       position: {
-        description: "The position of the text.",
+        description: 'The position of the text.',
         conversion: {
-          type: "Vec2"
+          type: 'Vec2'
         },
-        target: "pos"
+        target: 'pos'
       },
       text: {
-        description: "The string of text.",
-        typecheck: "string"
+        description: 'The string of text.',
+        typecheck: 'string'
       }
     },
     internal: {
       pos: {
-        type: "Vec2",
-        computed: "none"
+        type: 'Vec2',
+        computed: 'none'
       },
       style: {
-        type: "TextStyle",
-        computed: "user",
+        type: 'TextStyle',
+        computed: 'user',
         compose: true,
         default: TextStyle.default
       }
@@ -7369,10 +8157,10 @@
       this.defaultComputeProps();
       this.internal.renderInfo = {
         instructions: {
-          type: "text",
-          text: this.props.get("text"),
-          pos: this.props.get("pos"),
-          style: this.props.get("style")
+          type: 'text',
+          text: this.props.get('text'),
+          pos: this.props.get('pos'),
+          style: this.props.get('style')
         }
       };
     }
@@ -7431,7 +8219,7 @@
 
       this.internal.renderInfo = {
         instructions: {
-          type: "triangle_strip",
+          type: 'triangle_strip',
           vertices,
           color
         }
@@ -7441,44 +8229,48 @@
   }
 
   const polylineInterface = constructInterface({
-    pen: {
-      setAs: "user",
-      setMerge: true,
-      getAs: "real",
-      description: "The pen used to draw the polyline."
+    interface: {
+      pen: {
+        setAs: 'user',
+        description: 'The pen used to draw the polyline.'
+      },
+      vertices: {
+        conversion: {
+          type: 'f32_vec2_array'
+        },
+        description: 'The vertices of the polyline.'
+      }
     },
-    vertices: {
-      conversion: "f32_vec2_array",
-      description: "The vertices of the polyline."
+    internal: {
+      pen: {
+        type: 'Pen',
+        computed: 'user',
+        default: DefaultStyles.Pen,
+        compose: true
+      },
+      vertices: {
+        computed: 'none'
+      }
     }
   });
   class PolylineElement extends Element {
     _update() {
-      const {
-        props
-      } = this;
-
-      if (props.hasChanged("pen")) {
-        let pen = Pen.compose(DefaultStyles.Pen, props.getUserValue("pen"));
-        props.set("pen", pen);
-      }
-    }
-
-    getInterface() {
-      return polylineInterface;
-    }
-
-    getRenderingInfo() {
+      this.defaultComputeProps();
       let {
         vertices,
         pen
       } = this.props.proxy;
-      if (!vertices || !pen) return;
-      return {
-        type: "polyline",
-        vertices,
-        pen
-      };
+      this.internal.renderInfo = vertices && pen ? {
+        instructions: {
+          type: 'polyline',
+          vertices,
+          pen
+        }
+      } : null;
+    }
+
+    getInterface() {
+      return polylineInterface;
     }
 
   }
@@ -7505,33 +8297,33 @@
     switch (mode) {
       case ROUNDING_MODE.NEAREST:
       case ROUNDING_MODE.TIES_EVEN:
-        return "NEAREST";
+        return 'NEAREST';
 
       case ROUNDING_MODE.UP:
-        return "UP";
+        return 'UP';
 
       case ROUNDING_MODE.DOWN:
-        return "DOWN";
+        return 'DOWN';
 
       case ROUNDING_MODE.TOWARD_INF:
-        return "TOWARD_INF";
+        return 'TOWARD_INF';
 
       case ROUNDING_MODE.TOWARD_ZERO:
-        return "TOWARD_ZERO";
+        return 'TOWARD_ZERO';
 
       case ROUNDING_MODE.TIES_AWAY:
-        return "TIES_AWAY";
+        return 'TIES_AWAY';
 
       case ROUNDING_MODE.WHATEVER:
-        return "WHATEVER";
+        return 'WHATEVER';
     }
   }
 
   const BIGINT_WORD_BITS = 30;
   const BIGINT_WORD_PART_BITS = BIGINT_WORD_BITS / 2;
-  const BIGINT_WORD_BIT_MASK = 0x3FFFFFFF; // get the last 30 bits of a given word (removing the two junk bits)
+  const BIGINT_WORD_BIT_MASK = 0x3fffffff; // get the last 30 bits of a given word (removing the two junk bits)
 
-  const BIGINT_WORD_LOW_PART_BIT_MASK = 0x7FFF; // get the last 15 bits of a given word. Getting the high part is just >> 15
+  const BIGINT_WORD_LOW_PART_BIT_MASK = 0x7fff; // get the last 15 bits of a given word. Getting the high part is just >> 15
 
   const BIGINT_WORD_OVERFLOW_BIT_MASK = 0x40000000; // get the overflow bit of a given word (aka the 31st bit)
 
@@ -7646,7 +8438,7 @@
       if (i === -1) return isArray ? [0] : new Int32Array(1);
       return isArray ? array.slice(0, i + 1) : array.subarray(0, i + 1);
     } else {
-      throw new TypeError("trimTrailingZeroes only operates on Arrays and TypedArrays");
+      throw new TypeError('trimTrailingZeroes only operates on Arrays and TypedArrays');
     }
   } // lol
 
@@ -7668,11 +8460,11 @@
 
   class BigInt {
     constructor(arg1, arg2) {
-      if (typeof arg1 === "number") {
+      if (typeof arg1 === 'number') {
         this.initFromNumber(arg1);
-      } else if (typeof arg1 === "string") {
+      } else if (typeof arg1 === 'string') {
         this.initFromString(arg1, arg2);
-      } else if (typeof arg1 === "bigint") {
+      } else if (typeof arg1 === 'bigint') {
         this.initFromNativeBigint(arg1);
       } else if (arg1 instanceof BigInt) {
         this.initFromBigint(arg1);
@@ -7877,7 +8669,7 @@
     }
 
     addInPlace(num, flipSign = false) {
-      if (typeof num === "number") {
+      if (typeof num === 'number') {
         if (num === 0) return this;
 
         if (this.sign === 0) {
@@ -8024,7 +8816,7 @@
         }
 
         return orEqual;
-      } else if (typeof bigint === "number") {
+      } else if (typeof bigint === 'number') {
         if (!Number.isFinite(bigint)) return false;
         let sign = this.sign,
             otherSign = Math.sign(bigint);
@@ -8139,7 +8931,7 @@
 
 
     initFromNumber(val) {
-      if (!Number.isFinite(val)) throw new RangeError("Numeric value passed to BigInt constructor must be finite");
+      if (!Number.isFinite(val)) throw new RangeError('Numeric value passed to BigInt constructor must be finite');
       val = Math.trunc(val); // Guaranteed to be an integer
 
       const sign = Math.sign(val) + 0; // convert -0 to +0 :D
@@ -8183,7 +8975,7 @@
 
 
     initFromString(str, radix = 10) {
-      if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError("Radix must be an integer between 2 and 36");
+      if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError('Radix must be an integer between 2 and 36');
 
       function throwInvalidDigitError(digit, index) {
         throw new RangeError("Invalid digit '".concat(String.fromCharCode(digit), "' in base-").concat(radix, " string at index ").concat(index));
@@ -8284,7 +9076,7 @@
 
     leftShiftInPlace(count) {
       count = count | 0;
-      if (!Number.isInteger(count) || count < 0) throw new RangeError("Left shift count must be a nonnegative integer");
+      if (!Number.isInteger(count) || count < 0) throw new RangeError('Left shift count must be a nonnegative integer');
       if (count === 0) return; // Number of bits after shifting
 
       let newBitCount = this.bitCount() + count;
@@ -8332,7 +9124,7 @@
 
 
     multiplyInPlace(val) {
-      if (typeof val === "number" && Math.abs(val) <= BIGINT_WORD_MAX) {
+      if (typeof val === 'number' && Math.abs(val) <= BIGINT_WORD_MAX) {
         if (val === 0) {
           this.setZero();
           return;
@@ -8404,7 +9196,7 @@
 
     rightShiftInPlace(count) {
       count = count | 0;
-      if (!Number.isInteger(count) || count < 0) throw new RangeError("Right shift count must be a nonnegative integer");
+      if (!Number.isInteger(count) || count < 0) throw new RangeError('Right shift count must be a nonnegative integer');
       if (count === 0) return; // Number of bits after shifting
 
       let newBitCount = this.bitCount() - count;
@@ -8450,7 +9242,7 @@
 
     toLargeRadixInternal(radix) {
       radix = +radix;
-      if (!Number.isInteger(radix) || radix <= 4294967296 || radix >= 4503599627370496) throw new RangeError("Base of radix conversion must be an integer between 4294967296 and 4503599627370496, inclusive.");
+      if (!Number.isInteger(radix) || radix <= 4294967296 || radix >= 4503599627370496) throw new RangeError('Base of radix conversion must be an integer between 4294967296 and 4503599627370496, inclusive.');
       const digitsOut = [0];
       const {
         words
@@ -8543,7 +9335,7 @@
 
     toRadixInternal(radix) {
       radix = +radix;
-      if (!Number.isInteger(radix) || radix <= 1 || radix >= 1125899906842600) throw new RangeError("Base of radix conversion must be an integer between 2 and 1125899906842600, inclusive."); // We construct the output via decomposing the integer into a series of operations of either x * 2 or x + 1,
+      if (!Number.isInteger(radix) || radix <= 1 || radix >= 1125899906842600) throw new RangeError('Base of radix conversion must be an integer between 2 and 1125899906842600, inclusive.'); // We construct the output via decomposing the integer into a series of operations of either x * 2 or x + 1,
       // applying each to the digitsOut array. These operations correspond to the bits of the BigInt in reverse order.
 
       const digitsOut = [];
@@ -8693,7 +9485,7 @@
       // The algorithm is as follows: We calculate the digits of the integer in a base (radix)^n, where n is chosen so that
       // the base fits nicely into a JS number. We then go chunk by chunk and convert to string, then concatenate
       // everything into a single output
-      if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError("Base of radix conversion must be an integer between 2 and 36, inclusive.");
+      if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw new RangeError('Base of radix conversion must be an integer between 2 and 36, inclusive.');
       const CHUNKING_EXPONENTS = [50, 1125899906842624, 31, 617673396283947, 25, 1125899906842624, 21, 476837158203125, 19, 609359740010496, 17, 232630513987207, 16, 281474976710656, 15, 205891132094649, 15, 1000000000000000, // for example, we convert to base 10^15 instead of 10 first
       14, 379749833583241, 13, 106993205379072, 13, 302875106592253, 13, 793714773254144, 12, 129746337890625, 12, 281474976710656, 12, 582622237229761, 11, 64268410079232, 11, 116490258898219, 11, 204800000000000, 11, 350277500542221, 11, 584318301411328, 11, 952809757913927, 10, 63403380965376, 10, 95367431640625, 10, 141167095653376, 10, 205891132094649, 10, 296196766695424, 10, 420707233300201, 10, 590490000000000, 10, 819628286980801, 10, 1125899906842624, 9, 46411484401953, 9, 60716992766464, 9, 78815638671875, 9, 101559956668416];
       const CHUNK_EXPONENT = CHUNKING_EXPONENTS[2 * radix - 4];
@@ -9332,23 +10124,23 @@
     let newMantissa = new Int32Array(neededWordsForPrecision(precision) + 1); // extra word for overflow
     // Decompose the given integer into two 15-bit words for the multiplication
 
-    let word1Lo = int & 0x7FFF;
+    let word1Lo = int & 0x7fff;
     let word1Hi = int >> 15;
     let carry = 0;
 
     for (let i = mantissa.length - 1; i >= 0; --i) {
       // Multiply the word, storing the low part and tracking the high part
       let word = mantissa[i];
-      let word2Lo = word & 0x7FFF;
+      let word2Lo = word & 0x7fff;
       let word2Hi = word >> 15;
       let low = Math.imul(word1Lo, word2Lo),
           high = Math.imul(word1Hi, word2Hi);
       let middle = Math.imul(word2Lo, word1Hi) + Math.imul(word1Lo, word2Hi);
-      low += ((middle & 0x7FFF) << 15) + carry;
+      low += ((middle & 0x7fff) << 15) + carry;
 
-      if (low > 0x3FFFFFFF) {
+      if (low > 0x3fffffff) {
         high += low >> 30;
-        low &= 0x3FFFFFFF;
+        low &= 0x3fffffff;
       }
 
       high += middle >> 15;
@@ -9387,24 +10179,24 @@
 
     for (let i = mant1.length; i >= 0; --i) {
       let mant1Word = mant1[i] | 0;
-      let mant1WordLo = mant1Word & 0x7FFF;
+      let mant1WordLo = mant1Word & 0x7fff;
       let mant1WordHi = mant1Word >> 15;
       let carry = 0,
           j = mant2.length - 1;
 
       for (; j >= 0; --j) {
         let mant2Word = mant2[j] | 0;
-        let mant2WordLo = mant2Word & 0x7FFF;
+        let mant2WordLo = mant2Word & 0x7fff;
         let mant2WordHi = mant2Word >> 15;
         let low = Math.imul(mant1WordLo, mant2WordLo),
             high = Math.imul(mant1WordHi, mant2WordHi);
         let middle = Math.imul(mant2WordLo, mant1WordHi) + Math.imul(mant1WordLo, mant2WordHi) | 0;
-        low += ((middle & 0x7FFF) << 15) + carry + arr[i + j + 1];
+        low += ((middle & 0x7fff) << 15) + carry + arr[i + j + 1];
         low >>>= 0;
 
-        if (low > 0x3FFFFFFF) {
+        if (low > 0x3fffffff) {
           high += low >>> 30;
-          low &= 0x3FFFFFFF;
+          low &= 0x3fffffff;
         }
 
         high += middle >> 15;
@@ -9450,24 +10242,24 @@
 
     for (let i = Math.min(targetMantissaLen, mant1Len - 1); i >= 0; --i) {
       let mant1Word = mant1[i];
-      let mant1Lo = mant1Word & 0x7FFF;
+      let mant1Lo = mant1Word & 0x7fff;
       let mant1Hi = mant1Word >> 15;
       let carry = 0;
 
       for (let j = Math.min(targetMantissaLen - i, mant2Len - 1); j >= 0; --j) {
         let writeIndex = i + j;
         let mant2Word = mant2[j];
-        let mant2Lo = mant2Word & 0x7FFF;
+        let mant2Lo = mant2Word & 0x7fff;
         let mant2Hi = mant2Word >> 15;
         let low = Math.imul(mant1Lo, mant2Lo);
         let high = Math.imul(mant1Hi, mant2Hi);
         let middle = Math.imul(mant1Hi, mant2Lo) + Math.imul(mant1Lo, mant2Hi) | 0;
-        low += ((middle & 0x7FFF) << 15) + (writeIndex < targetMantissaLen ? targetMantissa[writeIndex] : 0) + carry;
+        low += ((middle & 0x7fff) << 15) + (writeIndex < targetMantissaLen ? targetMantissa[writeIndex] : 0) + carry;
         low >>>= 0;
 
-        if (low > 0x3FFFFFFF) {
+        if (low > 0x3fffffff) {
           high += low >>> 30;
-          low &= 0x3FFFFFFF;
+          low &= 0x3fffffff;
         }
 
         high += middle >> 15;
@@ -9679,7 +10471,7 @@
 
     let sd = createMantissa(precision);
     let dShift = clzMantissa(mant2);
-    if (dShift === -1) throw new RangeError("Division by zero");
+    if (dShift === -1) throw new RangeError('Division by zero');
     leftShiftMantissa(mant2, dShift, sd); // Initial estimate for the reciprocal of the denominator (low precision, may inline this in future)
     // 1/D = 48/17 - 32/17 * D for 0.5 <= D < 1 is the estimate
 
@@ -9782,7 +10574,7 @@
 
     for (let i = 0; i < mantissa.length; ++i) {
       words.push(leftZeroPad(mantissa[i].toString(2), BIGFLOAT_WORD_BITS, '0'));
-      indices.push("0    5    10   15   20   25   ");
+      indices.push('0    5    10   15   20   25   ');
     }
 
     function insert(index, wordChar, indicesChar) {
@@ -9928,7 +10720,7 @@
 
   function cvtToBigFloat(arg) {
     if (arg instanceof BigFloat) return arg;
-    if (typeof arg === "number") return BigFloat.fromNumber(arg, 53);
+    if (typeof arg === 'number') return BigFloat.fromNumber(arg, 53);
     throw new TypeError("Cannot convert argument ".concat(arg, " to BigFloat"));
   }
 
@@ -10599,7 +11391,7 @@
       let MIN_EXPONENT = f32 ? -148 : -1073;
       let MAX_EXPONENT = f32 ? 127 : 1023;
       let MIN_VALUE = f32 ? 1.175494e-38 : Number.MIN_VALUE;
-      let MAX_VALUE = f32 ? 3.40282347e+38 : Number.MAX_VALUE; // We now do various things depending on the rounding mode. The range of a double's exponent is -1024 to 1023,
+      let MAX_VALUE = f32 ? 3.40282347e38 : Number.MAX_VALUE; // We now do various things depending on the rounding mode. The range of a double's exponent is -1024 to 1023,
       // inclusive, so if the exponent is outside of those bounds, we clamp it to a value depending on the rounding mode.
 
       if (exp < MIN_EXPONENT) {
@@ -10721,11 +11513,11 @@
         return BigFloat.cmpFloats(a, b);
       }
 
-      if (typeof a === "number" && typeof b === "number") {
+      if (typeof a === 'number' && typeof b === 'number') {
         if (a < b) return -1;else if (a === b) return 0;else if (a > b) return 1;else return NaN;
       }
 
-      if (a instanceof BigFloat && typeof b === "number") {
+      if (a instanceof BigFloat && typeof b === 'number') {
         if (BigFloat.isNaN(a) || Number.isNaN(b)) return NaN;
         const aSign = a.sign;
         const bSign = Math.sign(b);
@@ -10743,11 +11535,11 @@
           DOUBLE_STORE.setFromNumber(b);
           return BigFloat.cmpFloats(a, DOUBLE_STORE);
         }
-      } else if (typeof a === "number" && b instanceof BigFloat) {
+      } else if (typeof a === 'number' && b instanceof BigFloat) {
         return -BigFloat.cmpNumber(b, a);
       }
 
-      throw new Error("Invalid arguments to cmpNumber");
+      throw new Error('Invalid arguments to cmpNumber');
     }
     /**
      * Returns true if the numbers are equal (allows for JS numbers to be used)
@@ -10936,47 +11728,391 @@
 
   const DOUBLE_STORE = BigFloat.new(53);
 
+  /**
+   * A real interval with only min, max, defMin (bit 0), defMax (bit 1), contMin (bit 2), contMax (bit 3)
+   */
+  class FastRealInterval {
+    constructor(min = 0, max = min, info = 0b111) {
+      this.min = min;
+      this.max = max;
+      this.info = info;
+    }
+
+    defMin() {
+      return this.info & 0b1;
+    }
+
+    defMax() {
+      return this.info & 0b10;
+    }
+
+    cont() {
+      return this.info & 0b100;
+    }
+
+    static set(src, dst) {
+      dst.min = src.min;
+      dst.max = src.max;
+      dst.info = src.info;
+    }
+
+    static setNumber(num, dst) {
+      if (Number.isNaN(num)) {
+        dst.info = 0;
+      } else {
+        dst.min = num;
+        dst.max = num;
+        dst.info = 0b111;
+      }
+    }
+
+    static setRange(min, max, dst) {
+      dst.min = min;
+      dst.max = max;
+      dst.info = 0b111;
+    }
+
+    static add(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (!(info & 1)) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src1.min + src2.min;
+      let max = src1.max + src2.max;
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static sub(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src1.min - src2.max;
+      let max = src1.max - src2.min;
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static mul(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let s1min = src1.min,
+          s1max = src1.max,
+          s2min = src1.min,
+          s2max = src2.max;
+      let p1 = s1min * s2min,
+          p2 = s1max * s2min,
+          p3 = s1min * s2max,
+          p4 = s1max * s2max;
+      let min = Math.min(p1, p2, p3, p4);
+      let max = Math.max(p1, p2, p3, p4);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static div(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let s2min = src1.min,
+          s2max = src2.max;
+
+      if (0 < s2min || 0 > s2max) {
+        // if 0 is outside the range...
+        let s1min = src1.min,
+            s1max = src1.max;
+        let p1 = s1min / s2min,
+            p2 = s1max / s2min,
+            p3 = s1min / s2max,
+            p4 = s1max / s2max;
+        let min = Math.min(p1, p2, p3, p4);
+        let max = Math.max(p1, p2, p3, p4);
+
+        if (correctRounding) {
+          min = roundDown(min);
+          max = roundUp(max);
+        }
+
+        dst.min = min;
+        dst.max = max;
+        dst.info = info;
+      } else {
+        dst.min = -Infinity;
+        dst.max = Infinity;
+        dst.info = 1;
+      }
+    }
+
+    static sqrt(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src.min,
+          max = src.max;
+
+      if (max < 0) {
+        dst.info = 0;
+        return;
+      } else if (max === 0) {
+        dst.min = 0;
+        dst.max = 0;
+        dst.info = min === 0 ? info : 1;
+        return;
+      } else {
+        if (min < 0) {
+          min = 0;
+          max = Math.sqrt(max);
+          if (correctRounding) max = roundUp(max);
+          info = 1;
+        } else {
+          min = Math.sqrt(min);
+          max = Math.sqrt(max);
+
+          if (correctRounding) {
+            min = roundDown(min);
+            max = roundUp(max);
+          }
+        }
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static sin(src, dst, correctRounding) {
+      const pio2 = Math.PI / 2;
+      const pi3o2 = 3 * Math.PI / 2;
+      const pi5o2 = 5 * Math.PI / 2;
+      const pi7o2 = 7 * Math.PI / 2;
+      const pi2 = 2 * Math.PI;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > pi2 || Number.isNaN(diff)) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      srcMin = (srcMin % pi2 + pi2) % pi2;
+      srcMax = srcMin + diff; // Whether the range includes one and negative one
+
+      let includesOne = srcMin < pio2 && srcMax > pio2 || srcMin < pi5o2 && srcMax > pi5o2;
+      let includesNegOne = srcMin < pi3o2 && srcMax > pi3o2 || srcMin < pi7o2 && srcMax > pi7o2;
+
+      if (includesOne && includesNegOne) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      let sinSrcMin = Math.sin(srcMin);
+      let sinSrcMax = Math.sin(srcMax);
+      let min = includesNegOne ? -1 : Math.min(sinSrcMin, sinSrcMax);
+      let max = includesOne ? 1 : Math.max(sinSrcMin, sinSrcMax);
+
+      if (correctRounding) {
+        if (min !== -1) min = roundDown(min);
+        if (max !== 1) max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static cos(src, dst, correctRounding) {
+      const pi2 = 2 * Math.PI;
+      const pi3 = 3 * Math.PI;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > pi2 || Number.isNaN(diff)) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      srcMin = (srcMin % pi2 + pi2) % pi2;
+      srcMax = srcMin + diff; // Whether the range includes one and negative one
+
+      let includesOne = srcMin < pi2 && srcMax > pi2;
+      let includesNegOne = srcMin < Math.PI && srcMax > Math.PI || srcMin < pi3 && srcMax > pi3;
+
+      if (includesOne && includesNegOne) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      let cosSrcMin = Math.cos(srcMin);
+      let cosSrcMax = Math.cos(srcMax);
+      let min = includesNegOne ? -1 : Math.min(cosSrcMin, cosSrcMax);
+      let max = includesOne ? 1 : Math.max(cosSrcMin, cosSrcMax);
+
+      if (correctRounding) {
+        if (min !== -1) min = roundDown(min);
+        if (max !== 1) max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+    static tan(src, dst, correctRounding) {
+      const pio2 = Math.PI / 2;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > Math.PI || Number.isNaN(diff)) {
+        dst.min = -Infinity;
+        dst.max = Infinity;
+        dst.info = 1;
+        return;
+      }
+
+      srcMin = (srcMin % Math.PI + Math.PI) % Math.PI;
+      srcMax = srcMin + diff; // Whether the range includes an undef
+
+      let includesInf = srcMin < pio2 && srcMax > pio2;
+
+      if (includesInf) {
+        dst.min = Infinity;
+        dst.max = -Infinity;
+        dst.info = 1;
+        return;
+      }
+
+      let tanSrcMin = Math.cos(srcMin);
+      let tanSrcMax = Math.cos(srcMax);
+      let min = Math.min(tanSrcMin, tanSrcMax);
+      let max = Math.max(tanSrcMin, tanSrcMax);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+
+  }
+
   const pointInterface = constructInterface({
     interface: {
       position: {
-        description: "Position of the point, potentially under a plot transformation",
+        description: 'Position of the point, potentially under a plot transformation',
         conversion: {
-          type: "Vec2"
+          type: 'Vec2'
         },
-        target: "pos"
+        target: 'pos',
+        aliases: ['pos']
       },
       color: {
-        description: "Color of the point",
+        description: 'Color of the point',
         conversion: {
-          type: "Color"
+          type: 'Color'
         },
-        setAs: "user"
+        setAs: 'user'
       },
       size: {
-        description: "Radius in pixels of the dot",
+        description: 'Radius in pixels of the dot',
         typecheck: {
-          type: "number",
+          type: 'number',
           min: 0,
           max: 100
         },
-        setAs: "user"
+        setAs: 'user'
       }
     },
     internal: {
       pos: {
-        type: "Vec2",
-        computed: "none"
+        type: 'Vec2',
+        computed: 'none'
         /* No defaults, no user value, no nothing */
 
       },
       color: {
-        type: "Color",
-        computed: "user",
+        type: 'Color',
+        computed: 'user',
         default: Colors.BLACK
       },
       size: {
-        type: "number",
-        computed: "user",
+        type: 'number',
+        computed: 'user',
         default: 5
       }
     }
@@ -11008,7 +12144,7 @@
       let circleVertices = generateCircleTriangleStrip(size, pos.x, pos.y);
       this.internal.renderInfo = {
         instructions: {
-          type: "triangle_strip",
+          type: 'triangle_strip',
           color,
           vertices: circleVertices
         }
@@ -11113,8 +12249,111 @@
     return ret;
   }
 
+  let canvas, ctx;
+
+  function initCanvas() {
+    if (canvas) return;
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext('2d');
+  }
+  /**
+   *
+   * @param text {string}
+   * @param textStyle {TextStyle}
+   * @returns {BoundingBox}
+   */
+
+
+  function measureText(text, textStyle) {
+    var _textStyle$fontSize, _textStyle$shadowRadi;
+
+    initCanvas();
+    let font = textStyle.font;
+    let fontSize = (_textStyle$fontSize = textStyle.fontSize) !== null && _textStyle$fontSize !== void 0 ? _textStyle$fontSize : 12;
+    let shadowDiameter = 2 * ((_textStyle$shadowRadi = textStyle.shadowRadius) !== null && _textStyle$shadowRadi !== void 0 ? _textStyle$shadowRadi : 0);
+    if (!font || !fontSize) throw new Error('Invalid text style');
+    ctx.font = "".concat(fontSize, "px ").concat(font);
+    let m = ctx.measureText(text);
+    let w = m.width + shadowDiameter;
+    let h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + shadowDiameter;
+    return new BoundingBox(0, 0, w, h);
+  }
+
+  function toDir(obj) {
+    if (obj instanceof Vec2) {
+      return obj;
+    } else if (typeof obj === "string") {
+      switch (obj) {
+        case "N":
+          return new Vec2(0, -1);
+
+        case "S":
+          return new Vec2(0, 1);
+
+        case "W":
+          return new Vec2(1, 0);
+
+        case "E":
+          return new Vec2(-1, 0);
+
+        case "NE":
+          return new Vec2(-1, -1);
+
+        case "NW":
+          return new Vec2(1, -1);
+
+        case "SE":
+          return new Vec2(-1, 1);
+
+        case "SW":
+          return new Vec2(1, 1);
+
+        case "C":
+          return new Vec2(0, 0);
+      }
+    } else if (typeof obj === "undefined") {
+      return new Vec2(0, 0);
+    } else {
+      throw new TypeError("Invalid direction");
+    }
+  }
+  /**
+   * Generate a text location, using an anchor, direction and spacing. This system is inspired by Asymptote Vector
+   * Graphics, where dir might be something like 'N' and the text would shift itself by that much in the north direction
+   * @param text {string} Text of the instruction
+   * @param textStyle {TextStyle} Style of the text
+   * @param anchor {Vec2} Location of the text's anchor
+   * @param dir {Vec2|string} Direction in which to shift the text. <1, 1> means shifting the text's bounding box so that the
+   * box's top left corner is on the anchor, <0, 1> means shifting so that the anchor is on the text's top midpoint
+   * @param spacing {number} Number of extra pixels to add to the shift
+   * @returns {BoundingBox} Bounding box of the text
+   */
+
+
+  function genTextRect(text, textStyle, anchor, dir, spacing = 1) {
+    let rect = measureText(text, textStyle);
+    dir = toDir(dir);
+    let shiftX = dir.x * rect.w / 2,
+        shiftY = dir.y * rect.h / 2;
+    let shiftLen = Math.hypot(shiftX, shiftY);
+    let scaleSpacing = (shiftLen + spacing) / shiftLen;
+    shiftX *= scaleSpacing;
+    shiftY *= scaleSpacing;
+    shiftX += -rect.w / 2 + anchor.x;
+    shiftY += -rect.h / 2 + anchor.y;
+    return rect.translate(new Vec2(shiftX, shiftY));
+  }
+  function genTextInstruction(text, textStyle, anchor, dir, spacing = 1) {
+    return {
+      type: 'text',
+      text: text,
+      pos: genTextRect(text, textStyle, anchor, dir, spacing).tl(),
+      style: textStyle
+    };
+  }
+
   const DefaultOutlinePen = Pen.create({
-    endcap: "square"
+    endcap: 'square'
   });
   const DefaultGridlinePens = {
     major: DefaultStyles.gridlinesMajor,
@@ -11124,44 +12363,44 @@
   const figureBaublesInterface = constructInterface({
     interface: {
       showOutline: {
-        typecheck: "boolean",
-        description: "Whether to show an outline of the figure"
+        typecheck: 'boolean',
+        description: 'Whether to show an outline of the figure'
       },
       showGridlines: {
-        setAs: "user",
-        description: "Whether to show gridlines"
+        setAs: 'user',
+        description: 'Whether to show gridlines'
       },
       sharpenGridlines: {
-        typecheck: "boolean",
-        description: "Whether to make the gridlines look sharp by aligning them to pixel boundaries"
+        typecheck: 'boolean',
+        description: 'Whether to make the gridlines look sharp by aligning them to pixel boundaries'
       },
       outlinePen: {
-        setAs: "user",
-        description: "The pen used to draw the outline"
+        setAs: 'user',
+        description: 'The pen used to draw the outline'
       }
     },
     internal: {
       // Whether to show a bounding outline of the figure
       showOutline: {
-        type: "boolean",
-        computed: "default",
+        type: 'boolean',
+        computed: 'default',
         default: true
       },
       // Pen to use for the bounding outline
       outlinePen: {
-        type: "Pen",
-        computed: "user",
+        type: 'Pen',
+        computed: 'user',
         default: DefaultOutlinePen,
         compose: true
       },
       // Internal variable of the form { major: { x: [ ... ], y: [ ... ] }, minor: ... } expressed in graph coordinates
       ticks: {
-        computed: "none"
+        computed: 'none'
       },
       // Whether to show the figure's gridlines
       showGridlines: {
-        type: "BooleanDict",
-        computed: "user",
+        type: 'BooleanDict',
+        computed: 'user',
         default: {
           major: true,
           minor: true,
@@ -11171,33 +12410,33 @@
       },
       // Whether to show axes instead of major gridlines
       generateGridlinesAxis: {
-        type: "boolean",
-        computed: "default",
+        type: 'boolean',
+        computed: 'default',
         default: true
       },
       // Whether to sharpen the gridlines
       sharpenGridlines: {
-        type: "boolean",
-        computed: "default",
+        type: 'boolean',
+        computed: 'default',
         default: true
       },
       // Dictionary of pens
       gridlinePens: {
-        type: "Pens",
-        computed: "user",
+        type: 'Pens',
+        computed: 'user',
         default: DefaultGridlinePens,
         compose: true
       },
       // Whether to show labels
       showLabels: {
-        type: "boolean",
-        computed: "default",
+        type: 'boolean',
+        computed: 'default',
         default: true
       },
       // Where to put the labels
       labelPosition: {
-        type: "LabelPosition",
-        computed: "user",
+        type: 'LabelPosition',
+        computed: 'user',
         default: DefaultStyles.plotLabelPositions,
         compose: true
       }
@@ -11255,14 +12494,14 @@
   const CDOT = String.fromCharCode(183);
 
   const standardLabelFunction = x => {
-    if (x === 0) return "0"; // special case
+    if (x === 0) return '0'; // special case
     else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) // non-extreme floats displayed normally
         return beautifyFloat(x);else {
         // scientific notation for the very fat and very small!
         let exponent = Math.floor(Math.log10(Math.abs(x)));
         let mantissa = x / 10 ** exponent;
         let prefix = isApproxEqual(mantissa, 1) ? '' : beautifyFloat(mantissa, 8) + CDOT;
-        let exponent_suffix = "10" + exponentify(exponent);
+        let exponent_suffix = '10' + exponentify(exponent);
         return prefix + exponent_suffix;
       }
   };
@@ -11313,7 +12552,7 @@
       }
 
       instructions.push({
-        type: "polyline",
+        type: 'polyline',
         vertices: new Float32Array(vertices),
         pen
       });
@@ -11342,56 +12581,45 @@
         props
       } = this;
 
-      if (props.hasChanged("plotTransform")) {
-        let tr = props.get("plotTransform");
-        let ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, {
-          emitAxis: props.get("generateGridlinesAxis")
+      if (props.hasChanged('plotTransform')) {
+        let tr = props.get('plotTransform'),
+            ticks;
+        if (tr) ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, {
+          emitAxis: props.get('generateGridlinesAxis')
         });
-        props.set("ticks", ticks);
+        props.set('ticks', ticks);
       }
     }
 
     computeLabels() {
       const instructions = [];
 
-      if (this.props.haveChanged(["ticks", "showLabels"])) {
+      if (this.props.haveChanged(['ticks', 'showLabels'])) {
         let {
           ticks,
           plotTransform
         } = this.props.proxy;
-
-        for (let style of ["major"]) {
+        if (ticks && plotTransform) for (let style of ['major']) {
           let entries = ticks[style];
           let x = entries.x,
               y = entries.y;
 
           for (let i = 0; i < x.length; ++i) {
-            let pos = plotTransform.graphToPixel(new Vec2(x[i], 0)).add(new Vec2(0, 10));
-            instructions.push({
-              type: "text",
-              text: standardLabelFunction(x[i]),
-              pos,
-              style: DefaultStyles.label
-            });
+            let pos = plotTransform.graphToPixel(new Vec2(x[i], 0));
+            instructions.push(genTextInstruction(standardLabelFunction(x[i]), DefaultStyles.label, pos, 'S', 3));
           }
 
           for (let i = 0; i < y.length; ++i) {
-            let pos = plotTransform.graphToPixel(new Vec2(0, y[i])).add(new Vec2(-30, 0));
-            instructions.push({
-              type: "text",
-              text: standardLabelFunction(y[i]),
-              pos,
-              style: DefaultStyles.label
-            });
+            let pos = plotTransform.graphToPixel(new Vec2(0, y[i]));
+            instructions.push(genTextInstruction(standardLabelFunction(y[i]), DefaultStyles.label, pos, 'E', 3));
           }
         }
-
         this.internal.labelInstructions = instructions;
       }
     }
 
     computeGridlines() {
-      if (this.props.haveChanged(["ticks", "showGridlines", "sharpenGridlines"])) {
+      if (this.props.haveChanged(['ticks', 'showGridlines', 'sharpenGridlines'])) {
         let {
           showGridlines,
           ticks,
@@ -11399,7 +12627,7 @@
           plotTransform,
           sharpenGridlines
         } = this.props.proxy;
-        this.internal.gridlinesInstructions = generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines);
+        this.internal.gridlinesInstructions = ticks && plotTransform ? generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines) : [];
       }
     }
 
@@ -11409,2902 +12637,29 @@
         plotTransform,
         outlinePen: pen
       } = this.props.proxy;
+      let int = this.internal;
 
       if (showOutline && plotTransform) {
         // We inset the box by the thickness of the line so that it doesn't jut out
         let box = plotTransform.pixelBox().squish(pen.thickness / 2);
         let vertices = generateRectangleCycle(box);
-        this.internal.outlineInstruction = {
-          type: "polyline",
+        int.outlineInstruction = {
+          type: 'polyline',
           vertices,
           pen
         };
       } else {
-        this.internal.outlineInstruction = null;
+        int.outlineInstruction = null;
       }
     }
 
     computeRenderInfo() {
-      this.internal.renderInfo = {
-        instructions: [this.internal.outlineInstruction, ...this.internal.labelInstructions, ...this.internal.gridlinesInstructions]
+      let int = this.internal;
+      int.renderInfo = {
+        instructions: [int.outlineInstruction, ...int.labelInstructions, ...int.gridlinesInstructions]
       };
     }
 
-  }
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  function measureText(text, textStyle) {
-    let font = textStyle.font;
-    let fontSize = textStyle.fontSize;
-    if (!font || !fontSize) throw new Error("Invalid text style");
-    ctx.font = "".concat(fontSize, "px ").concat(font);
-    return ctx.measureText(text);
-  }
-
-  /**
-   * Error thrown when a parser gets pissed
-   */
-  class ParserError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = "ParserError";
-    }
-
-  }
-  /**
-   * Helper function to throw an error at a specific index in a string.
-   * @param string {String} The string to complain about
-   * @param index {number} The index in the string where the error occurred
-   * @param message {String} The error message
-   */
-
-  function getAngryAt(string, index = 0, message = "I'm angry!") {
-    // Spaces to offset the caret to the correct place along the string
-    const spaces = " ".repeat(index);
-    throw new ParserError(message + " at index " + index + ":\n" + string + "\n" + spaces + "^");
-  }
-
-  const RealIntervalFunctions = {};
-
-  /**
-   * Represents a complex number, with a real part and an imaginary part both represented by floats.
-   */
-  class Complex {
-    /**
-     * Construct a new complex number.
-     * @param re The real part of the complex number.
-     * @param im The imaginary part of the complex number.
-     */
-    constructor(re, im = 0) {
-      this.re = re;
-      this.im = im;
-    }
-    /**
-     * Get i.
-     * @returns {Complex} i.
-     * @constructor
-     */
-
-
-    static get I() {
-      return new Complex(0, 1);
-    }
-    /**
-     * Get 1.
-     * @returns {Complex} 1.
-     * @constructor
-     */
-
-
-    static get One() {
-      return new Complex(1, 0);
-    }
-    /**
-     * Return the complex argument (principal value) corresponding to the complex number.
-     * @returns {number} The complex argument Arg(z).
-     */
-
-
-    arg() {
-      return Math.atan2(this.im, this.re);
-    }
-    /**
-     * Returns |z|.
-     * @returns {number} The complex magnitude |z|.
-     */
-
-
-    magnitude() {
-      return Math.hypot(this.re, this.im);
-    }
-    /**
-     * Returns |z|^2.
-     * @returns {number} The square of the complex magnitude |z|^2.
-     */
-
-
-    magnitudeSquared() {
-      return this.re * this.re + this.im * this.im;
-    }
-    /**
-     * Returns z bar.
-     * @returns {Complex} The conjugate of z.
-     */
-
-
-    conj() {
-      return new Complex(this.re, -this.im);
-    }
-    /**
-     * Clone this complex number.
-     * @returns {Complex} Clone of z.
-     */
-
-
-    clone() {
-      return new Complex(this.re, this.im);
-    }
-    /**
-     * Scale this complex number by the real factor r.
-     * @param r {number} The scaling factor.
-     */
-
-
-    scale(r) {
-      return new Complex(this.re * r, this.im * r);
-    }
-    /**
-     * Check whether this complex number is equal to another.
-     * @param z {Complex} Complex number to compare with.
-     */
-
-
-    equals(z) {
-      return this.re === z.re && this.im === z.im;
-    }
-    /**
-     * Return a complex number pointing in the same direction, with magnitude 1.
-     * @returns {Complex}
-     */
-
-
-    normalize() {
-      let mag = this.magnitude();
-      return this.scale(1 / mag);
-    }
-
-  }
-
-  /**
-   * Returns a + b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-
-  const Add = (a, b) => {
-    return new Complex(a.re + b.re, a.im + b.im);
-  };
-  /**
-   * Returns a * b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-
-  const Multiply = (a, b) => {
-    return new Complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
-  };
-  /**
-   * Returns a / b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-
-  const Divide = (a, b) => {
-    let div = b.magnitudeSquared();
-    return Multiply(a, b.conj()).scale(1 / div);
-  };
-  /**
-   * Returns a - b.
-   * @param a {Complex}
-   * @param b {Complex}
-   * @returns {Complex}
-   */
-
-  const Subtract = (a, b) => {
-    return new Complex(a.re - b.re, a.im - b.im);
-  };
-  /**
-   * Returns Re(z).
-   * @param z
-   * @returns {number}
-   */
-
-  const Re = z => {
-    return z.re;
-  };
-  /**
-   * Returns Im(z)
-   * @param z
-   * @returns {number}
-   */
-
-  const Im = z => {
-    return z.im;
-  };
-  /**
-   * Returns the complex number a+bi
-   * @param a
-   * @param b
-   * @returns {Complex}
-   * @constructor
-   */
-
-  const Construct = (a, b = 0) => {
-    return new Complex(a, b);
-  };
-  const UnaryMinus = a => {
-    return new Complex(-a.re, -a.im);
-  };
-
-  const piecewise = (val1, cond, ...args) => {
-    if (cond) return val1;
-
-    if (args.length === 0) {
-      if (cond === undefined) return val1;else return new Complex(0);
-    }
-
-    return piecewise(...args);
-  };
-
-  const Abs = z => {
-    return z.magnitude();
-  };
-  const IsFinite = z => {
-    return isFinite(z.re) && isFinite(z.im);
-  };
-  const Piecewise = piecewise;
-
-  var BasicArithmeticFunctions = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    Add: Add,
-    Multiply: Multiply,
-    Divide: Divide,
-    Subtract: Subtract,
-    Re: Re,
-    Im: Im,
-    Construct: Construct,
-    UnaryMinus: UnaryMinus,
-    Abs: Abs,
-    IsFinite: IsFinite,
-    Piecewise: Piecewise
-  });
-
-  /**
-   * Returns e^(i theta) for real theta.
-   * @param theta {number}
-   * @returns {Complex} cis(theta)
-   */
-
-  const Cis = theta => {
-    // For real theta
-    let c = Math.cos(theta);
-    let s = Math.sin(theta);
-    return new Complex(c, s);
-  };
-
-  /**
-   * Returns e^z for complex z.
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-
-  const Exp = z => {
-    let magnitude = Math.exp(z.re);
-    let angle = z.im;
-    return Cis(angle).scale(magnitude);
-  };
-
-  /**
-   * Return the principal value of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @returns {Complex}
-   */
-
-  const Pow = (z, w) => {
-    return Exp(Multiply(w, new Complex(Math.log(z.magnitude()), z.arg())));
-  };
-  /**
-   * Multivalued version of z^w.
-   * @param z {Complex}
-   * @param w {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-
-  const PowBranched = (z, w, branch = 0) => {
-    return Multiply(Pow(z, w), Exp(Multiply(Complex.I, w.scale(2 * Math.PI * branch))));
-  };
-  /**
-   * z^r, where r is a real number.
-   * @param z {Complex}
-   * @param r {number}
-   * @returns {Complex}
-   */
-
-  const PowR = (z, r) => {
-    if (r === 0) return new Complex(1);else if (r === 1) return z.clone();else if (r === 2) return Multiply(z, z);
-    return Pow(z, new Complex(r));
-  };
-  const PowZ = (r, z) => {
-    return Exp(Multiply(z, new Complex(Math.log(Math.abs(r)), r > 0 ? 0 : Math.PI)));
-  };
-  /**
-   * z^r, where r is a real number, branched.
-   * @param z {Complex}
-   * @param r {number}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-
-  const PowRBranched = (z, r, branch = 0) => {
-    return PowBranched(z, new Complex(r), branch);
-  };
-  /**
-   * Returns z^n, where n is a positive integer
-   * @param z {Complex} The base of the exponentiation.
-   * @param n {number} Positive integer, exponent.
-   * @returns {Complex}
-   */
-
-  const PowN = (z, n) => {
-    if (n === 0) {
-      return new Complex(1, 0);
-    } else if (n === 1) {
-      return z.clone();
-    } else if (n === -1) {
-      return z.conj().scale(1 / z.magnitudeSquared());
-    } else if (n === 2) {
-      return Multiply(z, z);
-    }
-
-    let mag = z.magnitude();
-    let angle = z.arg();
-    let newMag = Math.pow(mag, n);
-    let newAngle = angle * n;
-    return Cis(newAngle).scale(newMag);
-  };
-  /**
-   * Returns the principal value of sqrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-
-  const Sqrt = z => {
-    // Handle real z specially
-    if (Math.abs(z.im) < 1e-17) {
-      let r = z.re;
-
-      if (r >= 0) {
-        return new Complex(Math.sqrt(r));
-      } else {
-        return new Complex(0, Math.sqrt(-r));
-      }
-    }
-
-    let r = z.magnitude();
-    let zR = Add(z, new Complex(r)).normalize();
-    return zR.scale(Math.sqrt(r));
-  };
-  /**
-   * Branched version of Sqrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-
-  const SqrtBranched = (z, branch = 0) => {
-    if (branch % 2 === 0) {
-      return Sqrt(z);
-    } else {
-      return Multiply(new Complex(-1, 0), Sqrt(z));
-    }
-  };
-  /**
-   * Principal value of cbrt(z).
-   * @param z {Complex}
-   * @returns {Complex}
-   */
-
-  const Cbrt = z => {
-    return PowR(z, 1 / 3);
-  };
-  /**
-   * Multivalued version of Cbrt(z).
-   * @param z {Complex}
-   * @param branch {number}
-   * @returns {Complex}
-   */
-
-  const CbrtBranched = (z, branch = 0) => {
-    return PowRBranched(z, 1 / 3, branch);
-  };
-
-  var PowFunctions = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    Pow: Pow,
-    PowBranched: PowBranched,
-    PowR: PowR,
-    PowZ: PowZ,
-    PowRBranched: PowRBranched,
-    PowN: PowN,
-    Sqrt: Sqrt,
-    SqrtBranched: SqrtBranched,
-    Cbrt: Cbrt,
-    CbrtBranched: CbrtBranched
-  });
-
-  /*import * as TrigFunctions from "./trig_functions"
-  import Exp from './exp'
-  import Cis from './cis'
-  import * as LnFunctions from "./log"
-  import * as HyperbolicTrigFunctions from "./hyperbolic_trig_functions"
-  import * as InverseTrigFunctions from "./inverse_trig"
-  import * as InverseHyperbolicFunctions from "./inverse_hyperbolic"
-  import Gamma from "./gamma"
-  import Digamma from "./digamma"
-  import Trigamma from "./trigamma"
-  import Polygamma from "./polygamma"
-  import LnGamma from "./ln_gamma"
-  import { Zeta, Eta } from "./zeta"
-  import * as MiscSpecial from "./misc_special"
-  import * as ExpIntegrals from "./exp_integral"
-  import * as TrigIntegrals from "./trig_integrals"
-  import * as Erfs from "./erf"*/
-
-  /**
-   * Complex functions!
-   */
-
-  const ComplexFunctions = Object.freeze(_objectSpread2(_objectSpread2({}, BasicArithmeticFunctions), PowFunctions));
-
-  function _templateObject10() {
-    const data = _taggedTemplateLiteral(["psi^{(", ")}\\left(", "\\right)"], ["\\psi^{(", ")}\\\\left(", "\\\\right)"]);
-
-    _templateObject10 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject9() {
-    const data = _taggedTemplateLiteral(["sqrt[", "]{", "}"], ["\\sqrt[", "]{", "}"]);
-
-    _templateObject9 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject8() {
-    const data = _taggedTemplateLiteral(["sqrt[3]{", "}"], ["\\sqrt[3]{", "}"]);
-
-    _templateObject8 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject7() {
-    const data = _taggedTemplateLiteral(["sqrt{", "}"], ["\\sqrt{", "}"]);
-
-    _templateObject7 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject6() {
-    const data = _taggedTemplateLiteral(["\text{", "}"], ["\\text{", "}"]);
-
-    _templateObject6 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject5() {
-    const data = _taggedTemplateLiteral(["", "_{", "}left(", "\right)"], ["", "_{", "}\\left(", "\\right)"]);
-
-    _templateObject5 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject4() {
-    const data = _taggedTemplateLiteral(["", "left(", "\right)"], ["", "\\left(", "\\right)"]);
-
-    _templateObject4 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject3() {
-    const data = _taggedTemplateLiteral(["", " ", ""]);
-
-    _templateObject3 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function _templateObject2() {
-    const data = _taggedTemplateLiteral(["", "^{", "}"]);
-
-    _templateObject2 = function () {
-      return data;
-    };
-
-    return data;
-  }
-
-  function genInfixLatex(operator) {
-    return (nodes, params = {}) => {
-      return nodes.map(node => node.latex(params)).join(operator);
-    };
-  }
-
-  function surround(str, leftToken, rightToken) {
-    return "\\left\\" + leftToken + " " + str + "\\right\\" + rightToken;
-  }
-
-  function multiplicationLatex(nodes, params = {}) {
-    return nodes.map(node => node.latex(params)).join('\\cdot ');
-  }
-
-  function additionLatex(nodes, params = {}) {
-    return nodes.map(node => node.latex(params)).join('+');
-  }
-
-  function subtractionLatex(nodes, params = {}) {
-    return nodes.map(node => node.latex(params)).join('-');
-  }
-
-  function divisionLatex(nodes, params = {}) {
-    return "\\frac{".concat(nodes[0].latex(params), "}{").concat(nodes[1].latex(params), "}");
-  }
-
-  function exponentiationLatex(nodes, params = {}) {
-    return String.raw(_templateObject2(), nodes[0].latex(params), nodes[1].latex(params));
-  }
-
-  function genFunctionLatex(functionName) {
-    let fName = functionName[0] === '\\' ? functionName : "\\operatorname{".concat(functionName, "}");
-    return (nodes, params = {}) => {
-      if (nodes.length === 1) {
-        if (optionalParentheses.includes(functionName) && !needsParentheses(nodes[0])) {
-          return String.raw(_templateObject3(), fName, nodes[0].latex(params));
-        }
-      }
-
-      return String.raw(_templateObject4(), fName, nodes.map(node => node.latex(params)).join(', '));
-    };
-  }
-
-  function genFunctionSubscriptLatex(functionName) {
-    let fName = functionName[0] === '\\' ? functionName : "\\operatorname{".concat(functionName, "}");
-    return (nodes, params = {}) => String.raw(_templateObject5(), fName, nodes[0].latex(params), nodes.slice(1).map(node => node.latex(params)).join(', '));
-  }
-
-  function needsParentheses(node) {
-    if (node instanceof VariableNode) {
-      return false;
-    } else return !(node instanceof ConstantNode);
-  } // Mapping between inequality operators and their respective latex symbols
-
-
-  const inequalityOperatorSymbols = {
-    '<': '<',
-    '>': '>',
-    '<=': '\\leq',
-    '>=': '\\geq',
-    '==': '=',
-    '!=': '\\neq'
-  }; // Inequality
-
-  function getInequalityOperator(str) {
-    let symbol = inequalityOperatorSymbols[str];
-    return symbol ? symbol : '';
-  } // https://www.latex-tutorial.com/symbols/greek-alphabet/
-  // Array.from(document.getElementsByTagName("tr")).forEach(egg => { arr.push(...egg.children[2].innerText.split(' ').filter(egg => egg[0] === '\\')) } )
-  // Mapping between greek letters and their latex counterparts
-
-
-  const _builtinGreekLetters = ["\\alpha", "\\beta", "\\gamma", "\\Gamma", "\\delta", "\\Delta", "\\epsilon", "\\zeta", "\\eta", "\\theta", "\\Theta", "\\iota", "\\kappa", "\\lambda", "\\Lambda", "\\mu", "\\nu", "\\omicron", "\\pi", "\\Pi", "\\rho", "\\sigma", "\\Sigma", "\\tau", "\\upsilon", "\\Upsilon", "\\phi", "\\Phi", "\\chi", "\\psi", "\\Psi", "\\omega", "\\Omega"];
-  const optionalParentheses = [];
-  ["sin", "cos", "tan"].forEach(trig => {
-    ["", "arc"].forEach(arc => {
-      ["", "h"].forEach(hyper => {
-        optionalParentheses.push(arc + trig + hyper);
-      });
-    });
-  });
-  const greekLetterSymbols = {};
-
-  for (let letter of _builtinGreekLetters) {
-    greekLetterSymbols[letter.replace(/\\/g, '')] = letter;
-  }
-
-  function replaceGreekInName(str) {
-    for (let letter in greekLetterSymbols) {
-      if (greekLetterSymbols.hasOwnProperty(letter)) {
-        if (str === letter) {
-          return greekLetterSymbols[letter];
-        }
-      }
-    }
-
-    return str;
-  }
-
-  function getVariableLatex(str) {
-    let booleanOp = inequalityOperatorSymbols[str];
-    if (booleanOp) return booleanOp + ' ';
-    let components = str.split('_');
-    components = components.map(str => {
-      str = replaceGreekInName(str);
-      if (str[0] !== '\\' && str.length > 1) str = String.raw(_templateObject6(), str);
-      return str;
-    });
-    return components.reduceRight((a, b) => "".concat(b, "_{").concat(a, "}"));
-  }
-
-  function getConstantLatex(obj) {
-    let value = obj.value;
-    let text = obj.text;
-    if (text) return text;
-    return value + '';
-  }
-
-  function sqrtLatex(nodes, params = {}) {
-    return String.raw(_templateObject7(), nodes[0].latex(params));
-  }
-
-  function cbrtLatex(nodes, params = {}) {
-    return String.raw(_templateObject8(), nodes[0].latex(params));
-  }
-
-  function nthRootLatex(nodes, params = {}) {
-    return String.raw(_templateObject9(), nodes[0].latex(params), nodes[1].latex(params));
-  }
-
-  function polygammaLatex(nodes, params = {}) {
-    return String.raw(_templateObject10(), nodes[0].latex(params), nodes[1].latex(params));
-  }
-
-  function piecewiseLatex(nodes, params = {}) {
-    let pre = "\\begin{cases} ";
-    let post;
-
-    if (nodes.length % 2 === 0) {
-      post = "0 & \\text{otherwise} \\end{cases}";
-    } else {
-      post = " \\text{otherwise} \\end{cases}";
-    }
-
-    let latex = pre;
-
-    for (let i = 0; i < nodes.length; i += 2) {
-      let k = 0;
-
-      for (let j = 0; j <= 1; ++j) {
-        let child = nodes[i + j];
-        if (!child) continue;
-        latex += child.latex(params);
-
-        if (k === 0) {
-          latex += " & ";
-        } else {
-          latex += " \\\\ ";
-        }
-
-        k++;
-      }
-    }
-
-    latex += post;
-    return latex;
-  }
-
-  function cchainLatex(nodes, params = {}) {
-    return nodes.map(child => child.latex(params)).join('');
-  }
-
-  function floorLatex(nodes, params = {}) {
-    return surround(nodes[0].latex(params), "lfloor", "rfloor");
-  }
-
-  function ceilLatex(nodes, params = {}) {
-    return surround(nodes[0].latex(params), "lceil", "rceil");
-  }
-
-  function fractionalPartLatex(nodes, params = {}) {
-    return surround(nodes[0].latex(params), "{", "}");
-  }
-
-  function absoluteValueLatex(nodes, params = {}) {
-    return surround(nodes[0].latex(params), "lvert", "rvert");
-  }
-
-  function unaryMinusLatex(nodes, params = {}) {
-    return "-" + nodes[0].latex(params);
-  }
-
-  const cmpLatex = {};
-  Object.entries(inequalityOperatorSymbols).forEach(([key, value]) => {
-    cmpLatex[key] = genInfixLatex(value);
-  });
-  const logicLatex = {
-    not: (nodes, params) => {
-      return "\\neg " + nodes[0].latex(params);
-    },
-    or: (nodes, params) => {
-      return nodes.map(node => node.latex(params)).join("\\lor ");
-    },
-    and: (nodes, params) => {
-      return nodes.map(node => node.latex(params)).join("\\land ");
-    }
-  };
-  const LatexMethods = {
-    multiplicationLatex,
-    additionLatex,
-    subtractionLatex,
-    divisionLatex,
-    exponentiationLatex,
-    sqrtLatex,
-    cbrtLatex,
-    nthRootLatex,
-    polygammaLatex,
-    piecewiseLatex,
-    absoluteValueLatex,
-    floorLatex,
-    ceilLatex,
-    fractionalPartLatex,
-    cchainLatex,
-    replaceGreekInName,
-    getInequalityOperator,
-    getVariableLatex,
-    genFunctionLatex,
-    getConstantLatex,
-    genFunctionSubscriptLatex,
-    unaryMinusLatex,
-    cmpLatex,
-    logicLatex
-  };
-
-  const Typecasts = {
-    RealToComplex: r => new Complex(r),
-    RealArrayToComplexArray: arr => arr.map(elem => new Complex(elem)),
-    Identity: r => r
-  };
-
-  const BooleanFunctions = {
-    And: (a, b) => a && b,
-    Or: (a, b) => a || b,
-    Not: a => !a
-  };
-
-  const TYPES$1 = ["bool", "int", "real", "complex", "vec2", "vec3", "vec4", "mat2", "mat3", "mat4", "real_list", "complex_list", "real_interval", "complex_interval"];
-  /**
-   * Whether a type is valid
-   * @param typename {string}
-   * @returns {boolean}
-   */
-
-  function isValidType$1(typename) {
-    return TYPES$1.includes(typename);
-  }
-  /**
-   * Throw a (hopefully helpful) error when a type is invalid
-   * @param typename {string}
-   * @returns {boolean}
-   */
-
-
-  function throwInvalidType$1(typename) {
-    if (!isValidType$1(typename)) {
-      let didYouMean = "";
-      let distances = TYPES$1.map(type => levenshtein(typename, type));
-      let minDistance = Math.min(...distances);
-
-      if (minDistance < 2) {
-        didYouMean = "Did you mean " + TYPES$1[distances.indexOf(minDistance)] + "?";
-      }
-
-      throw new Error("Unrecognized type ".concat(typename, "; valid types are ").concat(TYPES$1.join(', '), ". ").concat(didYouMean));
-    }
-  }
-  /**
-   * Given the name of a function like Grapheme.RealFunctions.Multiply, find and return it. Eventually it will throw an
-   * error when no function is found; for now, it will silently fail until I implement all the functions
-   * @param str {string}
-   * @returns {Function}
-   */
-
-
-  function retrieveEvaluationFunction(str) {
-    let fName = str.split('.').pop();
-    let res;
-    if (str.includes("RealFunctions")) res = RealFunctions[fName];else if (str.includes("RealIntervalFunctions")) res = RealIntervalFunctions[fName];else if (str.includes("ComplexFunctions")) res = ComplexFunctions[fName];else if (str.includes("typecastList")) res = Typecasts[fName];else if (str.includes("BooleanFunctions")) res = BooleanFunctions[fName];
-    /*if (!res)
-      throw new Error(`Could not find evaluation function ${str}`)*/
-
-    return res;
-  }
-  /**
-   * Abstract class: definition of an evaluable operator
-   */
-
-
-  class OperatorDefinition$1 {
-    constructor(params = {}) {
-      /**
-       * Return type of the operator
-       * @type {string}
-       */
-      this.returns = params.returns || "real";
-      throwInvalidType$1(this.returns);
-      let evaluate = params.evaluate;
-      if (!evaluate) throw new Error("An evaluation instruction must be provided");
-      /**
-       * String containing the location of the function among RealFunctions, ComplexFunctions, etc. so that it can be
-       * compiled to JS. For example, multiplication may have an evaluate of "Grapheme.RealFunctions.Multiply".
-       * @type {string}
-       */
-
-      this.evaluate = "Grapheme." + evaluate;
-      /**
-       * The function object which can be called directly instead of looking it up in the list of functions.
-       */
-
-      this.evaluateFunc = retrieveEvaluationFunction(this.evaluate);
-    }
-
-  }
-  /**
-   * Definition of an evaluable operator with a specific signature (fixed length and types of arguments)
-   */
-
-
-  class NormalDefinition extends OperatorDefinition$1 {
-    constructor(params = {}) {
-      super(params);
-      let signature = params.signature;
-      this.signature = Array.isArray(signature) ? signature : [signature];
-      this.signature.forEach(throwInvalidType$1);
-    }
-    /**
-     * Whether a given set of arguments (their types) works
-     * @param signature {string[]}
-     * @returns {boolean}
-     */
-
-
-    signatureWorks(signature) {
-      return castableIntoMultiple(signature, this.signature);
-    }
-    /**
-     * Get the true definition for a given signature. This is an identity operation for NormalDefinitions but requires
-     * generating a signature of a specific length for VariadicDefinitions.
-     * @param signature
-     * @returns {NormalDefinition}
-     */
-
-
-    getDefinition(signature) {
-      return this;
-    }
-
-  }
-
-  class VariadicDefinition extends OperatorDefinition$1 {
-    constructor(params = {}) {
-      super(params);
-      this.initialSignature = params.initialSignature;
-      this.repeatingSignature = params.repeatingSignature;
-      this.initialSignature.forEach(throwInvalidType$1);
-      this.repeatingSignature.forEach(throwInvalidType$1);
-    }
-
-    getSignatureOfLength(len) {
-      let signature = this.initialSignature.slice();
-
-      while (signature.length < len) {
-        signature.push(...this.repeatingSignature);
-      }
-
-      return signature;
-    }
-
-    signatureWorks(signature) {
-      let len = signature.length;
-      if (len < this.initialSignature.length) return false;
-      let compSig = this.getSignatureOfLength(len);
-      if (!compSig) return false;
-      return castableIntoMultiple(signature, compSig);
-    }
-
-    getDefinition(signature) {
-      let sig = this.getSignatureOfLength(signature.length);
-      return new NormalDefinition({
-        signature: sig,
-        returns: this.returns,
-        evaluate: this.evaluate,
-        evaluateInterval: this.evaluateInterval,
-        desc: this.desc,
-        latex: this.latex
-      });
-    }
-
-  }
-  /**
-   * Determines whether a given type can be cast into another type.
-   * @param from {string}
-   * @param to {string}
-   * @returns {boolean}
-   */
-
-
-  function castableInto(from, to) {
-    if (from === to) return true;
-    let casts = TypecastDefinitions[from];
-    return casts && casts.some(cast => cast.returns === to);
-  }
-  /**
-   * Determines whether two signatures are compatible, in that every element of one can be cast into the other
-   * @param signatureFrom {string[]}
-   * @param signatureTo {string[]}
-   * @returns {boolean}
-   */
-
-
-  function castableIntoMultiple(signatureFrom, signatureTo) {
-    return signatureFrom.length === signatureTo.length && signatureFrom.every((type, index) => castableInto(type, signatureTo[index]));
-  }
-  /**
-   * Special class for typecast definitions (in case we want more metadata for them later
-   */
-
-
-  class TypecastDefinition$1 extends OperatorDefinition$1 {}
-  /**
-   * Definitions of allowed typecasts. Currently just int -> real, int -> complex, and real -> complex, but we'll soon see
-   * other conversions
-   */
-
-
-  const TypecastDefinitions = {
-    'int': [new TypecastDefinition$1({
-      returns: 'real',
-      evaluate: "typecastList.Identity"
-    }), new TypecastDefinition$1({
-      returns: 'complex',
-      evaluate: "typecastList.RealToComplex"
-    })],
-    'real': [new TypecastDefinition$1({
-      returns: 'complex',
-      evaluate: "typecastList.RealToComplex"
-    })]
-  };
-
-  function constructTrigDefinitions(name, funcName) {
-    let latex = LatexMethods.genFunctionLatex(funcName.toLowerCase());
-    return [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions." + funcName,
-      desc: "Returns the " + name + " of the real number x.",
-      latex
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions." + funcName,
-      desc: "Returns the " + name + " of the complex number z.",
-      latex
-    })];
-  }
-
-  ({
-    '*': [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Multiply",
-      intervalEvaluate: "RealIntervalFunctions.Multiply",
-      desc: "Returns the product of two integers.",
-      latex: LatexMethods.multiplicationLatex
-    }), new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Multiply",
-      desc: "Returns the product of two real numbers.",
-      latex: LatexMethods.multiplicationLatex
-    }), new NormalDefinition({
-      signature: ["complex", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Multiply",
-      desc: "Returns the product of two complex numbers.",
-      latex: LatexMethods.multiplicationLatex
-    })],
-    '+': [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Add",
-      desc: "Returns the sum of two integers.",
-      latex: LatexMethods.additionLatex
-    }), new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Add",
-      desc: "Returns the sum of two real numbers.",
-      latex: LatexMethods.additionLatex
-    }), new NormalDefinition({
-      signature: ["complex", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Add",
-      desc: "Returns the sum of two complex numbers.",
-      latex: LatexMethods.additionLatex
-    }), new NormalDefinition({
-      signature: ["vec2", "vec2"],
-      returns: "vec2",
-      evaluate: "VectorFunctions.Add",
-      desc: "Returns the sum of two 2-dimensional vectors.",
-      latex: LatexMethods.additionLatex
-    })],
-    '-': [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Subtract",
-      desc: "Returns the difference of two integers.",
-      latex: LatexMethods.subtractionLatex
-    }), new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Subtract",
-      desc: "Returns the difference of two real numbers.",
-      latex: LatexMethods.subtractionLatex
-    }), new NormalDefinition({
-      signature: ["complex", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Subtract",
-      desc: "Returns the difference of two complex numbers.",
-      latex: LatexMethods.subtractionLatex
-    }), new NormalDefinition({
-      signature: ["int"],
-      returns: "int",
-      evaluate: "RealFunctions.UnaryMinus",
-      desc: "Returns the negation of an integer.",
-      latex: LatexMethods.unaryMinusLatex
-    }), new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.UnaryMinus",
-      desc: "Returns the negation of a real number.",
-      latex: LatexMethods.unaryMinusLatex
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.UnaryMinus",
-      desc: "Returns the negation of a complex number.",
-      latex: LatexMethods.unaryMinusLatex
-    }), new NormalDefinition({
-      signature: ["vec2", "vec2"],
-      returns: "vec2",
-      evaluate: "VectorFunctions.Subtract",
-      desc: "Returns the sum of two 2-dimensional vectors.",
-      latex: LatexMethods.subtractionLatex
-    })],
-    '/': [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Divide",
-      desc: "Returns the quotient of two real numbers.",
-      latex: LatexMethods.divisionLatex
-    }), new NormalDefinition({
-      signature: ["complex", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Divide",
-      desc: "Returns the quotient of two real numbers.",
-      latex: LatexMethods.divisionLatex
-    })],
-    "complex": [new NormalDefinition({
-      signature: ["real"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Construct",
-      desc: "complex(a) casts a real number to a complex number."
-    }), new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Construct",
-      desc: "complex(a, b) returns the complex number a + bi."
-    })],
-    "sin": constructTrigDefinitions("sine", "Sin"),
-    "cos": constructTrigDefinitions("cosine", "Cos"),
-    "tan": constructTrigDefinitions("tangent", "Tan"),
-    "csc": constructTrigDefinitions("cosecant", "Csc"),
-    "sec": constructTrigDefinitions("secant", "Sec"),
-    "cot": constructTrigDefinitions("cotangent", "Cot"),
-    "asin": constructTrigDefinitions("inverse sine", "Arcsin"),
-    "acos": constructTrigDefinitions("inverse cosine", "Arccos"),
-    "atan": constructTrigDefinitions("inverse tangent", "Arctan"),
-    "acsc": constructTrigDefinitions("inverse cosecant", "Arccsc"),
-    "asec": constructTrigDefinitions("inverse secant", "Arcsec"),
-    "acot": constructTrigDefinitions("inverse cotangent", "Arccot"),
-    "sinh": constructTrigDefinitions("hyperbolic sine", "Sinh"),
-    "cosh": constructTrigDefinitions("hyperbolic cosine", "Cosh"),
-    "tanh": constructTrigDefinitions("hyperbolic tangent", "Tanh"),
-    "csch": constructTrigDefinitions("hyperbolic cosecant", "Csch"),
-    "sech": constructTrigDefinitions("hyperbolic secant", "Sech"),
-    "coth": constructTrigDefinitions("hyperbolic cotangent", "Coth"),
-    "asinh": constructTrigDefinitions("inverse hyperbolic sine", "Arcsinh"),
-    "acosh": constructTrigDefinitions("inverse hyperbolic cosine", "Arccosh"),
-    "atanh": constructTrigDefinitions("inverse hyperbolic tangent", "Arctanh"),
-    "acsch": constructTrigDefinitions("inverse hyperbolic cosecant", "Arccsch"),
-    "asech": constructTrigDefinitions("inverse hyperbolic secant", "Arcsech"),
-    "acoth": constructTrigDefinitions("inverse hyperbolic cotangent", "Arccoth"),
-    "Im": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Im",
-      desc: "Im(r) returns the imaginary part of r, i.e. 0.",
-      latex: LatexMethods.genFunctionLatex("Im")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "real",
-      evaluate: "ComplexFunctions.Im",
-      desc: "Im(z) returns the imaginary part of z.",
-      latex: LatexMethods.genFunctionLatex("Im")
-    })],
-    "Re": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Re",
-      desc: "Re(r) returns the real part of r, i.e. r.",
-      latex: LatexMethods.genFunctionLatex("Re")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "real",
-      evaluate: "ComplexFunctions.Re",
-      desc: "Re(z) returns the real part of z.",
-      latex: LatexMethods.genFunctionLatex("Re")
-    })],
-    "gamma": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Gamma",
-      desc: "Evaluates the gamma function at r.",
-      latex: LatexMethods.genFunctionLatex("\\Gamma")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Gamma",
-      desc: "Evaluates the gamma function at z.",
-      latex: LatexMethods.genFunctionLatex("\\Gamma")
-    })],
-    '^': [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Pow",
-      desc: "Evaluates a^b, undefined for negative b. If you want to evaluate something like a^(1/5), use pow_rational(a, 1, 5).",
-      latex: LatexMethods.exponentiationLatex
-    }), new NormalDefinition({
-      signature: ["complex", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Pow",
-      desc: "Returns the principal value of z^w.",
-      latex: LatexMethods.exponentiationLatex
-    })],
-    "digamma": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Digamma",
-      desc: "Evaluates the digamma function at r.",
-      latex: LatexMethods.genFunctionLatex("\\psi^{(0})")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Digamma",
-      desc: "Evaluates the digamma function at z.",
-      latex: LatexMethods.genFunctionLatex("\\psi^{(0})")
-    })],
-    "trigamma": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Trigamma",
-      desc: "Evaluates the trigamma function at r.",
-      latex: LatexMethods.genFunctionLatex("\\psi^{(1})")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Trigamma",
-      desc: "Evaluates the trigamma function at z.",
-      latex: LatexMethods.genFunctionLatex("\\psi^{(1})")
-    })],
-    "polygamma": [new NormalDefinition({
-      signature: ["int", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Polygamma",
-      desc: "polygamma(n, r) evaluates the nth polygamma function at r.",
-      latex: LatexMethods.polygammaLatex
-    }), new NormalDefinition({
-      signature: ["int", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Polygamma",
-      desc: "polygamma(n, z) evaluates the nth polygamma function at z.",
-      latex: LatexMethods.polygammaLatex
-    })],
-    "sqrt": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Sqrt",
-      desc: "sqrt(r) returns the square root of r. NaN if r < 0.",
-      latex: LatexMethods.sqrtLatex
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Sqrt",
-      desc: "sqrt(z) returns the principal branch of the square root of z.",
-      latex: LatexMethods.sqrtLatex
-    })],
-    "cbrt": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Cbrt",
-      desc: "cbrt(r) returns the cube root of r. NaN if r < 0.",
-      latex: LatexMethods.cbrtLatex
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Cbrt",
-      desc: "cbrt(z) returns the principal branch of the cube root of z.",
-      latex: LatexMethods.cbrtLatex
-    })],
-    "ln": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Ln",
-      desc: "ln(r) returns the natural logarithm of r. NaN if r < 0.",
-      latex: LatexMethods.genFunctionLatex("ln")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Ln",
-      desc: "ln(z) returns the principal value of the natural logarithm of z.",
-      latex: LatexMethods.genFunctionLatex("ln")
-    })],
-    "log10": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Log10",
-      desc: "log10(r) returns the base-10 logarithm of r. NaN if r < 0.",
-      latex: LatexMethods.genFunctionLatex("log_{10}")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Log10",
-      desc: "log10(z) returns the principal value of base-10 logarithm of z.",
-      latex: LatexMethods.genFunctionLatex("log_{10}")
-    })],
-    "log2": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Log2",
-      desc: "log2(r) returns the base-2 logarithm of r. NaN if r < 0.",
-      latex: LatexMethods.genFunctionLatex("log_{2}")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Log2",
-      desc: "log2(z) returns the principal value of base-2 logarithm of z.",
-      latex: LatexMethods.genFunctionLatex("log_{2}")
-    })],
-    "piecewise": [new VariadicDefinition({
-      initialSignature: [],
-      repeatingSignature: ["real", "bool"],
-      returns: "real",
-      evaluate: "RealFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise.",
-      latex: LatexMethods.piecewiseLatex
-    }), new VariadicDefinition({
-      initialSignature: ["real"],
-      repeatingSignature: ["bool", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise.",
-      latex: LatexMethods.piecewiseLatex
-    }), new VariadicDefinition({
-      initialSignature: [],
-      repeatingSignature: ["complex", "bool"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2 ... ) returns a if cond1 is true, b if cond2 is true, and so forth, and 0 otherwise.",
-      latex: LatexMethods.piecewiseLatex
-    }), new VariadicDefinition({
-      initialSignature: ["complex"],
-      repeatingSignature: ["bool", "complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Piecewise",
-      desc: "piecewise(a, cond1, b, cond2, ..., default) returns a if cond1 is true, b if cond2 is true, and so forth, and default otherwise.",
-      latex: LatexMethods.piecewiseLatex
-    })],
-    "ifelse": [new NormalDefinition({
-      signature: ["real", "bool", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Piecewise",
-      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise",
-      latex: LatexMethods.piecewiseLatex
-    }), new NormalDefinition({
-      signature: ["complex", "bool", "complex"],
-      returns: "real",
-      evaluate: "RealFunctions.Piecewise",
-      desc: "ifelse(a, cond, b) returns a if cond is true, and b otherwise",
-      latex: LatexMethods.piecewiseLatex
-    })],
-    "cchain": [new VariadicDefinition({
-      initialSignature: ["real"],
-      repeatingSignature: ["int", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.CChain",
-      desc: "Used internally to describe comparison chains (e.x. 0 < a < b < 1)",
-      latex: LatexMethods.cchainLatex
-    })],
-    "<": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.LessThan",
-      desc: "Returns a < b.",
-      latex: LatexMethods.cmpLatex['<']
-    })],
-    ">": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.GreaterThan",
-      desc: "Returns a > b.",
-      latex: LatexMethods.cmpLatex['>']
-    })],
-    "<=": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.LessEqualThan",
-      desc: "Returns a <= b.",
-      latex: LatexMethods.cmpLatex['<=']
-    })],
-    ">=": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.GreaterEqualThan",
-      desc: "Returns a >= b.",
-      latex: LatexMethods.cmpLatex['>=']
-    })],
-    "==": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.Equal",
-      desc: "Returns a == b.",
-      latex: LatexMethods.cmpLatex['==']
-    })],
-    "!=": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "bool",
-      evaluate: "RealFunctions.Cmp.NotEqual",
-      desc: "Returns a != b.",
-      latex: LatexMethods.cmpLatex['!=']
-    })],
-    "euler_phi": [new NormalDefinition({
-      signature: ["int"],
-      returns: "int",
-      evaluate: "RealFunctions.EulerPhi",
-      desc: "Returns Euler's totient function evaluated at an integer n.",
-      latex: LatexMethods.genFunctionLatex('\\phi')
-    })],
-    "floor": [new NormalDefinition({
-      signature: ["real"],
-      returns: "int",
-      evaluate: "RealFunctions.Floor",
-      desc: "Returns the floor of a real number r.",
-      latex: LatexMethods.floorLatex
-    })],
-    "ceil": [new NormalDefinition({
-      signature: ["real"],
-      returns: "int",
-      evaluate: "RealFunctions.Ceil",
-      desc: "Returns the ceiling of a real number r.",
-      latex: LatexMethods.ceilLatex
-    })],
-    "riemann_zeta": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Zeta",
-      desc: "Returns the Riemann zeta function of a real number r.",
-      latex: LatexMethods.genFunctionLatex("\\zeta")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Zeta",
-      desc: "Returns the Riemann zeta function of a complex number r.",
-      latex: LatexMethods.genFunctionLatex("\\zeta")
-    })],
-    "dirichlet_eta": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Eta",
-      desc: "Returns the Dirichlet eta function of a real number r.",
-      latex: LatexMethods.genFunctionLatex("\\eta")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Eta",
-      desc: "Returns the Dirichlet eta function of a complex number r.",
-      latex: LatexMethods.genFunctionLatex("\\eta")
-    })],
-    "mod": [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Mod",
-      desc: "Returns a modulo b.",
-      latex: LatexMethods.genFunctionLatex("mod")
-    }), new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Mod",
-      desc: "Returns a modulo b.",
-      latex: LatexMethods.genFunctionLatex("mod")
-    })],
-    "frac": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Frac",
-      desc: "Returns the fractional part of x.",
-      latex: LatexMethods.fractionalPartLatex
-    })],
-    "sign": [new NormalDefinition({
-      signature: ["real"],
-      returns: "int",
-      evaluate: "RealFunctions.Sign",
-      desc: "Returns the sign of x: 1 if x > 0, 0 if x == 0 and -1 otherwise.",
-      latex: LatexMethods.genFunctionLatex("sgn")
-    })],
-    "round": [new NormalDefinition({
-      signature: ["real"],
-      returns: "int",
-      evaluate: "RealFunctions.Round",
-      desc: "Returns the nearest integer to x. Note that if |x| > " + Number.MAX_SAFE_INTEGER + " this may not be accurate.",
-      latex: LatexMethods.genFunctionLatex("round")
-    })],
-    "trunc": [new NormalDefinition({
-      signature: ["real"],
-      returns: "int",
-      evaluate: "RealFunctions.Trunc",
-      desc: "Removes the fractional part of x.",
-      latex: LatexMethods.genFunctionLatex("trunc")
-    })],
-    "is_finite": [new NormalDefinition({
-      signature: ["real"],
-      returns: "bool",
-      evaluate: "RealFunctions.IsFinite",
-      desc: "Returns true if the number is finite and false if it is -Infinity, Infinity, or NaN",
-      latex: LatexMethods.genFunctionLatex("isFinite")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "bool",
-      evaluate: "ComplexFunctions.IsFinite",
-      desc: "Returns true if the number is finite and false if it is undefined or infinite",
-      latex: LatexMethods.genFunctionLatex("isFinite")
-    })],
-    "not": [new NormalDefinition({
-      signature: ["bool"],
-      returns: "bool",
-      evaluate: "BooleanFunctions.Not",
-      desc: "Returns the logical negation of b.",
-      latex: LatexMethods.logicLatex.not
-    })],
-    "and": [new NormalDefinition({
-      signature: ["bool", "bool"],
-      returns: "bool",
-      evaluate: "BooleanFunctions.And",
-      desc: "Returns true if a and b are true, and false otherwise.",
-      latex: LatexMethods.logicLatex.and
-    })],
-    "or": [new NormalDefinition({
-      signature: ["bool", "bool"],
-      returns: "bool",
-      evaluate: "BooleanFunctions.Or",
-      desc: "Returns true if a or b are true, and false otherwise.",
-      latex: LatexMethods.logicLatex.or
-    })],
-    "Ei": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Ei",
-      desc: "Returns the exponential integral of x.",
-      latex: LatexMethods.genFunctionLatex("Ei")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Ei",
-      desc: "Returns the exponential integral of z.",
-      latex: LatexMethods.genFunctionLatex("Ei")
-    })],
-    "li": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Li",
-      desc: "Returns the logarithmic integral of x.",
-      latex: LatexMethods.genFunctionLatex("li")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Li",
-      desc: "Returns the logarithmic integral of z.",
-      latex: LatexMethods.genFunctionLatex("li")
-    })],
-    "sinc": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Sinc",
-      desc: "Returns the sinc function of x.",
-      latex: LatexMethods.genFunctionLatex("sinc")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Sinc",
-      desc: "Returns the sinc function of x.",
-      latex: LatexMethods.genFunctionLatex("sinc")
-    })],
-    "Si": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Si",
-      desc: "Returns the sine integral of x.",
-      latex: LatexMethods.genFunctionLatex("Si")
-    })],
-    "Ci": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Ci",
-      desc: "Returns the cosine integral of x.",
-      latex: LatexMethods.genFunctionLatex("Ci")
-    })],
-    "erf": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Erf",
-      desc: "Returns the error function of x.",
-      latex: LatexMethods.genFunctionLatex("erf")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Erf",
-      desc: "Returns the error function of z.",
-      latex: LatexMethods.genFunctionLatex("erf")
-    })],
-    "erfc": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Erfc",
-      desc: "Returns the complementary error function of x.",
-      latex: LatexMethods.genFunctionLatex("erfc")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Erfc",
-      desc: "Returns the complementary error function of z.",
-      latex: LatexMethods.genFunctionLatex("erfc")
-    })],
-    "inverse_erf": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.InverseErf",
-      desc: "Returns the inverse error function of x.",
-      latex: LatexMethods.genFunctionLatex("erf^{-1}")
-    })],
-    "inverse_erfc": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.InverseErfc",
-      desc: "Returns the inverse complementary error function of x.",
-      latex: LatexMethods.genFunctionLatex("erfc^{-1}")
-    })],
-    "gcd": [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Gcd",
-      desc: "Returns the greatest common divisor of a and b.",
-      latex: LatexMethods.genFunctionLatex("gcd")
-    })],
-    "lcm": [new NormalDefinition({
-      signature: ["int", "int"],
-      returns: "int",
-      evaluate: "RealFunctions.Lcm",
-      desc: "Returns the least common multiple of a and b.",
-      latex: LatexMethods.genFunctionLatex("lcm")
-    })],
-    "fresnel_S": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.FresnelS",
-      desc: "Return the integral from 0 to x of sin(x^2).",
-      latex: LatexMethods.genFunctionLatex("S")
-    })],
-    "fresnel_C": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.FresnelC",
-      desc: "Return the integral from 0 to x of cos(x^2).",
-      latex: LatexMethods.genFunctionLatex("C")
-    })],
-    "product_log": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.ProductLog",
-      desc: "Return the principal branch of the product log of x (also known as the Lambert W function or W0(x)).",
-      latex: LatexMethods.genFunctionLatex("W_0")
-    }), new NormalDefinition({
-      signature: ["int", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.ProductLogBranched",
-      desc: "Return the nth branch of the product log of x (also known as the Lambert W function or W0(x)). n can be 0 or -1.",
-      latex: LatexMethods.genFunctionSubscriptLatex("W")
-    })],
-    "elliptic_K": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.EllipticK",
-      desc: "Return the complete elliptic integral K(m) with parameter m = k^2.",
-      latex: LatexMethods.genFunctionLatex("K")
-    })],
-    "elliptic_E": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.EllipticE",
-      desc: "Return the complete elliptic integral E(m) with parameter m = k^2.",
-      latex: LatexMethods.genFunctionLatex("E")
-    })],
-    "agm": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Agm",
-      desc: "Return the arithmetic geometric mean of a and b.",
-      latex: LatexMethods.genFunctionLatex("agm")
-    })],
-    "abs": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Abs",
-      desc: "Return the absolute value of r.",
-      latex: LatexMethods.absoluteValueLatex
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "real",
-      evaluate: "ComplexFunctions.Abs",
-      desc: "Return the magnitude of z.",
-      latex: LatexMethods.absoluteValueLatex
-    })],
-    "vec2": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "vec2",
-      evaluate: "VectorFunctions.Construct",
-      desc: "Construct a new vec2."
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "vec2",
-      evaluate: "VectorFunctions.FromComplex",
-      desc: "Construct a new vec2 from the real and imaginary components of a complex number."
-    })],
-    "vec": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "vec2",
-      evaluate: "VectorFunctions.Construct",
-      desc: "Construct a new vec2."
-    })],
-    "dot": [new NormalDefinition({
-      signature: ["vec2", "vec2"],
-      returns: "real",
-      evaluate: "VectorFunctions.Dot",
-      desc: "Find the dot product of vectors v and w."
-    })],
-    "prime_count": [new NormalDefinition({
-      signature: ["int"],
-      returns: "int",
-      evaluate: "RealFunctions.PrimeCount",
-      desc: "Find the number of primes below n.",
-      latex: LatexMethods.genFunctionLatex("\\pi")
-    })],
-    "cis": [new NormalDefinition({
-      signature: ["real"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Cis",
-      desc: "Returns cos(theta) + i sin(theta).",
-      latex: LatexMethods.genFunctionLatex("cis")
-    })],
-    "Cl2": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Cl2",
-      desc: "Evaluates the Clausen function of x.",
-      latex: LatexMethods.genFunctionLatex("Cl_2")
-    })],
-    "beta": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Beta",
-      desc: "Evaluates the beta function at a,b.",
-      latex: LatexMethods.genFunctionLatex("B")
-    })],
-    "exp": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.Exp",
-      latex: LatexMethods.genFunctionLatex("exp")
-    }), new NormalDefinition({
-      signature: ["complex"],
-      returns: "complex",
-      evaluate: "ComplexFunctions.Exp",
-      latex: LatexMethods.genFunctionLatex("exp")
-    })],
-    "ln_gamma": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.LnGamma",
-      latex: LatexMethods.genFunctionLatex("\\ln \\Gamma")
-    })],
-    "barnes_G": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.BarnesG",
-      latex: LatexMethods.genFunctionLatex("G")
-    })],
-    "ln_barnes_G": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.LnBarnesG",
-      latex: LatexMethods.genFunctionLatex("\\ln \\operatorname{G}")
-    })],
-    "K_function": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.KFunction",
-      latex: LatexMethods.genFunctionLatex("K")
-    })],
-    "ln_K_function": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.LnKFunction",
-      latex: LatexMethods.genFunctionLatex("\\ln \\operatorname{K}")
-    })],
-    "bessel_J": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselJ",
-      latex: LatexMethods.genFunctionSubscriptLatex("J")
-    })],
-    "bessel_Y": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselY",
-      latex: LatexMethods.genFunctionSubscriptLatex("Y")
-    })],
-    "bessel_J0": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselJ0",
-      latex: LatexMethods.genFunctionLatex("J_0")
-    })],
-    "bessel_Y0": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselY0",
-      latex: LatexMethods.genFunctionLatex("Y_0")
-    })],
-    "bessel_J1": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselJ1",
-      latex: LatexMethods.genFunctionLatex("J_1")
-    })],
-    "bessel_Y1": [new NormalDefinition({
-      signature: ["real"],
-      returns: "real",
-      evaluate: "RealFunctions.BesselY1",
-      latex: LatexMethods.genFunctionLatex("Y_1")
-    })],
-    "spherical_bessel_J": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.SphericalBesselJ",
-      latex: LatexMethods.genFunctionSubscriptLatex("j")
-    })],
-    "spherical_bessel_Y": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.SphericalBesselY",
-      latex: LatexMethods.genFunctionSubscriptLatex("y")
-    })],
-    "polylog": [new NormalDefinition({
-      signature: ["real", "real"],
-      returns: "real",
-      evaluate: "RealFunctions.Polylogarithm",
-      latex: LatexMethods.genFunctionSubscriptLatex("Li")
-    })]
-  });
-
-  function initTypecasts(TypecastDefinition, typecastList, typecastDict) {
-    let intToReal = new TypecastDefinition({
-      from: "int",
-      to: "real",
-      evaluators: {
-        generic: "identity" // Identity conversion
-
-      }
-    });
-
-    let doubleToComplex = x => new Complex(x, 0);
-
-    let intToComplex = new TypecastDefinition({
-      from: "int",
-      to: "complex",
-      evaluators: {
-        generic: doubleToComplex
-      }
-    });
-    let realToComplex = new TypecastDefinition({
-      from: "real",
-      to: "complex",
-      evaluators: {
-        generic: doubleToComplex
-      }
-    });
-    typecastList.push(intToReal, intToComplex, realToComplex); // For simplicity, we convert the list of all typecasts into a dict of from -> to, so that it can be very quickly
-    // searched during signature matching.
-
-    for (const typecast of typecastList) {
-      let from = typecast.from;
-
-      if (typecastDict[from]) {
-        typecastDict[from].push(typecast);
-      } else {
-        typecastDict[from] = [typecast];
-      }
-    }
-  }
-
-  const TYPES = {
-    "bool": {
-      typecheck: {
-        generic: {
-          f: x => typeof x === "boolean"
-        }
-      }
-    },
-    "int": {
-      typecheck: {
-        generic: {
-          f: Number.isInteger
-        }
-      }
-    },
-    "real": {
-      typecheck: {
-        generic: {
-          f: x => typeof x === "number"
-        }
-      }
-    },
-    "complex": true,
-    "null": true
-  };
-  /**
-   * Get typecast definition between two types--if the definition exists. Can also be used as a boolean test for whether
-   * two types are castable. The list of allowed casts is generated in typecasts.js
-   * @param from {string}
-   * @param to {string}
-   * @returns {TypecastDefinition|*}
-   */
-
-  function getCast(from, to) {
-    let candidates = typecastDict[from];
-    if (!candidates) return;
-
-    for (let i = candidates.length - 1; i >= 0; --i) {
-      let candidate = candidates[i];
-      if (candidate.to === to) return candidate;
-    }
-  }
-  function canCast(from, to) {
-    return from === to || !!getCast(from, to);
-  }
-  /**
-   * Whether a type is valid
-   * @param typename {string}
-   * @returns {boolean}
-   */
-
-  function isValidType(typename) {
-    return typeof typename === "string" && typename in TYPES;
-  }
-  /**
-   * Throw a (hopefully helpful) error when a type is invalid
-   * @param typename {string}
-   * @returns {boolean}
-   */
-
-
-  function throwInvalidType(typename) {
-    if (!isValidType(typename)) {
-      if (typeof typename !== "string") throw new Error("Non-string passed as typename");
-      let didYouMean = "";
-      let minDistance = Infinity,
-          closestType;
-      Object.keys(TYPES).forEach(type => {
-        let dist = levenshtein(typename, type);
-
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestType = type;
-        }
-      });
-
-      if (minDistance < 2) {
-        didYouMean = ". Did you mean " + closestType + "?";
-      } else {
-        didYouMean = "; valid types are ".concat(Object.keys(TYPES).join(', '), ".");
-      }
-
-      throw new Error("Unrecognized type \"".concat(typename, "\"").concat(didYouMean));
-    }
-  }
-  /**
-   * Abstract class: definition of an evaluable operator
-   */
-
-
-  class OperatorDefinition {
-    constructor(params = {}) {
-      var _params$evaluators;
-
-      throwInvalidType(this.returnType = params.returnType);
-      /**
-       * Mapping of evaluation mode -> evaluator which can evaluate the operator in that mode. "generic" accepts arguments
-       * of various types--that is the intent
-       * @type {{}}
-       */
-
-      this.evaluators = (_params$evaluators = params.evaluators) !== null && _params$evaluators !== void 0 ? _params$evaluators : {};
-    }
-
-  }
-  /**
-   * Taking in a signature argument like "real", ["real", "complex"], or undefined and converting it to a normalized form
-   * @param obj {string[]|string|undefined}
-   * @returns {string[]}
-   */
-
-  function signatureNormalize(obj) {
-    if (Array.isArray(obj)) {
-      obj.forEach(throwInvalidType);
-      return obj;
-    } else if (!obj) {
-      return [];
-    } else {
-      throwInvalidType(obj);
-      return [obj];
-    }
-  }
-
-  const specialEvaluators = {
-    identity: {
-      type: "special",
-      name: "identity",
-      f: x => x
-    },
-    addition: {
-      type: "special_binary",
-      binary: '+',
-      f: (a, b) => a + b
-    },
-    subtraction: {
-      type: "special_binary",
-      binary: '-',
-      f: (a, b) => a - b
-    },
-    unary_subtraction: {
-      type: "special",
-      f: a => -a
-    },
-    multiplication: {
-      type: "special_binary",
-      binary: '*',
-      f: (a, b) => a * b
-    },
-    division: {
-      type: "special_binary",
-      binary: '/',
-      f: (a, b) => a / b
-    },
-    pow: {
-      type: "special",
-      name: "pow",
-      f: Math.pow
-    }
-  };
-  /**
-   * Given an evaluator description, return a normalized evaluator of the form { type: (str), f: (function) } and
-   * potentially more information that the compiler can use to optimize the evaluator (identity, piecewiseness, etc.)
-   * @param obj
-   */
-
-  function evaluatorNormalize(obj) {
-    if (typeof obj === "string") {
-      let evaluator = specialEvaluators[obj];
-      if (!obj) throw new Error("Unknown special evaluator ".concat(obj));
-      return evaluator;
-    } else if (typeof obj === "function") {
-      return {
-        type: "normal",
-        f: obj
-      };
-    }
-
-    return obj;
-  }
-  /**
-   * Normalize the form of evaluators in an evaluator dictionary. Modifies the passed object.
-   * @param obj {{}}
-   */
-
-
-  function evaluatorsNormalize(obj) {
-    for (let key in obj) {
-      if (!obj.hasOwnProperty(key)) continue;
-      obj[key] = evaluatorNormalize(obj[key]);
-    }
-
-    return obj;
-  }
-  /**
-   * Operator with a fixed type signature and type output
-   */
-
-
-  class FixedOperatorDefinition extends OperatorDefinition {
-    constructor(params = {}) {
-      super(params);
-      this.signature = signatureNormalize(params.signature);
-      this.evaluators = evaluatorsNormalize(params.evaluators);
-    }
-
-    argCount() {
-      return this.signature.length;
-    }
-    /**
-     * Return whether a given signature is compatible with this operator definition
-     * @param signature {string[]}
-     * @returns {boolean}
-     */
-
-
-    signatureWorks(signature) {
-      let match = this.signature;
-      if (match.length !== signature.length) return false;
-      return match.every((type, i) => canCast(signature[i], type));
-    }
-
-  } // List of typecasts and dict from (source type) -> (dst type)
-
-  let typecastList = [],
-      typecastDict = {};
-
-  class TypecastDefinition extends FixedOperatorDefinition {
-    constructor(params = {}) {
-      let from = params.from;
-      let to = params.to;
-      super(_objectSpread2(_objectSpread2({}, params), {}, {
-        returnType: to,
-        signature: from
-      }));
-      this.from = from;
-      this.to = to;
-    }
-
-  }
-
-  initTypecasts(TypecastDefinition, typecastList, typecastDict);
-
-  const Operators = {};
-  /**
-   * Find the operator of a given name which matches a signature
-   * @param name {string}
-   * @param signature {string[]}
-   */
-
-  function resolveOperator(name, signature) {
-    let candidates = Operators[name];
-    if (!candidates) return;
-
-    for (let candidate of candidates) {
-      if (candidate.signatureWorks(signature)) {
-        return candidate;
-      }
-    }
-  }
-  /**
-   * Given the name of an operator and its definition, place it into the register of operators
-   * @param name {string}
-   * @param ops {OperatorDefinition[]}
-   */
-
-  function registerOperator(name, ...ops) {
-    if (Operators[name]) {
-      Operators[name].push(...ops);
-    } else {
-      Operators[name] = ops;
-    }
-  }
-
-  let intAdd = new FixedOperatorDefinition({
-    signature: ["int", "int"],
-    returnType: "int",
-    evaluators: {
-      generic: "addition"
-    }
-  });
-  let intSub = new FixedOperatorDefinition({
-    signature: ["int", "int"],
-    returnType: "int",
-    evaluators: {
-      generic: "subtraction"
-    }
-  });
-  let unaryIntSub = new FixedOperatorDefinition({
-    signature: ["int"],
-    returnType: "int",
-    evaluators: {
-      generic: "unary_subtraction"
-    }
-  });
-  let intMul = new FixedOperatorDefinition({
-    signature: ["int", "int"],
-    returnType: "int",
-    evaluators: {
-      generic: "multiplication"
-    }
-  });
-  let intPow = new FixedOperatorDefinition({
-    signature: ["int", "int"],
-    returnType: "int",
-    evaluators: {
-      generic: Math.pow
-    }
-  });
-  registerOperator('*', intMul);
-  registerOperator('+', intAdd);
-  registerOperator('-', intSub);
-  registerOperator('-', unaryIntSub);
-  registerOperator('^', intPow);
-  let realAdd = new FixedOperatorDefinition({
-    signature: ["real", "real"],
-    returnType: "real",
-    evaluators: {
-      generic: "addition"
-    }
-  });
-  let realSub = new FixedOperatorDefinition({
-    signature: ["real", "real"],
-    returnType: "real",
-    evaluators: {
-      generic: "subtraction"
-    }
-  });
-  let unaryRealSub = new FixedOperatorDefinition({
-    signature: ["real"],
-    returnType: "real",
-    evaluators: {
-      generic: "unary_subtraction"
-    }
-  });
-  let realMul = new FixedOperatorDefinition({
-    signature: ["real", "real"],
-    returnType: "real",
-    evaluators: {
-      generic: "multiplication"
-    }
-  });
-  let realDiv = new FixedOperatorDefinition({
-    signature: ["real", "real"],
-    returnType: "real",
-    evaluators: {
-      generic: "division"
-    }
-  });
-  let realPow = new FixedOperatorDefinition({
-    signature: ["real", "real"],
-    returnType: "real",
-    evaluators: {
-      generic: Math.pow
-    }
-  });
-  registerOperator('*', realMul);
-  registerOperator('+', realAdd);
-  registerOperator('-', realSub);
-  registerOperator('-', unaryRealSub);
-  registerOperator('/', realDiv);
-  registerOperator('^', realPow);
-
-  class EvaluationError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = "EvaluationError";
-    }
-
-  }
-  /**
-   * Abstract base class for AST nodes
-   */
-
-
-  class ASTNode {
-    applyAll(func, onlyGroups = true, childrenFirst = false, depth = 0) {
-      if (!onlyGroups) func(this, depth);
-    }
-
-    nodeType() {
-      return "node";
-    }
-
-    usedVariables() {
-      // Map var -> type
-      let types = new Map();
-      this.applyAll(node => {
-        if (node.nodeType() === "var") {
-          if (!types.has(node.name)) types.set(node.name, node.type);
-        }
-      });
-      return types;
-    }
-
-  }
-  /**
-   * Base class for a node in a Grapheme expression. Has children and a string type (returnType).
-   *
-   * A node can be one of a variety of types. A plain ASTNode signifies grouping, i.e. parentheses. Extended ASTNodes,
-   * like constant nodes and operator nodes have more complexity.
-   */
-
-  class ASTGroup extends ASTNode {
-    /**
-     * A relatively simple base constructor, taking in only the children and the return type, which is "any" by default.
-     * @param children {Array}
-     * @param type {string}
-     */
-    constructor(children = [], type = null) {
-      super();
-      /**
-       * Children of this node, which should also be ASTNodes
-       * @type {Array}
-       */
-
-      this.children = children;
-      /**
-       * Type of this ASTNode (real, complex, etc.)
-       * @type {string}
-       */
-
-      this.type = type;
-    }
-    /**
-     * Apply a function to this node and all of its children, recursively.
-     * @param func {Function} The callback function. We call it each time with (node, depth) as arguments
-     * @param onlyGroups
-     * @param childrenFirst {boolean} Whether to call the callback function for each child first, or for the parent first.
-     * @param depth {number}
-     * @returns {ASTNode}
-     */
-
-
-    applyAll(func, onlyGroups = false, childrenFirst = false, depth = 0) {
-      if (!childrenFirst) func(this, depth);
-      let children = this.children;
-
-      for (let i = 0; i < children.length; ++i) {
-        let child = children[i];
-
-        if (child instanceof ASTNode) {
-          child.applyAll(func, onlyGroups, childrenFirst, depth + 1);
-        }
-      }
-
-      if (childrenFirst) func(this, depth);
-      return this;
-    }
-    /**
-     * Evaluate the value of this node using a given scope, which gives the evaluation parameters (values of the
-     * variables) among other things
-     * @param scope {{}}
-     * @returns {*}
-     */
-
-
-    evaluate(scope) {
-      return this.children[0].evaluate(scope);
-    }
-    /**
-     * Given the types of variables, construct function definitions, et cetera
-     * @param typeInfo
-     */
-
-
-    resolveTypes(typeInfo) {
-      this.children.forEach(child => child.resolveTypes(typeInfo));
-      this.type = this.children[0].type;
-    }
-
-    nodeType() {
-      return "group";
-    }
-
-  }
-  class VariableNode extends ASTNode {
-    constructor(name, type = null) {
-      super();
-      this.name = name;
-      this.type = type;
-    }
-
-    evaluate(scope) {
-      let val = scope.variables[this.name];
-      if (!val) throw new EvaluationError("Variable ".concat(this.name, " was not found in the scope"));
-      return val;
-    }
-
-    resolveTypes(typeInfo) {
-      let type = typeInfo[this.name];
-      this.type = type !== null && type !== void 0 ? type : "real";
-    }
-
-    nodeType() {
-      return "var";
-    }
-
-  }
-  class OperatorNode extends ASTGroup {
-    constructor(operator) {
-      super();
-      this.op = operator;
-      this.definition = null; // One of the definitions in operators.js is actually going to be used to evaluate the node
-    }
-
-    getChildrenSignature() {
-      return this.children.map(child => child.type);
-    }
-
-    evaluate(scope) {
-      if (!this.definition) throw new EvaluationError("Evaluation definition not generated for operator node");
-      const children = this.children;
-      let params = this.children.map(child => child.evaluate(scope));
-      const definition = this.definition,
-            sig = definition.signature; // Cast arguments appropriately
-
-      params.forEach((param, i) => {
-        let dstType = sig[i];
-        let srcType = children[i].type;
-        if (dstType !== srcType) params[i] = getCast(srcType, dstType)(param);
-      });
-      return definition.evaluators.generic.f.apply(null, params);
-    }
-
-    resolveTypes(typeInfo = {}) {
-      // We need to find the function definition that matches
-      this.children.forEach(child => child.resolveTypes(typeInfo));
-      let signature = this.getChildrenSignature();
-      let definition = resolveOperator(this.op, signature);
-      if (!definition) throw new Error("Could not find a suitable definition for operator " + this.op + "(" + signature.join(', ') + ').');
-      this.definition = definition;
-      this.type = definition.returnType;
-      return this;
-    }
-
-    nodeType() {
-      return "op";
-    }
-
-  }
-  class ConstantNode extends ASTNode {
-    constructor(value, text, type = "real") {
-      super();
-      this.value = value;
-      this.text = text;
-      this.type = type;
-    }
-
-    evaluate(scope) {
-      return this.value;
-    }
-
-    resolveTypes(typeInfo) {}
-
-    nodeType() {
-      return "const";
-    }
-
-  }
-
-  /**
-   * In this file, we convert strings representing expressions in Grapheme into their ASTNode counterparts. For example,
-   * x^2 is compiled to OperatorNode{operator=^, children=[VariableNode{name="x"}, ConstantNode{value="2"}]}
-   */
-  const OperatorSynonyms = {
-    'arcsinh': 'asinh',
-    'arsinh': 'asinh',
-    'arccosh': 'acosh',
-    'arcosh': 'acosh',
-    'arctanh': 'atanh',
-    'artanh': 'atanh',
-    'arcsech': 'asech',
-    'arccsch': 'acsch',
-    'arccoth': 'acoth',
-    'arsech': 'asech',
-    'arcsch': 'acsch',
-    'arcoth': 'acoth',
-    'arcsin': 'asin',
-    'arsin': 'asin',
-    'arccos': 'acos',
-    'arcos': 'acos',
-    'arctan': 'atan',
-    'artan': 'atan',
-    'arcsec': 'asec',
-    'arccsc': 'acsc',
-    'arccot': 'acot',
-    'arsec': 'asec',
-    'arcsc': 'acsc',
-    'arcot': 'acot',
-    'log': 'ln'
-  };
-  const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/;
-  const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/;
-  const constant_regex = /^[0-9]*\.?[0-9]*e?[0-9]+/;
-  const variable_regex = /^[a-zA-Z_][a-zA-Z0-9_]*/;
-  const paren_regex = /^[()\[\]]/;
-  const comma_regex = /^,/;
-  const string_regex = /^"(?:[^"\\]|\\.)*"/;
-  /**
-   * Take a string and check whether its parentheses are balanced, throwing a ParserError if not.
-   * @param string
-   */
-
-  function checkParensBalanced(string) {
-    // Stack of parentheses
-    const stack = [];
-    let i = 0;
-    let err = false;
-
-    outer: for (; i < string.length; ++i) {
-      const chr = string[i];
-
-      switch (chr) {
-        case '(':
-        case '[':
-          stack.push(chr);
-          break;
-
-        case ')':
-        case ']':
-          if (stack.length === 0) {
-            err = true;
-            break outer;
-          }
-
-          if (chr === ')') {
-            let pop = stack.pop();
-
-            if (pop !== '(') {
-              err = true;
-              break outer;
-            }
-          } else {
-            let pop = stack.pop();
-
-            if (pop !== '[') {
-              err = true;
-              break outer;
-            }
-          }
-
-      }
-    }
-
-    if (stack.length !== 0) err = true;
-    if (err) getAngryAt(string, i, "Unbalanced parentheses/brackets");
-  }
-
-  function* tokenizer(string) {
-    // what constitutes a token? a sequence of n letters, one of the operators *-/+^, parentheses or brackets
-    string = string.trimEnd();
-    let i = 0;
-    let prev_len = string.length;
-    let original_string = string;
-
-    while (string) {
-      string = string.trim();
-      i += prev_len - string.length;
-      prev_len = string.length;
-      let match;
-
-      do {
-        match = string.match(paren_regex);
-
-        if (match) {
-          yield {
-            type: "paren",
-            paren: match[0],
-            index: i
-          };
-          break;
-        }
-
-        match = string.match(constant_regex);
-
-        if (match) {
-          yield {
-            type: "constant",
-            value: match[0],
-            index: i
-          };
-          break;
-        }
-
-        match = string.match(operator_regex);
-
-        if (match) {
-          yield {
-            type: "operator",
-            op: match[0].replace(/\s+/g, ""),
-            index: i
-          };
-          break;
-        }
-
-        match = string.match(comma_regex);
-
-        if (match) {
-          yield {
-            type: "comma",
-            index: i
-          };
-          break;
-        }
-
-        match = string.match(function_regex);
-
-        if (match) {
-          yield {
-            type: "function",
-            name: match[1],
-            index: i
-          };
-          yield {
-            type: "paren",
-            paren: '(',
-            index: i + match[1].length
-          };
-          break;
-        }
-
-        match = string.match(variable_regex);
-
-        if (match) {
-          yield {
-            type: "variable",
-            name: match[0],
-            index: i
-          };
-          break;
-        }
-
-        match = string.match(string_regex);
-
-        if (match) {
-          yield {
-            type: "string",
-            contents: match[0].slice(1, -1),
-            index: i
-          };
-        }
-
-        getAngryAt(original_string, i, "Unrecognized token");
-      } while (false);
-
-      let len = match[0].length;
-      string = string.slice(len);
-    }
-  }
-
-  function checkValid(string, tokens) {
-    for (let i = 0; i < tokens.length - 1; ++i) {
-      let token1 = tokens[i];
-      let token2 = tokens[i + 1];
-      let token2IsUnary = token2.op === '-' || token2.op === '+';
-
-      if ((token1.type === "operator" || token1.type === "comma") && (token2.type === "operator" || token2.type === "comma") && (!token2IsUnary || i === tokens.length - 2)) {
-        getAngryAt(string, token2.index, "No consecutive operators/commas");
-      }
-
-      if (token1.paren === "(" && token2.paren === ")") getAngryAt(string, token2.index, "No empty parentheses");
-      if (token1.paren === "[" && token2.paren === "]") getAngryAt(string, token2.index, "No empty brackets");
-      if (token1.type === "operator" && token2.paren === ")") getAngryAt(string, token2.index, "No operator followed by closing parenthesis");
-      if (token1.type === "operator" && token2.paren === "]") getAngryAt(string, token2.index, "No operator followed by closing bracket");
-      if (token1.type === "comma" && token2.paren === ")") getAngryAt(string, token2.index, "No comma followed by closing parenthesis");
-      if (token1.type === "comma" && token2.paren === "]") getAngryAt(string, token2.index, "No comma followed by closing bracket");
-      if (token1.paren === '(' && token2.type === "comma") getAngryAt(string, token2.index, "No comma after starting parenthesis");
-      if (token1.paren === '[' && token2.type === "comma") getAngryAt(string, token2.index, "No comma after starting bracket");
-      if (token1.paren === '(' && token2.type === "operator" && !token2IsUnary) getAngryAt(string, token2.index, "No operator after starting parenthesis");
-      if (token1.paren === '[' && token2.type === "operator" && !token2IsUnary) getAngryAt(string, token2.index, "No operator after starting bracket");
-    }
-
-    if (tokens[0].type === "comma" || tokens[0].type === "operator" && !(tokens[0].op === '-' || tokens[0].op === '+')) getAngryAt(string, 0, "No starting comma/operator");
-    const last_token = tokens[tokens.length - 1];
-    if (last_token.type === "comma" || last_token.type === "operator") getAngryAt(string, tokens.length - 1, "No ending comma/operator");
-  }
-  /**
-   * Find a pair of parentheses in a list of tokens, namely the first one as indexed by the closing paren/bracket. For
-   * example, in (x(y(z)(w))) it will find (z).
-   * @param children
-   * @returns {number[]}
-   */
-
-
-  function findParenIndices(children) {
-    let startIndex = -1;
-
-    for (let i = 0; i < children.length; ++i) {
-      let child = children[i];
-      if (!child.paren) continue;
-      if (child.paren === '(' || child.paren === '[') startIndex = i;
-      if ((child.paren === ')' || child.paren === ']') && startIndex !== -1) return [startIndex, i];
-    }
-  }
-  /**
-   * Convert constants and variables to their ASTNode counterparts
-   * @param tokens {Array}
-   */
-
-
-  function processConstantsAndVariables(tokens) {
-    for (let i = 0; i < tokens.length; ++i) {
-      let token = tokens[i];
-
-      switch (token.type) {
-        case "constant":
-          let v = parseFloat(token.value);
-          let node = new ConstantNode(v, token.value);
-          if (Number.isInteger(v)) node.type = "int";
-          tokens[i] = node;
-          break;
-
-        case "variable":
-          tokens[i] = new VariableNode(token.name);
-          break;
-      }
-    }
-  } // To process parentheses, we find pairs of them and combine them into ASTNodes containing the nodes and
-  // tokens between them. We already know the parentheses are balanced, which is a huge help here. We basically go
-  // through each node recursively and convert all paren pairs to a node, then recurse into those new nodes
-
-
-  function processParentheses(rootNode) {
-    rootNode.applyAll(node => {
-      let parensRemaining = true;
-
-      while (parensRemaining) {
-        parensRemaining = false;
-        let indices = findParenIndices(node.children);
-
-        if (indices) {
-          parensRemaining = true;
-          let newNode = new ASTGroup();
-          let expr = node.children.splice(indices[0], indices[1] - indices[0] + 1, newNode);
-          newNode.children = expr.slice(1, expr.length - 1);
-        }
-      }
-    }, true);
-  } // Turn function tokens followed by ASTNodes into OperatorNodes
-
-
-  function processFunctions(rootNode) {
-    rootNode.applyAll(node => {
-      let children = node.children;
-
-      for (let i = 0; i < children.length; ++i) {
-        let token = children[i];
-
-        if (token.type === "function") {
-          let synonym = OperatorSynonyms[token.name];
-          let newNode = new OperatorNode(synonym !== null && synonym !== void 0 ? synonym : token.name);
-          children[i] = newNode; // Take children from the node coming immediately after
-
-          newNode.children = children[i + 1].children; // Remove the node immediately after
-
-          children.splice(i + 1, 1);
-        }
-      }
-    }, true);
-  } // Given a node and an index i of a binary operator, combine the nodes immediately to the left and right of the node
-  // into a single binary operator
-
-
-  function combineBinaryOperator(node, i) {
-    const children = node.children;
-    let newNode = new OperatorNode(children[i].op);
-    newNode.children = [children[i - 1], children[i + 1]];
-    children.splice(i - 1, 3, newNode);
-  } // Process the highest precedence operators. Note that e^x^2 = (e^x)^2 and e^-x^2 = e^(-x^2).
-
-
-  function processUnaryAndExponentiation(root) {
-    root.applyAll(node => {
-      let children = node.children; // We iterate backwards
-
-      for (let i = children.length - 1; i >= 0; --i) {
-        let child = children[i];
-        if (child instanceof ASTNode || !child.op) continue;
-
-        if (child.op === "-") {
-          // If the preceding token is an unprocessed non-operator token, or node, then it's a binary expression
-          if (i !== 0 && children[i - 1].type !== "operator") continue;
-          let newNode = new OperatorNode("-");
-          newNode.children = [children[i + 1]];
-          children.splice(i, 2, newNode);
-        } else if (child.op === "+") {
-          // See above
-          if (i !== 0 && children[i - 1].type !== "operator") continue; // Unary + is a no-op
-
-          children.splice(i, 1);
-        } else if (child.op === "^") {
-          combineBinaryOperator(node, i);
-          --i;
-        }
-      }
-    }, true);
-  } // Combine binary operators, going from left to right, with equal precedence for all
-
-
-  function processOperators(root, operators) {
-    root.applyAll(node => {
-      let children = node.children;
-
-      for (let i = 0; i < children.length; ++i) {
-        let child = children[i];
-        if (child instanceof ASTNode || !child.op) continue;
-
-        if (operators.includes(child.op)) {
-          combineBinaryOperator(node, i);
-          --i;
-        }
-      }
-    }, true);
-  } // The index of each operator is also an enum, which is used in comparison chains to describe which operator is being used
-
-
-  const comparisonOperators = ['<', '<=', '==', '!=', '>=', '>']; // Process "comparison chains", which are sequences of the form 0 <= x < 2. Internally these are transformed into
-  // "cchain" operators, which have the form cchain(0, 1 (enum comparison), x, 0 (enum comparison), 2). Gross, but
-  // it's hard to cleanly represent these comparison chains otherwise. You *could* represent them using boolean operations,
-  // but that duplicates the internal nodes which is inefficient
-
-  function processComparisonChains(root) {
-    root.applyAll(node => {
-      const children = node.children;
-
-      for (let i = 0; i < children.length; ++i) {
-        let child = children[i];
-        if (child instanceof ASTNode || !child.op) continue;
-
-        if (comparisonOperators.includes(children[i].op)) {
-          let comparisonChainFound = false; // Found a comparison operator token; we now check for whether the tokens +2, +4, etc. ahead of it are also
-          // comparison tokens. If so, we emit a comparison chain
-          // Index of the last comparison token, plus 2
-
-          let j = i + 2;
-
-          for (; j < children.length; j += 2) {
-            let nextChild = children[j];
-            if (nextChild instanceof ASTNode || !nextChild.op) continue;
-
-            if (comparisonOperators.includes(children[j].op)) {
-              comparisonChainFound = true;
-            } else {
-              break;
-            }
-          }
-
-          if (comparisonChainFound) {
-            // The nodes i, i+2, i+4, ..., j-4, j-2 are all comparison nodes. Thus, all nodes in the range i-1 ... j-1
-            // should be included in the comparison chain
-            let comparisonChain = new OperatorNode("cchain");
-            let cchainChildren = comparisonChain.children = children.splice(i - 1, j - i + 1, comparisonChain);
-
-            for (let i = cchainChildren.length - 2; i >= 0; i -= 2) {
-              // Convert operator tokens into constant node corresponding to their enum status
-              let token = cchainChildren[i];
-              let tokenEnum = comparisonOperators.indexOf(token.op);
-              cchainChildren[i] = new ConstantNode(tokenEnum, tokenEnum + '', "int");
-            }
-
-            return;
-          }
-        }
-      }
-    }, true);
-  } // Remove residual commas from the node
-
-
-  function removeCommas(root) {
-    root.applyAll(node => {
-      let children = node.children;
-      let i = children.length;
-
-      while (i--) {
-        if (children[i].type === "comma") children.splice(i, 1);
-      }
-    }, true);
-  }
-  /**
-   * Parse a given list of tokens, returning a single ASTNode. At this point, the tokens are a list of the form
-   * { type: "function"|"variable"|"paren"|"operator"|"constant"|"comma", index: <index of the token in the original string>,
-   *  op?: <operator>, name?: <name of variable>, paren?: <type of paren> }
-   * @param tokens
-   * @returns {ASTNode}
-   */
-
-
-  function parseTokens(tokens) {
-    processConstantsAndVariables(tokens);
-    let root = new ASTGroup(tokens);
-    processParentheses(root);
-    processFunctions(root);
-    processUnaryAndExponentiation(root); // PEMDAS
-
-    processOperators(root, ['*', '/']);
-    processOperators(root, ['-', '+']);
-    processComparisonChains(root);
-    processOperators(root, comparisonOperators);
-    processOperators(root, ["and", "or"]);
-    removeCommas(root);
-    return root;
-  }
-
-  function parseString(string, types = {}) {
-    checkParensBalanced(string);
-    let tokens = [];
-
-    for (let token of tokenizer(string)) {
-      tokens.push(token);
-    }
-
-    checkValid(string, tokens);
-    let node = parseTokens(tokens).children[0];
-    return node;
   }
 
   /**
@@ -14335,7 +12690,7 @@
      */
 
     function getVarName() {
-      return "$" + ++id;
+      return '$' + ++id;
     } // Map between nodes and information about those nodes (corresponding var names, optimizations, etc.)
 
 
@@ -14349,7 +12704,7 @@
 
     let importInfo = new Map(); // Text of the setup code preceding all the exported functions
 
-    let globalSetup = "";
+    let globalSetup = '';
     /**
      * Import a function f and return a constant variable name corresponding to that function, to be placed in
      * globalSetup. Importing the same function twice returns the same variable
@@ -14358,10 +12713,10 @@
      */
 
     function importFunction(f) {
-      if (typeof f !== "function") throw new TypeError("Unable to import function ".concat(f));
+      if (typeof f !== 'function') throw new TypeError("Unable to import function ".concat(f));
       let stored = importInfo.get(f);
       if (stored) return stored;
-      let fName = getVarName() + "_f";
+      let fName = getVarName() + '_f';
       if (doTypechecks) // Make sure f is actually a function
         globalSetup += "if (typeof ".concat(fName, " !== \"function\") throw new TypeError(\"Imported parameter ").concat(fName, " is not a function\");\n");
       importInfo.set(f, fName);
@@ -14377,7 +12732,7 @@
     function importConstant(c) {
       let stored = importInfo.get(c);
       if (stored) return stored;
-      let cName = getVarName() + "_c";
+      let cName = getVarName() + '_c';
       importInfo.set(c, cName);
       return cName;
     } // Dict of exported functions; mapping between names of functions and their arguments, setup and body
@@ -14395,7 +12750,7 @@
 
     compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getVarName, opts); // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
 
-    let efText = "return {" + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '}';
+    let efText = 'return {' + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '}';
     let nfText = globalSetup + efText;
     let imports = Array.from(importInfo.keys());
     let importNames = Array.from(importInfo.values()); // Last argument is the text of the function itself
@@ -14405,11 +12760,21 @@
   }
 
   function compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getUnusedVarName, opts) {
+    var _opts$args;
+
     // Whether to add typechecks to the passed variables
-    let doTypechecks = !!opts.typechecks;
-    let scopeVarName = "scope";
-    let fBody = "";
-    let fArgs = [scopeVarName]; // Mapping between string variable name and information about that variable (varName)
+    let doTypechecks = !!opts.typechecks; // List of arguments to be placed BEFORE the scope variable. For example, we might do
+    // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
+    // object.
+
+    let exportedArgs = (_opts$args = opts.args) !== null && _opts$args !== void 0 ? _opts$args : [];
+    exportedArgs.forEach(a => {
+      if (!isValidVariableName(a)) throw new Error("Invalid exported variable name ".concat(a));
+    });
+    let scopeVarName = 'scope';
+    let scopeUsed = false;
+    let fBody = '';
+    let fArgs = [...exportedArgs]; // Mapping between string variable name and information about that variable (varName)
 
     let varInfo = new Map();
     /**
@@ -14427,19 +12792,27 @@
       return stored;
     }
 
+    function prependLine(code) {
+      fBody = code + '\n' + fBody;
+    }
+
     function addLine(code) {
       fBody += code + '\n';
-    } // Typecheck scope object
+    } // Import and typecheck variables
 
-
-    if (doTypechecks) addLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed to evaluate function should be a scope\");")); // Import and typecheck variables
 
     let requiredVariables = root.usedVariables();
 
     for (const [name, type] of requiredVariables.entries()) {
       let varInfo = getScopedVariable(name);
       let varName = varInfo.varName;
-      addLine("var ".concat(varName, "=").concat(scopeVarName, ".").concat(name, ";"));
+
+      if (exportedArgs.includes(name)) {
+        addLine("var ".concat(varName, "=").concat(name, ";"));
+      } else {
+        scopeUsed = true;
+        addLine("var ".concat(varName, "=").concat(scopeVarName, ".").concat(name, ";"));
+      }
 
       if (doTypechecks) {
         let typecheck = importFunction(TYPES[type].typecheck.generic.f);
@@ -14449,8 +12822,19 @@
     }
 
     compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts);
-    addLine("return ".concat(nodeInfo.get(root).varName, ";"));
-    exportFunction("evaluate", fArgs, fBody);
+    addLine("return ".concat(nodeInfo.get(root).varName, ";")); // Typecheck scope object
+
+    if (doTypechecks && scopeUsed) {
+      if (exportedArgs.length === 0) {
+        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed to evaluate function should be a scope\");"));
+      } else {
+        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed as last parameter to evaluate function should be a scope; there are undefined variables\");"));
+      }
+    } // Scope is last argument in function
+
+
+    if (scopeUsed) fArgs.push(scopeVarName);
+    exportFunction('evaluate', fArgs, fBody);
   }
 
   function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts) {
@@ -14473,7 +12857,7 @@
         if (srcType !== dstType) {
           let cast = getCast(srcType, dstType);
 
-          if (cast.name !== "identity") {
+          if (cast.name !== 'identity') {
             let convertedVarName = getUnusedVarName();
             addLine("var ".concat(convertedVarName, "=").concat(importFunction(cast.evaluators.generic.f), "(").concat(varName, ");"));
             varName = convertedVarName;
@@ -14483,7 +12867,7 @@
         return varName;
       });
 
-      if (evaluatorType === "special_binary") {
+      if (evaluatorType === 'special_binary') {
         addLine("var ".concat(varName, "=").concat(args[0], " ").concat(evaluator.binary, " ").concat(args[1], ";"));
       } else {
         let fName = importFunction(evaluator.f);
@@ -14499,19 +12883,19 @@
       let varName;
 
       switch (nodeType) {
-        case "op":
+        case 'op':
           varName = compileOperator(node);
           break;
 
-        case "var":
+        case 'var':
           varName = getScopedVariable(node.name).varName;
           break;
 
-        case "const":
+        case 'const':
           varName = importConstant(node.value);
           break;
 
-        case "group":
+        case 'group':
           // Forward the var name from the only child (since this is a grouping)
           varName = nodeInfo.get(node.children[0]).varName;
           break;
@@ -14526,26 +12910,368 @@
     );
   }
 
+  const MAX_INITIAL_SAMPLE_COUNT = 1e6;
+  let samplingStrategies = {
+    // Simplest initial sampling algorithm, but doesn't do well with periodic functions
+    uniform: (t1, t2, samples) => {
+      let iStep = (t2 - t1) / (samples - 1);
+      let arr = new Float64Array(samples);
+
+      for (let i = 0; i < samples; ++i) {
+        arr[i] = i * iStep + t1;
+      }
+
+      return arr;
+    }
+  }; // Stack used for recursive adaptive sampling; a manually done recursion. It's also nice because it can be paused as
+  // with a bolus
+
+  let sampleStack = new Float64Array(10 * 2048);
+  function parametricPlot2D(f
+  /* R -> R^2 */
+  , tMin, tMax, plotBox, {
+    samples: sampleCount = 100,
+    // how many initial samples to take
+    samplingStrategy = "uniform",
+    // how to take the initial samples
+    samplingStrategyArgs = [],
+    // additional parameters for how to take the initial samples
+    adaptive = true,
+    // whether to do recursive, adaptive sampling
+    adaptiveRes = Infinity,
+    // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
+    simplify = true,
+    // whether to compress the vertices
+    simplifyRes = adaptiveRes // resolution of the collapse
+
+  } = {}) {
+    // Sanity checks
+    if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null;
+    if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number");
+    if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]");
+    let evaluate = f.evaluate;
+    let sampler = samplingStrategies[samplingStrategy];
+    if (!sampler) throw new Error("Invalid sampling strategy " + samplingStrategy); // t values for the initial samples
+
+    let samplesT = sampler(tMin, tMax, sampleCount, ...samplingStrategyArgs); // array to store the initial samples
+
+    let samples = new Float64Array(2 * sampleCount); // sample the function
+
+    for (let i = 0, j = 0; i < sampleCount; ++i, j += 2) {
+      let pos = evaluate(samplesT[i]);
+      samples[j] = pos.x;
+      samples[j + 1] = pos.y;
+    } // If we're doing adaptive sampling, we look for places to iteratively refine our sampling
+
+
+    if (adaptive) {
+      let x1 = 0,
+          y1 = 0,
+          x2 = samples[0],
+          y2 = samples[1],
+          x3 = samples[2],
+          y3 = samples[3];
+      let adaptiveResSquared = adaptiveRes * adaptiveRes;
+      let needsSubdivide = false; // whether the current segment needs subdivision, carried over from the previous iter
+
+      HEAPF64[0] = x2;
+      HEAPF64[1] = y2;
+      let newSamplesIndex = 1;
+
+      for (let i = 2; i <= sampleCount; ++i) {
+        x1 = x2;
+        y1 = y2;
+        x2 = x3;
+        y2 = y3;
+
+        if (i !== sampleCount) {
+          // Avoid OOB access
+          x3 = samples[2 * i];
+          y3 = samples[2 * i + 1];
+        } // (x1, y1) -- (x2, y2) is every segment sampled. We subdivide this segment if exactly one of the points
+        // p1 and p2 is undefined, or if the previous angle (or the next angle) needs refinement, which is determined by
+        // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
+        // efficiently requires some careful thinking.
+
+
+        let shouldSubdivide = needsSubdivide;
+        needsSubdivide = false;
+
+        if (!shouldSubdivide) {
+          // Two conditions for subdivision: undefinedness or insufficient linearity
+          if ((Number.isFinite(x1) && Number.isFinite(y1)) !== (Number.isFinite(x2) && Number.isFinite(y2))) {
+            shouldSubdivide = true;
+          } else {
+            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+
+            if (dstSquared > adaptiveResSquared) {
+              // If the distance is sufficient, both this segment and the next segment need division (stored in
+              // needsSubdivide)
+              needsSubdivide = true;
+              shouldSubdivide = true;
+            }
+          }
+        }
+
+        if (shouldSubdivide) {
+          // Need to subdivide p1 -- p2. We manually unroll the recursion, with two types of elements on the stack:
+          // [ x1, y1, x2, y2, s1, s2, 0 ] where f(s1) = (x1, y1) and f(s2) = (x2, y2), and
+          // [ x2, y2, 1], a point to insert into the list of samples. If we find that a segment is to be divided, we
+          // push the right half, then the midpoint (to be inserted into the list of samples), then the left half, which
+          // ensures that, since we're iterating from left to right, all the samples will be put in order
+          sampleStack[0] = x1;
+          sampleStack[1] = y1;
+          sampleStack[2] = x2;
+          sampleStack[3] = y2;
+          sampleStack[4] = samplesT[i - 2];
+          sampleStack[5] = samplesT[i - 1];
+          sampleStack[6] = 0;
+          let stackIndex = 7;
+
+          while (stackIndex > 0) {
+            let dType = sampleStack[--stackIndex];
+
+            if (dType === 1) {
+              let y2 = sampleStack[--stackIndex];
+              let x2 = sampleStack[--stackIndex];
+              HEAPF64[++newSamplesIndex] = x2;
+              HEAPF64[++newSamplesIndex] = y2;
+              continue;
+            }
+
+            let s3 = sampleStack[--stackIndex];
+            let s1 = sampleStack[--stackIndex];
+            let y3 = sampleStack[--stackIndex];
+            let x3 = sampleStack[--stackIndex];
+            let y1 = sampleStack[--stackIndex];
+            let x1 = sampleStack[--stackIndex];
+            let s2 = (s1 + s3) / 2;
+            let tooSmall = s1 === s2 || s2 === s3;
+
+            if (tooSmall) {
+              HEAPF64[++newSamplesIndex] = NaN;
+              HEAPF64[++newSamplesIndex] = NaN;
+              continue;
+            }
+
+            let pos = evaluate(s2);
+            let x2 = pos.x;
+            let y2 = pos.y;
+            let leftIsDefined = Number.isFinite(x1) && Number.isFinite(y1);
+            let midIsDefined = Number.isFinite(x2) && Number.isFinite(y2);
+            let rightIsDefined = Number.isFinite(x3) && Number.isFinite(y3);
+            let needsSubdivide = leftIsDefined !== midIsDefined || rightIsDefined !== midIsDefined;
+
+            if (!needsSubdivide) {
+              let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+              if (dstSquared > adaptiveResSquared) needsSubdivide = true;
+            }
+
+            if (needsSubdivide) {
+              --stackIndex; // Right segment
+
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = x3;
+              sampleStack[++stackIndex] = y3;
+              sampleStack[++stackIndex] = s2;
+              sampleStack[++stackIndex] = s3;
+              sampleStack[++stackIndex] = 0; // dType 0
+              // Midpoint
+
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = 1; // dType 1
+              // Left segment
+
+              sampleStack[++stackIndex] = x1;
+              sampleStack[++stackIndex] = y1;
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = s1;
+              sampleStack[++stackIndex] = s2;
+              sampleStack[++stackIndex] = 0; // dType 0
+
+              ++stackIndex;
+            } else {
+              HEAPF64[++newSamplesIndex] = x2;
+              HEAPF64[++newSamplesIndex] = y2;
+            }
+          }
+        } else {
+          HEAPF64[++newSamplesIndex] = x2;
+          HEAPF64[++newSamplesIndex] = y2;
+        }
+      }
+
+      samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex + 1));
+    }
+
+    samples = simplifyPolyline(samples, {
+      minRes: simplifyRes
+    });
+    return samples;
+  }
+
+  const parametricPlotInterface = constructInterface({
+    interface: {
+      pen: {
+        setAs: 'user',
+        description: 'The pen used to draw the plot'
+      },
+      varName: {
+        description: 'The name of the varying variable',
+        typecheck: 'VariableName'
+      },
+      range: {
+        description: 'Range of the varying variable to plot',
+        aliases: ['t']
+      },
+      function: {
+        setAs: 'user',
+        description: 'The function R -> R^2 of the plot',
+        aliases: ['f']
+      },
+      samples: {
+        description: 'The number of samples to plot',
+        typecheck: {
+          type: 'integer',
+          min: 10,
+          max: 1e6
+        }
+      }
+    },
+    internal: {
+      // Pen used to draw the parametric plot
+      pen: {
+        type: 'Pen',
+        computed: 'user',
+        default: DefaultStyles.Pen,
+        compose: true
+      },
+      varName: {
+        type: 'string',
+        computed: 'default',
+        default: 't'
+      },
+      function: {
+        type: 'ASTNode',
+        computed: 'none'
+      },
+      samples: {
+        type: 'number',
+        computed: 'default',
+        default: 100
+      }
+    }
+  });
+  class ParametricPlot2D extends Element {
+    _update() {
+      this.defaultInheritProps();
+      this.defaultComputeProps();
+      this.compileFunction();
+      this.computePoints();
+    }
+
+    compileFunction() {
+      const {
+        props
+      } = this;
+
+      if (props.hasChanged('function')) {
+        let user = props.getUserValue('function');
+
+        if (!user) {
+          props.set('function', null);
+          return;
+        }
+
+        let node;
+
+        if (typeof user === 'string') {
+          node = parseString(user);
+        } else if (user instanceof ASTNode) {
+          node = user.clone();
+        } else {
+          throw new Error("Expected string or ASTNode, got ".concat(relaxedPrint(user)));
+        }
+
+        let varName = props.get('varName'); // default: 't'
+
+        let scope = {};
+        scope[varName] = 'real';
+        node.resolveTypes(scope, {
+          strict: true
+        });
+        props.set('functionNode', node);
+        if (node.type !== 'vec2') throw new Error("Expected expression with return type of vec2, got expression with return type of ".concat(node.type));
+        let compiled = compileNode(node, {
+          args: [varName]
+        });
+        props.set('function', compiled);
+      }
+    }
+
+    computePoints() {
+      const {
+        samples,
+        function: f,
+        range,
+        pen,
+        plotTransform
+      } = this.props.proxy;
+
+      if (!samples || !f || !range || !pen || !plotTransform) {
+        this.internal.renderInfo = null;
+        return;
+      }
+
+      let rangeStart = range[0],
+          rangeEnd = range[1];
+      let pts;
+      pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
+        samples,
+        adaptive: true,
+        adaptiveRes: plotTransform.graphPixelSize() / 20,
+        simplifyRes: plotTransform.graphPixelSize() / 4
+      }));
+      this.internal.pts = pts;
+      this.internal.renderInfo = {
+        instructions: {
+          type: 'polyline',
+          vertices: pts,
+          pen
+        }
+      };
+    }
+
+    getInterface() {
+      return parametricPlotInterface;
+    }
+
+  }
+
   exports.BigFloat = BigFloat;
   exports.BigInt = BigInt;
   exports.BooleanDict = BooleanDict;
   exports.BoundingBox = BoundingBox;
   exports.Color = Color;
   exports.Colors = Colors;
-  exports.Complex = Complex;
   exports.DefaultStyles = DefaultStyles;
   exports.DynamicRectanglePacker = DynamicRectanglePacker;
   exports.Element = Element;
   exports.Eventful = Eventful;
   exports.FP = fp_manip;
+  exports.FastRealInterval = FastRealInterval;
+  exports.Figure = Figure;
   exports.FigureBaubles = FigureBaubles;
   exports.GenericObject = GenericObject;
   exports.Group = Group;
   exports.InteractiveScene = InteractiveScene;
   exports.LabelPosition = LabelPosition;
-  exports.NewFigure = NewFigure;
   exports.NullInterface = NullInterface;
   exports.Operators = Operators;
+  exports.ParametricPlot2D = ParametricPlot2D;
   exports.Pen = Pen;
   exports.Pens = Pens;
   exports.PointCloudElement = PointCloudElement;
@@ -14553,7 +13279,6 @@
   exports.PolylineElement = PolylineElement;
   exports.Props = Props;
   exports.ROUNDING_MODE = ROUNDING_MODE;
-  exports.RealFunctions = RealFunctions;
   exports.Scene = Scene;
   exports.TextElement = TextElement;
   exports.TextRenderer = TextRenderer;
@@ -14562,39 +13287,41 @@
   exports.Vec2 = Vec2;
   exports.WebGLRenderer = WebGLRenderer;
   exports.addMantissas = addMantissas;
-  exports.anglesBetween = anglesBetween;
+  exports.approxAngleBetween = approxAngleBetween;
   exports.arctanhSmallRange = arctanhSmallRange;
-  exports.asyncDigest = asyncDigest;
   exports.attachGettersAndSetters = attachGettersAndSetters;
   exports.boundingBoxTransform = boundingBoxTransform;
   exports.calculatePolylineVertices = calculatePolylineVertices;
   exports.canMantissaBeRounded = canMantissaBeRounded;
-  exports.closestRational = closestRational;
-  exports.coatBolus = coatBolus;
   exports.combineColoredTriangleStrips = combineColoredTriangleStrips;
   exports.combineTriangleStrips = combineTriangleStrips;
   exports.compareMantissas = compareMantissas;
   exports.compileNode = compileNode;
   exports.constructInterface = constructInterface;
   exports.convertTriangleStrip = convertTriangleStrip;
+  exports.distanceSquared = distanceSquared;
   exports.divMantissas = divMantissas;
   exports.divMantissas2 = divMantissas2;
-  exports.doubleToRational = doubleToRational;
   exports.expBaseCase = expBaseCase;
+  exports.fastAtan2 = fastAtan2$1;
+  exports.fastHypot = fastHypot;
   exports.fillRepeating = fillRepeating;
   exports.flattenVec2Array = flattenVec2Array;
+  exports.fromContours = fromContours;
+  exports.genTextInstruction = genTextInstruction;
+  exports.genTextRect = genTextRect;
   exports.generateCircleTriangleStrip = generateCircleTriangleStrip;
   exports.generateRectangleCycle = generateRectangleCycle;
   exports.generateRectangleDebug = generateRectangleDebug;
   exports.generateRectangleTriangleStrip = generateRectangleTriangleStrip;
   exports.get2DDemarcations = get2DDemarcations;
-  exports.getActualTextLocation = getActualTextLocation;
   exports.getCachedRecipLnValue = getCachedRecipLnValue;
   exports.getDemarcations = getDemarcations;
   exports.getLineIntersection = getLineIntersection;
   exports.getTextSDFInformation = getTextSDFInformation;
   exports.getTrailingInfo = getTrailingInfo;
   exports.intersectBoundingBoxes = intersectBoundingBoxes;
+  exports.isValidVariableName = isValidVariableName;
   exports.leftShiftMantissa = leftShiftMantissa;
   exports.lineSegmentIntersect = lineSegmentIntersect;
   exports.lineSegmentIntersectsBox = lineSegmentIntersectsBox;
@@ -14610,21 +13337,21 @@
   exports.neededWordsForPrecision = neededWordsForPrecision;
   exports.packRectangles = packRectangles;
   exports.parseString = parseString;
-  exports.pointLineSegmentClosest = pointLineSegmentClosest;
-  exports.pointLineSegmentMinDistance = pointLineSegmentMinDistance;
+  exports.pointLineSegmentDistanceSquared = pointLineSegmentDistanceSquared;
   exports.potpack = potpack;
   exports.prettyPrintFloat = prettyPrintFloat;
   exports.reciprocalMantissa = reciprocalMantissa;
+  exports.relaxedPrint = relaxedPrint;
   exports.resolveOperator = resolveOperator;
   exports.rightShiftMantissa = rightShiftMantissa;
   exports.roundMantissaToPrecision = roundMantissaToPrecision;
   exports.roundingModeToString = roundingModeToString;
   exports.setGlobalPrecision = setGlobalPrecision;
   exports.setGlobalRoundingMode = setGlobalRoundingMode;
+  exports.simplifyPolyline = simplifyPolyline;
   exports.sqrtMantissa = sqrtMantissa;
   exports.subtractMantissas = subtractMantissas;
-  exports.syncDigest = syncDigest;
-  exports.testBolus = testBolus;
+  exports.toContours = toContours;
   exports.tokenizer = tokenizer;
   exports.utils = utils;
 
