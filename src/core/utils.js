@@ -213,6 +213,22 @@ export function isTypedArray (arr) {
   return ArrayBuffer.isView(arr) && !(arr instanceof DataView)
 }
 
+export function isFloatArray (arr) {
+  let type = getTypedArrayType(arr)
+
+  return type === "f32" || type === "f64"
+}
+
+export function getTypedArrayType (arr) {
+  if (arr instanceof Float32Array) return "f32"
+  if (arr instanceof Float64Array) return "f64"
+}
+
+export function getTypedArrayConstructor (type) {
+  if (type === "f32") return Float32Array
+  if (type === "f64") return Float64Array
+}
+
 export function mod (n, m) {
   return ((n % m) + m) % m
 }

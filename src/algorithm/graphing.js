@@ -1,5 +1,6 @@
 import { approxAngleBetween, fastHypot, pointLineSegmentDistanceSquared } from './misc_geometry.js'
 import { HEAPF64 } from './heap.js'
+import { simplifyPolyline } from './polyline_utils.js'
 
 const MAX_INITIAL_SAMPLE_COUNT = 1e6
 
@@ -207,6 +208,8 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
 
     samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex))
   }
+
+  samples = simplifyPolyline(samples)
 
   return samples
 }
