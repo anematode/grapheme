@@ -3,7 +3,7 @@
  */
 import { getTypedArrayConstructor, getTypedArrayType } from '../core/utils.js'
 import { HEAPF32, HEAPF64 } from './heap.js'
-import { pointLineSegmentDistanceSquared } from './misc_geometry.js'
+import { fastAtan2, pointLineSegmentDistanceSquared } from './misc_geometry.js'
 
 class Contour {
   constructor (data) {
@@ -112,7 +112,6 @@ export function toContours (array, type='f32', cloneSubarrays=true) {
  */
 export function simplifyPolyline (polyline, {
   type,           // type of the output; if not specified, assumed to be the same as the polyline (f32 or f64)
-
   minRes=0.5      // maximum deviation from a line that is considered non-linear
 } = {}) {
   if (!type) {
@@ -125,7 +124,7 @@ export function simplifyPolyline (polyline, {
   }
 
   let HEAP = (type === 'f32') ? HEAPF32 : HEAPF64
-  let x1, y1, x2=polyline[0], y2=polyline[1], x3=polyline[2], y3=polyline[3]
+  let x1, y1, x2=polyline[0], y2=polyline[1], x3=polyline[2], y3=polyline[3], minResSquared = minRes * minRes
 
   let outIndex = -1
 
@@ -137,16 +136,38 @@ export function simplifyPolyline (polyline, {
     y1 = y2
     x2 = x3
     y2 = y3
-
-    if (i !== polyline.length - 2) {
-      x3 = polyline[i]
-      y3 = polyline[i + 1]
-    }
-
-    let dst = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
+    x3 = polyline[i]
+    y3 = polyline[i + 1]
 
     HEAP[++outIndex] = x1
     HEAP[++outIndex] = y1
+
+    let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
+    if (dstSquared < minResSquared) {
+      // We may be able to compact the vertices coming after x1, y1. For now, we just skip one vertex
+
+      let intermediateVertices = [ x2, y2 ]
+
+      loop: for (; i < polyline.length; i += 2) {
+        x2 = x3
+        y2 = y3
+
+        intermediateVertices.push(x2, y2)
+
+        x3 = polyline[i]
+        y3 = polyline[i + 1]
+
+        for (let j = 0; j < intermediateVertices.length; j += 2) {
+          let x2 = intermediateVertices[j]
+          let y2 = intermediateVertices[j+1]
+
+          let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
+
+          if (dstSquared >= minResSquared)
+            break loop
+        }
+      }
+    }
   }
 
   HEAP[++outIndex] = x2

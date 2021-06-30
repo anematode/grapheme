@@ -24,16 +24,17 @@ let samplingStrategies = {
 let sampleStack = new Float64Array(10 * 2048)
 
 export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
-  minRes,                        // minimum resolution in units (required argument)
-  samples: sampleCount = 100,    // how many initial samples to take
-  samplingStrategy = "uniform",  // how to take the initial samples
-  samplingStrategyArgs = [],     // additional parameters for how to take the initial samples
-  adaptive = true,               // whether to do recursive, adaptive sampling
-  adaptiveRes = minRes,          // resolution of the adaptive stage; distance of non-linearity which is considered linear
+  samples: sampleCount = 100,      // how many initial samples to take
+  samplingStrategy = "uniform",    // how to take the initial samples
+  samplingStrategyArgs = [],       // additional parameters for how to take the initial samples
+  adaptive = true,                 // whether to do recursive, adaptive sampling
+  adaptiveRes = Infinity,          // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
+  simplify = true,                 // whether to compress the vertices
+  simplifyRes = adaptiveRes        // resolution of the collapse
 } = {}) {
   // Sanity checks
   if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null
-  if (minRes <= 0) throw new RangeError("Minimum resolution must be a positive number")
+  if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number")
   if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]")
 
   let evaluate = f.evaluate
@@ -59,9 +60,7 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
   if (adaptive) {
     let x1 = 0, y1 = 0, x2 = samples[0], y2 = samples[1], x3 = samples[2], y3 = samples[3]
 
-    let minResSquared = minRes * minRes
     let adaptiveResSquared = adaptiveRes * adaptiveRes
-
     let needsSubdivide = false   // whether the current segment needs subdivision, carried over from the previous iter
 
     HEAPF64[0] = x2
@@ -164,7 +163,7 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
           if (!needsSubdivide) {
             let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
 
-            if (dstSquared > minResSquared)
+            if (dstSquared > adaptiveResSquared)
               needsSubdivide = true
           }
 
@@ -206,10 +205,10 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
       }
     }
 
-    samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex))
+    samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex + 1))
   }
 
-  samples = simplifyPolyline(samples)
+  samples = simplifyPolyline(samples, { minRes: simplifyRes })
 
   return samples
 }

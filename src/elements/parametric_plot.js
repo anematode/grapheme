@@ -6,6 +6,7 @@ import { ASTNode } from '../ast/node.js'
 import { compileNode } from '../ast/compile.js'
 import { parametricPlot2D } from '../algorithm/graphing.js'
 import { benchmark } from '../core/utils.js'
+import { simplifyPolyline } from '../algorithm/polyline_utils.js'
 
 const parametricPlotInterface = constructInterface({
   interface: {
@@ -108,8 +109,10 @@ export class ParametricPlot2D extends Element {
     let pts
 
     pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
-      samples, minRes: plotTransform.graphPixelSize() / 20,
-      adaptive: true
+      samples,
+      adaptive: true,
+      adaptiveRes: plotTransform.graphPixelSize() / 20,
+      simplifyRes: plotTransform.graphPixelSize() / 4
     }))
 
     this.internal.pts = pts
