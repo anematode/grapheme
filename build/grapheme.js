@@ -739,791 +739,209 @@
     onReady: onReady
   });
 
-  function _defineProperty(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
+  // A rather common operation for generating texture atlases and the like.
+  // Takes in an array of rectangles and returns a packing of those rectangles as a list of x and y coordinates
+  // The code fucking sucks, whatever, I just want text working ASAP
+  // TODO: Chazelle packing
+  function packRectangles(rectangles) {
+    // For now, just find the maximum size and repeat that.
+    let rectWidth = 0,
+        rectHeight = 0;
+
+    for (const rectangle of rectangles) {
+      rectWidth = Math.max(rectWidth, rectangle.w);
+      rectHeight = Math.max(rectHeight, rectangle.h);
     }
 
-    return obj;
-  }
+    let rectangleCount = rectangles.length;
+    // has sides that are both powers of two. We consider rectangles of the ratios 2:1, 1:1 and 1:2.
 
-  function ownKeys(object, enumerableOnly) {
-    var keys = Object.keys(object);
+    const totalArea = rectWidth * rectHeight * rectangleCount;
+    let nextPowerOfTwo = Math.ceil(Math.floor(Math.log2(totalArea)));
+    let textureWidth, textureHeight;
+    let rectXCount;
 
-    if (Object.getOwnPropertySymbols) {
-      var symbols = Object.getOwnPropertySymbols(object);
-      if (enumerableOnly) symbols = symbols.filter(function (sym) {
-        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
-      });
-      keys.push.apply(keys, symbols);
+    function tryPacking(width, height) {
+      if (textureWidth) return;
+      const minYCount = Math.floor(height / rectHeight);
+      let minXCount = Math.floor(width / rectWidth);
+      let correspondingXCount = Math.ceil(rectangleCount / minYCount);
+
+      if (correspondingXCount <= minXCount) {
+        // Then a packing of minYCount rectangles tall and correspondingXCount rectangles wide will suffice, in a bounding
+        // box of textureWidth x textureHeight
+        textureWidth = width;
+        textureHeight = height;
+        rectXCount = correspondingXCount;
+      }
     }
 
-    return keys;
-  }
-
-  function _objectSpread2(target) {
-    for (var i = 1; i < arguments.length; i++) {
-      var source = arguments[i] != null ? arguments[i] : {};
-
-      if (i % 2) {
-        ownKeys(Object(source), true).forEach(function (key) {
-          _defineProperty(target, key, source[key]);
-        });
-      } else if (Object.getOwnPropertyDescriptors) {
-        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+    while (!textureWidth) {
+      if (nextPowerOfTwo % 2 !== 0) {
+        let width = 1 << nextPowerOfTwo / 2;
+        let height = 1 << nextPowerOfTwo / 2 + 1;
+        tryPacking(width, height);
+        tryPacking(height, width);
       } else {
-        ownKeys(Object(source)).forEach(function (key) {
-          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
-        });
+        const sideLen = 1 << nextPowerOfTwo / 2;
+        tryPacking(sideLen, sideLen);
       }
+
+      nextPowerOfTwo++;
     }
 
-    return target;
-  }
+    let rects = [];
 
-  function _classPrivateMethodGet(receiver, privateSet, fn) {
-    if (!privateSet.has(receiver)) {
-      throw new TypeError("attempted to get private field on non-instance");
+    for (let i = 0; i < rectangleCount; ++i) {
+      let x = i % rectXCount;
+      let y = Math.floor(i / rectXCount);
+      let rect = rectangles[i];
+      rects.push({
+        x: x * rectWidth,
+        y: y * rectHeight,
+        w: rect.w,
+        h: rect.h
+      });
     }
 
-    return fn;
+    return {
+      width: textureWidth,
+      height: textureHeight,
+      rects
+    };
   }
-
-  /**
-   * A base class to use for event listeners and the like. Supports things like addEventListener(eventName, callback),
-   * triggerEvent(name, ?data), removeEventListener( ... ), removeEventListeners(?name). Listeners are called with
-   * data and this as parameters. If a listener returns true, the event does not propagate to any other listeners.
-   */
-  class Eventful {
+  class DynamicRectanglePacker {
     constructor() {
-      _defineProperty(this, "eventListeners", new Map());
-    }
-
-    /**
-     * Register an event listener to a given event name. It will be given lower priority than the ones that came before.
-     * The callbacks will be given a single parameter "data".
-     * @param eventName {string} The name of the event
-     * @param callback {function|Array} The callback(s) to register
-     * @returns {Eventful} Returns self (for chaining)
-     */
-    addEventListener(eventName, callback) {
-      if (Array.isArray(callback)) {
-        for (const c of callback) this.addEventListener(eventName, c);
-
-        return this;
-      } else if (typeof callback === 'function') {
-        if (typeof eventName !== 'string' || !eventName) throw new TypeError('Invalid event name');
-        let listeners = this.eventListeners.get(eventName);
-
-        if (!listeners) {
-          listeners = [];
-          this.eventListeners.set(eventName, listeners);
-        }
-
-        if (!listeners.includes(callback)) listeners.push(callback);
-        return this;
-      } else throw new TypeError('Invalid callback');
+      // Given rectangles of some ids, packs them, allowing for rectangles to be deleted and new ones to be added after
+      // a previous packing
+      // Maps rectangle ids to rectangles { x, y, w, h }
+      this.rects = new Map();
+      this.packingBoundary = [];
+      this.packingMaxX = 0;
+      this.packingMaxY = 0;
+      this.queue = [];
     }
     /**
-     * Get the event listeners under "eventName", cloned so that they can be derped around with
-     * @param eventName {string} Name of the event whose listeners we want
-     * @returns {Array<function>}
+     * Reset the packer
      */
 
 
-    getEventListeners(eventName) {
-      const listeners = this.eventListeners.get(eventName);
-      return Array.isArray(listeners) ? listeners.slice() : [];
-    }
-    /**
-     * Whether there are any event listeners registered for the given name
-     * @param eventName
-     * @returns {boolean} Whether any listeners are registered for that event
-     */
+    clear() {
+      this.rects.clear();
+    } // Queue a rectangle of some width and height
 
 
-    hasEventListenersFor(eventName) {
-      return Array.isArray(this.eventListeners.get(eventName));
-    }
-    /**
-     * Remove an event listener from the given event. Fails silently if that listener is not registered.
-     * @param eventName {string} The name of the event
-     * @param callback {function} The callback to remove
-     * @returns {Eventful} Returns self (for chaining)
-     */
-
-
-    removeEventListener(eventName, callback) {
-      if (Array.isArray(callback)) {
-        for (const c of callback) this.removeEventListener(eventName, c);
-
-        return this;
-      }
-
-      const listeners = this.eventListeners.get(eventName);
-
-      if (Array.isArray(listeners)) {
-        const index = listeners.indexOf(callback);
-        if (index !== -1) listeners.splice(index, 1);
-        if (listeners.length === 0) this.eventListeners.delete(eventName);
-      }
-
-      return this;
-    }
-    /**
-     * Remove all event listeners for a given event. Fails silently if there are no listeners registered for that event.
-     * @param eventName {string} The name of the event whose listeners should be cleared
-     * @returns {Eventful} Returns self (for chaining)
-     */
-
-
-    removeEventListeners(eventName) {
-      this.eventListeners.delete(eventName);
-      return this;
-    }
-    /**
-     * Trigger the listeners registered under an event name, passing (data, this, eventName) to each. Returns true if
-     * some listener returned true, stopping propagation; returns false otherwise
-     * @param eventName {string} Name of the event to be triggered
-     * @param data {any} Optional data parameter to be passed to listeners
-     * @returns {boolean} Whether any listener stopped propagation
-     */
-
-
-    triggerEvent(eventName, data) {
-      if (this.eventListeners.size === 0) return false;
-      const listeners = this.eventListeners.get(eventName);
-
-      if (Array.isArray(listeners)) {
-        for (let i = 0; i < listeners.length; ++i) {
-          if (listeners[i](data)) return true;
-        }
-      }
-
-      return false;
+    queueRectangle(id, width, height) {
+      this.queue.push({
+        id,
+        w: width,
+        h: height
+      });
     }
 
-  }
+    pack() {
+      // Sorted by area. In the case of text, sorting by height might make more sense
+      const rectsToPack = this.queue.sort((r1, r2) => r1.w * r1.h - r2.w * r2.h); // The packing boundary is the minimal "step function" that encompasses the rectangles already allocated. Yes, I know
 
-  // The general form of a prop store is { value: , changed: , userValue: , }
-  const proxyHandlers = {
-    get: (target, propName) => {
-      return target.get(propName);
-    },
-    set: (target, propName, value) => {
-      target.set(propName, value);
-    }
-  };
-  /**
-   * The properties class stores an element's internal properties, in contrast to the user-facing properties, which are
-   * effectively getters and setters. There are benefits and costs to this approach. One of the main benefits is an easier
-   * API for the programmer to manipulate complex stylings and properties. Another benefit is the built-in ability to
-   * track whether a value has changed and whether it should be passed on to child elements. It also provides a sort of
-   * abstract concept where the properties are the definition of how a given object is *rendered*.
-   *
-   * A property that does not exist essentially has the value of undefined. Deleting a property is thus essentially
-   * equivalent to setting its value to undefined, with some important caveats, because the property's changed status
-   * must still be stored. Such "undefined properties" are technical only and not inheritable or useable.
-   *
-   * Beyond a simple property store, this object provides two paramount functionalities: changedness and inheritance.
-   * The concept of "changed" is relatively simple: it is whether a property has changed since the last time the element
-   * was fully updated, *or* when the property's change was dealt with in a way such that it is consistent that the
-   * element has fully updated. In other words, it is *functionally* identical to the last time an element was fully
-   * updated. That means that if a given array is mutated, its changed value must be set to true, because it is not
-   * functionally identical, even though it is strictly equal. It also means that if a given bounding box is cloned, its
-   * "changed" status may still be unchanged.
-   *
-   * There are some simple things we can do to avoid recomputations. For sceneDimensions, for example, its call to set its
-   * value is marked with equalityCheck = 2, meaning a deep equals comparison. Thus if the same dimensions are computed,
-   * it will not be marked as a change. Cached values may also be used if that's appropriate, but it is generally not
-   * (overhead and code complexity).
-   *
-   * Inheritance is whether a property should be forwarded to an element's descendants, stored in the property store's
-   * inherit property. An inherit value of 2 means that the property is owned by the current element; an inherit value of
-   * 1 means that the property is being passed along from an element above the current one. For example, sceneDimensions
-   * is an inheritable property of a top-level scene, and thus has { inherit: 2 } in the scene's property store, while
-   * in a figure below that scene, it has { inherit: 1 }. Inheritable properties must be treated slightly differently than
-   * normal properties because they have effects outside the current element, and influence other elements directly.
-   * Ideally, all elements should know whether an inheritable property has changed, but it would be inefficient and
-   * ultimately inelegant to propagate down inherited properties every time one was changed. Instead, the inheritance
-   * chain occurs during an update; an element inherits the inheritable properties from above it. An element only looks
-   * for inheritable properties if parent.props.hasChangedInheritableProperties is 1 or 2, or if the element's updateStage
-   * is -1. The latter case is for when an element has just been added to a group, and thus needs all the group's
-   * inherited properties, whether they are changed or not.
-   *
-   * Another special property of inherited properties is that their "changed/unchanged" status is supplemented by a simple
-   * time-based versioning system, as are many other Grapheme components. Inheritable properties thus have a version
-   * value of some integer n, where n is unique and assigned in order of when the property was last set. A given
-   * value of a property is associated with a unique integer n. When inheriting properties from a parent, all inheritable
-   * properties are traversed, and those properties whose version is greater than the version in the child will be
-   * inherited (or if the child doesn't have the property at all). An inheritable property is thus "changed" to a given
-   * element if its value is less than the element's own version value, which is assigned in a similar temporal fashion
-   * immediately following that element's update completion. It provides an efficient way of dealing with the concept of
-   * "changed" for a certain property, but across multiple elements.
-   *
-   * A given element may set its private properties' "changed" status to false as long as it is consistent, and the
-   * element may set the changed values of any of its inheritable properties to false, *provided* they leave the value
-   * of this.props.hasChangedInheritableProperties alone. That's because that value is checked by children if they are
-   * wondering whether they need to inherit props, and even if a parent's job may be done, the children still need to
-   * check in case their version values don't match up. hasChangedInheritableProperties is only set to 0 (er, only should
-   * be set to 0, as there is no enforcement mechanism) by the scene, during a global update, which will ensure that
-   * inherited properties do not need to be propagated down anywhere. The other thing is that if an element ever changes
-   * one of its inheritable properties, all of its direct children's updateStages need to be set to 0/-1, since they need
-   * to be recomputed. Note that this will not lead to much overhead, because inheritable properties are supposed to be
-   * used sparingly, and because setting a child's updateStage to 0 would mean they would simply check if any inheritable
-   * props have changed and any of their props have changed, which will often mean a couple boolean accesses (many
-   * elements can just explicitly inherit a few values).
-   *
-   * It is perhaps instructive to consider how properties will work on an actual example. Let's take a scene with
-   * width: 640, height: 320, and dpr: 1, all of which are *local* properties, with an inheritance value of 0. Also, take
-   * a figure with margins: { left: 0, top: 0, ... }, another local property. Finally, let a function plot with
-   * function: "x^2" and pen: "red" be a child of the figure.
-   *
-   * It's a simple scene, and as nothing has been updated yet, all elements' versions and updateStages are -1. Indeed,
-   * the figure has no clue about its position on the scene, let alone the transformation of coordinates needed for the
-   * function to be happy. All elements have their local, uninheritable properties and those only. All of those
-   * properties, being set moments ago, have changed: true (think of it as, they're being changed from being undefined).
-   *
-   * When scene.updateAll() is called, it traverses the tree of elements, calling update() on each one. scene.update()
-   * sees that its updateStage is not 100, and so calls scene._update(), which observes that "width", "height", and "dpr"
-   * have changed. It thus computes an inheritable property called sceneDimensions, which is just an object containing
-   * those three parameters in one inheritable bundle. This property's version is, say, 501. The scene also sets all
-   * of the children's update stages to the minimum of 0 and their current stage, which means they all stay at -1.
-   * The scene is now permitted to set its own "changed" values to false for local properties. hasChangedInheritable
-   * Properties, however, remains at 2. (One nuance: it's at 2 when inherited properties have been added or deleted, and
-   * at 1 when only their values have changed.) The scene's updateStage is now 100
-   *
-   * figure.update() is next in line. Seeing its updateStage is not 100, it calls figure._update(), which observes that
-   * its updateStage is -1, and thus properties must be inherited. It does so, keeping the version of sceneDimensions and
-   * setting its own hasChangedInheritableProperties to 2, along with setting all its children's update stages to 0/-1.
-   * Its version of sceneDimensions has inherit: 1, not 2. It also calculates its plotting box and other things, creating
-   * a new value called plotTransform, with inherit: 2! It also sets all the children's update stages to the minimum of
-   * 0 and their current value, which leaves them at -1. Also, focus on the sceneDimensions has a copied version. The
-   * changed value of sceneDimensions is only used by the figure; the children inheriting always look at the version. In
-   * other words, the changed is local to the element.
-   *
-   * function.update() is the last. Seeing its updateStage is not 100, it calls function._update(), which observes that
-   * its updateStage is -1, and thus all properties must be inherited. It does so, keeping the versions of sceneDimensions
-   * and plotTransform, along with private changed values for those properties. Again, THE CHANGED VALUE OF THE PARENT'S
-   * PROPERTY IS IRRELEVANT. All inheritable properties are checked and their changed values compared to the element's
-   * current value.
-   *
-   * At this point, the remainder of scene.updateAll() goes through all elements and sets their props.hasChangedInheritabl
-   * eProperties to 0, knowing that all elements have updated and no longer need to check their parents for changed
-   * inheritable properties. Let this state of the scene be STATE 1, a fully updated scene.
-   *
-   * Beginning from STATE 1, suppose another function plot, called function2, is added to the figure. Its updateStage is
-   * -1. Thus, when scene.updateAll() is called and it gets to function2.update(), it knows to ignore the fact that
-   * figure.props.hasChangedInheritableProperties is 0, and inherit all properties anyway. It stores those properties'
-   * versions as before. But in the future, when its updateStage is 0, it knows it can take the value of figure.props.
-   * hasChangedInheritableProperties literally.
-   *
-   * Beginning from STATE 1, suppose the scene's private width property is set to 500. The sceneDimensions does not
-   * immediately update, locally or across elements. During updating, the scene's update stage is 0, so it computes
-   * sceneDimensions. Seeing that an inheritable property has changed, scene.props.hasChangedInheritableProperties is
-   * set to 1 and the figure's updateStage is set to 0. In turn, when updating, the figure sees that the scene's
-   * hasChangedInheritableProperties has changed, so it checks its version of sceneDimensions versus the scene's version.
-   * Finding the former is less, it copies the new version and new value of sceneDimensions, then sets figure.props.
-   * hasChangedInheritableProperties to 1, and sets function's updateStage to 0.
-   *
-   * Beginning from STATE 1, suppose the scene deletes sceneDimensions, setting its value to undefined.
-   * This operation sets the hasChangedInheritableProperties to 2 and all the children's update stages to 0. 2 means that
-   * the actual types of inherited properties have changed. In this case, the child has to both inherit changed properties
-   * AND delete the properties which it had inherited. The operation is similar; it sets its value to undefined and
-   * inherit to 0, and its hasChangedInheritableProperties to 2. Other operations which set it to "2" are adding an
-   * inheritable property and setting the inheritance of a property back to 0.
-   *
-   * Alongside the value of a property, there may or may not be a user-intended value and a program value. For some
-   * parameters for which preprocessing is necessary, the user-intended value is the value that is actually changed when
-   * .set() is called. Consider a pen, for instance. If the user does set("pen", "blue"), then the expected result should
-   * be a blue line. Simple enough. But the pen used is not actually the string "blue"; it is an object of the form
-   * {color, thickness, ...}. Thus, the user-intended value of pen is "blue", and the actual value of pen is the pen
-   * object. The program value is a value indicating an "internal set". For example, a label may be a child of a certain
-   * element, which sets the child's position to (50, 20). In this case, the program value is (50, 20) and the value is
-   * (50, 20). We indicate these values by using bitsets for the changed and hasChangedProperties values, where bit 0
-   * is the actual value, bit 1 is the user value, bit 2 is the program value, and the remaining bits are reserved for
-   * other values if ever needed.
-   */
-
-  class Props {
-    constructor() {
-      /**
-       * A key-object dictionary containing the values. The keys are the property names and the objects are of the form
-       * { value, changed, ... some other metadata for the given property ... }.
-       * @type {any}
-       */
-      this.store = new Map(); // Just for fun... not sure if I'll keep this. Makes programming a bit less painful
-
-      this.proxy = new Proxy(this, proxyHandlers); // Stores whether any property has changed as a bitmask
-
-      this.hasChangedProperties = 0; // 0 when no inheritable properties have changed, 1 when an inheritable property has changed since the last time
-      // the scene was fully updated, and 2 when the actual list of inheritable properties has changed (different
-      // signature of inheritance, if you will).
-
-      this.hasChangedInheritableProperties = 0;
-    }
-
-    static toBit(as) {
-      switch (as) {
-        case 'program':
-          return 2;
-
-        case 'user':
-          return 1;
-
-        case 'real':
-        case 'default':
-          return 0;
-      }
-    } // Access functions, in case we want to switch to Object.create(null)
-
-
-    getPropertyStore(propName) {
-      return this.store.get(propName);
-    }
-
-    setPropertyStore(propName, value) {
-      this.store.set(propName, value);
-    }
-    /**
-     * Create a property store for a given prop, returning the store. It returns the already-existing store, if appropriate.
-     * @param propName {string}
-     * @returns {{}} Property store associated with the given property name
-     */
-
-
-    createPropertyStore(propName) {
-      let existing = this.getPropertyStore(propName);
-
-      if (!existing) {
-        existing = {
-          value: undefined,
-          changed: false
-        };
-        this.setPropertyStore(propName, existing);
-      }
-
-      return existing;
-    }
-    /**
-     * Deletes a property store wholesale, not trying to account for changed values and the like.
-     * @param propName
-     */
-
-
-    deletePropertyStore(propName) {
-      this.store.delete(propName);
-    }
-
-    forEachStore(callback) {
-      for (let value of this.store.values()) {
-        callback(value);
+      for (const rect of rectsToPack) {
+        rect.w;
+            rect.h;
       }
     }
 
-    forEachProperty(callback) {
-      for (let [key, value] of this.store.entries()) {
-        callback(key, value);
-      }
-    }
-    /**
-     * Get a list of all properties, including ones which are undefined but have a store
-     * @returns {string[]}
-     */
+  } // Credit to the authors of github.com/mapbox/potpack. I will be writing a better version soon
+
+  function potpack(boxes) {
+    // calculate total box area and maximum box width
+    let area = 0;
+    let maxWidth = 0;
+
+    for (const box of boxes) {
+      area += box.w * box.h;
+      maxWidth = Math.max(maxWidth, box.w);
+    } // sort the boxes for insertion by height, descending
 
 
-    listProperties() {
-      return Array.from(this.store.keys());
-    }
-    /**
-     * Returns whether a property has changed, locally speaking.
-     * @param propName {string}
-     * @returns {boolean}
-     */
+    boxes.sort((a, b) => b.h - a.h); // aim for a squarish resulting container,
+    // slightly adjusted for sub-100% space utilization
 
+    const startWidth = Math.max(Math.ceil(Math.sqrt(area / 0.95)), maxWidth); // start with a single empty space, unbounded at the bottom
 
-    hasChanged(propName) {
-      var _this$getPropertyStor;
+    const spaces = [{
+      x: 0,
+      y: 0,
+      w: startWidth,
+      h: Infinity
+    }];
+    let width = 0;
+    let height = 0;
 
-      return !!((_this$getPropertyStor = this.getPropertyStore(propName)) === null || _this$getPropertyStor === void 0 ? void 0 : _this$getPropertyStor.changed);
-    }
-    /**
-     * Returns whether any property of a list of properties has changed, locally speaking.
-     * @param propList {string[]}
-     * @returns {boolean}
-     */
+    for (const box of boxes) {
+      // look through spaces backwards so that we check smaller spaces first
+      for (let i = spaces.length - 1; i >= 0; i--) {
+        const space = spaces[i]; // look for empty spaces that can accommodate the current box
 
+        if (box.w > space.w || box.h > space.h) continue; // found the space; add the box to its top-left corner
+        // |-------|-------|
+        // |  box  |       |
+        // |_______|       |
+        // |         space |
+        // |_______________|
 
-    haveChanged(propList) {
-      return this.hasChangedProperties && propList.some(prop => this.hasChanged(prop));
-    }
-    /**
-     * Returns whether a given property is inheritable (i.e., an inherit of 1 or 2).
-     * @param propName {string}
-     * @returns {boolean}
-     */
+        box.x = space.x;
+        box.y = space.y;
+        height = Math.max(height, box.y + box.h);
+        width = Math.max(width, box.x + box.w);
 
-
-    isPropertyInheritable(propName) {
-      var _this$getPropertyStor2;
-
-      return !!((_this$getPropertyStor2 = this.getPropertyStore(propName)) === null || _this$getPropertyStor2 === void 0 ? void 0 : _this$getPropertyStor2.inherit);
-    }
-    /**
-     * Returns a list of properties which have changed, locally speaking.
-     * @returns {string[]}
-     */
-
-
-    listChangedProperties() {
-      return this.listProperties().filter(prop => this.hasChanged(prop));
-    }
-    /**
-     * Returns a list of properties which can be inherited (i.e., an inherit of 1 or 2).
-     * @returns {string[]}
-     */
-
-
-    listInheritableProperties() {
-      return this.listProperties().filter(prop => this.isPropertyInheritable(prop));
-    }
-    /**
-     * Inherit all inheritable properties from a given props. The function does this by comparing the local inherited
-     * prop's version to the given props's version. If the local version is lower, the property and version are copied,
-     * and the changed status is set to true. If updateAll is set to true, the function makes sure to check that the
-     * actual list of inherited properties is synchronized, because it normally only checks the local inheritable
-     * properties and compares them. In fact, it only checks the local inheritable properties with inherit: 1, since that
-     * indicates it came from a parent rather than being defined in the current element.
-     * @param props {Props}
-     * @param updateAll {boolean} Whether to force a complete update, in which the inheritable properties are verifiably
-     * synced with the top element's properties. This usually happens after an element is added to a group, or after a
-     * group's inheritance signature has changed.
-     */
-
-
-    inheritPropertiesFrom(props, updateAll = false) {
-      // Early exit condition, where if no inheritable properties have changed, we need not do anything
-      if (!(updateAll || props.hasChangedInheritableProperties)) return;
-      updateAll = updateAll || props.hasChangedInheritableProperties === 2; // We recalculate all local properties whose inheritance is 1, indicating they were inherited from above. Properties
-      // not found above are deleted, properties found above are copied if their version is greater than or equal to the
-      // version of the current property. This ensures that this props does not have any extraneous properties or any
-      // incorrect/nonupdated values.
-
-      for (const [propName, propStore] of this.store.entries()) {
-        if (propStore.inherit !== 1) continue;
-        const otherPropsStore = props.getPropertyStore(propName); // if no such inheritable property, *delete* the local property (do not keep it as inheritable)
-
-        if (!otherPropsStore || otherPropsStore.inherit < 1 || otherPropsStore.value === undefined) {
-          propStore.value = undefined;
-          propStore.changed |= 0b1;
-          propStore.inherit = 0;
-          this.changed |= 0b1;
-          this.markHasChangedInheritableProperties();
-        } // Value has been changed!
-
-
-        if (otherPropsStore.version > propStore.version) {
-          propStore.version = otherPropsStore.version;
-          propStore.value = otherPropsStore.value;
-          propStore.changed |= 0b1;
-          this.changed |= 0b1;
-          this.markHasChangedInheritableProperties();
-        }
-      } // If updateAll is true, we run through all the given properties and inherit all 1s and 2s.
-
-
-      if (updateAll) {
-        for (const [propName, propStore] of props.store.entries()) {
-          if (!propStore.inherit || propStore.value === undefined) continue;
-          let ourPropStore = this.getPropertyStore(propName); // Where things are actually inherited!!
-
-          if (!ourPropStore || ourPropStore.inherit === 1 && propStore.version > ourPropStore.version) {
-            if (!ourPropStore) {
-              ourPropStore = this.createPropertyStore(propName); // Goes around set
-
-              ourPropStore.inherit = 1;
-              ourPropStore.value = propStore.value;
-              this.markHasChangedInheritanceSignature();
-            }
-
-            ourPropStore.version = propStore.version;
-            ourPropStore.value = propStore.value;
-            ourPropStore.changed |= 0b1;
-            this.markHasChangedProperties();
-          }
-        }
-      }
-    }
-    /**
-     * This function sets the value of a property. It is meant mostly for internal use. If prompted, it will check to see
-     * whether the value given and the current value are strictly equal, or deeply equal, and if so, not mark the property
-     * as changed. By default, this check is turned off, meaning all value assignments are marked as "changed". The third
-     * parameter indicates whether the value should be directly modified, or
-     * @param propName {string} The name of the property
-     * @param value {any} The value of the property
-     * @param as {number} Which value to change. 0 if real, 1 if user, 2 if program
-     * @param equalityCheck {number} What type of equality check to perform against the current value, if any, to assess
-     * the changed value. 0 - no check, 1 - strict equals, 2 - deep equals
-     * @param markChanged {boolean} Whether to actually mark the value as changed. In turn, if the property is a changed
-     * inheritable property, that will be noted
-     * @returns {any}
-     */
-
-
-    set(propName, value, as = 0, equalityCheck = 0, markChanged = true) {
-      let store = this.getPropertyStore(propName); // Helper functions to abstract away the "user/program/real" concept
-
-      function getStoreValue() {
-        switch (as) {
-          case 0:
-            return store.value;
-
-          case 1:
-            return store.userValue;
-
-          case 2:
-            return store.programValue;
-        }
-      }
-
-      function setStoreValue(v) {
-        switch (as) {
-          case 0:
-            store.value = v;
-            break;
-
-          case 1:
-            store.userValue = v;
-            break;
-
-          case 2:
-            store.programValue = v;
-            break;
-        }
-      }
-
-      if (value === undefined) {
-        // Special case of deletion. If the property exists, we set its value to undefined, and if that property is
-        // defined to be inheritable, we set this.hasChangedInheritableProperties to 2. Note that an inheritED property
-        // cannot be deleted, as that would be inconsistent. It can only be overridden.
-        // trivial case, don't do anything
-        if (!store || getStoreValue() === undefined) return value;
-
-        if (store.inherit === 1) {
-          // If the store has an inheritance value of 1, we don't do anything
-          return value;
-        } else if (store.inherit === 2) {
-          // If the property has inheritance 2, we keep it as undefined and notify that the signature of inheritable properties has
-          // changed.
-          setStoreValue(undefined); // If setting the real value, need to change the version
-
-          if (as === 0) {
-            store.version = getVersionID();
-            if (markChanged) this.markHasChangedInheritanceSignature();
-          }
+        if (box.w === space.w && box.h === space.h) {
+          // space matches the box exactly; remove it
+          const last = spaces.pop();
+          if (i < spaces.length) spaces[i] = last;
+        } else if (box.h === space.h) {
+          // space matches the box height; update it accordingly
+          // |-------|---------------|
+          // |  box  | updated space |
+          // |_______|_______________|
+          space.x += box.w;
+          space.w -= box.w;
+        } else if (box.w === space.w) {
+          // space matches the box width; update it accordingly
+          // |---------------|
+          // |      box      |
+          // |_______________|
+          // | updated space |
+          // |_______________|
+          space.y += box.h;
+          space.h -= box.h;
         } else {
-          // Set its value to undefined
-          setStoreValue(undefined);
+          // otherwise the box splits the space into two spaces
+          // |-------|-----------|
+          // |  box  | new space |
+          // |_______|___________|
+          // | updated space     |
+          // |___________________|
+          spaces.push({
+            x: space.x + box.w,
+            y: space.y,
+            w: space.w - box.w,
+            h: box.h
+          });
+          space.y += box.h;
+          space.h -= box.h;
         }
 
-        if (markChanged) {
-          // Mark which bit has changed
-          store.changed |= 1 << as;
-          this.hasChangedProperties |= 1 << as;
-        }
-
-        return undefined;
-      } // Otherwise, we need to get a property store
-
-
-      if (!store) store = this.createPropertyStore(propName); // We reject assignments to an inherited property. This can be overridden by setting the property's inheritance
-      // status.
-
-      if (store.inherit === 1) return value;
-
-      if (equalityCheck !== 0) {
-        let storeValue = getStoreValue(); // Perform various equality checks
-
-        if (equalityCheck === 1 && storeValue === value) return value;else if (equalityCheck === 2 && deepEquals(storeValue, value)) return value;
-      } // Set the value and changed values
-
-
-      setStoreValue(value);
-
-      if (markChanged) {
-        store.changed |= 1 << as;
-        this.hasChangedProperties |= 1 << as; // For values to be inherited, store the version of this value. Only for inherit: 2 properties
-
-        if (store.inherit === 2 && as === 0) {
-          store.version = getVersionID();
-          this.markHasChangedInheritableProperties();
-        }
-      }
-
-      return value;
-    }
-
-    setProperties(values, equalityCheck = 0, markChanged = true) {
-      for (const [propName, propValue] of Object.entries(values)) {
-        this.set(propName, propValue, equalityCheck, markChanged);
-      }
-
-      return this;
-    }
-
-    markHasChangedProperties() {
-      this.hasChangedProperties = true;
-    }
-
-    markHasChangedInheritableProperties() {
-      this.hasChangedInheritableProperties = Math.max(this.hasChangedInheritableProperties, 1);
-    }
-
-    markHasChangedInheritanceSignature() {
-      this.hasChangedInheritableProperties = 2;
-    }
-
-    configureProperty(propName, opts = {}) {
-      this.getPropertyStore(propName);
-
-      if (opts.inherit !== undefined) {
-        this.setPropertyInheritance(propName, opts.inherit);
+        break;
       }
     }
 
-    configureProperties(propNames, opts = {}) {
-      for (const propName of propNames) this.configureProperty(propName, opts);
-    }
-    /**
-     * Set a property's inheritance to 2 (if inherit is true) or 0
-     * @param propName {string}
-     * @param inherit {boolean}
-     * @return {Props}
-     */
+    return {
+      w: width,
+      // container width
+      h: height,
+      // container height
+      fill: area / (width * height) || 0 // space utilization
 
-
-    setPropertyInheritance(propName, inherit = false) {
-      const store = this.createPropertyStore(propName);
-      let currentInheritance = !!store.inherit;
-      if (currentInheritance === !!inherit) return this;
-
-      if (inherit) {
-        store.version = getVersionID();
-        store.inherit = 2;
-      } else {
-        delete store.version;
-        delete store.inherit;
-      }
-
-      if (store.value !== undefined) this.hasChangedInheritableProperties = 2;
-      return this;
-    }
-    /**
-     * Get the value of a property.
-     * @param propName {string}
-     * @param as {number} 0 if getting the real value, 1 if getting the user value, 2 if getting the program value
-     * @returns {*}
-     */
-
-
-    get(propName, as = 0) {
-      let store = this.getPropertyStore(propName);
-      if (!store) return undefined;
-
-      switch (as) {
-        case 0:
-          return store.value;
-
-        case 1:
-          return store.userValue;
-
-        case 2:
-          return store.programValue;
-      }
-    }
-
-    getUserValue(propName) {
-      return this.get(propName, 1);
-    }
-
-    getProgramValue(propName) {
-      return this.get(propName, 2);
-    }
-    /**
-     * Get the values of a list of properties.
-     * @param propNameList {string[]}
-     * @returns {*}
-     */
-
-
-    getProperties(propNameList) {
-      return propNameList.map(propName => this.get(propName));
-    }
-    /**
-     * Mark all properties as locally updated (changed = false).
-     */
-
-
-    markAllUpdated(bitmask = 0b111) {
-      bitmask = ~bitmask;
-      this.hasChangedProperties &= bitmask;
-      this.forEachStore(store => {
-        store.changed &= bitmask;
-      });
-    }
-    /**
-     * Mark a specific property as locally updated (changed = false).
-     * @param propName {string}
-     */
-
-
-    markPropertyUpdated(propName) {
-      const store = this.getPropertyStore(propName);
-      if (store) store.changed = 0;
-    }
-    /**
-     * Mark a given property as changed.
-     * @param propName {string}
-     */
-
-
-    markChanged(propName) {
-      let store = this.getPropertyStore(propName);
-      store.changed |= 0b1;
-      this.hasChangedProperties |= 0b1; // If the store is inheritable, we need to generate a version ID
-
-      if (store.inherit) {
-        store.version = getVersionID();
-        this.markHasChangedInheritableProperties();
-      }
-    }
-    /**
-     * Mark that no more inheritance is necessary. This function should only be called by the scene
-     */
-
-
-    markGlobalUpdateComplete() {
-      if (this.hasChangedProperties) this.markAllUpdated();
-      this.hasChangedInheritableProperties = 0;
-    }
-
-    stringify() {
-      const obj = {};
-
-      for (const [propName, propStore] of this.store) {
-        obj[propName] = propStore;
-      }
-
-      console.log(JSON.stringify(obj, null, 4));
-    }
-
+    };
   }
 
   // Another one of these, yada yada, reinventing the wheel, yay
@@ -1614,987 +1032,1454 @@
 
   }
 
-  // Principles: Some things in Grapheme have styling information that may be shared or may be composed from other bits of
-  // Could use a library, but... good experience for me too
+  /**
+   * Given some parameters describing a line segment, find a line segment that is consistent with at least two of them.
+   * @param x1 {number}
+   * @param x2 {number}
+   * @param w {number}
+   * @param cx {number}
+   */
 
-  class Color {
-    constructor({
-      r = 0,
-      g = 0,
-      b = 0,
-      a = 255
-    } = {}) {
-      this.r = r;
-      this.g = g;
-      this.b = b;
-      this.a = a;
+  function resolveAxisSpecification(x1, x2, w, cx) {
+
+    if (cx !== undefined) {
+      let halfWidth = 0;
+      if (w !== undefined) halfWidth = w / 2;else if (x2 !== undefined) halfWidth = x2 - cx;else if (x1 !== undefined) halfWidth = cx - x1;
+      halfWidth = Math.abs(halfWidth);
+      return [cx - halfWidth, cx + halfWidth];
+    } else if (x1 !== undefined) {
+      if (w !== undefined) return [x1, x1 + w];
+      if (x2 !== undefined) return [x1, x2];
+    } else if (x2 !== undefined) {
+      if (w !== undefined) return [x2 - w, x2];
     }
 
-    rounded() {
-      return {
-        r: Math.round(this.r),
-        g: Math.round(this.g),
-        b: Math.round(this.b),
-        a: Math.round(this.a)
-      };
-    }
+    return [0, 0];
+  }
+  /**
+   * A bounding box. In general, we consider the bounding box to be in canvas coordinates, so that the "top" is -y and
+   * the "bottom" is +y.
+   */
 
-    toJSON() {
-      return {
-        r: this.r,
-        g: this.g,
-        b: this.b,
-        a: this.a
-      };
-    }
 
-    hex() {
-      const rnd = this.rounded();
-      return "#".concat([rnd.r, rnd.g, rnd.b, rnd.a].map(x => leftZeroPad(x.toString(16), 2)).join(''));
-    }
-
-    glColor() {
-      return {
-        r: this.r / 255,
-        g: this.g / 255,
-        b: this.b / 255,
-        a: this.a / 255
-      };
-    }
-
-    toNumber() {
-      return this.r * 0x1000000 + this.g * 0x10000 + this.b * 0x100 + this.a;
+  class BoundingBox {
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.x = x;
+      this.y = y;
+      this.w = width;
+      this.h = height;
     }
 
     clone() {
-      return new Color(this);
+      return new BoundingBox(this.x, this.y, this.w, this.h);
+    }
+    /**
+     * Push in (or pull out) all the sides of the box by a given amount. Returns null if too far. So squishing
+     * { x: 0, y: 0, w: 2, h: 2} by 1/2 will give { x: 0.5, y: 0.5, w: 1, h: 1 }
+     * @param margin {number}
+     */
+
+
+    squish(margin = 0) {
+      const {
+        x,
+        y,
+        w,
+        h
+      } = this;
+      if (2 * margin > w || 2 * margin > h) return null;
+      return new BoundingBox(x + margin, y + margin, w - 2 * margin, h - 2 * margin);
     }
 
-    static rgb(r, g, b) {
-      return new Color({
-        r,
-        g,
-        b
-      });
-    }
+    squishAsymmetrically(left = 0, right = 0, bottom = 0, top = 0, flipY = false) {
+      const {
+        x,
+        y,
+        w,
+        h
+      } = this;
 
-    static rgba(r, g, b, a = 255) {
-      return new Color({
-        r,
-        g,
-        b,
-        a
-      });
-    }
-
-    static hsl(h, s, l) {
-      return new Color(hslToRgb(h, s, l));
-    }
-
-    static hsla(h, s, l, a) {
-      let color = Color.hsl(h, s, l);
-      color.a = 255 * a;
-      return color;
-    }
-
-    static fromHex(string) {
-      return new Color(hexToRgb(string));
-    }
-
-    static fromCss(cssColorString) {
-      function throwBadColor() {
-        throw new Error('Unrecognized colour ' + cssColorString);
+      if (2 * (left + right) > w || 2 * (bottom + top) > h) {
+        return null;
       }
 
-      cssColorString = cssColorString.toLowerCase().replace(/\s+/g, '');
-
-      if (cssColorString.startsWith('#')) {
-        return Color.fromHex(cssColorString);
+      if (flipY) {
+        let tmp = bottom;
+        bottom = top;
+        top = tmp;
       }
 
-      let argsMatch = /\((.+)\)/g.exec(cssColorString);
+      return new BoundingBox(x + left, y + top, w - (left + right), h - (top + bottom));
+    }
 
-      if (!argsMatch) {
-        let color = Colors[cssColorString.toUpperCase()];
-        return color ? color : throwBadColor();
-      }
+    translate(v) {
+      return new BoundingBox(this.x + v.x, this.y + v.y, this.w, this.h);
+    }
 
-      let args = argsMatch[1].split(',').map(parseFloat);
+    scale(s) {
+      return new BoundingBox(this.x * s, this.y * s, this.w * s, this.h * s);
+    }
 
-      if (cssColorString.startsWith('rgb')) {
-        return Color.rgb(...args.map(s => s * 255));
-      } else if (cssColorString.startsWith('rgba')) {
-        return Color.rgba(...args.map(s => s * 255));
-      } else if (cssColorString.startsWith('hsl')) {
-        return Color.hsl(...args);
-      } else if (cssColorString.startsWith('hsla')) {
-        return Color.hsla(...args);
-      }
+    getX2() {
+      return this.x + this.w;
+    }
 
-      throwBadColor();
+    getY2() {
+      return this.y + this.h;
     }
 
     static fromObj(obj) {
-      if (typeof obj === 'string') {
-        return Color.fromCss(obj);
+      let finalX1, finalY1, finalX2, finalY2;
+
+      if (Array.isArray(obj)) {
+        finalX1 = obj[0];
+        finalY1 = obj[1];
+        finalX2 = obj[2] + finalX1;
+        finalY2 = obj[3] + finalY1;
+      } else if (typeof obj === 'object') {
+        var _x, _y, _w, _h, _cx, _cy;
+
+        let {
+          x,
+          y,
+          x1,
+          y1,
+          x2,
+          y2,
+          w,
+          h,
+          width,
+          height,
+          cx,
+          cy,
+          centerX,
+          centerY
+        } = obj; // various aliases
+
+        x = (_x = x) !== null && _x !== void 0 ? _x : x1;
+        y = (_y = y) !== null && _y !== void 0 ? _y : y1;
+        w = (_w = w) !== null && _w !== void 0 ? _w : width;
+        h = (_h = h) !== null && _h !== void 0 ? _h : height;
+        cx = (_cx = cx) !== null && _cx !== void 0 ? _cx : centerX;
+        cy = (_cy = cy) !== null && _cy !== void 0 ? _cy : centerY // We wish to find a rectangle that is roughly consistent. Note that along each axis, we have four relevant
+        // variables: x, x2, w, cx. The axes are totally separable, so the problem is pretty trivial. I'm too tired
+        // to figure out how to do it elegantly rather than case work.
+        ;
+        [finalX1, finalX2] = resolveAxisSpecification(x, x2, w, cx);
+        [finalY1, finalY2] = resolveAxisSpecification(y, y2, h, cy);
       }
 
-      return new Color(obj);
+      return new BoundingBox(finalX1, finalY1, finalX2 - finalX1, finalY2 - finalY1);
     }
 
-  } // Credit to https://stackoverflow.com/a/11508164/13458117
+    get x1() {
+      return this.x;
+    }
 
+    get y1() {
+      return this.y;
+    }
 
-  function hexToRgb(hex) {
-    let bigint = parseInt(hex.replace('#', ''), 16);
-    let r = bigint >> 16 & 255;
-    let g = bigint >> 8 & 255;
-    let b = bigint & 255;
-    return {
-      r,
-      g,
-      b
-    };
+    get x2() {
+      return this.getX2();
+    }
+
+    get y2() {
+      return this.getY2();
+    }
+
+    tl() {
+      return new Vec2(this.x, this.y);
+    }
+
+  }
+  const boundingBoxTransform = {
+    X: (x, box1, box2, flipX) => {
+      if (Array.isArray(x) || isTypedArray(x)) {
+        for (let i = 0; i < x.length; ++i) {
+          let fractionAlong = (x[i] - box1.x) / box1.width;
+          if (flipX) fractionAlong = 1 - fractionAlong;
+          x[i] = fractionAlong * box2.width + box2.x;
+        }
+
+        return x;
+      } else {
+        return boundingBoxTransform.X([x], box1, box2, flipX)[0];
+      }
+    },
+    Y: (y, box1, box2, flipY) => {
+      if (Array.isArray(y) || isTypedArray(y)) {
+        for (let i = 0; i < y.length; ++i) {
+          let fractionAlong = (y[i] - box1.y) / box1.height;
+          if (flipY) fractionAlong = 1 - fractionAlong;
+          y[i] = fractionAlong * box2.height + box2.y;
+        }
+
+        return y;
+      } else {
+        return boundingBoxTransform.Y([y], box1, box2, flipY)[0];
+      }
+    },
+    XY: (xy, box1, box2, flipX, flipY) => {
+      if (Array.isArray(xy) || isTypedArray(x)) {
+        for (let i = 0; i < xy.length; i += 2) {
+          let fractionAlong = (xy[i] - box1.x) / box1.width;
+          if (flipX) fractionAlong = 1 - fractionAlong;
+          xy[i] = fractionAlong * box2.width + box2.x;
+          fractionAlong = (xy[i + 1] - box1.y) / box1.height;
+          if (flipY) fractionAlong = 1 - fractionAlong;
+          xy[i + 1] = fractionAlong * box2.height + box2.y;
+        }
+
+        return xy;
+      } else {
+        throw new Error('No');
+      }
+    },
+
+    getReducedTransform(box1, box2, flipX, flipY) {
+      let x_m = 1 / box1.width;
+      let x_b = -box1.x / box1.width;
+
+      if (flipX) {
+        x_m *= -1;
+        x_b = 1 - x_b;
+      }
+
+      x_m *= box2.width;
+      x_b *= box2.width;
+      x_b += box2.x;
+      let y_m = 1 / box1.height;
+      let y_b = -box1.y / box1.height;
+
+      if (flipY) {
+        y_m *= -1;
+        y_b = 1 - y_b;
+      }
+
+      y_m *= box2.height;
+      y_b *= box2.height;
+      y_b += box2.y;
+      return {
+        x_m,
+        x_b,
+        y_m,
+        y_b
+      };
+    }
+
+  };
+  const EMPTY = new BoundingBox(new Vec2(0, 0), 0, 0);
+
+  function intersectBoundingBoxes(box1, box2) {
+    let x1 = Math.max(box1.x, box2.x);
+    let y1 = Math.max(box1.y, box2.y);
+    let x2 = Math.min(box1.x2, box2.x2);
+    let y2 = Math.min(box1.y2, box2.y2);
+
+    if (x2 < x1) {
+      return EMPTY.clone();
+    }
+
+    if (y2 < y1) {
+      return EMPTY.clone();
+    }
+
+    let width = x2 - x1;
+    let height = y2 - y1;
+    return new BoundingBox(new Vec2(x1, y1), width, height);
   }
 
-  function hue2rgb(p, q, t) {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  } // Credit to https://stackoverflow.com/a/9493060/13458117
+  /**
+   * Test whether three points are in counterclockwise order
+   * @param x1
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
+   * @returns {boolean}
+   */
+
+  function pointsCCW(x1, y1, x2, y2, x3, y3) {
+    return (y3 - y1) * (x2 - x1) > (y2 - y1) * (x3 - x1);
+  }
+  /**
+   * Returns whether two line segments (namely, (x1, y1) -- (x2, y2) and (x3, y3) -- (x4, y4)) intersect
+   * @param x1
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
+   * @param x4
+   * @param y4
+   */
 
 
-  function hslToRgb(h, s, l) {
-    var r, g, b;
+  function lineSegmentIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+    return pointsCCW(x1, y1, x3, y3, x4, y4) !== pointsCCW(x2, y2, x3, y3, x4, y4) && pointsCCW(x1, y1, x2, y2, x3, y3) !== pointsCCW(x1, y1, x2, y2, x4, y4);
+  } // Credit to cortijon on StackOverflow! Thanks bro/sis
 
-    if (s === 0) {
-      r = g = b = l; // achromatic
-    } else {
-      var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      var p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
+
+  function getLineIntersection(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
+    let s1_x, s1_y, s2_x, s2_y;
+    s1_x = p1_x - p0_x;
+    s1_y = p1_y - p0_y;
+    s2_x = p3_x - p2_x;
+    s2_y = p3_y - p2_y;
+    const s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
+    const t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
+      // Collision detected
+      const intX = p0_x + t * s1_x;
+      const intY = p0_y + t * s1_y;
+      return [intX, intY];
     }
 
-    return {
-      r: 255 * r,
-      g: 255 * g,
-      b: 255 * b
-    };
+    return null;
   }
 
-  const rgb = Color.rgb;
-  const Colors = {
-    get LIGHTSALMON() {
-      return rgb(255, 160, 122);
-    },
-
-    get SALMON() {
-      return rgb(250, 128, 114);
-    },
-
-    get DARKSALMON() {
-      return rgb(233, 150, 122);
-    },
-
-    get LIGHTCORAL() {
-      return rgb(240, 128, 128);
-    },
-
-    get INDIANRED() {
-      return rgb(205, 92, 92);
-    },
-
-    get CRIMSON() {
-      return rgb(220, 20, 60);
-    },
-
-    get FIREBRICK() {
-      return rgb(178, 34, 34);
-    },
-
-    get RED() {
-      return rgb(255, 0, 0);
-    },
-
-    get DARKRED() {
-      return rgb(139, 0, 0);
-    },
-
-    get CORAL() {
-      return rgb(255, 127, 80);
-    },
-
-    get TOMATO() {
-      return rgb(255, 99, 71);
-    },
-
-    get ORANGERED() {
-      return rgb(255, 69, 0);
-    },
-
-    get GOLD() {
-      return rgb(255, 215, 0);
-    },
-
-    get ORANGE() {
-      return rgb(255, 165, 0);
-    },
-
-    get DARKORANGE() {
-      return rgb(255, 140, 0);
-    },
-
-    get LIGHTYELLOW() {
-      return rgb(255, 255, 224);
-    },
-
-    get LEMONCHIFFON() {
-      return rgb(255, 250, 205);
-    },
-
-    get LIGHTGOLDENRODYELLOW() {
-      return rgb(250, 250, 210);
-    },
-
-    get PAPAYAWHIP() {
-      return rgb(255, 239, 213);
-    },
-
-    get MOCCASIN() {
-      return rgb(255, 228, 181);
-    },
-
-    get PEACHPUFF() {
-      return rgb(255, 218, 185);
-    },
-
-    get PALEGOLDENROD() {
-      return rgb(238, 232, 170);
-    },
-
-    get KHAKI() {
-      return rgb(240, 230, 140);
-    },
-
-    get DARKKHAKI() {
-      return rgb(189, 183, 107);
-    },
-
-    get YELLOW() {
-      return rgb(255, 255, 0);
-    },
-
-    get LAWNGREEN() {
-      return rgb(124, 252, 0);
-    },
-
-    get CHARTREUSE() {
-      return rgb(127, 255, 0);
-    },
-
-    get LIMEGREEN() {
-      return rgb(50, 205, 50);
-    },
-
-    get LIME() {
-      return rgb(0, 255, 0);
-    },
-
-    get FORESTGREEN() {
-      return rgb(34, 139, 34);
-    },
-
-    get GREEN() {
-      return rgb(0, 128, 0);
-    },
-
-    get DARKGREEN() {
-      return rgb(0, 100, 0);
-    },
-
-    get GREENYELLOW() {
-      return rgb(173, 255, 47);
-    },
-
-    get YELLOWGREEN() {
-      return rgb(154, 205, 50);
-    },
-
-    get SPRINGGREEN() {
-      return rgb(0, 255, 127);
-    },
-
-    get MEDIUMSPRINGGREEN() {
-      return rgb(0, 250, 154);
-    },
-
-    get LIGHTGREEN() {
-      return rgb(144, 238, 144);
-    },
-
-    get PALEGREEN() {
-      return rgb(152, 251, 152);
-    },
-
-    get DARKSEAGREEN() {
-      return rgb(143, 188, 143);
-    },
-
-    get MEDIUMSEAGREEN() {
-      return rgb(60, 179, 113);
-    },
-
-    get SEAGREEN() {
-      return rgb(46, 139, 87);
-    },
-
-    get OLIVE() {
-      return rgb(128, 128, 0);
-    },
-
-    get DARKOLIVEGREEN() {
-      return rgb(85, 107, 47);
-    },
-
-    get OLIVEDRAB() {
-      return rgb(107, 142, 35);
-    },
-
-    get LIGHTCYAN() {
-      return rgb(224, 255, 255);
-    },
-
-    get CYAN() {
-      return rgb(0, 255, 255);
-    },
-
-    get AQUA() {
-      return rgb(0, 255, 255);
-    },
-
-    get AQUAMARINE() {
-      return rgb(127, 255, 212);
-    },
-
-    get MEDIUMAQUAMARINE() {
-      return rgb(102, 205, 170);
-    },
-
-    get PALETURQUOISE() {
-      return rgb(175, 238, 238);
-    },
-
-    get TURQUOISE() {
-      return rgb(64, 224, 208);
-    },
-
-    get MEDIUMTURQUOISE() {
-      return rgb(72, 209, 204);
-    },
-
-    get DARKTURQUOISE() {
-      return rgb(0, 206, 209);
-    },
-
-    get LIGHTSEAGREEN() {
-      return rgb(32, 178, 170);
-    },
-
-    get CADETBLUE() {
-      return rgb(95, 158, 160);
-    },
-
-    get DARKCYAN() {
-      return rgb(0, 139, 139);
-    },
-
-    get TEAL() {
-      return rgb(0, 128, 128);
-    },
-
-    get POWDERBLUE() {
-      return rgb(176, 224, 230);
-    },
-
-    get LIGHTBLUE() {
-      return rgb(173, 216, 230);
-    },
-
-    get LIGHTSKYBLUE() {
-      return rgb(135, 206, 250);
-    },
-
-    get SKYBLUE() {
-      return rgb(135, 206, 235);
-    },
-
-    get DEEPSKYBLUE() {
-      return rgb(0, 191, 255);
-    },
-
-    get LIGHTSTEELBLUE() {
-      return rgb(176, 196, 222);
-    },
-
-    get DODGERBLUE() {
-      return rgb(30, 144, 255);
-    },
-
-    get CORNFLOWERBLUE() {
-      return rgb(100, 149, 237);
-    },
-
-    get STEELBLUE() {
-      return rgb(70, 130, 180);
-    },
-
-    get ROYALBLUE() {
-      return rgb(65, 105, 225);
-    },
-
-    get BLUE() {
-      return rgb(0, 0, 255);
-    },
-
-    get MEDIUMBLUE() {
-      return rgb(0, 0, 205);
-    },
-
-    get DARKBLUE() {
-      return rgb(0, 0, 139);
-    },
-
-    get NAVY() {
-      return rgb(0, 0, 128);
-    },
-
-    get MIDNIGHTBLUE() {
-      return rgb(25, 25, 112);
-    },
-
-    get MEDIUMSLATEBLUE() {
-      return rgb(123, 104, 238);
-    },
-
-    get SLATEBLUE() {
-      return rgb(106, 90, 205);
-    },
-
-    get DARKSLATEBLUE() {
-      return rgb(72, 61, 139);
-    },
-
-    get LAVENDER() {
-      return rgb(230, 230, 250);
-    },
-
-    get THISTLE() {
-      return rgb(216, 191, 216);
-    },
-
-    get PLUM() {
-      return rgb(221, 160, 221);
-    },
-
-    get VIOLET() {
-      return rgb(238, 130, 238);
-    },
-
-    get ORCHID() {
-      return rgb(218, 112, 214);
-    },
-
-    get FUCHSIA() {
-      return rgb(255, 0, 255);
-    },
-
-    get MAGENTA() {
-      return rgb(255, 0, 255);
-    },
-
-    get MEDIUMORCHID() {
-      return rgb(186, 85, 211);
-    },
-
-    get MEDIUMPURPLE() {
-      return rgb(147, 112, 219);
-    },
-
-    get BLUEVIOLET() {
-      return rgb(138, 43, 226);
-    },
-
-    get DARKVIOLET() {
-      return rgb(148, 0, 211);
-    },
-
-    get DARKORCHID() {
-      return rgb(153, 50, 204);
-    },
-
-    get DARKMAGENTA() {
-      return rgb(139, 0, 139);
-    },
-
-    get PURPLE() {
-      return rgb(128, 0, 128);
-    },
-
-    get INDIGO() {
-      return rgb(75, 0, 130);
-    },
-
-    get PINK() {
-      return rgb(255, 192, 203);
-    },
-
-    get LIGHTPINK() {
-      return rgb(255, 182, 193);
-    },
-
-    get HOTPINK() {
-      return rgb(255, 105, 180);
-    },
-
-    get DEEPPINK() {
-      return rgb(255, 20, 147);
-    },
-
-    get PALEVIOLETRED() {
-      return rgb(219, 112, 147);
-    },
-
-    get MEDIUMVIOLETRED() {
-      return rgb(199, 21, 133);
-    },
-
-    get WHITE() {
-      return rgb(255, 255, 255);
-    },
-
-    get SNOW() {
-      return rgb(255, 250, 250);
-    },
-
-    get HONEYDEW() {
-      return rgb(240, 255, 240);
-    },
-
-    get MINTCREAM() {
-      return rgb(245, 255, 250);
-    },
-
-    get AZURE() {
-      return rgb(240, 255, 255);
-    },
-
-    get ALICEBLUE() {
-      return rgb(240, 248, 255);
-    },
-
-    get GHOSTWHITE() {
-      return rgb(248, 248, 255);
-    },
-
-    get WHITESMOKE() {
-      return rgb(245, 245, 245);
-    },
-
-    get SEASHELL() {
-      return rgb(255, 245, 238);
-    },
-
-    get BEIGE() {
-      return rgb(245, 245, 220);
-    },
-
-    get OLDLACE() {
-      return rgb(253, 245, 230);
-    },
-
-    get FLORALWHITE() {
-      return rgb(255, 250, 240);
-    },
-
-    get IVORY() {
-      return rgb(255, 255, 240);
-    },
-
-    get ANTIQUEWHITE() {
-      return rgb(250, 235, 215);
-    },
-
-    get LINEN() {
-      return rgb(250, 240, 230);
-    },
-
-    get LAVENDERBLUSH() {
-      return rgb(255, 240, 245);
-    },
-
-    get MISTYROSE() {
-      return rgb(255, 228, 225);
-    },
-
-    get GAINSBORO() {
-      return rgb(220, 220, 220);
-    },
-
-    get LIGHTGRAY() {
-      return rgb(211, 211, 211);
-    },
-
-    get SILVER() {
-      return rgb(192, 192, 192);
-    },
-
-    get DARKGRAY() {
-      return rgb(169, 169, 169);
-    },
-
-    get GRAY() {
-      return rgb(128, 128, 128);
-    },
-
-    get DIMGRAY() {
-      return rgb(105, 105, 105);
-    },
-
-    get LIGHTSLATEGRAY() {
-      return rgb(119, 136, 153);
-    },
-
-    get SLATEGRAY() {
-      return rgb(112, 128, 144);
-    },
-
-    get DARKSLATEGRAY() {
-      return rgb(47, 79, 79);
-    },
-
-    get BLACK() {
-      return rgb(0, 0, 0);
-    },
-
-    get CORNSILK() {
-      return rgb(255, 248, 220);
-    },
-
-    get BLANCHEDALMOND() {
-      return rgb(255, 235, 205);
-    },
-
-    get BISQUE() {
-      return rgb(255, 228, 196);
-    },
-
-    get NAVAJOWHITE() {
-      return rgb(255, 222, 173);
-    },
-
-    get WHEAT() {
-      return rgb(245, 222, 179);
-    },
-
-    get BURLYWOOD() {
-      return rgb(222, 184, 135);
-    },
-
-    get TAN() {
-      return rgb(210, 180, 140);
-    },
-
-    get ROSYBROWN() {
-      return rgb(188, 143, 143);
-    },
-
-    get SANDYBROWN() {
-      return rgb(244, 164, 96);
-    },
-
-    get GOLDENROD() {
-      return rgb(218, 165, 32);
-    },
-
-    get PERU() {
-      return rgb(205, 133, 63);
-    },
-
-    get CHOCOLATE() {
-      return rgb(210, 105, 30);
-    },
-
-    get SADDLEBROWN() {
-      return rgb(139, 69, 19);
-    },
-
-    get SIENNA() {
-      return rgb(160, 82, 45);
-    },
-
-    get BROWN() {
-      return rgb(165, 42, 42);
-    },
-
-    get MAROON() {
-      return rgb(128, 0, 0);
-    },
-
-    get RANDOM() {
-      var keys = Object.keys(Colors);
-      return Colors[keys[keys.length * Math.random() << 0]];
-    },
-
-    get TRANSPARENT() {
-      return new Color({
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0
-      });
+  function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2) {
+    // Return the component of the line segment that resides inside a box with boundaries x in (box_x1 .. box_x2), y in
+    // (box_y1 .. box_y2), which may potentially be the entire line segment.
+    let pt1InBox = box_x1 <= x1 && x1 <= box_x2 && box_y1 <= y1 && y1 <= box_y2;
+    let pt2InBox = box_x1 <= x2 && x2 <= box_x2 && box_y1 <= y2 && y2 <= box_y2;
+
+    if (pt1InBox && pt2InBox) {
+      // The line segment is entirely in the box
+      return [x1, y1, x2, y2];
+    } // Infinities cause weird problems with getLineIntersection, so we just approximate them lol
+
+
+    if (x1 === Infinity) x1 = 1e6;else if (x1 === -Infinity) x1 = -1e6;
+    if (x2 === Infinity) x2 = 1e6;else if (x2 === -Infinity) x2 = -1e6;
+    if (y1 === Infinity) y1 = 1e6;else if (y1 === -Infinity) y1 = -1e6;
+    if (y2 === Infinity) y2 = 1e6;else if (y2 === -Infinity) y2 = -1e6;
+    let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1);
+    let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2);
+    let int3 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y2, box_x1, box_y2);
+    let int4 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y2, box_x1, box_y1);
+
+    if (!(int1 || int2 || int3 || int4) && !pt1InBox && !pt2InBox) {
+      // If there are no intersections and the points are outside the box, that means none of the segment is inside the
+      // box, so we can return null
+      return null;
     }
 
-  };
-  const Pen = {
-    // take a list of partial pen specifications and combine them into a complete pen by combining each and keeping only
-    // the valid parameters TODO
-    compose: (...args) => {
-      let ret = {};
+    let intersections = [int1, int2, int3, int4];
 
-      for (let i = 0; i < args.length; ++i) {
-        let arg = args[i];
+    if (!pt1InBox && !pt2InBox) {
+      // Both points are outside of the box, but the segment intersects the box. I'm frustrated! We must RESTRICT by finding the pair of intersections with
+      // maximal separation. This deals with annoying corner cases. Thankfully this code doesn't need to be too efficient
+      // since this is a rare case.
+      let maximalSeparationSquared = -1;
+      let n_x1, n_y1, n_x2, n_y2;
 
-        if (typeof arg === 'string') {
-          arg = {
-            color: Color.fromObj(arg)
-          };
-        }
+      for (let i = 0; i < 3; ++i) {
+        let i1 = intersections[i];
 
-        Object.assign(ret, arg);
-      }
+        if (i1) {
+          for (let j = i + 1; j < 4; ++j) {
+            let i2 = intersections[j];
 
-      ret.color = Color.fromObj(ret.color);
-      return ret;
-    },
-    create: params => {
-      return Pen.compose(Pen.default, params);
-    },
-    signature: {
-      color: 'color',
-      thickness: 'number'
-    },
-    default: deepFreeze({
-      color: {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 255
-      },
-      thickness: 2,
-      dashPattern: [],
-      dashOffset: 0,
-      endcap: 'round',
-      endcapRes: 1,
-      join: 'dynamic',
-      joinRes: 1,
-      useNative: false,
-      visible: true
-    }),
+            if (i2) {
+              let dist = (i2[0] - i1[0]) ** 2 + (i2[1] - i1[1]) ** 2;
 
-    fromObj(strOrObj) {
-      if (typeof strOrObj === 'string') return _interpretStringAsPen(strOrObj);
-      return Pen.compose(Pen.default, strOrObj);
-    }
-
-  }; // Generic dictionary of pens, like { major: Pen, minor: Pen }. Partial pen specifications may be used and they will
-  // turn into fully completed pens in the final product
-
-  const Pens = {
-    compose: (...args) => {
-      let ret = {}; // Basically just combine all the pens
-
-      for (let i = 0; i < args.length; ++i) {
-        for (let key in args[i]) {
-          let retVal = ret[key];
-          if (!retVal) ret[key] = retVal = Pen.default;
-          ret[key] = Pen.compose(ret[key], args[key]);
-        }
-      }
-    },
-    create: params => {
-      return Pens.compose(Pens.default, params);
-    },
-    default: Object.freeze({})
-  };
-  /**const textElementInterface = constructInterface({
-    font: { setAs: "user" },
-    fontSize: { setAs: "user" },
-    text: true,
-    align: { setAs: "user" },
-    baseline: { setAs: "user" },
-    color: { setAs: "user" },
-    shadowRadius: { setAs: "user" },
-    shadowColor: { setAs: "user" },
-    position: { conversion: Vec2.fromObj }
-  }, */
-
-  const TextStyle = {
-    compose: (...args) => {
-      let ret = {};
-
-      for (let i = 0; i < args.length; ++i) {
-        Object.assign(ret, args[i]);
-      }
-
-      ret.color = Color.fromObj(ret.color);
-      ret.shadowColor = Color.fromObj(ret.shadowColor);
-      return ret;
-    },
-    create: params => {
-      return TextStyle.compose(TextStyle.default, params);
-    },
-    default: deepFreeze({
-      color: {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 255
-      },
-      shadowColor: {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 255
-      },
-      font: 'Cambria',
-      fontSize: 12,
-      shadowRadius: 0,
-      align: 'left',
-      baseline: 'bottom'
-    })
-  }; // Object of the form { x: ("dynamic"|"none"|"axis"|"outside"|"inside"|"bottom"|"top"), y: ( ..., "left"|"right") } (might change later)
-
-  const LabelPosition = {
-    compose: (...args) => {
-      let ret = {};
-
-      for (let i = 0; i < args.length; ++i) {
-        let arg = args[i];
-
-        if (typeof arg === 'string') {
-          ret.x = arg;
-          ret.y = arg;
-        } else {
-          Object.assign(ret, args[i]);
-        }
-      }
-
-      return ret;
-    },
-    create: params => {
-      return LabelPosition.compose(LabelPosition.default, params);
-    },
-    default: deepFreeze({
-      x: 'dynamic',
-      y: 'dynamic'
-    })
-  };
-  const GenericObject = {
-    compose: (...args) => {
-      let ret = {};
-
-      for (let i = 0; i < args.length; ++i) {
-        Object.assign(ret, args[i]);
-      }
-
-      return ret;
-    },
-    create: params => {
-      return GenericObject.compose(GenericObject.default, params);
-    },
-    default: Object.freeze({})
-  };
-  const BooleanDict = {
-    compose: (...args) => {
-      let ret = {};
-
-      for (let i = 0; i < args.length; ++i) {
-        let arg = args[i];
-
-        if (typeof arg === 'boolean') {
-          for (let key in ret) {
-            ret[key] = arg;
+              if (dist > maximalSeparationSquared) {
+                maximalSeparationSquared = dist;
+                n_x1 = i1[0];
+                n_y1 = i1[1];
+                n_x2 = i2[0];
+                n_y2 = i2[1];
+              }
+            }
           }
-        } else Object.assign(ret, args[i]);
+        }
+      } // Swap the order if necessary. We need the result of this calculation to be in the same order as the points
+      // that went in, since this will be used in the dashed line logic.
+
+
+      if (n_x1 < n_x2 === x1 > x2 || n_y1 < n_y2 === y1 > y2) {
+        let tmp = n_x1;
+        n_x1 = n_x2;
+        n_x2 = tmp;
+        tmp = n_y1;
+        n_y1 = n_y2;
+        n_y2 = tmp;
       }
 
-      return ret;
-    },
-    create: params => {
-      return GenericObject.compose(GenericObject.default, params);
-    },
-    default: Object.freeze({})
-  };
-  function lookupCompositionType(type) {
-    switch (type) {
-      case 'TextStyle':
-        return TextStyle;
-
-      case 'Pen':
-        return Pen;
-
-      case 'Pens':
-        return Pens;
-
-      case 'LabelPosition':
-        return LabelPosition;
-
-      case 'Object':
-        return GenericObject;
-
-      case 'BooleanDict':
-        return BooleanDict;
+      return [n_x1, n_y1, n_x2, n_y2];
     }
-  } // Fun Asymptote Vector Graphics–like thing :) We break up str into tokens which each have some meaning TODO
 
-  function _interpretStringAsPen(str) {
-    try {
-      let color = Color.fromCss(str);
-      return Pen.fromObj({
-        color
-      });
-    } catch (_unused) {
-      return Pen.default;
+    if (pt1InBox) {
+      for (let i = 0; i < 4; ++i) {
+        let intersection = intersections[i];
+        if (intersection) return [x1, y1, intersection[0], intersection[1]];
+      }
+    } else if (pt2InBox) {
+      for (let i = 0; i < 4; ++i) {
+        let intersection = intersections[i];
+        if (intersection) return [intersection[0], intersection[1], x2, y2];
+      }
+    }
+
+    return [x1, y1, x2, y2];
+  }
+
+  function generateCircleTriangleStrip(radius, x = 0, y = 0, samples = 8) {
+    const points = [];
+
+    for (let i = 0; i <= samples; ++i) {
+      const angle = i / samples * 2 * Math.PI;
+      const xc = x + radius * Math.cos(angle),
+            yc = y + radius * Math.sin(angle);
+
+      if (i % 2 === 0) {
+        points.push(xc, yc);
+        points.push(x, y);
+      } else {
+        points.push(xc, yc);
+      }
+    }
+
+    points.push(NaN, NaN);
+    return new Float32Array(points);
+  }
+  function generateRectangleTriangleStrip(rect) {
+    const {
+      x,
+      y,
+      w,
+      h
+    } = rect;
+    const points = [x, y, x + w, y, x, y + h, x + w, y + h];
+    return new Float32Array(points);
+  }
+  /**
+   * Given a rectangle, return a flat list of points enclosing a cycle around the rectangle.
+   * @param rect {BoundingBox}
+   * @returns {Float32Array}
+   */
+
+  function generateRectangleCycle(rect) {
+    const {
+      x,
+      y,
+      w,
+      h
+    } = rect;
+    const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y];
+    return new Float32Array(points);
+  }
+  function generateRectangleDebug(rect) {
+    const {
+      x,
+      y,
+      w,
+      h
+    } = rect;
+    const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y, x + w, y + w];
+    return new Float32Array(points);
+  } // Given a Float32Array of appropriate size, repeatedly add given triangle strips
+
+  function combineTriangleStrips(verticesBuff) {
+    let index = 0;
+    return arr => {
+      if (arr.length === 0) return; // Repeat previous vertex
+
+      if (index > 0) {
+        verticesBuff[index] = verticesBuff[index - 2];
+        verticesBuff[index + 1] = verticesBuff[index - 1];
+        verticesBuff[index + 2] = arr[0];
+        verticesBuff[index + 3] = arr[1];
+        index += 4;
+      }
+
+      verticesBuff.set(arr, index);
+      index += arr.length;
+    };
+  }
+  function combineColoredTriangleStrips(verticesBuff, colorBuff) {
+    let index = 0;
+    return (arr, {
+      r = 0,
+      g = 0,
+      b = 0,
+      a = 0
+    }) => {
+      if (arr.length === 0) return; // Repeat previous vertex
+
+      if (index > 0) {
+        verticesBuff[index] = verticesBuff[index - 2];
+        verticesBuff[index + 1] = verticesBuff[index - 1];
+        verticesBuff[index + 2] = arr[0];
+        verticesBuff[index + 3] = arr[1];
+        index += 4;
+      }
+
+      verticesBuff.set(arr, index);
+      fillRepeating(colorBuff, [r / 255, g / 255, b / 255, a / 255], index * 2, 2 * (index + arr.length));
+      index += arr.length;
+    };
+  }
+  /**
+   * Fill the TypedArray arr with a given pattern throughout [startIndex, endIndex). Works if either is out of bounds.
+   * Worst code ever. Uses copyWithin to try make the operation FAST for large arrays (not optimized for small ones). On
+   * a 50000-element array in my chrome, it provides a 16x speedup.
+   * @param arr Array to fill
+   * @param pattern {Array} Pattern to fill with
+   * @param startIndex {number} Index of the first instance of the pattern
+   * @param endIndex {number} Index immediately after the last instance of the pattern
+   * @param patternStride {number} Offset to begin copying the pattern
+   * @returns The original array
+   */
+
+  function fillRepeating(arr, pattern, startIndex = 0, endIndex = arr.length, patternStride = 0) {
+    if (endIndex <= startIndex) return arr;
+    let patternLen = pattern.length,
+        arrLen = arr.length;
+    if (patternLen === 0) return arr;
+    endIndex = Math.min(endIndex, arrLen);
+    if (endIndex <= 0 || startIndex >= arrLen) return arr;
+
+    if (startIndex < 0) {
+      patternStride -= startIndex;
+      startIndex = 0;
+    }
+
+    if (patternStride !== 0) patternStride = mod(patternStride, patternLen);
+    let filledEndIndex = Math.min(endIndex, startIndex + patternLen);
+    let i, j;
+
+    for (i = startIndex, j = patternStride; i < filledEndIndex && j < patternLen; ++i, ++j) {
+      arr[i] = pattern[j];
+    } // For nonzero strides
+
+
+    for (j = 0; i < filledEndIndex; ++i, ++j) {
+      arr[i] = pattern[j];
+    }
+
+    if (filledEndIndex === endIndex) return arr; // We now need to iteratively copy [startIndex, startIndex + filledLen) to [startIndex + filledLen, endIndex) and
+    // double filledLen accordingly. memcpy, take the wheel!
+
+    let filledLen = patternLen;
+
+    while (true) {
+      let copyLen = Math.min(filledLen, endIndex - filledEndIndex);
+      arr.copyWithin(filledEndIndex, startIndex, startIndex + copyLen);
+      filledEndIndex += copyLen;
+      filledLen += copyLen; // Should never be greater, but whatever
+
+      if (filledEndIndex >= endIndex) return arr;
     }
   }
 
-  const DefaultStyles = {
-    gridlinesMajor: Pen.create({
-      thickness: 2,
-      color: Color.rgba(0, 0, 0, 127),
-      endcap: 'butt'
-    }),
-    gridlinesMinor: Pen.create({
-      thickness: 1,
-      color: Color.rgba(0, 0, 0, 80),
-      endcap: 'butt'
-    }),
-    gridlinesAxis: Pen.create({
-      thickness: 4,
-      endcap: 'butt'
-    }),
-    plotLabelPositions: LabelPosition.default,
-    Pen: Pen.default,
-    label: TextStyle.create({
-      fontSize: 16,
-      shadowRadius: 2
-    })
+  function _flattenVec2ArrayInternal(arr) {
+    const out = [];
+
+    for (let i = 0; i < arr.length; ++i) {
+      let item = arr[i];
+
+      if (item === null || item === undefined) {
+        out.push(NaN, NaN);
+      } else if (item.x !== undefined && item.y !== undefined) {
+        out.push(item.x, item.y);
+      } else if (item[0] !== undefined) {
+        var _item$;
+
+        out.push(+item[0], (_item$ = item[1]) !== null && _item$ !== void 0 ? _item$ : 0);
+      } else {
+        if (typeof item === 'number') out.push(item);else throw new TypeError("Error when converting array to flattened Vec2 array: Unknown item ".concat(item, " at index ").concat(i, " in given array"));
+      }
+    }
+
+    return out;
+  } // Given some arbitrary array of Vec2s, turn it into the regularized format [x1, y1, x2, y2, ..., xn, yn]. The end of
+  // one polyline and the start of another is done by one pair of numbers being NaN, NaN.
+
+
+  function flattenVec2Array(arr) {
+    if (isTypedArray(arr)) return arr;
+
+    for (let i = 0; i < arr.length; ++i) {
+      if (typeof arr[i] !== 'number') return _flattenVec2ArrayInternal(arr);
+    }
+
+    return arr;
+  }
+  function fastAtan2$1(y, x) {
+    let abs_x = Math.abs(x);
+    let abs_y = Math.abs(y);
+    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x; // atan(x) is about x - x^3 / 3 + x^5 / 5. We also note that atan(1/x) = pi/2 - atan(x) for x > 0, etc.
+
+    let s = a * a;
+    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+    if (abs_y > abs_x) r = 1.57079637 - r;
+    if (x < 0.0) r = 3.14159265 - r;
+    if (y < 0.0) r = -r;
+    return r;
+  }
+  /**
+   * Get the approximate angle between (x1, y1), (x2, y2) and (x3, y3), an operation which should ideally be extremely
+   * fast because it will be used repeatedly to know whether to refine a graph while assuming local linearity. The returned
+   * angle should be between 0 and Math.PI; the closer to Math.PI, the closer to linear. I'm going to write a faster
+   * version of this function soon.
+   * @param x1 {number}
+   * @param y1
+   * @param x2
+   * @param y2
+   * @param x3
+   * @param y3
+   */
+
+  function approxAngleBetween(x1, y1, x2, y2, x3, y3) {
+    // (x1d, y1d) = p1 ---> p2
+    let x1d = x2 - x1;
+    let y1d = y2 - y1; // (x3d, y3d) = p3 ---> p2
+
+    let x3d = x2 - x3;
+    let y3d = y2 - y3;
+    let res = Math.abs(fastAtan2$1(y3d, x3d) - fastAtan2$1(y1d, x1d));
+
+    if (res > Math.PI) {
+      return 2 * Math.PI - res;
+    }
+
+    return res;
+  }
+  /**
+   * Distance
+   * @param px
+   * @param py
+   * @param ax
+   * @param ay
+   * @param bx
+   * @param by
+   * @returns {number}
+   */
+
+
+  function pointLineSegmentDistanceSquared(px, py, ax, ay, bx, by) {
+    // Copied from asm.js code, that's why
+    px = +px;
+    py = +py;
+    ax = +ax;
+    ay = +ay;
+    bx = +bx;
+    by = +by;
+    let t = 0.0,
+        tx = 0.0,
+        ty = 0.0,
+        xd = 0.0,
+        yd = 0.0;
+    tx = px - ax;
+    ty = py - ay;
+
+    if (ax !== bx || ay !== by) {
+      xd = bx - ax;
+      yd = by - ay;
+      t = (xd * (px - ax) + yd * (py - ay)) / (xd * xd + yd * yd); // Clamp t to [0, 1]
+
+      if (t < 0.0) {
+        t = 0.0;
+      } else if (t > 1.0) {
+        t = 1.0;
+      }
+
+      tx = ax + t * (bx - ax);
+      ty = ay + t * (by - ay);
+      tx = px - tx;
+      ty = py - ty;
+    }
+
+    return tx * tx + ty * ty;
+  }
+
+  function distanceSquared(x1, y1, x2, y2) {
+    let tx = x2 - x1;
+    let ty = y2 - y1;
+    return tx * tx + ty * ty;
+  }
+  /**
+   * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
+   * handle overflows and underflows with much accuracy at all. We can thus use the straightforward calculation.
+   * Chrome: 61.9 ms/iteration for 1e7 calculations for fastHypot; 444 ms/iteration for Math.hypot
+   * @param x {number}
+   * @param y {number}
+   * @returns {number} hypot(x, y)
+   */
+
+  function fastHypot(x, y) {
+    return Math.sqrt(x * x + y * y);
+  }
+
+  // This code is pretty old, but surprisingly effective!
+  /**
+   * The maximum number of vertices to be emitted by getDashedPolyline. This condition is here just to prevent dashed
+   * polyline from causing a crash from OOM or just taking forever to finish.
+   * @type {number}
+   */
+
+  const MAX_DASHED_POLYLINE_VERTICES = 1e7;
+  /**
+   * Convert a polyline into another polyline, but with dashes.
+   * @param vertices {Array} The vertices of the polyline.
+   * @param pen {Pen} The polyline's pen
+   * @param box {BoundingBox} The plotting box, used to clip excess portions of the polyline. There could theoretically be
+   * an infinite number of dashes in a long vertical asymptote, for example, but this box condition prevents that from
+   * being an issue. Portions of the polyline outside the plotting box are simply returned without dashes.
+   * @returns {Array}
+   */
+
+  function getDashedPolyline(vertices, pen, box) {
+    if (!box) box = new BoundingBox(-Infinity, -Infinity, Infinity, Infinity); // dashPattern is the pattern of dashes, given as the length (in pixels) of consecutive dashes and gaps.
+    // dashOffset is the pixel offset at which to start the dash pattern, beginning at the start of every sub polyline.
+
+    let {
+      dashPattern,
+      dashOffset
+    } = pen; // If the dash pattern is odd in length, concat it to itself, creating a doubled, alternating dash pattern
+
+    if (dashPattern.length % 2 === 1) dashPattern = dashPattern.concat(dashPattern); // The length, in pixels, of the pattern
+
+    const patternLength = dashPattern.reduce((a, b) => a + b); // If the pattern is invalid in some way (NaN values, negative dash lengths, total length less than 2), return the
+    // polyline without dashes.
+
+    if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0) || dashPattern.some(Number.isNaN)) return vertices; // currentIndex is the current position in the dash pattern. currentLesserOffset is the offset within the dash or gap
+    // ----    ----    ----    ----    ----    ----    ----  ... etc.
+    //      ^
+    // If we are there, then currentIndex is 1 and currentLesserOffset is 1.
+
+    let currentIndex = 0,
+        currentLesserOffset = 0; // Initialize the value of currentLesserOffset based on dashOffset and dashPattern
+
+    recalculateOffset(0); // The returned dashed vertices
+
+    const result = []; // The plotting box
+
+    const boxX1 = box.x,
+          boxX2 = box.x + box.w,
+          boxY1 = box.y,
+          boxY2 = box.y + box.h; // Calculate the value of currentLesserOffset, given the length of the pattern that we have just traversed.
+
+    function recalculateOffset(length) {
+      // If there's an absurdly long segment, we just pretend the length is 0 to avoid problems with Infinities/NaNs
+      if (length > 1e6) length = 0; // Move length along the dashOffset, modulo the patternLength
+
+      dashOffset += length;
+      dashOffset %= patternLength; // It's certainly possible to precompute these sums and use a binary search to find the dash index, but
+      // that's unnecessary for dashes with short length
+
+      let sum = 0,
+          i = 0,
+          lesserOffset = 0;
+
+      for (; i < dashPattern.length; ++i) {
+        let dashLength = dashPattern[i]; // Accumulate the length from the start of the pattern to the current dash
+
+        sum += dashLength; // If the dashOffset is within this dash...
+
+        if (dashOffset <= sum) {
+          // calculate the lesser offset
+          lesserOffset = dashOffset - sum + dashLength;
+          break;
+        }
+      } // Set the current index and lesserOffset
+
+
+      currentIndex = i;
+      currentLesserOffset = lesserOffset;
+    } // Generate dashes for the line segment (x1, y1) -- (x2, y2)
+
+
+    function generateDashes(x1, y1, x2, y2) {
+      // length of the segment
+      const length = fastHypot(x2 - x1, y2 - y1); // index of where along the dashes we are
+
+      let i = currentIndex; // Length so far of emitted dashes
+
+      let lengthSoFar = 0; // We do this instead of while (true) to prevent the program from crashing
+
+      for (let _ = 0; _ < MAX_DASHED_POLYLINE_VERTICES; _++) {
+        // Length of the dash/gap component we need to draw (we subtract currentLesserOffset because that is already drawn)
+        const componentLen = dashPattern[i] - currentLesserOffset; // Length when this component ends
+
+        const endingLen = componentLen + lengthSoFar; // Whether we are in a dash
+
+        const inDash = i % 2 === 0;
+
+        if (endingLen <= length) {
+          // If the end of the dash/gap occurs before the end of the current segment, we need to continue
+          let r = endingLen / length; // if in a gap, this starts the next dash; if in a dash, this ends the dash
+
+          result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r); // If we're ending off a dash, put the gap in
+
+          if (inDash) result.push(NaN, NaN); // Go to the next dash/gap
+
+          ++i;
+          i %= dashPattern.length; // Reset the current lesser offset
+
+          currentLesserOffset = 0;
+        } else {
+          // If we're in a dash, that means we're in the middle of a dash, so we just add the vertex
+          if (inDash) result.push(x2, y2);
+          break;
+        }
+
+        lengthSoFar += componentLen;
+      } // Recalculate currentLesserOffset
+
+
+      recalculateOffset(length);
+    } // Where we along on each chunk, which tells us when to yield a progress report
+    if (currentIndex % 2 === 0) // We're beginning with a dash, so start it off
+      result.push(vertices[0], vertices[1]);
+
+    for (let i = 0; i < vertices.length - 2; i += 2) {
+      // For each pair of vertices...
+      let x1 = vertices[i];
+      let y1 = vertices[i + 1];
+      let x2 = vertices[i + 2];
+      let y2 = vertices[i + 3];
+
+      if (Number.isNaN(x1) || Number.isNaN(y1)) {
+        // At the start of every subpolyline, reset the dash offset
+        dashOffset = pen.dashOffset; // Recalculate the initial currentLesserOffset
+
+        recalculateOffset(0); // End off the previous subpolyline
+
+        result.push(NaN, NaN);
+        continue;
+      } // If the end of the segment is undefined, continue
+
+
+      if (Number.isNaN(x2) || Number.isNaN(y2)) continue; // Length of the segment
+
+      let length = fastHypot(x2 - x1, y2 - y1); // Find whether the segment intersects the box
+
+      let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, boxX1, boxY1, boxX2, boxY2); // If the segment doesn't intersect the box, it is entirely outside the box, so we can add its length to pretend
+      // like we drew it even though we didn't
+
+      if (!intersect) {
+        recalculateOffset(length);
+        continue;
+      } // Whether (x1, y1) and (x2, y2) are contained within the box
+
+
+      let pt1Contained = intersect[0] === x1 && intersect[1] === y1;
+      let pt2Contained = intersect[2] === x2 && intersect[3] === y2; // If (x1, y1) is contained, fake draw the portion of the line outside of the box
+
+      if (!pt1Contained) recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]));
+
+      generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
+      if (!pt2Contained) recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
+      if (result.length > MAX_DASHED_POLYLINE_VERTICES) throw new Error('Too many generated vertices in getDashedPolyline.');
+    }
+
+    return result;
+  }
+
+  // Thanks Emscripten for the names!
+  // Scratch buffer for large operations where the length of the resultant array is unknown. There is no "malloc" here, so
+  // operations should copy their result to a new array once they are done (which should be relatively fast, since
+  // it's just a memcpy)
+  let HEAP = new ArrayBuffer(0x1000000);
+  let HEAPF32 = new Float32Array(HEAP);
+  let HEAPF64 = new Float64Array(HEAP);
+
+  const ENDCAP_TYPES = {
+    butt: 0,
+    round: 1,
+    square: 2
   };
+  const JOIN_TYPES = {
+    bevel: 0,
+    miter: 2,
+    round: 1,
+    dynamic: 3
+  };
+
+  const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
+
+  const B = 4 / Math.PI;
+  const C = -4 / Math.PI ** 2;
+
+  function fastSin(x) {
+    // crude, but good enough for this
+    x %= 6.28318530717;
+    if (x < -3.14159265) x += 6.28318530717;else if (x > 3.14159265) x -= 6.28318530717;
+    return B * x + C * x * (x < 0 ? -x : x);
+  }
+
+  function fastCos(x) {
+    return fastSin(x + 1.570796326794);
+  }
+
+  function fastAtan2(y, x) {
+    let abs_x = x < 0 ? -x : x;
+    let abs_y = y < 0 ? -y : y;
+    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x;
+    let s = a * a;
+    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+    if (abs_y > abs_x) r = 1.57079637 - r;
+    if (x < 0) r = 3.14159265 - r;
+    if (y < 0) r = -r;
+    return r;
+  }
+
+  const glVertices = HEAPF32;
+  /**
+   * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
+   * @param vertices {Array} The vertices of the polyline.
+   * @param pen {Object} A JSON representation of the pen. Could also be the pen object itself.
+   * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
+   */
+
+  function calculatePolylineVertices(vertices, pen, box = null) {
+    if (pen.dashPattern.length === 0) {
+      return convertTriangleStrip(vertices, pen);
+    } else {
+      return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen);
+    }
+  }
+  function convertTriangleStrip(vertices, pen) {
+    if (pen.thickness <= 0 || pen.endcapRes < MIN_RES_ANGLE || pen.joinRes < MIN_RES_ANGLE || vertices.length <= 3) {
+      return {
+        glVertices: null,
+        vertexCount: 0
+      };
+    }
+
+    let index = -1;
+    let origVertexCount = vertices.length / 2;
+    let th = pen.thickness / 2;
+    let maxMiterLength = th / fastCos(pen.joinRes / 2);
+    let endcap = ENDCAP_TYPES[pen.endcap];
+    let join = JOIN_TYPES[pen.join];
+
+    if (endcap === undefined || join === undefined) {
+      throw new Error('Undefined endcap or join.');
+    } // p1 -- p2 -- p3, generating vertices for point p2
+
+
+    let x1 = 0,
+        x2,
+        x3 = vertices[0],
+        y1 = 0,
+        y2,
+        y3 = vertices[1];
+    let v1x = 0,
+        v1y = 0,
+        v2x = 0,
+        v2y = 0,
+        v1l = 0,
+        v2l = 0,
+        b1_x,
+        b1_y,
+        scale,
+        dis;
+
+    for (let i = 0; i < origVertexCount; ++i) {
+      x1 = i !== 0 ? x2 : NaN; // Previous vertex
+
+      x2 = x3; // Current vertex
+
+      x3 = i !== origVertexCount - 1 ? vertices[2 * i + 2] : NaN; // Next vertex
+
+      y1 = i !== 0 ? y2 : NaN; // Previous vertex
+
+      y2 = y3; // Current vertex
+
+      y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN; // Next vertex
+
+      if (Math.abs(x3) > 16384 || Math.abs(y3) > 16384) {
+        // Temporary
+        x3 = NaN;
+        y3 = NaN;
+      }
+
+      if (isNaN(x2) || isNaN(y2)) {
+        continue;
+      }
+
+      if (isNaN(x1) || isNaN(y1)) {
+        // The start of every endcap has two duplicate vertices for triangle strip reasons
+        v2x = x3 - x2;
+        v2y = y3 - y2;
+        v2l = fastHypot(v2x, v2y);
+
+        if (v2l < 1e-8) {
+          v2x = 1;
+          v2y = 0;
+        } else {
+          v2x /= v2l;
+          v2y /= v2l;
+        }
+
+        if (isNaN(v2x) || isNaN(v2y)) {
+          continue;
+        } // undefined >:(
+
+
+        if (endcap === 1) {
+          // rounded endcap
+          let theta = fastAtan2(v2y, v2x) + Math.PI / 2;
+          let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
+          let o_x = x2 - th * v2y,
+              o_y = y2 + th * v2x;
+          let theta_c = theta + 1 / steps_needed * Math.PI; // Duplicate first vertex
+
+          let x = glVertices[++index] = x2 + th * fastCos(theta_c);
+          let y = glVertices[++index] = y2 + th * fastSin(theta_c);
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = o_x;
+          glVertices[++index] = o_y;
+
+          for (let i = 2; i <= steps_needed; ++i) {
+            let theta_c = theta + i / steps_needed * Math.PI;
+            glVertices[++index] = x2 + th * fastCos(theta_c);
+            glVertices[++index] = y2 + th * fastSin(theta_c);
+            glVertices[++index] = o_x;
+            glVertices[++index] = o_y;
+          }
+
+          continue;
+        } else if (endcap === 2) {
+          let x = glVertices[++index] = x2 - th * v2x + th * v2y;
+          let y = glVertices[++index] = y2 - th * v2y - th * v2x;
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = x2 - th * v2x - th * v2y;
+          glVertices[++index] = y2 - th * v2y + th * v2x;
+          continue;
+        } else {
+          // no endcap
+          let x = glVertices[++index] = x2 + th * v2y;
+          let y = glVertices[++index] = y2 - th * v2x;
+          glVertices[++index] = x;
+          glVertices[++index] = y;
+          glVertices[++index] = x2 - th * v2y;
+          glVertices[++index] = y2 + th * v2x;
+          continue;
+        }
+      }
+
+      if (isNaN(x3) || isNaN(y3)) {
+        // ending endcap
+        v1x = x2 - x1;
+        v1y = y2 - y1;
+        v1l = v2l;
+
+        if (v1l < 1e-8) {
+          v1x = 1;
+          v1y = 0;
+        } else {
+          v1x /= v1l;
+          v1y /= v1l;
+        }
+
+        if (isNaN(v1x) || isNaN(v1y)) {
+          continue;
+        } // undefined >:(
+
+
+        glVertices[++index] = x2 + th * v1y;
+        glVertices[++index] = y2 - th * v1x;
+        glVertices[++index] = x2 - th * v1y;
+        glVertices[++index] = y2 + th * v1x;
+
+        if (endcap === 1) {
+          let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2;
+          let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
+          let o_x = x2 - th * v1y,
+              o_y = y2 + th * v1x;
+
+          for (let i = 1; i <= steps_needed; ++i) {
+            let theta_c = theta + i / steps_needed * Math.PI;
+            glVertices[++index] = x2 + th * fastCos(theta_c);
+            glVertices[++index] = y2 + th * fastSin(theta_c);
+            glVertices[++index] = o_x;
+            glVertices[++index] = o_y;
+          }
+        } // Duplicate last vertex of ending endcap
+
+
+        glVertices[index + 1] = glVertices[index - 1];
+        glVertices[index + 2] = glVertices[index];
+        index += 2;
+        continue;
+      } // all vertices are defined, time to draw a joinerrrrr
+
+
+      if (join === 2 || join === 3) {
+        // find the two angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
+        v1x = x1 - x2;
+        v1y = y1 - y2;
+        v2x = x3 - x2;
+        v2y = y3 - y2;
+        v1l = v2l;
+        v2l = fastHypot(v2x, v2y);
+        b1_x = v2l * v1x + v1l * v2x;
+        b1_y = v2l * v1y + v1l * v2y;
+        scale = 1 / fastHypot(b1_x, b1_y);
+
+        if (scale === Infinity || scale === -Infinity) {
+          b1_x = -v1y;
+          b1_y = v1x;
+          scale = 1 / fastHypot(b1_x, b1_y);
+        }
+
+        b1_x *= scale;
+        b1_y *= scale;
+        scale = th * v1l / (b1_x * v1y - b1_y * v1x);
+
+        if (join === 2 || Math.abs(scale) < maxMiterLength) {
+          // Draw a miter. But the length of the miter is massive and we're in dynamic mode (3), we exit this if statement and do a rounded join
+          b1_x *= scale;
+          b1_y *= scale;
+          glVertices[++index] = x2 - b1_x;
+          glVertices[++index] = y2 - b1_y;
+          glVertices[++index] = x2 + b1_x;
+          glVertices[++index] = y2 + b1_y;
+          continue;
+        }
+      }
+
+      v2x = x3 - x2;
+      v2y = y3 - y2;
+      dis = fastHypot(v2x, v2y);
+
+      if (dis < 0.001) {
+        v2x = 1;
+        v2y = 0;
+      } else {
+        v2x /= dis;
+        v2y /= dis;
+      }
+
+      v1x = x2 - x1;
+      v1y = y2 - y1;
+      dis = fastHypot(v1x, v1y);
+
+      if (dis === 0) {
+        v1x = 1;
+        v1y = 0;
+      } else {
+        v1x /= dis;
+        v1y /= dis;
+      }
+
+      glVertices[++index] = x2 + th * v1y;
+      glVertices[++index] = y2 - th * v1x;
+      glVertices[++index] = x2 - th * v1y;
+      glVertices[++index] = y2 + th * v1x;
+
+      if (join === 1 || join === 3) {
+        let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2;
+        let a2 = fastAtan2(v2y, v2x) - Math.PI / 2; // if right turn, flip a2
+        // if left turn, flip a1
+
+        let start_a, end_a;
+
+        if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
+          // left turn
+          start_a = Math.PI + a1;
+          end_a = a2;
+        } else {
+          start_a = Math.PI + a2;
+          end_a = a1;
+        }
+
+        let angle_subtended = mod(end_a - start_a, 2 * Math.PI);
+        let steps_needed = Math.ceil(angle_subtended / pen.joinRes);
+
+        for (let i = 0; i <= steps_needed; ++i) {
+          let theta_c = start_a + angle_subtended * i / steps_needed;
+          glVertices[++index] = x2 + th * fastCos(theta_c);
+          glVertices[++index] = y2 + th * fastSin(theta_c);
+          glVertices[++index] = x2;
+          glVertices[++index] = y2;
+        }
+      }
+
+      glVertices[++index] = x2 + th * v2y;
+      glVertices[++index] = y2 - th * v2x;
+      glVertices[++index] = x2 - th * v2y;
+      glVertices[++index] = y2 + th * v2x;
+    }
+
+    let ret = new Float32Array(index >= 0 ? glVertices.subarray(0, index) : []);
+    return ret;
+  }
+
+  /**
+   * Contour representing a part of a polyline. Should be contiguous; contains no NaNs
+   */
+
+  class Contour {
+    constructor(data) {
+      this.data = data;
+    }
+
+    type() {
+      return this.data instanceof Float64Array ? 'f64' : 'f32';
+    }
+
+  }
+  /**
+   * Convert an array of polyline contours into a single float array with NaN spacings
+   * @param contourArray {Contour[]}
+   * @param type {string} Data type of the resulting flattened float array
+   */
+
+
+  function fromContours(contourArray, type = 'f32') {
+    // Convert an array of contours into a polyline array, with NaN spacings
+    let len = 0;
+
+    for (const contour of contourArray) {
+      len += contour.data.length;
+    }
+
+    len += 2 * contourArray.length - 2;
+    let ret = new (type === 'f32' ? Float32Array : Float64Array)(len);
+    let index = 0;
+
+    for (let i = 0; i < contourArray.length; ++i) {
+      const contour = contourArray[i];
+      ret.set(contour.data, index);
+      index += contour.data.length;
+
+      if (i !== contourArray.length - 1) {
+        ret[index] = NaN;
+        ret[index + 1] = NaN;
+      }
+
+      index += 2;
+    }
+
+    return ret;
+  }
+  /**
+   * Convert a flattened polyline array into a contour array
+   * @param array {Float32Array|Float64Array|Array} Flattened array of elements, potentially including NaN buffers
+   * @param type {string} Whether to create contours of an f32 or f64 variety
+   * @param cloneSubarrays {boolean} Whether to clone the subarrays
+   * @returns {Array}
+   */
+
+  function toContours(array, type = 'f32', cloneSubarrays = true) {
+    let arrType = type === 'f32' ? Float32Array : Float64Array;
+    let isF32 = array instanceof Float32Array;
+    let isF64 = array instanceof Float64Array;
+
+    if (!(isF32 && type === 'f32' || isF64 && type === 'f64')) {
+      cloneSubarrays = true;
+    }
+
+    if (!isF32 && !isF64) {
+      array = new arrType(array);
+      cloneSubarrays = false;
+    }
+
+    let contours = [];
+    /**
+     * Given a subarray of the original array, add a contour
+     * @param subarray {Float32Array|Float64Array}
+     */
+
+    function addContour(subarray) {
+      let contour = cloneSubarrays ? new arrType(subarray) : subarray;
+      contours.push(new Contour(contour));
+    }
+
+    let firstDefIndex = -1; // index of the first defined element
+
+    for (let i = 0; i < array.length; i += 2) {
+      let x = array[i];
+      let y = array[i + 1];
+
+      if (Number.isNaN(x) || Number.isNaN(y)) {
+        if (firstDefIndex !== -1) {
+          addContour(array.subarray(firstDefIndex, i));
+        }
+
+        firstDefIndex = -1;
+      } else {
+        if (firstDefIndex === -1) firstDefIndex = i;
+      }
+    }
+
+    if (firstDefIndex !== -1) addContour(array.subarray(firstDefIndex));
+    return contours;
+  }
+  /**
+   * Convert a polyline into a simplified form by trimming vertices which are unnecessary or otherwise manipulating it
+   * @param polyline {Float32Array|Float64Array}
+   */
+
+  function simplifyPolyline(polyline, {
+    type,
+    // type of the output; if not specified, assumed to be the same as the polyline (f32 or f64)
+    minRes = 0.5 // maximum deviation from a line that is considered non-linear
+
+  } = {}) {
+    if (!type) {
+      type = getTypedArrayType(polyline);
+
+      if (!type) {
+        type = 'f32';
+        polyline = new Float32Array(polyline);
+      }
+    }
+
+    let HEAP = type === 'f32' ? HEAPF32 : HEAPF64;
+    let x1,
+        y1,
+        x2 = polyline[0],
+        y2 = polyline[1],
+        x3 = polyline[2],
+        y3 = polyline[3],
+        minResSquared = minRes * minRes;
+    let outIndex = -1; // There are three simplifications to be made: eliding NaNs, compacting linear portions, and removing/faking vertices
+    // outside a bounding box. For now, let's focus on the second one
+
+    for (let i = 2; i < polyline.length; i += 2) {
+      x1 = x2;
+      y1 = y2;
+      x2 = x3;
+      y2 = y3;
+      x3 = polyline[i];
+      y3 = polyline[i + 1];
+      HEAP[++outIndex] = x1;
+      HEAP[++outIndex] = y1;
+      let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+
+      if (dstSquared < minResSquared) {
+        // We may be able to compact the vertices coming after x1, y1. For now, we just skip one vertex
+        let intermediateVertices = [x2, y2];
+
+        loop: for (; i < polyline.length; i += 2) {
+          x2 = x3;
+          y2 = y3;
+          intermediateVertices.push(x2, y2);
+          x3 = polyline[i];
+          y3 = polyline[i + 1];
+
+          for (let j = 0; j < intermediateVertices.length; j += 2) {
+            let x2 = intermediateVertices[j];
+            let y2 = intermediateVertices[j + 1];
+            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+            if (dstSquared >= minResSquared) break loop;
+          }
+        }
+      }
+    }
+
+    HEAP[++outIndex] = x2;
+    HEAP[++outIndex] = y2;
+    return new (getTypedArrayConstructor(type))(HEAP.subarray(0, outIndex + 1));
+  }
+
+  function getDemarcations(xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, includeAxis = false) {
+    if (xStart >= xEnd || !Number.isFinite(xStart) || !Number.isFinite(xEnd) || !Number.isFinite(xLen) || desiredMajorSep < 1 || desiredMinorSep < 1 || subdivisions.length === 0) return [];
+    let xGraphLen = xEnd - xStart;
+    let estimatedMajors = xLen / desiredMajorSep; // We look for the base b and subdivision s such that the number of major subdivisions that result would be closest
+    // to the number implied by the desired major sep
+
+    let bestBase = 0;
+    let bestErr = Infinity;
+    let bestSubdivision = [1, 1];
+
+    for (const subdiv of subdivisions) {
+      let maj = subdiv[1];
+      let desiredBase = Math.log10(maj * xGraphLen / estimatedMajors);
+      let nearest = Math.round(desiredBase);
+      let err = Math.abs(maj * xGraphLen / Math.pow(10, nearest) - estimatedMajors);
+
+      if (err < bestErr) {
+        bestErr = err;
+        bestSubdivision = subdiv;
+        bestBase = nearest;
+      }
+    } // Generate the ticks based on the chosen base and subdivision. We first find the offset of the nearest multiple of
+    // 10^b preceding xStart, say m * 10^b, then for each interval (m, m+1) generate the ticks that are in the range of
+    // xStart and xEnd
+
+
+    let based = Math.pow(10, bestBase);
+    let firstMultiple = Math.floor(xStart / based);
+    let lastMultiple = xEnd / based; // In the case that the end is at a power of 10, we want to generate the end as well
+
+    if (Number.isInteger(lastMultiple)) lastMultiple++;
+    lastMultiple = Math.ceil(lastMultiple);
+    let [min, maj] = bestSubdivision;
+    let minTicks = [];
+    let majTicks = []; // Note we might start to get float errors here. We'll assume good faith for now that the plot transform constraints
+    // are turned on.
+
+    for (let i = firstMultiple; i < lastMultiple; ++i) {
+      // Generate ticks
+      let begin = i * based;
+      let end = (i + 1) * based;
+      let diff = end - begin;
+
+      for (let j = 0; j < maj; ++j) {
+        let tick = begin + diff * j / maj;
+        if (tick > xEnd) continue;
+        if (tick >= xStart && (includeAxis || tick !== 0)) majTicks.push(tick);
+
+        for (let k = 1; k < min; ++k) {
+          tick = begin + diff * ((j + k / min) / maj);
+          if (tick > xEnd || tick < xStart) continue;
+          minTicks.push(tick);
+        }
+      }
+    }
+
+    return {
+      min: minTicks,
+      maj: majTicks
+    };
+  }
+  function get2DDemarcations(xStart, xEnd, xLen, yStart, yEnd, yLen, {
+    desiredMinorSep = 20,
+    desiredMajorSep = 150,
+    subdivisions = [[4
+    /* minor */
+    , 5
+    /* major */
+    ], [5, 2], [5, 1]],
+    // permissible subdivisions of the powers of ten into major separators and minor separators
+    emitAxis = true // emit a special case for axis
+
+  } = {}) {
+    let x = getDemarcations(xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis);
+    let y = getDemarcations(yStart, yEnd, yLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis);
+    let ret = {
+      major: {
+        x: x.maj,
+        y: y.maj
+      },
+      minor: {
+        x: x.min,
+        y: y.min
+      }
+    };
+
+    if (emitAxis) {
+      ret.axis = {
+        x: xStart <= 0 || xEnd >= 0 ? [0] : [],
+        y: yStart <= 0 || yEnd >= 0 ? [0] : []
+      };
+    }
+
+    return ret;
+  }
 
   /**
    * Error thrown when a parser gets pissed
@@ -2617,6 +2502,63 @@
     // Spaces to offset the caret to the correct place along the string
     const spaces = ' '.repeat(index);
     throw new ParserError(message + ' at index ' + index + ':\n' + string + '\n' + spaces + '^');
+  }
+
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  function ownKeys(object, enumerableOnly) {
+    var keys = Object.keys(object);
+
+    if (Object.getOwnPropertySymbols) {
+      var symbols = Object.getOwnPropertySymbols(object);
+      if (enumerableOnly) symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+      keys.push.apply(keys, symbols);
+    }
+
+    return keys;
+  }
+
+  function _objectSpread2(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i] != null ? arguments[i] : {};
+
+      if (i % 2) {
+        ownKeys(Object(source), true).forEach(function (key) {
+          _defineProperty(target, key, source[key]);
+        });
+      } else if (Object.getOwnPropertyDescriptors) {
+        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+      } else {
+        ownKeys(Object(source)).forEach(function (key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+    }
+
+    return target;
+  }
+
+  function _classPrivateMethodGet(receiver, privateSet, fn) {
+    if (!privateSet.has(receiver)) {
+      throw new TypeError("attempted to get private field on non-instance");
+    }
+
+    return fn;
   }
 
   /**
@@ -3832,6 +3774,1966 @@
     return node;
   }
 
+  /**
+   * Convert a node into a function, or set of functions.
+   * @param root
+   * @param opts
+   */
+  function compileNode(root, opts = {}) {
+    // Whether to do typechecks to passed arguments
+    let doTypechecks = !!opts.typechecks; // Whether to allow optimizations which may change the output due to rounding
+
+    !!opts.fastMath; // We construct the text of a function of the form (imports) => { let setup = ... ; return function (...) { ... }}
+    // then create the function via new Function. The evaluation process basically involves generating variables $0, $1,
+    // $2, ... that correspond to the nodes in the graph. For example, x^2+3 becomes
+    // $0 = scope.x
+    // $1 = 2
+    // $2 = Math.pow($0, $1)
+    // $3 = 3
+    // $4 = $2 + $3
+    // return $4
+    // Breaking down the evaluation like this allows for much greater optimizations, including conditional eval (we'll
+    // get to that later).
+
+    let id = 0;
+    /**
+     * Get id to be used for intermediate functions and the like
+     * @returns {string}
+     */
+
+    function getVarName() {
+      return '$' + ++id;
+    } // Map between nodes and information about those nodes (corresponding var names, optimizations, etc.)
+
+
+    let nodeInfo = new Map(); // Create stores for each node for information about each
+
+    root.applyAll(node => {
+      nodeInfo.set(node, {});
+    }, false
+    /* call the function on all nodes, not just group nodes */
+    ); // Mapping between function/constant import objects and their variable names
+
+    let importInfo = new Map(); // Text of the setup code preceding all the exported functions
+
+    let globalSetup = '';
+    /**
+     * Import a function f and return a constant variable name corresponding to that function, to be placed in
+     * globalSetup. Importing the same function twice returns the same variable
+     * @param f {Function}
+     * @returns {string}
+     */
+
+    function importFunction(f) {
+      if (typeof f !== 'function') throw new TypeError("Unable to import function ".concat(f));
+      let stored = importInfo.get(f);
+      if (stored) return stored;
+      let fName = getVarName() + '_f';
+      if (doTypechecks) // Make sure f is actually a function
+        globalSetup += "if (typeof ".concat(fName, " !== \"function\") throw new TypeError(\"Imported parameter ").concat(fName, " is not a function\");\n");
+      importInfo.set(f, fName);
+      return fName;
+    }
+    /**
+     * Import a generic variable of any type
+     * @param c {any} External constant
+     * @returns {string} Variable name corresponding to the constant
+     */
+
+
+    function importConstant(c) {
+      let stored = importInfo.get(c);
+      if (stored) return stored;
+      let cName = getVarName() + '_c';
+      importInfo.set(c, cName);
+      return cName;
+    } // Dict of exported functions; mapping between names of functions and their arguments, setup and body
+
+
+    let exportedFunctions = {};
+
+    function exportFunction(name, args, body) {
+      exportedFunctions[name] = {
+        args,
+        body
+      };
+    } // Compile a function which, given a scope, evaluates the function
+
+
+    compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getVarName, opts); // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
+
+    let efText = 'return {' + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '}';
+    let nfText = globalSetup + efText;
+    let imports = Array.from(importInfo.keys());
+    let importNames = Array.from(importInfo.values()); // Last argument is the text of the function itself
+
+    importNames.push(nfText);
+    return Function.apply(null, importNames).apply(null, imports);
+  }
+
+  function compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getUnusedVarName, opts) {
+    var _opts$args;
+
+    // Whether to add typechecks to the passed variables
+    let doTypechecks = !!opts.typechecks; // List of arguments to be placed BEFORE the scope variable. For example, we might do
+    // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
+    // object.
+
+    let exportedArgs = (_opts$args = opts.args) !== null && _opts$args !== void 0 ? _opts$args : [];
+    exportedArgs.forEach(a => {
+      if (!isValidVariableName(a)) throw new Error("Invalid exported variable name ".concat(a));
+    });
+    let scopeVarName = 'scope';
+    let scopeUsed = false;
+    let fBody = '';
+    let fArgs = [...exportedArgs]; // Mapping between string variable name and information about that variable (varName)
+
+    let varInfo = new Map();
+    /**
+     * Get information, including the JS variable name
+     * @param name
+     */
+
+    function getScopedVariable(name) {
+      let stored = varInfo.get(name);
+      if (stored) return stored;
+      stored = {
+        varName: getUnusedVarName()
+      };
+      varInfo.set(name, stored);
+      return stored;
+    }
+
+    function prependLine(code) {
+      fBody = code + '\n' + fBody;
+    }
+
+    function addLine(code) {
+      fBody += code + '\n';
+    } // Import and typecheck variables
+
+
+    let requiredVariables = root.usedVariables();
+
+    for (const [name, type] of requiredVariables.entries()) {
+      let varInfo = getScopedVariable(name);
+      let varName = varInfo.varName;
+
+      if (exportedArgs.includes(name)) {
+        addLine("var ".concat(varName, "=").concat(name, ";"));
+      } else {
+        scopeUsed = true;
+        addLine("var ".concat(varName, "=").concat(scopeVarName, ".").concat(name, ";"));
+      }
+
+      if (doTypechecks) {
+        let typecheck = importFunction(TYPES[type].typecheck.generic.f);
+        addLine("if (".concat(varName, " === undefined) throw new Error(\"Variable ").concat(name, " is not defined in this scope\");"));
+        addLine("if (!".concat(typecheck, "(").concat(varName, ")) throw new Error(\"Expected variable ").concat(name, " to have a type of ").concat(type, "\");"));
+      }
+    }
+
+    compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts);
+    addLine("return ".concat(nodeInfo.get(root).varName, ";")); // Typecheck scope object
+
+    if (doTypechecks && scopeUsed) {
+      if (exportedArgs.length === 0) {
+        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed to evaluate function should be a scope\");"));
+      } else {
+        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed as last parameter to evaluate function should be a scope; there are undefined variables\");"));
+      }
+    } // Scope is last argument in function
+
+
+    if (scopeUsed) fArgs.push(scopeVarName);
+    exportFunction('evaluate', fArgs, fBody);
+  }
+
+  function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts) {
+    var _opts$o;
+
+    // How much to try and optimize the computations
+    (_opts$o = opts.o) !== null && _opts$o !== void 0 ? _opts$o : 0;
+
+    function compileOperator(node) {
+      let varName = getUnusedVarName();
+      let definition = node.definition;
+      let evaluator = definition.evaluators.generic;
+      let evaluatorType = evaluator.type;
+      let children = node.children;
+      let args = children.map((c, i) => {
+        let varName = nodeInfo.get(c).varName;
+        let srcType = c.type;
+        let dstType = definition.signature[i]; // Do type conversion
+
+        if (srcType !== dstType) {
+          let cast = getCast(srcType, dstType);
+
+          if (cast.name !== 'identity') {
+            let convertedVarName = getUnusedVarName();
+            addLine("var ".concat(convertedVarName, "=").concat(importFunction(cast.evaluators.generic.f), "(").concat(varName, ");"));
+            varName = convertedVarName;
+          }
+        }
+
+        return varName;
+      });
+
+      if (evaluatorType === 'special_binary') {
+        addLine("var ".concat(varName, "=").concat(args[0], " ").concat(evaluator.binary, " ").concat(args[1], ";"));
+      } else {
+        let fName = importFunction(evaluator.f);
+        addLine("var ".concat(varName, "=").concat(fName, "(").concat(args.join(','), ");"));
+      }
+
+      return varName;
+    }
+
+    root.applyAll(node => {
+      let info = nodeInfo.get(node);
+      let nodeType = node.nodeType();
+      let varName;
+
+      switch (nodeType) {
+        case 'op':
+          varName = compileOperator(node);
+          break;
+
+        case 'var':
+          varName = getScopedVariable(node.name).varName;
+          break;
+
+        case 'const':
+          varName = importConstant(node.value);
+          break;
+
+        case 'group':
+          // Forward the var name from the only child (since this is a grouping)
+          varName = nodeInfo.get(node.children[0]).varName;
+          break;
+
+        default:
+          throw new Error("Unknown node type ".concat(nodeType));
+      }
+
+      info.varName = varName;
+    }, false, true
+    /* children first, so bottom up */
+    );
+  }
+
+  /**
+   * A base class to use for event listeners and the like. Supports things like addEventListener(eventName, callback),
+   * triggerEvent(name, ?data), removeEventListener( ... ), removeEventListeners(?name). Listeners are called with
+   * data and this as parameters. If a listener returns true, the event does not propagate to any other listeners.
+   */
+  class Eventful {
+    constructor() {
+      _defineProperty(this, "eventListeners", new Map());
+    }
+
+    /**
+     * Register an event listener to a given event name. It will be given lower priority than the ones that came before.
+     * The callbacks will be given a single parameter "data".
+     * @param eventName {string} The name of the event
+     * @param callback {function|Array} The callback(s) to register
+     * @returns {Eventful} Returns self (for chaining)
+     */
+    addEventListener(eventName, callback) {
+      if (Array.isArray(callback)) {
+        for (const c of callback) this.addEventListener(eventName, c);
+
+        return this;
+      } else if (typeof callback === 'function') {
+        if (typeof eventName !== 'string' || !eventName) throw new TypeError('Invalid event name');
+        let listeners = this.eventListeners.get(eventName);
+
+        if (!listeners) {
+          listeners = [];
+          this.eventListeners.set(eventName, listeners);
+        }
+
+        if (!listeners.includes(callback)) listeners.push(callback);
+        return this;
+      } else throw new TypeError('Invalid callback');
+    }
+    /**
+     * Get the event listeners under "eventName", cloned so that they can be derped around with
+     * @param eventName {string} Name of the event whose listeners we want
+     * @returns {Array<function>}
+     */
+
+
+    getEventListeners(eventName) {
+      const listeners = this.eventListeners.get(eventName);
+      return Array.isArray(listeners) ? listeners.slice() : [];
+    }
+    /**
+     * Whether there are any event listeners registered for the given name
+     * @param eventName
+     * @returns {boolean} Whether any listeners are registered for that event
+     */
+
+
+    hasEventListenersFor(eventName) {
+      return Array.isArray(this.eventListeners.get(eventName));
+    }
+    /**
+     * Remove an event listener from the given event. Fails silently if that listener is not registered.
+     * @param eventName {string} The name of the event
+     * @param callback {function} The callback to remove
+     * @returns {Eventful} Returns self (for chaining)
+     */
+
+
+    removeEventListener(eventName, callback) {
+      if (Array.isArray(callback)) {
+        for (const c of callback) this.removeEventListener(eventName, c);
+
+        return this;
+      }
+
+      const listeners = this.eventListeners.get(eventName);
+
+      if (Array.isArray(listeners)) {
+        const index = listeners.indexOf(callback);
+        if (index !== -1) listeners.splice(index, 1);
+        if (listeners.length === 0) this.eventListeners.delete(eventName);
+      }
+
+      return this;
+    }
+    /**
+     * Remove all event listeners for a given event. Fails silently if there are no listeners registered for that event.
+     * @param eventName {string} The name of the event whose listeners should be cleared
+     * @returns {Eventful} Returns self (for chaining)
+     */
+
+
+    removeEventListeners(eventName) {
+      this.eventListeners.delete(eventName);
+      return this;
+    }
+    /**
+     * Trigger the listeners registered under an event name, passing (data, this, eventName) to each. Returns true if
+     * some listener returned true, stopping propagation; returns false otherwise
+     * @param eventName {string} Name of the event to be triggered
+     * @param data {any} Optional data parameter to be passed to listeners
+     * @returns {boolean} Whether any listener stopped propagation
+     */
+
+
+    triggerEvent(eventName, data) {
+      if (this.eventListeners.size === 0) return false;
+      const listeners = this.eventListeners.get(eventName);
+
+      if (Array.isArray(listeners)) {
+        for (let i = 0; i < listeners.length; ++i) {
+          if (listeners[i](data)) return true;
+        }
+      }
+
+      return false;
+    }
+
+  }
+
+  // The general form of a prop store is { value: , changed: , userValue: , }
+  const proxyHandlers = {
+    get: (target, propName) => {
+      return target.get(propName);
+    },
+    set: (target, propName, value) => {
+      target.set(propName, value);
+    }
+  };
+  /**
+   * The properties class stores an element's internal properties, in contrast to the user-facing properties, which are
+   * effectively getters and setters. There are benefits and costs to this approach. One of the main benefits is an easier
+   * API for the programmer to manipulate complex stylings and properties. Another benefit is the built-in ability to
+   * track whether a value has changed and whether it should be passed on to child elements. It also provides a sort of
+   * abstract concept where the properties are the definition of how a given object is *rendered*.
+   *
+   * A property that does not exist essentially has the value of undefined. Deleting a property is thus essentially
+   * equivalent to setting its value to undefined, with some important caveats, because the property's changed status
+   * must still be stored. Such "undefined properties" are technical only and not inheritable or useable.
+   *
+   * Beyond a simple property store, this object provides two paramount functionalities: changedness and inheritance.
+   * The concept of "changed" is relatively simple: it is whether a property has changed since the last time the element
+   * was fully updated, *or* when the property's change was dealt with in a way such that it is consistent that the
+   * element has fully updated. In other words, it is *functionally* identical to the last time an element was fully
+   * updated. That means that if a given array is mutated, its changed value must be set to true, because it is not
+   * functionally identical, even though it is strictly equal. It also means that if a given bounding box is cloned, its
+   * "changed" status may still be unchanged.
+   *
+   * There are some simple things we can do to avoid recomputations. For sceneDimensions, for example, its call to set its
+   * value is marked with equalityCheck = 2, meaning a deep equals comparison. Thus if the same dimensions are computed,
+   * it will not be marked as a change. Cached values may also be used if that's appropriate, but it is generally not
+   * (overhead and code complexity).
+   *
+   * Inheritance is whether a property should be forwarded to an element's descendants, stored in the property store's
+   * inherit property. An inherit value of 2 means that the property is owned by the current element; an inherit value of
+   * 1 means that the property is being passed along from an element above the current one. For example, sceneDimensions
+   * is an inheritable property of a top-level scene, and thus has { inherit: 2 } in the scene's property store, while
+   * in a figure below that scene, it has { inherit: 1 }. Inheritable properties must be treated slightly differently than
+   * normal properties because they have effects outside the current element, and influence other elements directly.
+   * Ideally, all elements should know whether an inheritable property has changed, but it would be inefficient and
+   * ultimately inelegant to propagate down inherited properties every time one was changed. Instead, the inheritance
+   * chain occurs during an update; an element inherits the inheritable properties from above it. An element only looks
+   * for inheritable properties if parent.props.hasChangedInheritableProperties is 1 or 2, or if the element's updateStage
+   * is -1. The latter case is for when an element has just been added to a group, and thus needs all the group's
+   * inherited properties, whether they are changed or not.
+   *
+   * Another special property of inherited properties is that their "changed/unchanged" status is supplemented by a simple
+   * time-based versioning system, as are many other Grapheme components. Inheritable properties thus have a version
+   * value of some integer n, where n is unique and assigned in order of when the property was last set. A given
+   * value of a property is associated with a unique integer n. When inheriting properties from a parent, all inheritable
+   * properties are traversed, and those properties whose version is greater than the version in the child will be
+   * inherited (or if the child doesn't have the property at all). An inheritable property is thus "changed" to a given
+   * element if its value is less than the element's own version value, which is assigned in a similar temporal fashion
+   * immediately following that element's update completion. It provides an efficient way of dealing with the concept of
+   * "changed" for a certain property, but across multiple elements.
+   *
+   * A given element may set its private properties' "changed" status to false as long as it is consistent, and the
+   * element may set the changed values of any of its inheritable properties to false, *provided* they leave the value
+   * of this.props.hasChangedInheritableProperties alone. That's because that value is checked by children if they are
+   * wondering whether they need to inherit props, and even if a parent's job may be done, the children still need to
+   * check in case their version values don't match up. hasChangedInheritableProperties is only set to 0 (er, only should
+   * be set to 0, as there is no enforcement mechanism) by the scene, during a global update, which will ensure that
+   * inherited properties do not need to be propagated down anywhere. The other thing is that if an element ever changes
+   * one of its inheritable properties, all of its direct children's updateStages need to be set to 0/-1, since they need
+   * to be recomputed. Note that this will not lead to much overhead, because inheritable properties are supposed to be
+   * used sparingly, and because setting a child's updateStage to 0 would mean they would simply check if any inheritable
+   * props have changed and any of their props have changed, which will often mean a couple boolean accesses (many
+   * elements can just explicitly inherit a few values).
+   *
+   * It is perhaps instructive to consider how properties will work on an actual example. Let's take a scene with
+   * width: 640, height: 320, and dpr: 1, all of which are *local* properties, with an inheritance value of 0. Also, take
+   * a figure with margins: { left: 0, top: 0, ... }, another local property. Finally, let a function plot with
+   * function: "x^2" and pen: "red" be a child of the figure.
+   *
+   * It's a simple scene, and as nothing has been updated yet, all elements' versions and updateStages are -1. Indeed,
+   * the figure has no clue about its position on the scene, let alone the transformation of coordinates needed for the
+   * function to be happy. All elements have their local, uninheritable properties and those only. All of those
+   * properties, being set moments ago, have changed: true (think of it as, they're being changed from being undefined).
+   *
+   * When scene.updateAll() is called, it traverses the tree of elements, calling update() on each one. scene.update()
+   * sees that its updateStage is not 100, and so calls scene._update(), which observes that "width", "height", and "dpr"
+   * have changed. It thus computes an inheritable property called sceneDimensions, which is just an object containing
+   * those three parameters in one inheritable bundle. This property's version is, say, 501. The scene also sets all
+   * of the children's update stages to the minimum of 0 and their current stage, which means they all stay at -1.
+   * The scene is now permitted to set its own "changed" values to false for local properties. hasChangedInheritable
+   * Properties, however, remains at 2. (One nuance: it's at 2 when inherited properties have been added or deleted, and
+   * at 1 when only their values have changed.) The scene's updateStage is now 100
+   *
+   * figure.update() is next in line. Seeing its updateStage is not 100, it calls figure._update(), which observes that
+   * its updateStage is -1, and thus properties must be inherited. It does so, keeping the version of sceneDimensions and
+   * setting its own hasChangedInheritableProperties to 2, along with setting all its children's update stages to 0/-1.
+   * Its version of sceneDimensions has inherit: 1, not 2. It also calculates its plotting box and other things, creating
+   * a new value called plotTransform, with inherit: 2! It also sets all the children's update stages to the minimum of
+   * 0 and their current value, which leaves them at -1. Also, focus on the sceneDimensions has a copied version. The
+   * changed value of sceneDimensions is only used by the figure; the children inheriting always look at the version. In
+   * other words, the changed is local to the element.
+   *
+   * function.update() is the last. Seeing its updateStage is not 100, it calls function._update(), which observes that
+   * its updateStage is -1, and thus all properties must be inherited. It does so, keeping the versions of sceneDimensions
+   * and plotTransform, along with private changed values for those properties. Again, THE CHANGED VALUE OF THE PARENT'S
+   * PROPERTY IS IRRELEVANT. All inheritable properties are checked and their changed values compared to the element's
+   * current value.
+   *
+   * At this point, the remainder of scene.updateAll() goes through all elements and sets their props.hasChangedInheritabl
+   * eProperties to 0, knowing that all elements have updated and no longer need to check their parents for changed
+   * inheritable properties. Let this state of the scene be STATE 1, a fully updated scene.
+   *
+   * Beginning from STATE 1, suppose another function plot, called function2, is added to the figure. Its updateStage is
+   * -1. Thus, when scene.updateAll() is called and it gets to function2.update(), it knows to ignore the fact that
+   * figure.props.hasChangedInheritableProperties is 0, and inherit all properties anyway. It stores those properties'
+   * versions as before. But in the future, when its updateStage is 0, it knows it can take the value of figure.props.
+   * hasChangedInheritableProperties literally.
+   *
+   * Beginning from STATE 1, suppose the scene's private width property is set to 500. The sceneDimensions does not
+   * immediately update, locally or across elements. During updating, the scene's update stage is 0, so it computes
+   * sceneDimensions. Seeing that an inheritable property has changed, scene.props.hasChangedInheritableProperties is
+   * set to 1 and the figure's updateStage is set to 0. In turn, when updating, the figure sees that the scene's
+   * hasChangedInheritableProperties has changed, so it checks its version of sceneDimensions versus the scene's version.
+   * Finding the former is less, it copies the new version and new value of sceneDimensions, then sets figure.props.
+   * hasChangedInheritableProperties to 1, and sets function's updateStage to 0.
+   *
+   * Beginning from STATE 1, suppose the scene deletes sceneDimensions, setting its value to undefined.
+   * This operation sets the hasChangedInheritableProperties to 2 and all the children's update stages to 0. 2 means that
+   * the actual types of inherited properties have changed. In this case, the child has to both inherit changed properties
+   * AND delete the properties which it had inherited. The operation is similar; it sets its value to undefined and
+   * inherit to 0, and its hasChangedInheritableProperties to 2. Other operations which set it to "2" are adding an
+   * inheritable property and setting the inheritance of a property back to 0.
+   *
+   * Alongside the value of a property, there may or may not be a user-intended value and a program value. For some
+   * parameters for which preprocessing is necessary, the user-intended value is the value that is actually changed when
+   * .set() is called. Consider a pen, for instance. If the user does set("pen", "blue"), then the expected result should
+   * be a blue line. Simple enough. But the pen used is not actually the string "blue"; it is an object of the form
+   * {color, thickness, ...}. Thus, the user-intended value of pen is "blue", and the actual value of pen is the pen
+   * object. The program value is a value indicating an "internal set". For example, a label may be a child of a certain
+   * element, which sets the child's position to (50, 20). In this case, the program value is (50, 20) and the value is
+   * (50, 20). We indicate these values by using bitsets for the changed and hasChangedProperties values, where bit 0
+   * is the actual value, bit 1 is the user value, bit 2 is the program value, and the remaining bits are reserved for
+   * other values if ever needed.
+   */
+
+  class Props {
+    constructor() {
+      /**
+       * A key-object dictionary containing the values. The keys are the property names and the objects are of the form
+       * { value, changed, ... some other metadata for the given property ... }.
+       * @type {any}
+       */
+      this.store = new Map(); // Just for fun... not sure if I'll keep this. Makes programming a bit less painful
+
+      this.proxy = new Proxy(this, proxyHandlers); // Stores whether any property has changed as a bitmask
+
+      this.hasChangedProperties = 0; // 0 when no inheritable properties have changed, 1 when an inheritable property has changed since the last time
+      // the scene was fully updated, and 2 when the actual list of inheritable properties has changed (different
+      // signature of inheritance, if you will).
+
+      this.hasChangedInheritableProperties = 0;
+    }
+
+    static toBit(as) {
+      switch (as) {
+        case 'program':
+          return 2;
+
+        case 'user':
+          return 1;
+
+        case 'real':
+        case 'default':
+          return 0;
+      }
+    } // Access functions, in case we want to switch to Object.create(null)
+
+
+    getPropertyStore(propName) {
+      return this.store.get(propName);
+    }
+
+    setPropertyStore(propName, value) {
+      this.store.set(propName, value);
+    }
+    /**
+     * Create a property store for a given prop, returning the store. It returns the already-existing store, if appropriate.
+     * @param propName {string}
+     * @returns {{}} Property store associated with the given property name
+     */
+
+
+    createPropertyStore(propName) {
+      let existing = this.getPropertyStore(propName);
+
+      if (!existing) {
+        existing = {
+          value: undefined,
+          changed: false
+        };
+        this.setPropertyStore(propName, existing);
+      }
+
+      return existing;
+    }
+    /**
+     * Deletes a property store wholesale, not trying to account for changed values and the like.
+     * @param propName
+     */
+
+
+    deletePropertyStore(propName) {
+      this.store.delete(propName);
+    }
+
+    forEachStore(callback) {
+      for (let value of this.store.values()) {
+        callback(value);
+      }
+    }
+
+    forEachProperty(callback) {
+      for (let [key, value] of this.store.entries()) {
+        callback(key, value);
+      }
+    }
+    /**
+     * Get a list of all properties, including ones which are undefined but have a store
+     * @returns {string[]}
+     */
+
+
+    listProperties() {
+      return Array.from(this.store.keys());
+    }
+    /**
+     * Returns whether a property has changed, locally speaking.
+     * @param propName {string}
+     * @returns {boolean}
+     */
+
+
+    hasChanged(propName) {
+      var _this$getPropertyStor;
+
+      return !!((_this$getPropertyStor = this.getPropertyStore(propName)) === null || _this$getPropertyStor === void 0 ? void 0 : _this$getPropertyStor.changed);
+    }
+    /**
+     * Returns whether any property of a list of properties has changed, locally speaking.
+     * @param propList {string[]}
+     * @returns {boolean}
+     */
+
+
+    haveChanged(propList) {
+      return this.hasChangedProperties && propList.some(prop => this.hasChanged(prop));
+    }
+    /**
+     * Returns whether a given property is inheritable (i.e., an inherit of 1 or 2).
+     * @param propName {string}
+     * @returns {boolean}
+     */
+
+
+    isPropertyInheritable(propName) {
+      var _this$getPropertyStor2;
+
+      return !!((_this$getPropertyStor2 = this.getPropertyStore(propName)) === null || _this$getPropertyStor2 === void 0 ? void 0 : _this$getPropertyStor2.inherit);
+    }
+    /**
+     * Returns a list of properties which have changed, locally speaking.
+     * @returns {string[]}
+     */
+
+
+    listChangedProperties() {
+      return this.listProperties().filter(prop => this.hasChanged(prop));
+    }
+    /**
+     * Returns a list of properties which can be inherited (i.e., an inherit of 1 or 2).
+     * @returns {string[]}
+     */
+
+
+    listInheritableProperties() {
+      return this.listProperties().filter(prop => this.isPropertyInheritable(prop));
+    }
+    /**
+     * Inherit all inheritable properties from a given props. The function does this by comparing the local inherited
+     * prop's version to the given props's version. If the local version is lower, the property and version are copied,
+     * and the changed status is set to true. If updateAll is set to true, the function makes sure to check that the
+     * actual list of inherited properties is synchronized, because it normally only checks the local inheritable
+     * properties and compares them. In fact, it only checks the local inheritable properties with inherit: 1, since that
+     * indicates it came from a parent rather than being defined in the current element.
+     * @param props {Props}
+     * @param updateAll {boolean} Whether to force a complete update, in which the inheritable properties are verifiably
+     * synced with the top element's properties. This usually happens after an element is added to a group, or after a
+     * group's inheritance signature has changed.
+     */
+
+
+    inheritPropertiesFrom(props, updateAll = false) {
+      // Early exit condition, where if no inheritable properties have changed, we need not do anything
+      if (!(updateAll || props.hasChangedInheritableProperties)) return;
+      updateAll = updateAll || props.hasChangedInheritableProperties === 2; // We recalculate all local properties whose inheritance is 1, indicating they were inherited from above. Properties
+      // not found above are deleted, properties found above are copied if their version is greater than or equal to the
+      // version of the current property. This ensures that this props does not have any extraneous properties or any
+      // incorrect/nonupdated values.
+
+      for (const [propName, propStore] of this.store.entries()) {
+        if (propStore.inherit !== 1) continue;
+        const otherPropsStore = props.getPropertyStore(propName); // if no such inheritable property, *delete* the local property (do not keep it as inheritable)
+
+        if (!otherPropsStore || otherPropsStore.inherit < 1 || otherPropsStore.value === undefined) {
+          propStore.value = undefined;
+          propStore.changed |= 0b1;
+          propStore.inherit = 0;
+          this.changed |= 0b1;
+          this.markHasChangedInheritableProperties();
+        } // Value has been changed!
+
+
+        if (otherPropsStore.version > propStore.version) {
+          propStore.version = otherPropsStore.version;
+          propStore.value = otherPropsStore.value;
+          propStore.changed |= 0b1;
+          this.changed |= 0b1;
+          this.markHasChangedInheritableProperties();
+        }
+      } // If updateAll is true, we run through all the given properties and inherit all 1s and 2s.
+
+
+      if (updateAll) {
+        for (const [propName, propStore] of props.store.entries()) {
+          if (!propStore.inherit || propStore.value === undefined) continue;
+          let ourPropStore = this.getPropertyStore(propName); // Where things are actually inherited!!
+
+          if (!ourPropStore || ourPropStore.inherit === 1 && propStore.version > ourPropStore.version) {
+            if (!ourPropStore) {
+              ourPropStore = this.createPropertyStore(propName); // Goes around set
+
+              ourPropStore.inherit = 1;
+              ourPropStore.value = propStore.value;
+              this.markHasChangedInheritanceSignature();
+            }
+
+            ourPropStore.version = propStore.version;
+            ourPropStore.value = propStore.value;
+            ourPropStore.changed |= 0b1;
+            this.markHasChangedProperties();
+          }
+        }
+      }
+    }
+    /**
+     * This function sets the value of a property. It is meant mostly for internal use. If prompted, it will check to see
+     * whether the value given and the current value are strictly equal, or deeply equal, and if so, not mark the property
+     * as changed. By default, this check is turned off, meaning all value assignments are marked as "changed". The third
+     * parameter indicates whether the value should be directly modified, or
+     * @param propName {string} The name of the property
+     * @param value {any} The value of the property
+     * @param as {number} Which value to change. 0 if real, 1 if user, 2 if program
+     * @param equalityCheck {number} What type of equality check to perform against the current value, if any, to assess
+     * the changed value. 0 - no check, 1 - strict equals, 2 - deep equals
+     * @param markChanged {boolean} Whether to actually mark the value as changed. In turn, if the property is a changed
+     * inheritable property, that will be noted
+     * @returns {any}
+     */
+
+
+    set(propName, value, as = 0, equalityCheck = 0, markChanged = true) {
+      let store = this.getPropertyStore(propName); // Helper functions to abstract away the "user/program/real" concept
+
+      function getStoreValue() {
+        switch (as) {
+          case 0:
+            return store.value;
+
+          case 1:
+            return store.userValue;
+
+          case 2:
+            return store.programValue;
+        }
+      }
+
+      function setStoreValue(v) {
+        switch (as) {
+          case 0:
+            store.value = v;
+            break;
+
+          case 1:
+            store.userValue = v;
+            break;
+
+          case 2:
+            store.programValue = v;
+            break;
+        }
+      }
+
+      if (value === undefined) {
+        // Special case of deletion. If the property exists, we set its value to undefined, and if that property is
+        // defined to be inheritable, we set this.hasChangedInheritableProperties to 2. Note that an inheritED property
+        // cannot be deleted, as that would be inconsistent. It can only be overridden.
+        // trivial case, don't do anything
+        if (!store || getStoreValue() === undefined) return value;
+
+        if (store.inherit === 1) {
+          // If the store has an inheritance value of 1, we don't do anything
+          return value;
+        } else if (store.inherit === 2) {
+          // If the property has inheritance 2, we keep it as undefined and notify that the signature of inheritable properties has
+          // changed.
+          setStoreValue(undefined); // If setting the real value, need to change the version
+
+          if (as === 0) {
+            store.version = getVersionID();
+            if (markChanged) this.markHasChangedInheritanceSignature();
+          }
+        } else {
+          // Set its value to undefined
+          setStoreValue(undefined);
+        }
+
+        if (markChanged) {
+          // Mark which bit has changed
+          store.changed |= 1 << as;
+          this.hasChangedProperties |= 1 << as;
+        }
+
+        return undefined;
+      } // Otherwise, we need to get a property store
+
+
+      if (!store) store = this.createPropertyStore(propName); // We reject assignments to an inherited property. This can be overridden by setting the property's inheritance
+      // status.
+
+      if (store.inherit === 1) return value;
+
+      if (equalityCheck !== 0) {
+        let storeValue = getStoreValue(); // Perform various equality checks
+
+        if (equalityCheck === 1 && storeValue === value) return value;else if (equalityCheck === 2 && deepEquals(storeValue, value)) return value;
+      } // Set the value and changed values
+
+
+      setStoreValue(value);
+
+      if (markChanged) {
+        store.changed |= 1 << as;
+        this.hasChangedProperties |= 1 << as; // For values to be inherited, store the version of this value. Only for inherit: 2 properties
+
+        if (store.inherit === 2 && as === 0) {
+          store.version = getVersionID();
+          this.markHasChangedInheritableProperties();
+        }
+      }
+
+      return value;
+    }
+
+    setProperties(values, equalityCheck = 0, markChanged = true) {
+      for (const [propName, propValue] of Object.entries(values)) {
+        this.set(propName, propValue, equalityCheck, markChanged);
+      }
+
+      return this;
+    }
+
+    markHasChangedProperties() {
+      this.hasChangedProperties = true;
+    }
+
+    markHasChangedInheritableProperties() {
+      this.hasChangedInheritableProperties = Math.max(this.hasChangedInheritableProperties, 1);
+    }
+
+    markHasChangedInheritanceSignature() {
+      this.hasChangedInheritableProperties = 2;
+    }
+
+    configureProperty(propName, opts = {}) {
+      this.getPropertyStore(propName);
+
+      if (opts.inherit !== undefined) {
+        this.setPropertyInheritance(propName, opts.inherit);
+      }
+    }
+
+    configureProperties(propNames, opts = {}) {
+      for (const propName of propNames) this.configureProperty(propName, opts);
+    }
+    /**
+     * Set a property's inheritance to 2 (if inherit is true) or 0
+     * @param propName {string}
+     * @param inherit {boolean}
+     * @return {Props}
+     */
+
+
+    setPropertyInheritance(propName, inherit = false) {
+      const store = this.createPropertyStore(propName);
+      let currentInheritance = !!store.inherit;
+      if (currentInheritance === !!inherit) return this;
+
+      if (inherit) {
+        store.version = getVersionID();
+        store.inherit = 2;
+      } else {
+        delete store.version;
+        delete store.inherit;
+      }
+
+      if (store.value !== undefined) this.hasChangedInheritableProperties = 2;
+      return this;
+    }
+    /**
+     * Get the value of a property.
+     * @param propName {string}
+     * @param as {number} 0 if getting the real value, 1 if getting the user value, 2 if getting the program value
+     * @returns {*}
+     */
+
+
+    get(propName, as = 0) {
+      let store = this.getPropertyStore(propName);
+      if (!store) return undefined;
+
+      switch (as) {
+        case 0:
+          return store.value;
+
+        case 1:
+          return store.userValue;
+
+        case 2:
+          return store.programValue;
+      }
+    }
+
+    getUserValue(propName) {
+      return this.get(propName, 1);
+    }
+
+    getProgramValue(propName) {
+      return this.get(propName, 2);
+    }
+    /**
+     * Get the values of a list of properties.
+     * @param propNameList {string[]}
+     * @returns {*}
+     */
+
+
+    getProperties(propNameList) {
+      return propNameList.map(propName => this.get(propName));
+    }
+    /**
+     * Mark all properties as locally updated (changed = false).
+     */
+
+
+    markAllUpdated(bitmask = 0b111) {
+      bitmask = ~bitmask;
+      this.hasChangedProperties &= bitmask;
+      this.forEachStore(store => {
+        store.changed &= bitmask;
+      });
+    }
+    /**
+     * Mark a specific property as locally updated (changed = false).
+     * @param propName {string}
+     */
+
+
+    markPropertyUpdated(propName) {
+      const store = this.getPropertyStore(propName);
+      if (store) store.changed = 0;
+    }
+    /**
+     * Mark a given property as changed.
+     * @param propName {string}
+     */
+
+
+    markChanged(propName) {
+      let store = this.getPropertyStore(propName);
+      store.changed |= 0b1;
+      this.hasChangedProperties |= 0b1; // If the store is inheritable, we need to generate a version ID
+
+      if (store.inherit) {
+        store.version = getVersionID();
+        this.markHasChangedInheritableProperties();
+      }
+    }
+    /**
+     * Mark that no more inheritance is necessary. This function should only be called by the scene
+     */
+
+
+    markGlobalUpdateComplete() {
+      if (this.hasChangedProperties) this.markAllUpdated();
+      this.hasChangedInheritableProperties = 0;
+    }
+
+    stringify() {
+      const obj = {};
+
+      for (const [propName, propStore] of this.store) {
+        obj[propName] = propStore;
+      }
+
+      console.log(JSON.stringify(obj, null, 4));
+    }
+
+  }
+
+  // Principles: Some things in Grapheme have styling information that may be shared or may be composed from other bits of
+  // Could use a library, but... good experience for me too
+
+  class Color {
+    constructor({
+      r = 0,
+      g = 0,
+      b = 0,
+      a = 255
+    } = {}) {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      this.a = a;
+    }
+
+    rounded() {
+      return {
+        r: Math.round(this.r),
+        g: Math.round(this.g),
+        b: Math.round(this.b),
+        a: Math.round(this.a)
+      };
+    }
+
+    toJSON() {
+      return {
+        r: this.r,
+        g: this.g,
+        b: this.b,
+        a: this.a
+      };
+    }
+
+    hex() {
+      const rnd = this.rounded();
+      return "#".concat([rnd.r, rnd.g, rnd.b, rnd.a].map(x => leftZeroPad(x.toString(16), 2)).join(''));
+    }
+
+    glColor() {
+      return {
+        r: this.r / 255,
+        g: this.g / 255,
+        b: this.b / 255,
+        a: this.a / 255
+      };
+    }
+
+    toNumber() {
+      return this.r * 0x1000000 + this.g * 0x10000 + this.b * 0x100 + this.a;
+    }
+
+    clone() {
+      return new Color(this);
+    }
+
+    static rgb(r, g, b) {
+      return new Color({
+        r,
+        g,
+        b
+      });
+    }
+
+    static rgba(r, g, b, a = 255) {
+      return new Color({
+        r,
+        g,
+        b,
+        a
+      });
+    }
+
+    static hsl(h, s, l) {
+      return new Color(hslToRgb(h, s, l));
+    }
+
+    static hsla(h, s, l, a) {
+      let color = Color.hsl(h, s, l);
+      color.a = 255 * a;
+      return color;
+    }
+
+    static fromHex(string) {
+      return new Color(hexToRgb(string));
+    }
+
+    static fromCss(cssColorString) {
+      function throwBadColor() {
+        throw new Error('Unrecognized colour ' + cssColorString);
+      }
+
+      cssColorString = cssColorString.toLowerCase().replace(/\s+/g, '');
+
+      if (cssColorString.startsWith('#')) {
+        return Color.fromHex(cssColorString);
+      }
+
+      let argsMatch = /\((.+)\)/g.exec(cssColorString);
+
+      if (!argsMatch) {
+        let color = Colors[cssColorString.toUpperCase()];
+        return color ? color : throwBadColor();
+      }
+
+      let args = argsMatch[1].split(',').map(parseFloat);
+
+      if (cssColorString.startsWith('rgb')) {
+        return Color.rgb(...args.map(s => s * 255));
+      } else if (cssColorString.startsWith('rgba')) {
+        return Color.rgba(...args.map(s => s * 255));
+      } else if (cssColorString.startsWith('hsl')) {
+        return Color.hsl(...args);
+      } else if (cssColorString.startsWith('hsla')) {
+        return Color.hsla(...args);
+      }
+
+      throwBadColor();
+    }
+
+    static fromObj(obj) {
+      if (typeof obj === 'string') {
+        return Color.fromCss(obj);
+      }
+
+      return new Color(obj);
+    }
+
+  } // Credit to https://stackoverflow.com/a/11508164/13458117
+
+
+  function hexToRgb(hex) {
+    let bigint = parseInt(hex.replace('#', ''), 16);
+    let r = bigint >> 16 & 255;
+    let g = bigint >> 8 & 255;
+    let b = bigint & 255;
+    return {
+      r,
+      g,
+      b
+    };
+  }
+
+  function hue2rgb(p, q, t) {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  } // Credit to https://stackoverflow.com/a/9493060/13458117
+
+
+  function hslToRgb(h, s, l) {
+    var r, g, b;
+
+    if (s === 0) {
+      r = g = b = l; // achromatic
+    } else {
+      var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      var p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+
+    return {
+      r: 255 * r,
+      g: 255 * g,
+      b: 255 * b
+    };
+  }
+
+  const rgb = Color.rgb;
+  const Colors = {
+    get LIGHTSALMON() {
+      return rgb(255, 160, 122);
+    },
+
+    get SALMON() {
+      return rgb(250, 128, 114);
+    },
+
+    get DARKSALMON() {
+      return rgb(233, 150, 122);
+    },
+
+    get LIGHTCORAL() {
+      return rgb(240, 128, 128);
+    },
+
+    get INDIANRED() {
+      return rgb(205, 92, 92);
+    },
+
+    get CRIMSON() {
+      return rgb(220, 20, 60);
+    },
+
+    get FIREBRICK() {
+      return rgb(178, 34, 34);
+    },
+
+    get RED() {
+      return rgb(255, 0, 0);
+    },
+
+    get DARKRED() {
+      return rgb(139, 0, 0);
+    },
+
+    get CORAL() {
+      return rgb(255, 127, 80);
+    },
+
+    get TOMATO() {
+      return rgb(255, 99, 71);
+    },
+
+    get ORANGERED() {
+      return rgb(255, 69, 0);
+    },
+
+    get GOLD() {
+      return rgb(255, 215, 0);
+    },
+
+    get ORANGE() {
+      return rgb(255, 165, 0);
+    },
+
+    get DARKORANGE() {
+      return rgb(255, 140, 0);
+    },
+
+    get LIGHTYELLOW() {
+      return rgb(255, 255, 224);
+    },
+
+    get LEMONCHIFFON() {
+      return rgb(255, 250, 205);
+    },
+
+    get LIGHTGOLDENRODYELLOW() {
+      return rgb(250, 250, 210);
+    },
+
+    get PAPAYAWHIP() {
+      return rgb(255, 239, 213);
+    },
+
+    get MOCCASIN() {
+      return rgb(255, 228, 181);
+    },
+
+    get PEACHPUFF() {
+      return rgb(255, 218, 185);
+    },
+
+    get PALEGOLDENROD() {
+      return rgb(238, 232, 170);
+    },
+
+    get KHAKI() {
+      return rgb(240, 230, 140);
+    },
+
+    get DARKKHAKI() {
+      return rgb(189, 183, 107);
+    },
+
+    get YELLOW() {
+      return rgb(255, 255, 0);
+    },
+
+    get LAWNGREEN() {
+      return rgb(124, 252, 0);
+    },
+
+    get CHARTREUSE() {
+      return rgb(127, 255, 0);
+    },
+
+    get LIMEGREEN() {
+      return rgb(50, 205, 50);
+    },
+
+    get LIME() {
+      return rgb(0, 255, 0);
+    },
+
+    get FORESTGREEN() {
+      return rgb(34, 139, 34);
+    },
+
+    get GREEN() {
+      return rgb(0, 128, 0);
+    },
+
+    get DARKGREEN() {
+      return rgb(0, 100, 0);
+    },
+
+    get GREENYELLOW() {
+      return rgb(173, 255, 47);
+    },
+
+    get YELLOWGREEN() {
+      return rgb(154, 205, 50);
+    },
+
+    get SPRINGGREEN() {
+      return rgb(0, 255, 127);
+    },
+
+    get MEDIUMSPRINGGREEN() {
+      return rgb(0, 250, 154);
+    },
+
+    get LIGHTGREEN() {
+      return rgb(144, 238, 144);
+    },
+
+    get PALEGREEN() {
+      return rgb(152, 251, 152);
+    },
+
+    get DARKSEAGREEN() {
+      return rgb(143, 188, 143);
+    },
+
+    get MEDIUMSEAGREEN() {
+      return rgb(60, 179, 113);
+    },
+
+    get SEAGREEN() {
+      return rgb(46, 139, 87);
+    },
+
+    get OLIVE() {
+      return rgb(128, 128, 0);
+    },
+
+    get DARKOLIVEGREEN() {
+      return rgb(85, 107, 47);
+    },
+
+    get OLIVEDRAB() {
+      return rgb(107, 142, 35);
+    },
+
+    get LIGHTCYAN() {
+      return rgb(224, 255, 255);
+    },
+
+    get CYAN() {
+      return rgb(0, 255, 255);
+    },
+
+    get AQUA() {
+      return rgb(0, 255, 255);
+    },
+
+    get AQUAMARINE() {
+      return rgb(127, 255, 212);
+    },
+
+    get MEDIUMAQUAMARINE() {
+      return rgb(102, 205, 170);
+    },
+
+    get PALETURQUOISE() {
+      return rgb(175, 238, 238);
+    },
+
+    get TURQUOISE() {
+      return rgb(64, 224, 208);
+    },
+
+    get MEDIUMTURQUOISE() {
+      return rgb(72, 209, 204);
+    },
+
+    get DARKTURQUOISE() {
+      return rgb(0, 206, 209);
+    },
+
+    get LIGHTSEAGREEN() {
+      return rgb(32, 178, 170);
+    },
+
+    get CADETBLUE() {
+      return rgb(95, 158, 160);
+    },
+
+    get DARKCYAN() {
+      return rgb(0, 139, 139);
+    },
+
+    get TEAL() {
+      return rgb(0, 128, 128);
+    },
+
+    get POWDERBLUE() {
+      return rgb(176, 224, 230);
+    },
+
+    get LIGHTBLUE() {
+      return rgb(173, 216, 230);
+    },
+
+    get LIGHTSKYBLUE() {
+      return rgb(135, 206, 250);
+    },
+
+    get SKYBLUE() {
+      return rgb(135, 206, 235);
+    },
+
+    get DEEPSKYBLUE() {
+      return rgb(0, 191, 255);
+    },
+
+    get LIGHTSTEELBLUE() {
+      return rgb(176, 196, 222);
+    },
+
+    get DODGERBLUE() {
+      return rgb(30, 144, 255);
+    },
+
+    get CORNFLOWERBLUE() {
+      return rgb(100, 149, 237);
+    },
+
+    get STEELBLUE() {
+      return rgb(70, 130, 180);
+    },
+
+    get ROYALBLUE() {
+      return rgb(65, 105, 225);
+    },
+
+    get BLUE() {
+      return rgb(0, 0, 255);
+    },
+
+    get MEDIUMBLUE() {
+      return rgb(0, 0, 205);
+    },
+
+    get DARKBLUE() {
+      return rgb(0, 0, 139);
+    },
+
+    get NAVY() {
+      return rgb(0, 0, 128);
+    },
+
+    get MIDNIGHTBLUE() {
+      return rgb(25, 25, 112);
+    },
+
+    get MEDIUMSLATEBLUE() {
+      return rgb(123, 104, 238);
+    },
+
+    get SLATEBLUE() {
+      return rgb(106, 90, 205);
+    },
+
+    get DARKSLATEBLUE() {
+      return rgb(72, 61, 139);
+    },
+
+    get LAVENDER() {
+      return rgb(230, 230, 250);
+    },
+
+    get THISTLE() {
+      return rgb(216, 191, 216);
+    },
+
+    get PLUM() {
+      return rgb(221, 160, 221);
+    },
+
+    get VIOLET() {
+      return rgb(238, 130, 238);
+    },
+
+    get ORCHID() {
+      return rgb(218, 112, 214);
+    },
+
+    get FUCHSIA() {
+      return rgb(255, 0, 255);
+    },
+
+    get MAGENTA() {
+      return rgb(255, 0, 255);
+    },
+
+    get MEDIUMORCHID() {
+      return rgb(186, 85, 211);
+    },
+
+    get MEDIUMPURPLE() {
+      return rgb(147, 112, 219);
+    },
+
+    get BLUEVIOLET() {
+      return rgb(138, 43, 226);
+    },
+
+    get DARKVIOLET() {
+      return rgb(148, 0, 211);
+    },
+
+    get DARKORCHID() {
+      return rgb(153, 50, 204);
+    },
+
+    get DARKMAGENTA() {
+      return rgb(139, 0, 139);
+    },
+
+    get PURPLE() {
+      return rgb(128, 0, 128);
+    },
+
+    get INDIGO() {
+      return rgb(75, 0, 130);
+    },
+
+    get PINK() {
+      return rgb(255, 192, 203);
+    },
+
+    get LIGHTPINK() {
+      return rgb(255, 182, 193);
+    },
+
+    get HOTPINK() {
+      return rgb(255, 105, 180);
+    },
+
+    get DEEPPINK() {
+      return rgb(255, 20, 147);
+    },
+
+    get PALEVIOLETRED() {
+      return rgb(219, 112, 147);
+    },
+
+    get MEDIUMVIOLETRED() {
+      return rgb(199, 21, 133);
+    },
+
+    get WHITE() {
+      return rgb(255, 255, 255);
+    },
+
+    get SNOW() {
+      return rgb(255, 250, 250);
+    },
+
+    get HONEYDEW() {
+      return rgb(240, 255, 240);
+    },
+
+    get MINTCREAM() {
+      return rgb(245, 255, 250);
+    },
+
+    get AZURE() {
+      return rgb(240, 255, 255);
+    },
+
+    get ALICEBLUE() {
+      return rgb(240, 248, 255);
+    },
+
+    get GHOSTWHITE() {
+      return rgb(248, 248, 255);
+    },
+
+    get WHITESMOKE() {
+      return rgb(245, 245, 245);
+    },
+
+    get SEASHELL() {
+      return rgb(255, 245, 238);
+    },
+
+    get BEIGE() {
+      return rgb(245, 245, 220);
+    },
+
+    get OLDLACE() {
+      return rgb(253, 245, 230);
+    },
+
+    get FLORALWHITE() {
+      return rgb(255, 250, 240);
+    },
+
+    get IVORY() {
+      return rgb(255, 255, 240);
+    },
+
+    get ANTIQUEWHITE() {
+      return rgb(250, 235, 215);
+    },
+
+    get LINEN() {
+      return rgb(250, 240, 230);
+    },
+
+    get LAVENDERBLUSH() {
+      return rgb(255, 240, 245);
+    },
+
+    get MISTYROSE() {
+      return rgb(255, 228, 225);
+    },
+
+    get GAINSBORO() {
+      return rgb(220, 220, 220);
+    },
+
+    get LIGHTGRAY() {
+      return rgb(211, 211, 211);
+    },
+
+    get SILVER() {
+      return rgb(192, 192, 192);
+    },
+
+    get DARKGRAY() {
+      return rgb(169, 169, 169);
+    },
+
+    get GRAY() {
+      return rgb(128, 128, 128);
+    },
+
+    get DIMGRAY() {
+      return rgb(105, 105, 105);
+    },
+
+    get LIGHTSLATEGRAY() {
+      return rgb(119, 136, 153);
+    },
+
+    get SLATEGRAY() {
+      return rgb(112, 128, 144);
+    },
+
+    get DARKSLATEGRAY() {
+      return rgb(47, 79, 79);
+    },
+
+    get BLACK() {
+      return rgb(0, 0, 0);
+    },
+
+    get CORNSILK() {
+      return rgb(255, 248, 220);
+    },
+
+    get BLANCHEDALMOND() {
+      return rgb(255, 235, 205);
+    },
+
+    get BISQUE() {
+      return rgb(255, 228, 196);
+    },
+
+    get NAVAJOWHITE() {
+      return rgb(255, 222, 173);
+    },
+
+    get WHEAT() {
+      return rgb(245, 222, 179);
+    },
+
+    get BURLYWOOD() {
+      return rgb(222, 184, 135);
+    },
+
+    get TAN() {
+      return rgb(210, 180, 140);
+    },
+
+    get ROSYBROWN() {
+      return rgb(188, 143, 143);
+    },
+
+    get SANDYBROWN() {
+      return rgb(244, 164, 96);
+    },
+
+    get GOLDENROD() {
+      return rgb(218, 165, 32);
+    },
+
+    get PERU() {
+      return rgb(205, 133, 63);
+    },
+
+    get CHOCOLATE() {
+      return rgb(210, 105, 30);
+    },
+
+    get SADDLEBROWN() {
+      return rgb(139, 69, 19);
+    },
+
+    get SIENNA() {
+      return rgb(160, 82, 45);
+    },
+
+    get BROWN() {
+      return rgb(165, 42, 42);
+    },
+
+    get MAROON() {
+      return rgb(128, 0, 0);
+    },
+
+    get RANDOM() {
+      var keys = Object.keys(Colors);
+      return Colors[keys[keys.length * Math.random() << 0]];
+    },
+
+    get TRANSPARENT() {
+      return new Color({
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0
+      });
+    }
+
+  };
+  const Pen = {
+    // take a list of partial pen specifications and combine them into a complete pen by combining each and keeping only
+    // the valid parameters TODO
+    compose: (...args) => {
+      let ret = {};
+
+      for (let i = 0; i < args.length; ++i) {
+        let arg = args[i];
+
+        if (typeof arg === 'string') {
+          arg = {
+            color: Color.fromObj(arg)
+          };
+        }
+
+        Object.assign(ret, arg);
+      }
+
+      ret.color = Color.fromObj(ret.color);
+      return ret;
+    },
+    create: params => {
+      return Pen.compose(Pen.default, params);
+    },
+    signature: {
+      color: 'color',
+      thickness: 'number'
+    },
+    default: deepFreeze({
+      color: {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255
+      },
+      thickness: 2,
+      dashPattern: [],
+      dashOffset: 0,
+      endcap: 'round',
+      endcapRes: 1,
+      join: 'dynamic',
+      joinRes: 1,
+      useNative: false,
+      visible: true
+    }),
+
+    fromObj(strOrObj) {
+      if (typeof strOrObj === 'string') return _interpretStringAsPen(strOrObj);
+      return Pen.compose(Pen.default, strOrObj);
+    }
+
+  }; // Generic dictionary of pens, like { major: Pen, minor: Pen }. Partial pen specifications may be used and they will
+  // turn into fully completed pens in the final product
+
+  const Pens = {
+    compose: (...args) => {
+      let ret = {}; // Basically just combine all the pens
+
+      for (let i = 0; i < args.length; ++i) {
+        for (let key in args[i]) {
+          let retVal = ret[key];
+          if (!retVal) ret[key] = retVal = Pen.default;
+          ret[key] = Pen.compose(ret[key], args[key]);
+        }
+      }
+    },
+    create: params => {
+      return Pens.compose(Pens.default, params);
+    },
+    default: Object.freeze({})
+  };
+  /**const textElementInterface = constructInterface({
+    font: { setAs: "user" },
+    fontSize: { setAs: "user" },
+    text: true,
+    align: { setAs: "user" },
+    baseline: { setAs: "user" },
+    color: { setAs: "user" },
+    shadowRadius: { setAs: "user" },
+    shadowColor: { setAs: "user" },
+    position: { conversion: Vec2.fromObj }
+  }, */
+
+  const TextStyle = {
+    compose: (...args) => {
+      let ret = {};
+
+      for (let i = 0; i < args.length; ++i) {
+        Object.assign(ret, args[i]);
+      }
+
+      ret.color = Color.fromObj(ret.color);
+      ret.shadowColor = Color.fromObj(ret.shadowColor);
+      return ret;
+    },
+    create: params => {
+      return TextStyle.compose(TextStyle.default, params);
+    },
+    default: deepFreeze({
+      color: {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255
+      },
+      shadowColor: {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255
+      },
+      font: 'Cambria',
+      fontSize: 12,
+      shadowRadius: 0,
+      align: 'left',
+      baseline: 'bottom'
+    })
+  }; // Object of the form { x: ("dynamic"|"none"|"axis"|"outside"|"inside"|"bottom"|"top"), y: ( ..., "left"|"right") } (might change later)
+
+  const LabelPosition = {
+    compose: (...args) => {
+      let ret = {};
+
+      for (let i = 0; i < args.length; ++i) {
+        let arg = args[i];
+
+        if (typeof arg === 'string') {
+          ret.x = arg;
+          ret.y = arg;
+        } else {
+          Object.assign(ret, args[i]);
+        }
+      }
+
+      return ret;
+    },
+    create: params => {
+      return LabelPosition.compose(LabelPosition.default, params);
+    },
+    default: deepFreeze({
+      x: 'dynamic',
+      y: 'dynamic'
+    })
+  };
+  const GenericObject = {
+    compose: (...args) => {
+      let ret = {};
+
+      for (let i = 0; i < args.length; ++i) {
+        Object.assign(ret, args[i]);
+      }
+
+      return ret;
+    },
+    create: params => {
+      return GenericObject.compose(GenericObject.default, params);
+    },
+    default: Object.freeze({})
+  };
+  const BooleanDict = {
+    compose: (...args) => {
+      let ret = {};
+
+      for (let i = 0; i < args.length; ++i) {
+        let arg = args[i];
+
+        if (typeof arg === 'boolean') {
+          for (let key in ret) {
+            ret[key] = arg;
+          }
+        } else Object.assign(ret, args[i]);
+      }
+
+      return ret;
+    },
+    create: params => {
+      return GenericObject.compose(GenericObject.default, params);
+    },
+    default: Object.freeze({})
+  };
+  function lookupCompositionType(type) {
+    switch (type) {
+      case 'TextStyle':
+        return TextStyle;
+
+      case 'Pen':
+        return Pen;
+
+      case 'Pens':
+        return Pens;
+
+      case 'LabelPosition':
+        return LabelPosition;
+
+      case 'Object':
+        return GenericObject;
+
+      case 'BooleanDict':
+        return BooleanDict;
+    }
+  } // Fun Asymptote Vector Graphics–like thing :) We break up str into tokens which each have some meaning TODO
+
+  function _interpretStringAsPen(str) {
+    try {
+      let color = Color.fromCss(str);
+      return Pen.fromObj({
+        color
+      });
+    } catch (_unused) {
+      return Pen.default;
+    }
+  }
+
+  const DefaultStyles = {
+    gridlinesMajor: Pen.create({
+      thickness: 2,
+      color: Color.rgba(0, 0, 0, 127),
+      endcap: 'butt'
+    }),
+    gridlinesMinor: Pen.create({
+      thickness: 1,
+      color: Color.rgba(0, 0, 0, 80),
+      endcap: 'butt'
+    }),
+    gridlinesAxis: Pen.create({
+      thickness: 4,
+      endcap: 'butt'
+    }),
+    plotLabelPositions: LabelPosition.default,
+    Pen: Pen.default,
+    label: TextStyle.create({
+      fontSize: 16,
+      shadowRadius: 2
+    })
+  };
+
   // Defines an interface between a user-facing getter/setter and the internal properties of an element. There is not a
   /**
    * Print object to string in a way that isn't too painful (limit the length of the string to 100 chars or so)
@@ -4526,264 +6428,6 @@
 
   }
 
-  /**
-   * Given some parameters describing a line segment, find a line segment that is consistent with at least two of them.
-   * @param x1 {number}
-   * @param x2 {number}
-   * @param w {number}
-   * @param cx {number}
-   */
-
-  function resolveAxisSpecification(x1, x2, w, cx) {
-
-    if (cx !== undefined) {
-      let halfWidth = 0;
-      if (w !== undefined) halfWidth = w / 2;else if (x2 !== undefined) halfWidth = x2 - cx;else if (x1 !== undefined) halfWidth = cx - x1;
-      halfWidth = Math.abs(halfWidth);
-      return [cx - halfWidth, cx + halfWidth];
-    } else if (x1 !== undefined) {
-      if (w !== undefined) return [x1, x1 + w];
-      if (x2 !== undefined) return [x1, x2];
-    } else if (x2 !== undefined) {
-      if (w !== undefined) return [x2 - w, x2];
-    }
-
-    return [0, 0];
-  }
-  /**
-   * A bounding box. In general, we consider the bounding box to be in canvas coordinates, so that the "top" is -y and
-   * the "bottom" is +y.
-   */
-
-
-  class BoundingBox {
-    constructor(x = 0, y = 0, width = 0, height = 0) {
-      this.x = x;
-      this.y = y;
-      this.w = width;
-      this.h = height;
-    }
-
-    clone() {
-      return new BoundingBox(this.x, this.y, this.w, this.h);
-    }
-    /**
-     * Push in (or pull out) all the sides of the box by a given amount. Returns null if too far. So squishing
-     * { x: 0, y: 0, w: 2, h: 2} by 1/2 will give { x: 0.5, y: 0.5, w: 1, h: 1 }
-     * @param margin {number}
-     */
-
-
-    squish(margin = 0) {
-      const {
-        x,
-        y,
-        w,
-        h
-      } = this;
-      if (2 * margin > w || 2 * margin > h) return null;
-      return new BoundingBox(x + margin, y + margin, w - 2 * margin, h - 2 * margin);
-    }
-
-    squishAsymmetrically(left = 0, right = 0, bottom = 0, top = 0, flipY = false) {
-      const {
-        x,
-        y,
-        w,
-        h
-      } = this;
-
-      if (2 * (left + right) > w || 2 * (bottom + top) > h) {
-        return null;
-      }
-
-      if (flipY) {
-        let tmp = bottom;
-        bottom = top;
-        top = tmp;
-      }
-
-      return new BoundingBox(x + left, y + top, w - (left + right), h - (top + bottom));
-    }
-
-    translate(v) {
-      return new BoundingBox(this.x + v.x, this.y + v.y, this.w, this.h);
-    }
-
-    scale(s) {
-      return new BoundingBox(this.x * s, this.y * s, this.w * s, this.h * s);
-    }
-
-    getX2() {
-      return this.x + this.w;
-    }
-
-    getY2() {
-      return this.y + this.h;
-    }
-
-    static fromObj(obj) {
-      let finalX1, finalY1, finalX2, finalY2;
-
-      if (Array.isArray(obj)) {
-        finalX1 = obj[0];
-        finalY1 = obj[1];
-        finalX2 = obj[2] + finalX1;
-        finalY2 = obj[3] + finalY1;
-      } else if (typeof obj === 'object') {
-        var _x, _y, _w, _h, _cx, _cy;
-
-        let {
-          x,
-          y,
-          x1,
-          y1,
-          x2,
-          y2,
-          w,
-          h,
-          width,
-          height,
-          cx,
-          cy,
-          centerX,
-          centerY
-        } = obj; // various aliases
-
-        x = (_x = x) !== null && _x !== void 0 ? _x : x1;
-        y = (_y = y) !== null && _y !== void 0 ? _y : y1;
-        w = (_w = w) !== null && _w !== void 0 ? _w : width;
-        h = (_h = h) !== null && _h !== void 0 ? _h : height;
-        cx = (_cx = cx) !== null && _cx !== void 0 ? _cx : centerX;
-        cy = (_cy = cy) !== null && _cy !== void 0 ? _cy : centerY // We wish to find a rectangle that is roughly consistent. Note that along each axis, we have four relevant
-        // variables: x, x2, w, cx. The axes are totally separable, so the problem is pretty trivial. I'm too tired
-        // to figure out how to do it elegantly rather than case work.
-        ;
-        [finalX1, finalX2] = resolveAxisSpecification(x, x2, w, cx);
-        [finalY1, finalY2] = resolveAxisSpecification(y, y2, h, cy);
-      }
-
-      return new BoundingBox(finalX1, finalY1, finalX2 - finalX1, finalY2 - finalY1);
-    }
-
-    get x1() {
-      return this.x;
-    }
-
-    get y1() {
-      return this.y;
-    }
-
-    get x2() {
-      return this.getX2();
-    }
-
-    get y2() {
-      return this.getY2();
-    }
-
-    tl() {
-      return new Vec2(this.x, this.y);
-    }
-
-  }
-  const boundingBoxTransform = {
-    X: (x, box1, box2, flipX) => {
-      if (Array.isArray(x) || isTypedArray(x)) {
-        for (let i = 0; i < x.length; ++i) {
-          let fractionAlong = (x[i] - box1.x) / box1.width;
-          if (flipX) fractionAlong = 1 - fractionAlong;
-          x[i] = fractionAlong * box2.width + box2.x;
-        }
-
-        return x;
-      } else {
-        return boundingBoxTransform.X([x], box1, box2, flipX)[0];
-      }
-    },
-    Y: (y, box1, box2, flipY) => {
-      if (Array.isArray(y) || isTypedArray(y)) {
-        for (let i = 0; i < y.length; ++i) {
-          let fractionAlong = (y[i] - box1.y) / box1.height;
-          if (flipY) fractionAlong = 1 - fractionAlong;
-          y[i] = fractionAlong * box2.height + box2.y;
-        }
-
-        return y;
-      } else {
-        return boundingBoxTransform.Y([y], box1, box2, flipY)[0];
-      }
-    },
-    XY: (xy, box1, box2, flipX, flipY) => {
-      if (Array.isArray(xy) || isTypedArray(x)) {
-        for (let i = 0; i < xy.length; i += 2) {
-          let fractionAlong = (xy[i] - box1.x) / box1.width;
-          if (flipX) fractionAlong = 1 - fractionAlong;
-          xy[i] = fractionAlong * box2.width + box2.x;
-          fractionAlong = (xy[i + 1] - box1.y) / box1.height;
-          if (flipY) fractionAlong = 1 - fractionAlong;
-          xy[i + 1] = fractionAlong * box2.height + box2.y;
-        }
-
-        return xy;
-      } else {
-        throw new Error('No');
-      }
-    },
-
-    getReducedTransform(box1, box2, flipX, flipY) {
-      let x_m = 1 / box1.width;
-      let x_b = -box1.x / box1.width;
-
-      if (flipX) {
-        x_m *= -1;
-        x_b = 1 - x_b;
-      }
-
-      x_m *= box2.width;
-      x_b *= box2.width;
-      x_b += box2.x;
-      let y_m = 1 / box1.height;
-      let y_b = -box1.y / box1.height;
-
-      if (flipY) {
-        y_m *= -1;
-        y_b = 1 - y_b;
-      }
-
-      y_m *= box2.height;
-      y_b *= box2.height;
-      y_b += box2.y;
-      return {
-        x_m,
-        x_b,
-        y_m,
-        y_b
-      };
-    }
-
-  };
-  const EMPTY = new BoundingBox(new Vec2(0, 0), 0, 0);
-
-  function intersectBoundingBoxes(box1, box2) {
-    let x1 = Math.max(box1.x, box2.x);
-    let y1 = Math.max(box1.y, box2.y);
-    let x2 = Math.min(box1.x2, box2.x2);
-    let y2 = Math.min(box1.y2, box2.y2);
-
-    if (x2 < x1) {
-      return EMPTY.clone();
-    }
-
-    if (y2 < y1) {
-      return EMPTY.clone();
-    }
-
-    let width = x2 - x1;
-    let height = y2 - y1;
-    return new BoundingBox(new Vec2(x1, y1), width, height);
-  }
-
   const sceneInterface$1 = constructInterface({
     interface: {
       width: {
@@ -4956,1100 +6600,129 @@
 
   }
 
-  /**
-   * Test whether three points are in counterclockwise order
-   * @param x1
-   * @param y1
-   * @param x2
-   * @param y2
-   * @param x3
-   * @param y3
-   * @returns {boolean}
-   */
-
-  function pointsCCW(x1, y1, x2, y2, x3, y3) {
-    return (y3 - y1) * (x2 - x1) > (y2 - y1) * (x3 - x1);
-  }
-  /**
-   * Returns whether two line segments (namely, (x1, y1) -- (x2, y2) and (x3, y3) -- (x4, y4)) intersect
-   * @param x1
-   * @param y1
-   * @param x2
-   * @param y2
-   * @param x3
-   * @param y3
-   * @param x4
-   * @param y4
-   */
-
-
-  function lineSegmentIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
-    return pointsCCW(x1, y1, x3, y3, x4, y4) !== pointsCCW(x2, y2, x3, y3, x4, y4) && pointsCCW(x1, y1, x2, y2, x3, y3) !== pointsCCW(x1, y1, x2, y2, x4, y4);
-  } // Credit to cortijon on StackOverflow! Thanks bro/sis
-
-
-  function getLineIntersection(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
-    let s1_x, s1_y, s2_x, s2_y;
-    s1_x = p1_x - p0_x;
-    s1_y = p1_y - p0_y;
-    s2_x = p3_x - p2_x;
-    s2_y = p3_y - p2_y;
-    const s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
-    const t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
-
-    if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
-      // Collision detected
-      const intX = p0_x + t * s1_x;
-      const intY = p0_y + t * s1_y;
-      return [intX, intY];
-    }
-
-    return null;
-  }
-
-  function lineSegmentIntersectsBox(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y2) {
-    // Return the component of the line segment that resides inside a box with boundaries x in (box_x1 .. box_x2), y in
-    // (box_y1 .. box_y2), which may potentially be the entire line segment.
-    let pt1InBox = box_x1 <= x1 && x1 <= box_x2 && box_y1 <= y1 && y1 <= box_y2;
-    let pt2InBox = box_x1 <= x2 && x2 <= box_x2 && box_y1 <= y2 && y2 <= box_y2;
-
-    if (pt1InBox && pt2InBox) {
-      // The line segment is entirely in the box
-      return [x1, y1, x2, y2];
-    } // Infinities cause weird problems with getLineIntersection, so we just approximate them lol
-
-
-    if (x1 === Infinity) x1 = 1e6;else if (x1 === -Infinity) x1 = -1e6;
-    if (x2 === Infinity) x2 = 1e6;else if (x2 === -Infinity) x2 = -1e6;
-    if (y1 === Infinity) y1 = 1e6;else if (y1 === -Infinity) y1 = -1e6;
-    if (y2 === Infinity) y2 = 1e6;else if (y2 === -Infinity) y2 = -1e6;
-    let int1 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y1, box_x2, box_y1);
-    let int2 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y1, box_x2, box_y2);
-    let int3 = getLineIntersection(x1, y1, x2, y2, box_x2, box_y2, box_x1, box_y2);
-    let int4 = getLineIntersection(x1, y1, x2, y2, box_x1, box_y2, box_x1, box_y1);
-
-    if (!(int1 || int2 || int3 || int4) && !pt1InBox && !pt2InBox) {
-      // If there are no intersections and the points are outside the box, that means none of the segment is inside the
-      // box, so we can return null
-      return null;
-    }
-
-    let intersections = [int1, int2, int3, int4];
-
-    if (!pt1InBox && !pt2InBox) {
-      // Both points are outside of the box, but the segment intersects the box. I'm frustrated! We must RESTRICT by finding the pair of intersections with
-      // maximal separation. This deals with annoying corner cases. Thankfully this code doesn't need to be too efficient
-      // since this is a rare case.
-      let maximalSeparationSquared = -1;
-      let n_x1, n_y1, n_x2, n_y2;
-
-      for (let i = 0; i < 3; ++i) {
-        let i1 = intersections[i];
-
-        if (i1) {
-          for (let j = i + 1; j < 4; ++j) {
-            let i2 = intersections[j];
-
-            if (i2) {
-              let dist = (i2[0] - i1[0]) ** 2 + (i2[1] - i1[1]) ** 2;
-
-              if (dist > maximalSeparationSquared) {
-                maximalSeparationSquared = dist;
-                n_x1 = i1[0];
-                n_y1 = i1[1];
-                n_x2 = i2[0];
-                n_y2 = i2[1];
-              }
-            }
-          }
+  let sceneInterface = Scene.prototype.getInterface();
+  let interactiveSceneInterface = {
+    interface: _objectSpread2(_objectSpread2({}, sceneInterface.description.interface), {}, {
+      interactivity: {
+        typecheck: {
+          type: 'boolean'
         }
-      } // Swap the order if necessary. We need the result of this calculation to be in the same order as the points
-      // that went in, since this will be used in the dashed line logic.
-
-
-      if (n_x1 < n_x2 === x1 > x2 || n_y1 < n_y2 === y1 > y2) {
-        let tmp = n_x1;
-        n_x1 = n_x2;
-        n_x2 = tmp;
-        tmp = n_y1;
-        n_y1 = n_y2;
-        n_y2 = tmp;
       }
-
-      return [n_x1, n_y1, n_x2, n_y2];
-    }
-
-    if (pt1InBox) {
-      for (let i = 0; i < 4; ++i) {
-        let intersection = intersections[i];
-        if (intersection) return [x1, y1, intersection[0], intersection[1]];
+    }),
+    internal: _objectSpread2(_objectSpread2({}, sceneInterface.description.internal), {}, {
+      interactivity: {
+        type: 'boolean',
+        computed: 'default',
+        default: true
       }
-    } else if (pt2InBox) {
-      for (let i = 0; i < 4; ++i) {
-        let intersection = intersections[i];
-        if (intersection) return [intersection[0], intersection[1], x2, y2];
-      }
-    }
-
-    return [x1, y1, x2, y2];
-  }
-
-  function generateCircleTriangleStrip(radius, x = 0, y = 0, samples = 8) {
-    const points = [];
-
-    for (let i = 0; i <= samples; ++i) {
-      const angle = i / samples * 2 * Math.PI;
-      const xc = x + radius * Math.cos(angle),
-            yc = y + radius * Math.sin(angle);
-
-      if (i % 2 === 0) {
-        points.push(xc, yc);
-        points.push(x, y);
-      } else {
-        points.push(xc, yc);
-      }
-    }
-
-    points.push(NaN, NaN);
-    return new Float32Array(points);
-  }
-  function generateRectangleTriangleStrip(rect) {
-    const {
-      x,
-      y,
-      w,
-      h
-    } = rect;
-    const points = [x, y, x + w, y, x, y + h, x + w, y + h];
-    return new Float32Array(points);
-  }
-  /**
-   * Given a rectangle, return a flat list of points enclosing a cycle around the rectangle.
-   * @param rect {BoundingBox}
-   * @returns {Float32Array}
-   */
-
-  function generateRectangleCycle(rect) {
-    const {
-      x,
-      y,
-      w,
-      h
-    } = rect;
-    const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y];
-    return new Float32Array(points);
-  }
-  function generateRectangleDebug(rect) {
-    const {
-      x,
-      y,
-      w,
-      h
-    } = rect;
-    const points = [x, y, x + w, y, x + w, y + h, x, y + h, x, y, x + w, y + w];
-    return new Float32Array(points);
-  } // Given a Float32Array of appropriate size, repeatedly add given triangle strips
-
-  function combineTriangleStrips(verticesBuff) {
-    let index = 0;
-    return arr => {
-      if (arr.length === 0) return; // Repeat previous vertex
-
-      if (index > 0) {
-        verticesBuff[index] = verticesBuff[index - 2];
-        verticesBuff[index + 1] = verticesBuff[index - 1];
-        verticesBuff[index + 2] = arr[0];
-        verticesBuff[index + 3] = arr[1];
-        index += 4;
-      }
-
-      verticesBuff.set(arr, index);
-      index += arr.length;
-    };
-  }
-  function combineColoredTriangleStrips(verticesBuff, colorBuff) {
-    let index = 0;
-    return (arr, {
-      r = 0,
-      g = 0,
-      b = 0,
-      a = 0
-    }) => {
-      if (arr.length === 0) return; // Repeat previous vertex
-
-      if (index > 0) {
-        verticesBuff[index] = verticesBuff[index - 2];
-        verticesBuff[index + 1] = verticesBuff[index - 1];
-        verticesBuff[index + 2] = arr[0];
-        verticesBuff[index + 3] = arr[1];
-        index += 4;
-      }
-
-      verticesBuff.set(arr, index);
-      fillRepeating(colorBuff, [r / 255, g / 255, b / 255, a / 255], index * 2, 2 * (index + arr.length));
-      index += arr.length;
-    };
-  }
-  /**
-   * Fill the TypedArray arr with a given pattern throughout [startIndex, endIndex). Works if either is out of bounds.
-   * Worst code ever. Uses copyWithin to try make the operation FAST for large arrays (not optimized for small ones). On
-   * a 50000-element array in my chrome, it provides a 16x speedup.
-   * @param arr Array to fill
-   * @param pattern {Array} Pattern to fill with
-   * @param startIndex {number} Index of the first instance of the pattern
-   * @param endIndex {number} Index immediately after the last instance of the pattern
-   * @param patternStride {number} Offset to begin copying the pattern
-   * @returns The original array
-   */
-
-  function fillRepeating(arr, pattern, startIndex = 0, endIndex = arr.length, patternStride = 0) {
-    if (endIndex <= startIndex) return arr;
-    let patternLen = pattern.length,
-        arrLen = arr.length;
-    if (patternLen === 0) return arr;
-    endIndex = Math.min(endIndex, arrLen);
-    if (endIndex <= 0 || startIndex >= arrLen) return arr;
-
-    if (startIndex < 0) {
-      patternStride -= startIndex;
-      startIndex = 0;
-    }
-
-    if (patternStride !== 0) patternStride = mod(patternStride, patternLen);
-    let filledEndIndex = Math.min(endIndex, startIndex + patternLen);
-    let i, j;
-
-    for (i = startIndex, j = patternStride; i < filledEndIndex && j < patternLen; ++i, ++j) {
-      arr[i] = pattern[j];
-    } // For nonzero strides
-
-
-    for (j = 0; i < filledEndIndex; ++i, ++j) {
-      arr[i] = pattern[j];
-    }
-
-    if (filledEndIndex === endIndex) return arr; // We now need to iteratively copy [startIndex, startIndex + filledLen) to [startIndex + filledLen, endIndex) and
-    // double filledLen accordingly. memcpy, take the wheel!
-
-    let filledLen = patternLen;
-
-    while (true) {
-      let copyLen = Math.min(filledLen, endIndex - filledEndIndex);
-      arr.copyWithin(filledEndIndex, startIndex, startIndex + copyLen);
-      filledEndIndex += copyLen;
-      filledLen += copyLen; // Should never be greater, but whatever
-
-      if (filledEndIndex >= endIndex) return arr;
-    }
-  }
-
-  function _flattenVec2ArrayInternal(arr) {
-    const out = [];
-
-    for (let i = 0; i < arr.length; ++i) {
-      let item = arr[i];
-
-      if (item === null || item === undefined) {
-        out.push(NaN, NaN);
-      } else if (item.x !== undefined && item.y !== undefined) {
-        out.push(item.x, item.y);
-      } else if (item[0] !== undefined) {
-        var _item$;
-
-        out.push(+item[0], (_item$ = item[1]) !== null && _item$ !== void 0 ? _item$ : 0);
-      } else {
-        if (typeof item === 'number') out.push(item);else throw new TypeError("Error when converting array to flattened Vec2 array: Unknown item ".concat(item, " at index ").concat(i, " in given array"));
-      }
-    }
-
-    return out;
-  } // Given some arbitrary array of Vec2s, turn it into the regularized format [x1, y1, x2, y2, ..., xn, yn]. The end of
-  // one polyline and the start of another is done by one pair of numbers being NaN, NaN.
-
-
-  function flattenVec2Array(arr) {
-    if (isTypedArray(arr)) return arr;
-
-    for (let i = 0; i < arr.length; ++i) {
-      if (typeof arr[i] !== 'number') return _flattenVec2ArrayInternal(arr);
-    }
-
-    return arr;
-  }
-  function fastAtan2$1(y, x) {
-    let abs_x = Math.abs(x);
-    let abs_y = Math.abs(y);
-    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x; // atan(x) is about x - x^3 / 3 + x^5 / 5. We also note that atan(1/x) = pi/2 - atan(x) for x > 0, etc.
-
-    let s = a * a;
-    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
-    if (abs_y > abs_x) r = 1.57079637 - r;
-    if (x < 0.0) r = 3.14159265 - r;
-    if (y < 0.0) r = -r;
-    return r;
-  }
-  /**
-   * Get the approximate angle between (x1, y1), (x2, y2) and (x3, y3), an operation which should ideally be extremely
-   * fast because it will be used repeatedly to know whether to refine a graph while assuming local linearity. The returned
-   * angle should be between 0 and Math.PI; the closer to Math.PI, the closer to linear. I'm going to write a faster
-   * version of this function soon.
-   * @param x1 {number}
-   * @param y1
-   * @param x2
-   * @param y2
-   * @param x3
-   * @param y3
-   */
-
-  function approxAngleBetween(x1, y1, x2, y2, x3, y3) {
-    // (x1d, y1d) = p1 ---> p2
-    let x1d = x2 - x1;
-    let y1d = y2 - y1; // (x3d, y3d) = p3 ---> p2
-
-    let x3d = x2 - x3;
-    let y3d = y2 - y3;
-    let res = Math.abs(fastAtan2$1(y3d, x3d) - fastAtan2$1(y1d, x1d));
-
-    if (res > Math.PI) {
-      return 2 * Math.PI - res;
-    }
-
-    return res;
-  }
-  /**
-   * Distance
-   * @param px
-   * @param py
-   * @param ax
-   * @param ay
-   * @param bx
-   * @param by
-   * @returns {number}
-   */
-
-
-  function pointLineSegmentDistanceSquared(px, py, ax, ay, bx, by) {
-    // Copied from asm.js code, that's why
-    px = +px;
-    py = +py;
-    ax = +ax;
-    ay = +ay;
-    bx = +bx;
-    by = +by;
-    let t = 0.0,
-        tx = 0.0,
-        ty = 0.0,
-        xd = 0.0,
-        yd = 0.0;
-    tx = px - ax;
-    ty = py - ay;
-
-    if (ax !== bx || ay !== by) {
-      xd = bx - ax;
-      yd = by - ay;
-      t = (xd * (px - ax) + yd * (py - ay)) / (xd * xd + yd * yd); // Clamp t to [0, 1]
-
-      if (t < 0.0) {
-        t = 0.0;
-      } else if (t > 1.0) {
-        t = 1.0;
-      }
-
-      tx = ax + t * (bx - ax);
-      ty = ay + t * (by - ay);
-      tx = px - tx;
-      ty = py - ty;
-    }
-
-    return tx * tx + ty * ty;
-  }
-
-  function distanceSquared(x1, y1, x2, y2) {
-    let tx = x2 - x1;
-    let ty = y2 - y1;
-    return tx * tx + ty * ty;
-  }
-  /**
-   * Compute Math.hypot(x, y), but since all the values of x and y we're using here are not extreme, we don't have to
-   * handle overflows and underflows with much accuracy at all. We can thus use the straightforward calculation.
-   * Chrome: 61.9 ms/iteration for 1e7 calculations for fastHypot; 444 ms/iteration for Math.hypot
-   * @param x {number}
-   * @param y {number}
-   * @returns {number} hypot(x, y)
-   */
-
-  function fastHypot(x, y) {
-    return Math.sqrt(x * x + y * y);
-  }
-
-  // This code is pretty old, but surprisingly effective!
-  /**
-   * The maximum number of vertices to be emitted by getDashedPolyline. This condition is here just to prevent dashed
-   * polyline from causing a crash from OOM or just taking forever to finish.
-   * @type {number}
-   */
-
-  const MAX_DASHED_POLYLINE_VERTICES = 1e7;
-  /**
-   * Convert a polyline into another polyline, but with dashes.
-   * @param vertices {Array} The vertices of the polyline.
-   * @param pen {Pen} The polyline's pen
-   * @param box {BoundingBox} The plotting box, used to clip excess portions of the polyline. There could theoretically be
-   * an infinite number of dashes in a long vertical asymptote, for example, but this box condition prevents that from
-   * being an issue. Portions of the polyline outside the plotting box are simply returned without dashes.
-   * @returns {Array}
-   */
-
-  function getDashedPolyline(vertices, pen, box) {
-    if (!box) box = new BoundingBox(-Infinity, -Infinity, Infinity, Infinity); // dashPattern is the pattern of dashes, given as the length (in pixels) of consecutive dashes and gaps.
-    // dashOffset is the pixel offset at which to start the dash pattern, beginning at the start of every sub polyline.
-
-    let {
-      dashPattern,
-      dashOffset
-    } = pen; // If the dash pattern is odd in length, concat it to itself, creating a doubled, alternating dash pattern
-
-    if (dashPattern.length % 2 === 1) dashPattern = dashPattern.concat(dashPattern); // The length, in pixels, of the pattern
-
-    const patternLength = dashPattern.reduce((a, b) => a + b); // If the pattern is invalid in some way (NaN values, negative dash lengths, total length less than 2), return the
-    // polyline without dashes.
-
-    if (patternLength < 2 || dashPattern.some(dashLen => dashLen < 0) || dashPattern.some(Number.isNaN)) return vertices; // currentIndex is the current position in the dash pattern. currentLesserOffset is the offset within the dash or gap
-    // ----    ----    ----    ----    ----    ----    ----  ... etc.
-    //      ^
-    // If we are there, then currentIndex is 1 and currentLesserOffset is 1.
-
-    let currentIndex = 0,
-        currentLesserOffset = 0; // Initialize the value of currentLesserOffset based on dashOffset and dashPattern
-
-    recalculateOffset(0); // The returned dashed vertices
-
-    const result = []; // The plotting box
-
-    const boxX1 = box.x,
-          boxX2 = box.x + box.w,
-          boxY1 = box.y,
-          boxY2 = box.y + box.h; // Calculate the value of currentLesserOffset, given the length of the pattern that we have just traversed.
-
-    function recalculateOffset(length) {
-      // If there's an absurdly long segment, we just pretend the length is 0 to avoid problems with Infinities/NaNs
-      if (length > 1e6) length = 0; // Move length along the dashOffset, modulo the patternLength
-
-      dashOffset += length;
-      dashOffset %= patternLength; // It's certainly possible to precompute these sums and use a binary search to find the dash index, but
-      // that's unnecessary for dashes with short length
-
-      let sum = 0,
-          i = 0,
-          lesserOffset = 0;
-
-      for (; i < dashPattern.length; ++i) {
-        let dashLength = dashPattern[i]; // Accumulate the length from the start of the pattern to the current dash
-
-        sum += dashLength; // If the dashOffset is within this dash...
-
-        if (dashOffset <= sum) {
-          // calculate the lesser offset
-          lesserOffset = dashOffset - sum + dashLength;
-          break;
-        }
-      } // Set the current index and lesserOffset
-
-
-      currentIndex = i;
-      currentLesserOffset = lesserOffset;
-    } // Generate dashes for the line segment (x1, y1) -- (x2, y2)
-
-
-    function generateDashes(x1, y1, x2, y2) {
-      // length of the segment
-      const length = fastHypot(x2 - x1, y2 - y1); // index of where along the dashes we are
-
-      let i = currentIndex; // Length so far of emitted dashes
-
-      let lengthSoFar = 0; // We do this instead of while (true) to prevent the program from crashing
-
-      for (let _ = 0; _ < MAX_DASHED_POLYLINE_VERTICES; _++) {
-        // Length of the dash/gap component we need to draw (we subtract currentLesserOffset because that is already drawn)
-        const componentLen = dashPattern[i] - currentLesserOffset; // Length when this component ends
-
-        const endingLen = componentLen + lengthSoFar; // Whether we are in a dash
-
-        const inDash = i % 2 === 0;
-
-        if (endingLen <= length) {
-          // If the end of the dash/gap occurs before the end of the current segment, we need to continue
-          let r = endingLen / length; // if in a gap, this starts the next dash; if in a dash, this ends the dash
-
-          result.push(x1 + (x2 - x1) * r, y1 + (y2 - y1) * r); // If we're ending off a dash, put the gap in
-
-          if (inDash) result.push(NaN, NaN); // Go to the next dash/gap
-
-          ++i;
-          i %= dashPattern.length; // Reset the current lesser offset
-
-          currentLesserOffset = 0;
-        } else {
-          // If we're in a dash, that means we're in the middle of a dash, so we just add the vertex
-          if (inDash) result.push(x2, y2);
-          break;
-        }
-
-        lengthSoFar += componentLen;
-      } // Recalculate currentLesserOffset
-
-
-      recalculateOffset(length);
-    } // Where we along on each chunk, which tells us when to yield a progress report
-    if (currentIndex % 2 === 0) // We're beginning with a dash, so start it off
-      result.push(vertices[0], vertices[1]);
-
-    for (let i = 0; i < vertices.length - 2; i += 2) {
-      // For each pair of vertices...
-      let x1 = vertices[i];
-      let y1 = vertices[i + 1];
-      let x2 = vertices[i + 2];
-      let y2 = vertices[i + 3];
-
-      if (Number.isNaN(x1) || Number.isNaN(y1)) {
-        // At the start of every subpolyline, reset the dash offset
-        dashOffset = pen.dashOffset; // Recalculate the initial currentLesserOffset
-
-        recalculateOffset(0); // End off the previous subpolyline
-
-        result.push(NaN, NaN);
-        continue;
-      } // If the end of the segment is undefined, continue
-
-
-      if (Number.isNaN(x2) || Number.isNaN(y2)) continue; // Length of the segment
-
-      let length = fastHypot(x2 - x1, y2 - y1); // Find whether the segment intersects the box
-
-      let intersect = lineSegmentIntersectsBox(x1, y1, x2, y2, boxX1, boxY1, boxX2, boxY2); // If the segment doesn't intersect the box, it is entirely outside the box, so we can add its length to pretend
-      // like we drew it even though we didn't
-
-      if (!intersect) {
-        recalculateOffset(length);
-        continue;
-      } // Whether (x1, y1) and (x2, y2) are contained within the box
-
-
-      let pt1Contained = intersect[0] === x1 && intersect[1] === y1;
-      let pt2Contained = intersect[2] === x2 && intersect[3] === y2; // If (x1, y1) is contained, fake draw the portion of the line outside of the box
-
-      if (!pt1Contained) recalculateOffset(fastHypot(x1 - intersect[0], y1 - intersect[1]));
-
-      generateDashes(intersect[0], intersect[1], intersect[2], intersect[3]);
-      if (!pt2Contained) recalculateOffset(fastHypot(x2 - intersect[2], y2 - intersect[3]));
-      if (result.length > MAX_DASHED_POLYLINE_VERTICES) throw new Error('Too many generated vertices in getDashedPolyline.');
-    }
-
-    return result;
-  }
-
-  // Thanks Emscripten for the names!
-  // Scratch buffer for large operations where the length of the resultant array is unknown. There is no "malloc" here, so
-  // operations should copy their result to a new array once they are done (which should be relatively fast, since
-  // it's just a memcpy)
-  let HEAP = new ArrayBuffer(0x1000000);
-  let HEAPF32 = new Float32Array(HEAP);
-  let HEAPF64 = new Float64Array(HEAP);
-
-  const ENDCAP_TYPES = {
-    butt: 0,
-    round: 1,
-    square: 2
+    })
   };
-  const JOIN_TYPES = {
-    bevel: 0,
-    miter: 2,
-    round: 1,
-    dynamic: 3
+  interactiveSceneInterface = constructInterface(interactiveSceneInterface);
+  /**
+   * A scene endowed with an actual DOM element.
+   */
+
+  var _disableInteractivityListeners$1 = new WeakSet();
+
+  var _enableInteractivityListeners$1 = new WeakSet();
+
+  class InteractiveScene extends Scene {
+    constructor(...args) {
+      super(...args);
+
+      _enableInteractivityListeners$1.add(this);
+
+      _disableInteractivityListeners$1.add(this);
+    }
+
+    init(params) {
+      super.init(params);
+      this.domElement = document.createElement('canvas');
+      this.bitmapRenderer = this.domElement.getContext('bitmaprenderer');
+    }
+
+    toggleInteractivity() {
+      let internal = this.internal;
+      let interactivity = this.props.get('interactivity');
+
+      if (!!internal.interactivityListeners !== interactivity) {
+        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners$1, _enableInteractivityListeners2$1).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
+      }
+    }
+
+    _update() {
+      super._update();
+
+      this.toggleInteractivity();
+      this.resizeCanvas();
+    }
+
+    getInterface() {
+      return interactiveSceneInterface;
+    }
+
+    resizeCanvas() {
+      const {
+        sceneDims
+      } = this.props.proxy;
+      const {
+        domElement
+      } = this;
+      domElement.width = sceneDims.canvasWidth;
+      domElement.height = sceneDims.canvasWidth;
+      domElement.style.width = sceneDims.width + 'px';
+      domElement.style.height = sceneDims.height + 'px';
+    }
+
+  }
+
+  var _disableInteractivityListeners2$1 = function _disableInteractivityListeners2() {
+    let internal = this.internal;
+    let interactivityListeners = internal.interactivityListeners;
+    if (!interactivityListeners) return;
+
+    for (let listenerType in interactivityListeners) {
+      let listener = interactivityListeners[listenerType];
+      this.domElement.removeEventListener(listenerType, listener);
+    }
+
+    internal.interactivityListeners = null;
   };
 
-  const MIN_RES_ANGLE = 0.05; // minimum angle in radians between roundings in a polyline
+  var _enableInteractivityListeners2$1 = function _enableInteractivityListeners2() {
+    _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
 
-  const B = 4 / Math.PI;
-  const C = -4 / Math.PI ** 2;
+    let listeners = this.internal.interactivityListeners = {}; // Convert mouse event coords (which are relative to the top left corner of the page) to canvas coords
 
-  function fastSin(x) {
-    // crude, but good enough for this
-    x %= 6.28318530717;
-    if (x < -3.14159265) x += 6.28318530717;else if (x > 3.14159265) x -= 6.28318530717;
-    return B * x + C * x * (x < 0 ? -x : x);
-  }
+    const getSceneCoords = evt => {
+      let rect = this.domElement.getBoundingClientRect();
+      return new Vec2(evt.clientX - rect.x, evt.clientY - rect.y);
+    };
 
-  function fastCos(x) {
-    return fastSin(x + 1.570796326794);
-  }
+    ['mousedown', 'mousemove', 'mouseup', 'wheel'].forEach(eventName => {
+      let listener;
 
-  function fastAtan2(y, x) {
-    let abs_x = x < 0 ? -x : x;
-    let abs_y = y < 0 ? -y : y;
-    let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x;
-    let s = a * a;
-    let r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
-    if (abs_y > abs_x) r = 1.57079637 - r;
-    if (x < 0) r = 3.14159265 - r;
-    if (y < 0) r = -r;
-    return r;
-  }
-
-  const glVertices = HEAPF32;
-  /**
-   * Convert an array of polyline vertices into a Float32Array of vertices to be rendered using WebGL.
-   * @param vertices {Array} The vertices of the polyline.
-   * @param pen {Object} A JSON representation of the pen. Could also be the pen object itself.
-   * @param box {BoundingBox} The bounding box of the plot, used to optimize line dashes
-   */
-
-  function calculatePolylineVertices(vertices, pen, box = null) {
-    if (pen.dashPattern.length === 0) {
-      return convertTriangleStrip(vertices, pen);
-    } else {
-      return convertTriangleStrip(getDashedPolyline(vertices, pen, box), pen);
-    }
-  }
-  function convertTriangleStrip(vertices, pen) {
-    if (pen.thickness <= 0 || pen.endcapRes < MIN_RES_ANGLE || pen.joinRes < MIN_RES_ANGLE || vertices.length <= 3) {
-      return {
-        glVertices: null,
-        vertexCount: 0
-      };
-    }
-
-    let index = -1;
-    let origVertexCount = vertices.length / 2;
-    let th = pen.thickness / 2;
-    let maxMiterLength = th / fastCos(pen.joinRes / 2);
-    let endcap = ENDCAP_TYPES[pen.endcap];
-    let join = JOIN_TYPES[pen.join];
-
-    if (endcap === undefined || join === undefined) {
-      throw new Error('Undefined endcap or join.');
-    } // p1 -- p2 -- p3, generating vertices for point p2
-
-
-    let x1 = 0,
-        x2,
-        x3 = vertices[0],
-        y1 = 0,
-        y2,
-        y3 = vertices[1];
-    let v1x = 0,
-        v1y = 0,
-        v2x = 0,
-        v2y = 0,
-        v1l = 0,
-        v2l = 0,
-        b1_x,
-        b1_y,
-        scale,
-        dis;
-
-    for (let i = 0; i < origVertexCount; ++i) {
-      x1 = i !== 0 ? x2 : NaN; // Previous vertex
-
-      x2 = x3; // Current vertex
-
-      x3 = i !== origVertexCount - 1 ? vertices[2 * i + 2] : NaN; // Next vertex
-
-      y1 = i !== 0 ? y2 : NaN; // Previous vertex
-
-      y2 = y3; // Current vertex
-
-      y3 = i !== origVertexCount - 1 ? vertices[2 * i + 3] : NaN; // Next vertex
-
-      if (Math.abs(x3) > 16384 || Math.abs(y3) > 16384) {
-        // Temporary
-        x3 = NaN;
-        y3 = NaN;
-      }
-
-      if (isNaN(x2) || isNaN(y2)) {
-        continue;
-      }
-
-      if (isNaN(x1) || isNaN(y1)) {
-        // The start of every endcap has two duplicate vertices for triangle strip reasons
-        v2x = x3 - x2;
-        v2y = y3 - y2;
-        v2l = fastHypot(v2x, v2y);
-
-        if (v2l < 1e-8) {
-          v2x = 1;
-          v2y = 0;
-        } else {
-          v2x /= v2l;
-          v2y /= v2l;
-        }
-
-        if (isNaN(v2x) || isNaN(v2y)) {
-          continue;
-        } // undefined >:(
-
-
-        if (endcap === 1) {
-          // rounded endcap
-          let theta = fastAtan2(v2y, v2x) + Math.PI / 2;
-          let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
-          let o_x = x2 - th * v2y,
-              o_y = y2 + th * v2x;
-          let theta_c = theta + 1 / steps_needed * Math.PI; // Duplicate first vertex
-
-          let x = glVertices[++index] = x2 + th * fastCos(theta_c);
-          let y = glVertices[++index] = y2 + th * fastSin(theta_c);
-          glVertices[++index] = x;
-          glVertices[++index] = y;
-          glVertices[++index] = o_x;
-          glVertices[++index] = o_y;
-
-          for (let i = 2; i <= steps_needed; ++i) {
-            let theta_c = theta + i / steps_needed * Math.PI;
-            glVertices[++index] = x2 + th * fastCos(theta_c);
-            glVertices[++index] = y2 + th * fastSin(theta_c);
-            glVertices[++index] = o_x;
-            glVertices[++index] = o_y;
-          }
-
-          continue;
-        } else if (endcap === 2) {
-          let x = glVertices[++index] = x2 - th * v2x + th * v2y;
-          let y = glVertices[++index] = y2 - th * v2y - th * v2x;
-          glVertices[++index] = x;
-          glVertices[++index] = y;
-          glVertices[++index] = x2 - th * v2x - th * v2y;
-          glVertices[++index] = y2 - th * v2y + th * v2x;
-          continue;
-        } else {
-          // no endcap
-          let x = glVertices[++index] = x2 + th * v2y;
-          let y = glVertices[++index] = y2 - th * v2x;
-          glVertices[++index] = x;
-          glVertices[++index] = y;
-          glVertices[++index] = x2 - th * v2y;
-          glVertices[++index] = y2 + th * v2x;
-          continue;
-        }
-      }
-
-      if (isNaN(x3) || isNaN(y3)) {
-        // ending endcap
-        v1x = x2 - x1;
-        v1y = y2 - y1;
-        v1l = v2l;
-
-        if (v1l < 1e-8) {
-          v1x = 1;
-          v1y = 0;
-        } else {
-          v1x /= v1l;
-          v1y /= v1l;
-        }
-
-        if (isNaN(v1x) || isNaN(v1y)) {
-          continue;
-        } // undefined >:(
-
-
-        glVertices[++index] = x2 + th * v1y;
-        glVertices[++index] = y2 - th * v1x;
-        glVertices[++index] = x2 - th * v1y;
-        glVertices[++index] = y2 + th * v1x;
-
-        if (endcap === 1) {
-          let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2;
-          let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
-          let o_x = x2 - th * v1y,
-              o_y = y2 + th * v1x;
-
-          for (let i = 1; i <= steps_needed; ++i) {
-            let theta_c = theta + i / steps_needed * Math.PI;
-            glVertices[++index] = x2 + th * fastCos(theta_c);
-            glVertices[++index] = y2 + th * fastSin(theta_c);
-            glVertices[++index] = o_x;
-            glVertices[++index] = o_y;
-          }
-        } // Duplicate last vertex of ending endcap
-
-
-        glVertices[index + 1] = glVertices[index - 1];
-        glVertices[index + 2] = glVertices[index];
-        index += 2;
-        continue;
-      } // all vertices are defined, time to draw a joinerrrrr
-
-
-      if (join === 2 || join === 3) {
-        // find the two angle bisectors of the angle formed by v1 = p1 -> p2 and v2 = p2 -> p3
-        v1x = x1 - x2;
-        v1y = y1 - y2;
-        v2x = x3 - x2;
-        v2y = y3 - y2;
-        v1l = v2l;
-        v2l = fastHypot(v2x, v2y);
-        b1_x = v2l * v1x + v1l * v2x;
-        b1_y = v2l * v1y + v1l * v2y;
-        scale = 1 / fastHypot(b1_x, b1_y);
-
-        if (scale === Infinity || scale === -Infinity) {
-          b1_x = -v1y;
-          b1_y = v1x;
-          scale = 1 / fastHypot(b1_x, b1_y);
-        }
-
-        b1_x *= scale;
-        b1_y *= scale;
-        scale = th * v1l / (b1_x * v1y - b1_y * v1x);
-
-        if (join === 2 || Math.abs(scale) < maxMiterLength) {
-          // Draw a miter. But the length of the miter is massive and we're in dynamic mode (3), we exit this if statement and do a rounded join
-          b1_x *= scale;
-          b1_y *= scale;
-          glVertices[++index] = x2 - b1_x;
-          glVertices[++index] = y2 - b1_y;
-          glVertices[++index] = x2 + b1_x;
-          glVertices[++index] = y2 + b1_y;
-          continue;
-        }
-      }
-
-      v2x = x3 - x2;
-      v2y = y3 - y2;
-      dis = fastHypot(v2x, v2y);
-
-      if (dis < 0.001) {
-        v2x = 1;
-        v2y = 0;
+      if (eventName === 'wheel') {
+        listener = evt => {
+          this.triggerEvent(eventName, {
+            pos: getSceneCoords(evt),
+            deltaY: evt.deltaY
+          });
+          evt.preventDefault();
+        };
       } else {
-        v2x /= dis;
-        v2y /= dis;
+        listener = evt => {
+          this.triggerEvent(eventName, {
+            pos: getSceneCoords(evt)
+          });
+          evt.preventDefault();
+        };
       }
 
-      v1x = x2 - x1;
-      v1y = y2 - y1;
-      dis = fastHypot(v1x, v1y);
-
-      if (dis === 0) {
-        v1x = 1;
-        v1y = 0;
-      } else {
-        v1x /= dis;
-        v1y /= dis;
-      }
-
-      glVertices[++index] = x2 + th * v1y;
-      glVertices[++index] = y2 - th * v1x;
-      glVertices[++index] = x2 - th * v1y;
-      glVertices[++index] = y2 + th * v1x;
-
-      if (join === 1 || join === 3) {
-        let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2;
-        let a2 = fastAtan2(v2y, v2x) - Math.PI / 2; // if right turn, flip a2
-        // if left turn, flip a1
-
-        let start_a, end_a;
-
-        if (mod(a1 - a2, 2 * Math.PI) < Math.PI) {
-          // left turn
-          start_a = Math.PI + a1;
-          end_a = a2;
-        } else {
-          start_a = Math.PI + a2;
-          end_a = a1;
-        }
-
-        let angle_subtended = mod(end_a - start_a, 2 * Math.PI);
-        let steps_needed = Math.ceil(angle_subtended / pen.joinRes);
-
-        for (let i = 0; i <= steps_needed; ++i) {
-          let theta_c = start_a + angle_subtended * i / steps_needed;
-          glVertices[++index] = x2 + th * fastCos(theta_c);
-          glVertices[++index] = y2 + th * fastSin(theta_c);
-          glVertices[++index] = x2;
-          glVertices[++index] = y2;
-        }
-      }
-
-      glVertices[++index] = x2 + th * v2y;
-      glVertices[++index] = y2 - th * v2x;
-      glVertices[++index] = x2 - th * v2y;
-      glVertices[++index] = y2 + th * v2x;
-    }
-
-    let ret = new Float32Array(index >= 0 ? glVertices.subarray(0, index) : []);
-    return ret;
-  }
-
-  /**
-   * Contour representing a part of a polyline. Should be contiguous; contains no NaNs
-   */
-
-  class Contour {
-    constructor(data) {
-      this.data = data;
-    }
-
-    type() {
-      return this.data instanceof Float64Array ? 'f64' : 'f32';
-    }
-
-  }
-  /**
-   * Convert an array of polyline contours into a single float array with NaN spacings
-   * @param contourArray {Contour[]}
-   * @param type {string} Data type of the resulting flattened float array
-   */
-
-
-  function fromContours(contourArray, type = 'f32') {
-    // Convert an array of contours into a polyline array, with NaN spacings
-    let len = 0;
-
-    for (const contour of contourArray) {
-      len += contour.data.length;
-    }
-
-    len += 2 * contourArray.length - 2;
-    let ret = new (type === 'f32' ? Float32Array : Float64Array)(len);
-    let index = 0;
-
-    for (let i = 0; i < contourArray.length; ++i) {
-      const contour = contourArray[i];
-      ret.set(contour.data, index);
-      index += contour.data.length;
-
-      if (i !== contourArray.length - 1) {
-        ret[index] = NaN;
-        ret[index + 1] = NaN;
-      }
-
-      index += 2;
-    }
-
-    return ret;
-  }
-  /**
-   * Convert a flattened polyline array into a contour array
-   * @param array {Float32Array|Float64Array|Array} Flattened array of elements, potentially including NaN buffers
-   * @param type {string} Whether to create contours of an f32 or f64 variety
-   * @param cloneSubarrays {boolean} Whether to clone the subarrays
-   * @returns {Array}
-   */
-
-  function toContours(array, type = 'f32', cloneSubarrays = true) {
-    let arrType = type === 'f32' ? Float32Array : Float64Array;
-    let isF32 = array instanceof Float32Array;
-    let isF64 = array instanceof Float64Array;
-
-    if (!(isF32 && type === 'f32' || isF64 && type === 'f64')) {
-      cloneSubarrays = true;
-    }
-
-    if (!isF32 && !isF64) {
-      array = new arrType(array);
-      cloneSubarrays = false;
-    }
-
-    let contours = [];
-    /**
-     * Given a subarray of the original array, add a contour
-     * @param subarray {Float32Array|Float64Array}
-     */
-
-    function addContour(subarray) {
-      let contour = cloneSubarrays ? new arrType(subarray) : subarray;
-      contours.push(new Contour(contour));
-    }
-
-    let firstDefIndex = -1; // index of the first defined element
-
-    for (let i = 0; i < array.length; i += 2) {
-      let x = array[i];
-      let y = array[i + 1];
-
-      if (Number.isNaN(x) || Number.isNaN(y)) {
-        if (firstDefIndex !== -1) {
-          addContour(array.subarray(firstDefIndex, i));
-        }
-
-        firstDefIndex = -1;
-      } else {
-        if (firstDefIndex === -1) firstDefIndex = i;
-      }
-    }
-
-    if (firstDefIndex !== -1) addContour(array.subarray(firstDefIndex));
-    return contours;
-  }
-  /**
-   * Convert a polyline into a simplified form by trimming vertices which are unnecessary or otherwise manipulating it
-   * @param polyline {Float32Array|Float64Array}
-   */
-
-  function simplifyPolyline(polyline, {
-    type,
-    // type of the output; if not specified, assumed to be the same as the polyline (f32 or f64)
-    minRes = 0.5 // maximum deviation from a line that is considered non-linear
-
-  } = {}) {
-    if (!type) {
-      type = getTypedArrayType(polyline);
-
-      if (!type) {
-        type = 'f32';
-        polyline = new Float32Array(polyline);
-      }
-    }
-
-    let HEAP = type === 'f32' ? HEAPF32 : HEAPF64;
-    let x1,
-        y1,
-        x2 = polyline[0],
-        y2 = polyline[1],
-        x3 = polyline[2],
-        y3 = polyline[3],
-        minResSquared = minRes * minRes;
-    let outIndex = -1; // There are three simplifications to be made: eliding NaNs, compacting linear portions, and removing/faking vertices
-    // outside a bounding box. For now, let's focus on the second one
-
-    for (let i = 2; i < polyline.length; i += 2) {
-      x1 = x2;
-      y1 = y2;
-      x2 = x3;
-      y2 = y3;
-      x3 = polyline[i];
-      y3 = polyline[i + 1];
-      HEAP[++outIndex] = x1;
-      HEAP[++outIndex] = y1;
-      let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
-
-      if (dstSquared < minResSquared) {
-        // We may be able to compact the vertices coming after x1, y1. For now, we just skip one vertex
-        let intermediateVertices = [x2, y2];
-
-        loop: for (; i < polyline.length; i += 2) {
-          x2 = x3;
-          y2 = y3;
-          intermediateVertices.push(x2, y2);
-          x3 = polyline[i];
-          y3 = polyline[i + 1];
-
-          for (let j = 0; j < intermediateVertices.length; j += 2) {
-            let x2 = intermediateVertices[j];
-            let y2 = intermediateVertices[j + 1];
-            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
-            if (dstSquared >= minResSquared) break loop;
-          }
-        }
-      }
-    }
-
-    HEAP[++outIndex] = x2;
-    HEAP[++outIndex] = y2;
-    return new (getTypedArrayConstructor(type))(HEAP.subarray(0, outIndex + 1));
-  }
+      let elem = eventName === "mouseup" ? document : this.domElement;
+      elem.addEventListener(eventName, listeners[eventName] = listener);
+    });
+  };
 
   /**
    * Represents a linear transformation by storing two bounding boxes: one for the plot in CSS pixels, and one for the
@@ -6299,17 +6972,17 @@
     }
   });
 
-  var _disableInteractivityListeners$1 = new WeakSet();
+  var _disableInteractivityListeners = new WeakSet();
 
-  var _enableInteractivityListeners$1 = new WeakSet();
+  var _enableInteractivityListeners = new WeakSet();
 
   class Figure extends Group {
     constructor(...args) {
       super(...args);
 
-      _enableInteractivityListeners$1.add(this);
+      _enableInteractivityListeners.add(this);
 
-      _disableInteractivityListeners$1.add(this);
+      _disableInteractivityListeners.add(this);
     }
 
     init() {
@@ -6332,7 +7005,7 @@
       let interactivity = this.props.get('interactivity');
 
       if (!!internal.interactivityListeners !== interactivity) {
-        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners$1, _enableInteractivityListeners2$1).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
+        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners, _enableInteractivityListeners2).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
       }
     }
 
@@ -6393,7 +7066,7 @@
 
   }
 
-  var _disableInteractivityListeners2$1 = function _disableInteractivityListeners2() {
+  var _disableInteractivityListeners2 = function _disableInteractivityListeners2() {
     let internal = this.internal;
     let interactivityListeners = internal.interactivityListeners;
     if (!interactivityListeners) return;
@@ -6406,8 +7079,8 @@
     internal.interactivityListeners = null;
   };
 
-  var _enableInteractivityListeners2$1 = function _enableInteractivityListeners2() {
-    _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
+  var _enableInteractivityListeners2 = function _enableInteractivityListeners2() {
+    _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
 
     let int = this.internal,
         props = this.props;
@@ -6459,209 +7132,999 @@
     });
   };
 
-  // A rather common operation for generating texture atlases and the like.
-  // Takes in an array of rectangles and returns a packing of those rectangles as a list of x and y coordinates
-  // The code fucking sucks, whatever, I just want text working ASAP
-  // TODO: Chazelle packing
-  function packRectangles(rectangles) {
-    // For now, just find the maximum size and repeat that.
-    let rectWidth = 0,
-        rectHeight = 0;
+  const pointInterface = constructInterface({
+    interface: {
+      position: {
+        description: 'Position of the point, potentially under a plot transformation',
+        conversion: {
+          type: 'Vec2'
+        },
+        target: 'pos',
+        aliases: ['pos']
+      },
+      color: {
+        description: 'Color of the point',
+        conversion: {
+          type: 'Color'
+        },
+        setAs: 'user'
+      },
+      size: {
+        description: 'Radius in pixels of the dot',
+        typecheck: {
+          type: 'number',
+          min: 0,
+          max: 100
+        },
+        setAs: 'user'
+      }
+    },
+    internal: {
+      pos: {
+        type: 'Vec2',
+        computed: 'none'
+        /* No defaults, no user value, no nothing */
 
-    for (const rectangle of rectangles) {
-      rectWidth = Math.max(rectWidth, rectangle.w);
-      rectHeight = Math.max(rectHeight, rectangle.h);
-    }
-
-    let rectangleCount = rectangles.length;
-    // has sides that are both powers of two. We consider rectangles of the ratios 2:1, 1:1 and 1:2.
-
-    const totalArea = rectWidth * rectHeight * rectangleCount;
-    let nextPowerOfTwo = Math.ceil(Math.floor(Math.log2(totalArea)));
-    let textureWidth, textureHeight;
-    let rectXCount;
-
-    function tryPacking(width, height) {
-      if (textureWidth) return;
-      const minYCount = Math.floor(height / rectHeight);
-      let minXCount = Math.floor(width / rectWidth);
-      let correspondingXCount = Math.ceil(rectangleCount / minYCount);
-
-      if (correspondingXCount <= minXCount) {
-        // Then a packing of minYCount rectangles tall and correspondingXCount rectangles wide will suffice, in a bounding
-        // box of textureWidth x textureHeight
-        textureWidth = width;
-        textureHeight = height;
-        rectXCount = correspondingXCount;
+      },
+      color: {
+        type: 'Color',
+        computed: 'user',
+        default: Colors.BLACK
+      },
+      size: {
+        type: 'number',
+        computed: 'user',
+        default: 5
       }
     }
+  });
+  class PointElement extends Element {
+    getInterface() {
+      return pointInterface;
+    }
 
-    while (!textureWidth) {
-      if (nextPowerOfTwo % 2 !== 0) {
-        let width = 1 << nextPowerOfTwo / 2;
-        let height = 1 << nextPowerOfTwo / 2 + 1;
-        tryPacking(width, height);
-        tryPacking(height, width);
-      } else {
-        const sideLen = 1 << nextPowerOfTwo / 2;
-        tryPacking(sideLen, sideLen);
+    _update() {
+      this.defaultInheritProps();
+      this.defaultComputeProps();
+      let {
+        pos,
+        color,
+        size,
+        plotTransform
+      } = this.props.proxy;
+
+      if (!pos || !color || !size) {
+        this.internal.renderInfo = null;
+        return;
       }
 
-      nextPowerOfTwo++;
+      if (plotTransform) {
+        pos = plotTransform.graphToPixel(pos);
+      }
+
+      let circleVertices = generateCircleTriangleStrip(size, pos.x, pos.y);
+      this.internal.renderInfo = {
+        instructions: {
+          type: 'triangle_strip',
+          color,
+          vertices: circleVertices
+        }
+      };
     }
 
-    let rects = [];
+  }
 
-    for (let i = 0; i < rectangleCount; ++i) {
-      let x = i % rectXCount;
-      let y = Math.floor(i / rectXCount);
-      let rect = rectangles[i];
-      rects.push({
-        x: x * rectWidth,
-        y: y * rectHeight,
-        w: rect.w,
-        h: rect.h
-      });
+  let canvas, ctx;
+
+  function initCanvas() {
+    if (canvas) return;
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext('2d');
+  }
+  /**
+   *
+   * @param text {string}
+   * @param textStyle {TextStyle}
+   * @returns {BoundingBox}
+   */
+
+
+  function measureText(text, textStyle) {
+    var _textStyle$fontSize, _textStyle$shadowRadi;
+
+    initCanvas();
+    let font = textStyle.font;
+    let fontSize = (_textStyle$fontSize = textStyle.fontSize) !== null && _textStyle$fontSize !== void 0 ? _textStyle$fontSize : 12;
+    let shadowDiameter = 2 * ((_textStyle$shadowRadi = textStyle.shadowRadius) !== null && _textStyle$shadowRadi !== void 0 ? _textStyle$shadowRadi : 0);
+    if (!font || !fontSize) throw new Error('Invalid text style');
+    ctx.font = "".concat(fontSize, "px ").concat(font);
+    let m = ctx.measureText(text);
+    let w = m.width + shadowDiameter;
+    let h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + shadowDiameter;
+    return new BoundingBox(0, 0, w, h);
+  }
+
+  function toDir(obj) {
+    if (obj instanceof Vec2) {
+      return obj;
+    } else if (typeof obj === "string") {
+      switch (obj) {
+        case "N":
+          return new Vec2(0, -1);
+
+        case "S":
+          return new Vec2(0, 1);
+
+        case "W":
+          return new Vec2(1, 0);
+
+        case "E":
+          return new Vec2(-1, 0);
+
+        case "NE":
+          return new Vec2(-1, -1);
+
+        case "NW":
+          return new Vec2(1, -1);
+
+        case "SE":
+          return new Vec2(-1, 1);
+
+        case "SW":
+          return new Vec2(1, 1);
+
+        case "C":
+          return new Vec2(0, 0);
+      }
+    } else if (typeof obj === "undefined") {
+      return new Vec2(0, 0);
+    } else {
+      throw new TypeError("Invalid direction");
     }
+  }
+  /**
+   * Generate a text location, using an anchor, direction and spacing. This system is inspired by Asymptote Vector
+   * Graphics, where dir might be something like 'N' and the text would shift itself by that much in the north direction
+   * @param text {string} Text of the instruction
+   * @param textStyle {TextStyle} Style of the text
+   * @param anchor {Vec2} Location of the text's anchor
+   * @param dir {Vec2|string} Direction in which to shift the text. <1, 1> means shifting the text's bounding box so that the
+   * box's top left corner is on the anchor, <0, 1> means shifting so that the anchor is on the text's top midpoint
+   * @param spacing {number} Number of extra pixels to add to the shift
+   * @returns {BoundingBox} Bounding box of the text
+   */
 
+
+  function genTextRect(text, textStyle, anchor, dir, spacing = 1) {
+    let rect = measureText(text, textStyle);
+    dir = toDir(dir);
+    let shiftX = dir.x * rect.w / 2,
+        shiftY = dir.y * rect.h / 2;
+    let shiftLen = Math.hypot(shiftX, shiftY);
+    let scaleSpacing = (shiftLen + spacing) / shiftLen;
+    shiftX *= scaleSpacing;
+    shiftY *= scaleSpacing;
+    shiftX += -rect.w / 2 + anchor.x;
+    shiftY += -rect.h / 2 + anchor.y;
+    return rect.translate(new Vec2(shiftX, shiftY));
+  }
+  function genTextInstruction(text, textStyle, anchor, dir, spacing = 1) {
     return {
-      width: textureWidth,
-      height: textureHeight,
-      rects
+      type: 'text',
+      text: text,
+      pos: genTextRect(text, textStyle, anchor, dir, spacing).tl(),
+      style: textStyle
     };
   }
-  class DynamicRectanglePacker {
-    constructor() {
-      // Given rectangles of some ids, packs them, allowing for rectangles to be deleted and new ones to be added after
-      // a previous packing
-      // Maps rectangle ids to rectangles { x, y, w, h }
-      this.rects = new Map();
-      this.packingBoundary = [];
-      this.packingMaxX = 0;
-      this.packingMaxY = 0;
-      this.queue = [];
+
+  const DefaultOutlinePen = Pen.create({
+    endcap: 'square'
+  });
+  const DefaultGridlinePens = {
+    major: DefaultStyles.gridlinesMajor,
+    minor: DefaultStyles.gridlinesMinor,
+    axis: DefaultStyles.gridlinesAxis
+  };
+  const figureBaublesInterface = constructInterface({
+    interface: {
+      showOutline: {
+        typecheck: 'boolean',
+        description: 'Whether to show an outline of the figure'
+      },
+      showGridlines: {
+        setAs: 'user',
+        description: 'Whether to show gridlines'
+      },
+      sharpenGridlines: {
+        typecheck: 'boolean',
+        description: 'Whether to make the gridlines look sharp by aligning them to pixel boundaries'
+      },
+      outlinePen: {
+        setAs: 'user',
+        description: 'The pen used to draw the outline'
+      }
+    },
+    internal: {
+      // Whether to show a bounding outline of the figure
+      showOutline: {
+        type: 'boolean',
+        computed: 'default',
+        default: true
+      },
+      // Pen to use for the bounding outline
+      outlinePen: {
+        type: 'Pen',
+        computed: 'user',
+        default: DefaultOutlinePen,
+        compose: true
+      },
+      // Internal variable of the form { major: { x: [ ... ], y: [ ... ] }, minor: ... } expressed in graph coordinates
+      ticks: {
+        computed: 'none'
+      },
+      // Whether to show the figure's gridlines
+      showGridlines: {
+        type: 'BooleanDict',
+        computed: 'user',
+        default: {
+          major: true,
+          minor: true,
+          axis: true
+        },
+        compose: true
+      },
+      // Whether to show axes instead of major gridlines
+      generateGridlinesAxis: {
+        type: 'boolean',
+        computed: 'default',
+        default: true
+      },
+      // Whether to sharpen the gridlines
+      sharpenGridlines: {
+        type: 'boolean',
+        computed: 'default',
+        default: true
+      },
+      // Dictionary of pens
+      gridlinePens: {
+        type: 'Pens',
+        computed: 'user',
+        default: DefaultGridlinePens,
+        compose: true
+      },
+      // Whether to show labels
+      showLabels: {
+        type: 'boolean',
+        computed: 'default',
+        default: true
+      },
+      // Where to put the labels
+      labelPosition: {
+        type: 'LabelPosition',
+        computed: 'user',
+        default: DefaultStyles.plotLabelPositions,
+        compose: true
+      }
     }
-    /**
-     * Reset the packer
-     */
+  });
+  const exponentReference = {
+    '-': String.fromCharCode(8315),
+    '0': String.fromCharCode(8304),
+    '1': String.fromCharCode(185),
+    '2': String.fromCharCode(178),
+    '3': String.fromCharCode(179),
+    '4': String.fromCharCode(8308),
+    '5': String.fromCharCode(8309),
+    '6': String.fromCharCode(8310),
+    '7': String.fromCharCode(8311),
+    '8': String.fromCharCode(8312),
+    '9': String.fromCharCode(8313)
+  };
+  /* Convert a digit into its exponent form */
+
+  function convertChar(c) {
+    return exponentReference[c];
+  }
+  /* Convert an integer into its exponent form (of Unicode characters) */
 
 
-    clear() {
-      this.rects.clear();
-    } // Queue a rectangle of some width and height
+  function exponentify(integer) {
+    let stringi = integer + '';
+    let out = '';
+
+    for (let i = 0; i < stringi.length; ++i) {
+      out += convertChar(stringi[i]);
+    }
+
+    return out;
+  } // Credit: https://stackoverflow.com/a/20439411
+
+  /* Turns a float into a pretty float by removing dumb floating point things */
 
 
-    queueRectangle(id, width, height) {
-      this.queue.push({
-        id,
-        w: width,
-        h: height
+  function beautifyFloat(f, prec = 12) {
+    let strf = f.toFixed(prec);
+
+    if (strf.includes('.')) {
+      return strf.replace(/\.?0+$/g, '');
+    } else {
+      return strf;
+    }
+  }
+
+  function isApproxEqual(v, w, eps = 1e-5) {
+    return Math.abs(v - w) < eps;
+  }
+
+  const CDOT = String.fromCharCode(183);
+
+  const standardLabelFunction = x => {
+    if (x === 0) return '0'; // special case
+    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) // non-extreme floats displayed normally
+        return beautifyFloat(x);else {
+        // scientific notation for the very fat and very small!
+        let exponent = Math.floor(Math.log10(Math.abs(x)));
+        let mantissa = x / 10 ** exponent;
+        let prefix = isApproxEqual(mantissa, 1) ? '' : beautifyFloat(mantissa, 8) + CDOT;
+        let exponent_suffix = '10' + exponentify(exponent);
+        return prefix + exponent_suffix;
+      }
+  };
+  /**
+   * Given a plot transform, ticks and set of pens, generate a set of polyline calls that draw gridlines.
+   * @param plotTransform {LinearPlot2DTransform}
+   * @param ticks
+   * @param gridlinePens
+   * @param enabledPens {{}|null} Dict (pen name -> boolean) of enabled pens to generate ticks for
+   * @param sharpen {boolean} Whether to align the ticks to pixel boundaries to make them look sharper
+   * @returns {Array}
+   */
+
+
+  function generateGridlinesInstructions(plotTransform, ticks, gridlinePens, enabledPens = null, sharpen = true) {
+    let pixelBox = plotTransform.pixelBox();
+    let instructions = [];
+
+    for (let [style, entries] of Object.entries(ticks)) {
+      if (enabledPens && !enabledPens[style]) continue;
+      let pen = gridlinePens[style];
+      let thickness = pen.thickness; // Used to make thin lines appear "sharper"
+
+      let shift = thickness % 2 === 1 ? 0.5 : 0;
+      if (!pen) continue;
+      let vertices = [];
+
+      for (let tick of entries.x) {
+        let x = plotTransform.graphToPixelX(tick);
+
+        if (sharpen) {
+          x = (x | 0) + shift;
+        }
+
+        vertices.push(x, pixelBox.y, x, pixelBox.y2);
+        vertices.push(NaN, NaN);
+      }
+
+      for (let tick of entries.y) {
+        let y = (plotTransform.graphToPixelY(tick) | 0) + shift;
+
+        if (sharpen) {
+          y = (y | 0) + shift;
+        }
+
+        vertices.push(pixelBox.x, y, pixelBox.x2, y);
+        vertices.push(NaN, NaN);
+      }
+
+      instructions.push({
+        type: 'polyline',
+        vertices: new Float32Array(vertices),
+        pen
       });
     }
 
-    pack() {
-      // Sorted by area. In the case of text, sorting by height might make more sense
-      const rectsToPack = this.queue.sort((r1, r2) => r1.w * r1.h - r2.w * r2.h); // The packing boundary is the minimal "step function" that encompasses the rectangles already allocated. Yes, I know
+    return instructions;
+  }
 
-      for (const rect of rectsToPack) {
-        rect.w;
-            rect.h;
+  class FigureBaubles extends Group {
+    getInterface() {
+      return figureBaublesInterface;
+    }
+
+    _update() {
+      this.defaultInheritProps();
+      this.defaultComputeProps();
+      this.computeTicks();
+      this.computeGridlines();
+      this.computeLabels();
+      this.toggleOutline();
+      this.computeRenderInfo();
+    }
+
+    computeTicks() {
+      const {
+        props
+      } = this;
+
+      if (props.hasChanged('plotTransform')) {
+        let tr = props.get('plotTransform'),
+            ticks;
+        if (tr) ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, {
+          emitAxis: props.get('generateGridlinesAxis')
+        });
+        props.set('ticks', ticks);
       }
     }
 
-  } // Credit to the authors of github.com/mapbox/potpack. I will be writing a better version soon
+    computeLabels() {
+      const instructions = [];
 
-  function potpack(boxes) {
-    // calculate total box area and maximum box width
-    let area = 0;
-    let maxWidth = 0;
+      if (this.props.haveChanged(['ticks', 'showLabels'])) {
+        let {
+          ticks,
+          plotTransform
+        } = this.props.proxy;
+        if (ticks && plotTransform) for (let style of ['major']) {
+          let entries = ticks[style];
+          let x = entries.x,
+              y = entries.y;
 
-    for (const box of boxes) {
-      area += box.w * box.h;
-      maxWidth = Math.max(maxWidth, box.w);
-    } // sort the boxes for insertion by height, descending
+          for (let i = 0; i < x.length; ++i) {
+            let pos = plotTransform.graphToPixel(new Vec2(x[i], 0));
+            instructions.push(genTextInstruction(standardLabelFunction(x[i]), DefaultStyles.label, pos, 'S', 3));
+          }
 
+          for (let i = 0; i < y.length; ++i) {
+            let pos = plotTransform.graphToPixel(new Vec2(0, y[i]));
+            instructions.push(genTextInstruction(standardLabelFunction(y[i]), DefaultStyles.label, pos, 'E', 3));
+          }
+        }
+        this.internal.labelInstructions = instructions;
+      }
+    }
 
-    boxes.sort((a, b) => b.h - a.h); // aim for a squarish resulting container,
-    // slightly adjusted for sub-100% space utilization
+    computeGridlines() {
+      if (this.props.haveChanged(['ticks', 'showGridlines', 'sharpenGridlines'])) {
+        let {
+          showGridlines,
+          ticks,
+          gridlinePens,
+          plotTransform,
+          sharpenGridlines
+        } = this.props.proxy;
+        this.internal.gridlinesInstructions = ticks && plotTransform ? generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines) : [];
+      }
+    }
 
-    const startWidth = Math.max(Math.ceil(Math.sqrt(area / 0.95)), maxWidth); // start with a single empty space, unbounded at the bottom
+    toggleOutline() {
+      let {
+        showOutline,
+        plotTransform,
+        outlinePen: pen
+      } = this.props.proxy;
+      let int = this.internal;
 
-    const spaces = [{
-      x: 0,
-      y: 0,
-      w: startWidth,
-      h: Infinity
-    }];
-    let width = 0;
-    let height = 0;
+      if (showOutline && plotTransform) {
+        // We inset the box by the thickness of the line so that it doesn't jut out
+        let box = plotTransform.pixelBox().squish(pen.thickness / 2);
+        let vertices = generateRectangleCycle(box);
+        int.outlineInstruction = {
+          type: 'polyline',
+          vertices,
+          pen
+        };
+      } else {
+        int.outlineInstruction = null;
+      }
+    }
 
-    for (const box of boxes) {
-      // look through spaces backwards so that we check smaller spaces first
-      for (let i = spaces.length - 1; i >= 0; i--) {
-        const space = spaces[i]; // look for empty spaces that can accommodate the current box
+    computeRenderInfo() {
+      let int = this.internal;
+      int.renderInfo = {
+        instructions: [int.outlineInstruction, ...int.labelInstructions, ...int.gridlinesInstructions]
+      };
+    }
 
-        if (box.w > space.w || box.h > space.h) continue; // found the space; add the box to its top-left corner
-        // |-------|-------|
-        // |  box  |       |
-        // |_______|       |
-        // |         space |
-        // |_______________|
+  }
 
-        box.x = space.x;
-        box.y = space.y;
-        height = Math.max(height, box.y + box.h);
-        width = Math.max(width, box.x + box.w);
+  let textElementInterface = constructInterface({
+    interface: {
+      style: {
+        description: 'The style of the text.',
+        setAs: 'user',
+        merge: true
+      },
+      position: {
+        description: 'The position of the text.',
+        conversion: {
+          type: 'Vec2'
+        },
+        target: 'pos'
+      },
+      text: {
+        description: 'The string of text.',
+        typecheck: 'string'
+      }
+    },
+    internal: {
+      pos: {
+        type: 'Vec2',
+        computed: 'none'
+      },
+      style: {
+        type: 'TextStyle',
+        computed: 'user',
+        compose: true,
+        default: TextStyle.default
+      }
+    }
+  });
+  class TextElement extends Element {
+    getInterface() {
+      return textElementInterface;
+    }
 
-        if (box.w === space.w && box.h === space.h) {
-          // space matches the box exactly; remove it
-          const last = spaces.pop();
-          if (i < spaces.length) spaces[i] = last;
-        } else if (box.h === space.h) {
-          // space matches the box height; update it accordingly
-          // |-------|---------------|
-          // |  box  | updated space |
-          // |_______|_______________|
-          space.x += box.w;
-          space.w -= box.w;
-        } else if (box.w === space.w) {
-          // space matches the box width; update it accordingly
-          // |---------------|
-          // |      box      |
-          // |_______________|
-          // | updated space |
-          // |_______________|
-          space.y += box.h;
-          space.h -= box.h;
-        } else {
-          // otherwise the box splits the space into two spaces
-          // |-------|-----------|
-          // |  box  | new space |
-          // |_______|___________|
-          // | updated space     |
-          // |___________________|
-          spaces.push({
-            x: space.x + box.w,
-            y: space.y,
-            w: space.w - box.w,
-            h: box.h
-          });
-          space.y += box.h;
-          space.h -= box.h;
+    _update() {
+      this.defaultComputeProps();
+      this.internal.renderInfo = {
+        instructions: {
+          type: 'text',
+          text: this.props.get('text'),
+          pos: this.props.get('pos'),
+          style: this.props.get('style')
+        }
+      };
+    }
+
+  }
+
+  // Sort of a test object for now so that I can figure out the rest of Grapheme's internals
+  const pointCloudInterface = constructInterface({
+    data: true,
+    pointRadius: true,
+    color: true
+  });
+  class PointCloudElement extends Element {
+    init() {
+      this.set({
+        pointRadius: 4,
+        color: Colors.BLUE
+      });
+    }
+
+    getInterface() {
+      return pointCloudInterface;
+    }
+
+    _update() {
+      this.defaultInheritProps();
+      const {
+        data,
+        pointRadius,
+        color,
+        plotTransform
+      } = this.props.proxy;
+      let circle = generateCircleTriangleStrip(pointRadius, 0, 0, 16);
+      let vertices = new Float32Array(circle.length * data.length / 2);
+      let {
+        xm,
+        ym,
+        xb,
+        yb
+      } = plotTransform.getReducedGraphToPixelTransform();
+      let verticesOffset = 0;
+
+      for (let i = 0; i < data.length; i += 2) {
+        let x = data[i],
+            y = data[i + 1];
+        x = xm * x + xb;
+        y = ym * y + yb;
+
+        for (let j = 0; j < circle.length; j += 2) {
+          vertices[verticesOffset + j] = circle[j] + x;
+          vertices[verticesOffset + j + 1] = circle[j + 1] + y;
         }
 
-        break;
+        verticesOffset += circle.length;
+      }
+
+      this.internal.renderInfo = {
+        instructions: {
+          type: 'triangle_strip',
+          vertices,
+          color
+        }
+      };
+    }
+
+  }
+
+  const polylineInterface = constructInterface({
+    interface: {
+      pen: {
+        setAs: 'user',
+        description: 'The pen used to draw the polyline.'
+      },
+      vertices: {
+        conversion: {
+          type: 'f32_vec2_array'
+        },
+        description: 'The vertices of the polyline.'
+      }
+    },
+    internal: {
+      pen: {
+        type: 'Pen',
+        computed: 'user',
+        default: DefaultStyles.Pen,
+        compose: true
+      },
+      vertices: {
+        computed: 'none'
+      }
+    }
+  });
+  class PolylineElement extends Element {
+    _update() {
+      this.defaultComputeProps();
+      let {
+        vertices,
+        pen
+      } = this.props.proxy;
+      this.internal.renderInfo = vertices && pen ? {
+        instructions: {
+          type: 'polyline',
+          vertices,
+          pen
+        }
+      } : null;
+    }
+
+    getInterface() {
+      return polylineInterface;
+    }
+
+  }
+
+  const MAX_INITIAL_SAMPLE_COUNT = 1e6;
+  let samplingStrategies = {
+    // Simplest initial sampling algorithm, but doesn't do well with periodic functions
+    uniform: (t1, t2, samples) => {
+      let iStep = (t2 - t1) / (samples - 1);
+      let arr = new Float64Array(samples);
+
+      for (let i = 0; i < samples; ++i) {
+        arr[i] = i * iStep + t1;
+      }
+
+      return arr;
+    }
+  }; // Stack used for recursive adaptive sampling; a manually done recursion. It's also nice because it can be paused as
+  // with a bolus
+
+  let sampleStack = new Float64Array(10 * 2048);
+  function parametricPlot2D(f
+  /* R -> R^2 */
+  , tMin, tMax, plotBox, {
+    samples: sampleCount = 100,
+    // how many initial samples to take
+    samplingStrategy = "uniform",
+    // how to take the initial samples
+    samplingStrategyArgs = [],
+    // additional parameters for how to take the initial samples
+    adaptive = true,
+    // whether to do recursive, adaptive sampling
+    adaptiveRes = Infinity,
+    // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
+    simplify = true,
+    // whether to compress the vertices
+    simplifyRes = adaptiveRes // resolution of the collapse
+
+  } = {}) {
+    // Sanity checks
+    if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null;
+    if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number");
+    if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]");
+    let evaluate = f.evaluate;
+    let sampler = samplingStrategies[samplingStrategy];
+    if (!sampler) throw new Error("Invalid sampling strategy " + samplingStrategy); // t values for the initial samples
+
+    let samplesT = sampler(tMin, tMax, sampleCount, ...samplingStrategyArgs); // array to store the initial samples
+
+    let samples = new Float64Array(2 * sampleCount); // sample the function
+
+    for (let i = 0, j = 0; i < sampleCount; ++i, j += 2) {
+      let pos = evaluate(samplesT[i]);
+      samples[j] = pos.x;
+      samples[j + 1] = pos.y;
+    } // If we're doing adaptive sampling, we look for places to iteratively refine our sampling
+
+
+    if (adaptive) {
+      let x1 = 0,
+          y1 = 0,
+          x2 = samples[0],
+          y2 = samples[1],
+          x3 = samples[2],
+          y3 = samples[3];
+      let adaptiveResSquared = adaptiveRes * adaptiveRes;
+      let needsSubdivide = false; // whether the current segment needs subdivision, carried over from the previous iter
+
+      HEAPF64[0] = x2;
+      HEAPF64[1] = y2;
+      let newSamplesIndex = 1;
+
+      for (let i = 2; i <= sampleCount; ++i) {
+        x1 = x2;
+        y1 = y2;
+        x2 = x3;
+        y2 = y3;
+
+        if (i !== sampleCount) {
+          // Avoid OOB access
+          x3 = samples[2 * i];
+          y3 = samples[2 * i + 1];
+        } // (x1, y1) -- (x2, y2) is every segment sampled. We subdivide this segment if exactly one of the points
+        // p1 and p2 is undefined, or if the previous angle (or the next angle) needs refinement, which is determined by
+        // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
+        // efficiently requires some careful thinking.
+
+
+        let shouldSubdivide = needsSubdivide;
+        needsSubdivide = false;
+
+        if (!shouldSubdivide) {
+          // Two conditions for subdivision: undefinedness or insufficient linearity
+          if ((Number.isFinite(x1) && Number.isFinite(y1)) !== (Number.isFinite(x2) && Number.isFinite(y2))) {
+            shouldSubdivide = true;
+          } else {
+            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+
+            if (dstSquared > adaptiveResSquared) {
+              // If the distance is sufficient, both this segment and the next segment need division (stored in
+              // needsSubdivide)
+              needsSubdivide = true;
+              shouldSubdivide = true;
+            }
+          }
+        }
+
+        if (shouldSubdivide) {
+          // Need to subdivide p1 -- p2. We manually unroll the recursion, with two types of elements on the stack:
+          // [ x1, y1, x2, y2, s1, s2, 0 ] where f(s1) = (x1, y1) and f(s2) = (x2, y2), and
+          // [ x2, y2, 1], a point to insert into the list of samples. If we find that a segment is to be divided, we
+          // push the right half, then the midpoint (to be inserted into the list of samples), then the left half, which
+          // ensures that, since we're iterating from left to right, all the samples will be put in order
+          sampleStack[0] = x1;
+          sampleStack[1] = y1;
+          sampleStack[2] = x2;
+          sampleStack[3] = y2;
+          sampleStack[4] = samplesT[i - 2];
+          sampleStack[5] = samplesT[i - 1];
+          sampleStack[6] = 0;
+          let stackIndex = 7;
+
+          while (stackIndex > 0) {
+            let dType = sampleStack[--stackIndex];
+
+            if (dType === 1) {
+              let y2 = sampleStack[--stackIndex];
+              let x2 = sampleStack[--stackIndex];
+              HEAPF64[++newSamplesIndex] = x2;
+              HEAPF64[++newSamplesIndex] = y2;
+              continue;
+            }
+
+            let s3 = sampleStack[--stackIndex];
+            let s1 = sampleStack[--stackIndex];
+            let y3 = sampleStack[--stackIndex];
+            let x3 = sampleStack[--stackIndex];
+            let y1 = sampleStack[--stackIndex];
+            let x1 = sampleStack[--stackIndex];
+            let s2 = (s1 + s3) / 2;
+            let tooSmall = s1 === s2 || s2 === s3;
+
+            if (tooSmall) {
+              HEAPF64[++newSamplesIndex] = NaN;
+              HEAPF64[++newSamplesIndex] = NaN;
+              continue;
+            }
+
+            let pos = evaluate(s2);
+            let x2 = pos.x;
+            let y2 = pos.y;
+            let leftIsDefined = Number.isFinite(x1) && Number.isFinite(y1);
+            let midIsDefined = Number.isFinite(x2) && Number.isFinite(y2);
+            let rightIsDefined = Number.isFinite(x3) && Number.isFinite(y3);
+            let needsSubdivide = leftIsDefined !== midIsDefined || rightIsDefined !== midIsDefined;
+
+            if (!needsSubdivide) {
+              let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
+              if (dstSquared > adaptiveResSquared) needsSubdivide = true;
+            }
+
+            if (needsSubdivide) {
+              --stackIndex; // Right segment
+
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = x3;
+              sampleStack[++stackIndex] = y3;
+              sampleStack[++stackIndex] = s2;
+              sampleStack[++stackIndex] = s3;
+              sampleStack[++stackIndex] = 0; // dType 0
+              // Midpoint
+
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = 1; // dType 1
+              // Left segment
+
+              sampleStack[++stackIndex] = x1;
+              sampleStack[++stackIndex] = y1;
+              sampleStack[++stackIndex] = x2;
+              sampleStack[++stackIndex] = y2;
+              sampleStack[++stackIndex] = s1;
+              sampleStack[++stackIndex] = s2;
+              sampleStack[++stackIndex] = 0; // dType 0
+
+              ++stackIndex;
+            } else {
+              HEAPF64[++newSamplesIndex] = x2;
+              HEAPF64[++newSamplesIndex] = y2;
+            }
+          }
+        } else {
+          HEAPF64[++newSamplesIndex] = x2;
+          HEAPF64[++newSamplesIndex] = y2;
+        }
+      }
+
+      samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex + 1));
+    }
+
+    samples = simplifyPolyline(samples, {
+      minRes: simplifyRes
+    });
+    return samples;
+  }
+
+  const parametricPlotInterface = constructInterface({
+    interface: {
+      pen: {
+        setAs: 'user',
+        description: 'The pen used to draw the plot'
+      },
+      varName: {
+        description: 'The name of the varying variable',
+        typecheck: 'VariableName'
+      },
+      range: {
+        description: 'Range of the varying variable to plot',
+        aliases: ['t']
+      },
+      function: {
+        setAs: 'user',
+        description: 'The function R -> R^2 of the plot',
+        aliases: ['f']
+      },
+      samples: {
+        description: 'The number of samples to plot',
+        typecheck: {
+          type: 'integer',
+          min: 10,
+          max: 1e6
+        }
+      }
+    },
+    internal: {
+      // Pen used to draw the parametric plot
+      pen: {
+        type: 'Pen',
+        computed: 'user',
+        default: DefaultStyles.Pen,
+        compose: true
+      },
+      varName: {
+        type: 'string',
+        computed: 'default',
+        default: 't'
+      },
+      function: {
+        type: 'ASTNode',
+        computed: 'none'
+      },
+      samples: {
+        type: 'number',
+        computed: 'default',
+        default: 100
+      }
+    }
+  });
+  class ParametricPlot2D extends Element {
+    _update() {
+      this.defaultInheritProps();
+      this.defaultComputeProps();
+      this.compileFunction();
+      this.computePoints();
+    }
+
+    compileFunction() {
+      const {
+        props
+      } = this;
+
+      if (props.hasChanged('function')) {
+        let user = props.getUserValue('function');
+
+        if (!user) {
+          props.set('function', null);
+          return;
+        }
+
+        let node;
+
+        if (typeof user === 'string') {
+          node = parseString(user);
+        } else if (user instanceof ASTNode) {
+          node = user.clone();
+        } else {
+          throw new Error("Expected string or ASTNode, got ".concat(relaxedPrint(user)));
+        }
+
+        let varName = props.get('varName'); // default: 't'
+
+        let scope = {};
+        scope[varName] = 'real';
+        node.resolveTypes(scope, {
+          strict: true
+        });
+        props.set('functionNode', node);
+        if (node.type !== 'vec2') throw new Error("Expected expression with return type of vec2, got expression with return type of ".concat(node.type));
+        let compiled = compileNode(node, {
+          args: [varName]
+        });
+        props.set('function', compiled);
       }
     }
 
-    return {
-      w: width,
-      // container width
-      h: height,
-      // container height
-      fill: area / (width * height) || 0 // space utilization
+    computePoints() {
+      const {
+        samples,
+        function: f,
+        range,
+        pen,
+        plotTransform
+      } = this.props.proxy;
 
-    };
+      if (!samples || !f || !range || !pen || !plotTransform) {
+        this.internal.renderInfo = null;
+        return;
+      }
+
+      let rangeStart = range[0],
+          rangeEnd = range[1];
+      let pts;
+      pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
+        samples,
+        adaptive: true,
+        adaptiveRes: plotTransform.graphPixelSize() / 20,
+        simplifyRes: plotTransform.graphPixelSize() / 4
+      }));
+      this.internal.pts = pts;
+      this.internal.renderInfo = {
+        instructions: {
+          type: 'polyline',
+          vertices: pts,
+          pen
+        }
+      };
+    }
+
+    getInterface() {
+      return parametricPlotInterface;
+    }
+
   }
 
   const INF = 1e20;
@@ -7001,130 +8464,6 @@
     }
 
   }
-
-  let sceneInterface = Scene.prototype.getInterface();
-  let interactiveSceneInterface = {
-    interface: _objectSpread2(_objectSpread2({}, sceneInterface.description.interface), {}, {
-      interactivity: {
-        typecheck: {
-          type: 'boolean'
-        }
-      }
-    }),
-    internal: _objectSpread2(_objectSpread2({}, sceneInterface.description.internal), {}, {
-      interactivity: {
-        type: 'boolean',
-        computed: 'default',
-        default: true
-      }
-    })
-  };
-  interactiveSceneInterface = constructInterface(interactiveSceneInterface);
-  /**
-   * A scene endowed with an actual DOM element.
-   */
-
-  var _disableInteractivityListeners = new WeakSet();
-
-  var _enableInteractivityListeners = new WeakSet();
-
-  class InteractiveScene extends Scene {
-    constructor(...args) {
-      super(...args);
-
-      _enableInteractivityListeners.add(this);
-
-      _disableInteractivityListeners.add(this);
-    }
-
-    init(params) {
-      super.init(params);
-      this.domElement = document.createElement('canvas');
-      this.bitmapRenderer = this.domElement.getContext('bitmaprenderer');
-    }
-
-    toggleInteractivity() {
-      let internal = this.internal;
-      let interactivity = this.props.get('interactivity');
-
-      if (!!internal.interactivityListeners !== interactivity) {
-        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners, _enableInteractivityListeners2).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
-      }
-    }
-
-    _update() {
-      super._update();
-
-      this.toggleInteractivity();
-      this.resizeCanvas();
-    }
-
-    getInterface() {
-      return interactiveSceneInterface;
-    }
-
-    resizeCanvas() {
-      const {
-        sceneDims
-      } = this.props.proxy;
-      const {
-        domElement
-      } = this;
-      domElement.width = sceneDims.canvasWidth;
-      domElement.height = sceneDims.canvasWidth;
-      domElement.style.width = sceneDims.width + 'px';
-      domElement.style.height = sceneDims.height + 'px';
-    }
-
-  }
-
-  var _disableInteractivityListeners2 = function _disableInteractivityListeners2() {
-    let internal = this.internal;
-    let interactivityListeners = internal.interactivityListeners;
-    if (!interactivityListeners) return;
-
-    for (let listenerType in interactivityListeners) {
-      let listener = interactivityListeners[listenerType];
-      this.domElement.removeEventListener(listenerType, listener);
-    }
-
-    internal.interactivityListeners = null;
-  };
-
-  var _enableInteractivityListeners2 = function _enableInteractivityListeners2() {
-    _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
-
-    let listeners = this.internal.interactivityListeners = {}; // Convert mouse event coords (which are relative to the top left corner of the page) to canvas coords
-
-    const getSceneCoords = evt => {
-      let rect = this.domElement.getBoundingClientRect();
-      return new Vec2(evt.clientX - rect.x, evt.clientY - rect.y);
-    };
-
-    ['mousedown', 'mousemove', 'mouseup', 'wheel'].forEach(eventName => {
-      let listener;
-
-      if (eventName === 'wheel') {
-        listener = evt => {
-          this.triggerEvent(eventName, {
-            pos: getSceneCoords(evt),
-            deltaY: evt.deltaY
-          });
-          evt.preventDefault();
-        };
-      } else {
-        listener = evt => {
-          this.triggerEvent(eventName, {
-            pos: getSceneCoords(evt)
-          });
-          evt.preventDefault();
-        };
-      }
-
-      let elem = eventName === "mouseup" ? document : this.domElement;
-      elem.addEventListener(eventName, listeners[eventName] = listener);
-    });
-  };
 
   // Given a top-level scene, construct a bunch of information about the scene, outputting a map of context ids ->
   /**
@@ -8112,165 +9451,6 @@
       createImageBitmap(this.canvas).then(bitmap => {
         scene.bitmapRenderer.transferFromImageBitmap(bitmap);
       });
-    }
-
-  }
-
-  let textElementInterface = constructInterface({
-    interface: {
-      style: {
-        description: 'The style of the text.',
-        setAs: 'user',
-        merge: true
-      },
-      position: {
-        description: 'The position of the text.',
-        conversion: {
-          type: 'Vec2'
-        },
-        target: 'pos'
-      },
-      text: {
-        description: 'The string of text.',
-        typecheck: 'string'
-      }
-    },
-    internal: {
-      pos: {
-        type: 'Vec2',
-        computed: 'none'
-      },
-      style: {
-        type: 'TextStyle',
-        computed: 'user',
-        compose: true,
-        default: TextStyle.default
-      }
-    }
-  });
-  class TextElement extends Element {
-    getInterface() {
-      return textElementInterface;
-    }
-
-    _update() {
-      this.defaultComputeProps();
-      this.internal.renderInfo = {
-        instructions: {
-          type: 'text',
-          text: this.props.get('text'),
-          pos: this.props.get('pos'),
-          style: this.props.get('style')
-        }
-      };
-    }
-
-  }
-
-  // Sort of a test object for now so that I can figure out the rest of Grapheme's internals
-  const pointCloudInterface = constructInterface({
-    data: true,
-    pointRadius: true,
-    color: true
-  });
-  class PointCloudElement extends Element {
-    init() {
-      this.set({
-        pointRadius: 4,
-        color: Colors.BLUE
-      });
-    }
-
-    getInterface() {
-      return pointCloudInterface;
-    }
-
-    _update() {
-      this.defaultInheritProps();
-      const {
-        data,
-        pointRadius,
-        color,
-        plotTransform
-      } = this.props.proxy;
-      let circle = generateCircleTriangleStrip(pointRadius, 0, 0, 16);
-      let vertices = new Float32Array(circle.length * data.length / 2);
-      let {
-        xm,
-        ym,
-        xb,
-        yb
-      } = plotTransform.getReducedGraphToPixelTransform();
-      let verticesOffset = 0;
-
-      for (let i = 0; i < data.length; i += 2) {
-        let x = data[i],
-            y = data[i + 1];
-        x = xm * x + xb;
-        y = ym * y + yb;
-
-        for (let j = 0; j < circle.length; j += 2) {
-          vertices[verticesOffset + j] = circle[j] + x;
-          vertices[verticesOffset + j + 1] = circle[j + 1] + y;
-        }
-
-        verticesOffset += circle.length;
-      }
-
-      this.internal.renderInfo = {
-        instructions: {
-          type: 'triangle_strip',
-          vertices,
-          color
-        }
-      };
-    }
-
-  }
-
-  const polylineInterface = constructInterface({
-    interface: {
-      pen: {
-        setAs: 'user',
-        description: 'The pen used to draw the polyline.'
-      },
-      vertices: {
-        conversion: {
-          type: 'f32_vec2_array'
-        },
-        description: 'The vertices of the polyline.'
-      }
-    },
-    internal: {
-      pen: {
-        type: 'Pen',
-        computed: 'user',
-        default: DefaultStyles.Pen,
-        compose: true
-      },
-      vertices: {
-        computed: 'none'
-      }
-    }
-  });
-  class PolylineElement extends Element {
-    _update() {
-      this.defaultComputeProps();
-      let {
-        vertices,
-        pen
-      } = this.props.proxy;
-      this.internal.renderInfo = vertices && pen ? {
-        instructions: {
-          type: 'polyline',
-          vertices,
-          pen
-        }
-      } : null;
-    }
-
-    getInterface() {
-      return polylineInterface;
     }
 
   }
@@ -12067,1186 +13247,6 @@
       dst.min = min;
       dst.max = max;
       dst.info = info;
-    }
-
-  }
-
-  const pointInterface = constructInterface({
-    interface: {
-      position: {
-        description: 'Position of the point, potentially under a plot transformation',
-        conversion: {
-          type: 'Vec2'
-        },
-        target: 'pos',
-        aliases: ['pos']
-      },
-      color: {
-        description: 'Color of the point',
-        conversion: {
-          type: 'Color'
-        },
-        setAs: 'user'
-      },
-      size: {
-        description: 'Radius in pixels of the dot',
-        typecheck: {
-          type: 'number',
-          min: 0,
-          max: 100
-        },
-        setAs: 'user'
-      }
-    },
-    internal: {
-      pos: {
-        type: 'Vec2',
-        computed: 'none'
-        /* No defaults, no user value, no nothing */
-
-      },
-      color: {
-        type: 'Color',
-        computed: 'user',
-        default: Colors.BLACK
-      },
-      size: {
-        type: 'number',
-        computed: 'user',
-        default: 5
-      }
-    }
-  });
-  class PointElement extends Element {
-    getInterface() {
-      return pointInterface;
-    }
-
-    _update() {
-      this.defaultInheritProps();
-      this.defaultComputeProps();
-      let {
-        pos,
-        color,
-        size,
-        plotTransform
-      } = this.props.proxy;
-
-      if (!pos || !color || !size) {
-        this.internal.renderInfo = null;
-        return;
-      }
-
-      if (plotTransform) {
-        pos = plotTransform.graphToPixel(pos);
-      }
-
-      let circleVertices = generateCircleTriangleStrip(size, pos.x, pos.y);
-      this.internal.renderInfo = {
-        instructions: {
-          type: 'triangle_strip',
-          color,
-          vertices: circleVertices
-        }
-      };
-    }
-
-  }
-
-  function getDemarcations(xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, includeAxis = false) {
-    if (xStart >= xEnd || !Number.isFinite(xStart) || !Number.isFinite(xEnd) || !Number.isFinite(xLen) || desiredMajorSep < 1 || desiredMinorSep < 1 || subdivisions.length === 0) return [];
-    let xGraphLen = xEnd - xStart;
-    let estimatedMajors = xLen / desiredMajorSep; // We look for the base b and subdivision s such that the number of major subdivisions that result would be closest
-    // to the number implied by the desired major sep
-
-    let bestBase = 0;
-    let bestErr = Infinity;
-    let bestSubdivision = [1, 1];
-
-    for (const subdiv of subdivisions) {
-      let maj = subdiv[1];
-      let desiredBase = Math.log10(maj * xGraphLen / estimatedMajors);
-      let nearest = Math.round(desiredBase);
-      let err = Math.abs(maj * xGraphLen / Math.pow(10, nearest) - estimatedMajors);
-
-      if (err < bestErr) {
-        bestErr = err;
-        bestSubdivision = subdiv;
-        bestBase = nearest;
-      }
-    } // Generate the ticks based on the chosen base and subdivision. We first find the offset of the nearest multiple of
-    // 10^b preceding xStart, say m * 10^b, then for each interval (m, m+1) generate the ticks that are in the range of
-    // xStart and xEnd
-
-
-    let based = Math.pow(10, bestBase);
-    let firstMultiple = Math.floor(xStart / based);
-    let lastMultiple = xEnd / based; // In the case that the end is at a power of 10, we want to generate the end as well
-
-    if (Number.isInteger(lastMultiple)) lastMultiple++;
-    lastMultiple = Math.ceil(lastMultiple);
-    let [min, maj] = bestSubdivision;
-    let minTicks = [];
-    let majTicks = []; // Note we might start to get float errors here. We'll assume good faith for now that the plot transform constraints
-    // are turned on.
-
-    for (let i = firstMultiple; i < lastMultiple; ++i) {
-      // Generate ticks
-      let begin = i * based;
-      let end = (i + 1) * based;
-      let diff = end - begin;
-
-      for (let j = 0; j < maj; ++j) {
-        let tick = begin + diff * j / maj;
-        if (tick > xEnd) continue;
-        if (tick >= xStart && (includeAxis || tick !== 0)) majTicks.push(tick);
-
-        for (let k = 1; k < min; ++k) {
-          tick = begin + diff * ((j + k / min) / maj);
-          if (tick > xEnd || tick < xStart) continue;
-          minTicks.push(tick);
-        }
-      }
-    }
-
-    return {
-      min: minTicks,
-      maj: majTicks
-    };
-  }
-  function get2DDemarcations(xStart, xEnd, xLen, yStart, yEnd, yLen, {
-    desiredMinorSep = 20,
-    desiredMajorSep = 150,
-    subdivisions = [[4
-    /* minor */
-    , 5
-    /* major */
-    ], [5, 2], [5, 1]],
-    // permissible subdivisions of the powers of ten into major separators and minor separators
-    emitAxis = true // emit a special case for axis
-
-  } = {}) {
-    let x = getDemarcations(xStart, xEnd, xLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis);
-    let y = getDemarcations(yStart, yEnd, yLen, desiredMinorSep, desiredMajorSep, subdivisions, !emitAxis);
-    let ret = {
-      major: {
-        x: x.maj,
-        y: y.maj
-      },
-      minor: {
-        x: x.min,
-        y: y.min
-      }
-    };
-
-    if (emitAxis) {
-      ret.axis = {
-        x: xStart <= 0 || xEnd >= 0 ? [0] : [],
-        y: yStart <= 0 || yEnd >= 0 ? [0] : []
-      };
-    }
-
-    return ret;
-  }
-
-  let canvas, ctx;
-
-  function initCanvas() {
-    if (canvas) return;
-    canvas = document.createElement('canvas');
-    ctx = canvas.getContext('2d');
-  }
-  /**
-   *
-   * @param text {string}
-   * @param textStyle {TextStyle}
-   * @returns {BoundingBox}
-   */
-
-
-  function measureText(text, textStyle) {
-    var _textStyle$fontSize, _textStyle$shadowRadi;
-
-    initCanvas();
-    let font = textStyle.font;
-    let fontSize = (_textStyle$fontSize = textStyle.fontSize) !== null && _textStyle$fontSize !== void 0 ? _textStyle$fontSize : 12;
-    let shadowDiameter = 2 * ((_textStyle$shadowRadi = textStyle.shadowRadius) !== null && _textStyle$shadowRadi !== void 0 ? _textStyle$shadowRadi : 0);
-    if (!font || !fontSize) throw new Error('Invalid text style');
-    ctx.font = "".concat(fontSize, "px ").concat(font);
-    let m = ctx.measureText(text);
-    let w = m.width + shadowDiameter;
-    let h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + shadowDiameter;
-    return new BoundingBox(0, 0, w, h);
-  }
-
-  function toDir(obj) {
-    if (obj instanceof Vec2) {
-      return obj;
-    } else if (typeof obj === "string") {
-      switch (obj) {
-        case "N":
-          return new Vec2(0, -1);
-
-        case "S":
-          return new Vec2(0, 1);
-
-        case "W":
-          return new Vec2(1, 0);
-
-        case "E":
-          return new Vec2(-1, 0);
-
-        case "NE":
-          return new Vec2(-1, -1);
-
-        case "NW":
-          return new Vec2(1, -1);
-
-        case "SE":
-          return new Vec2(-1, 1);
-
-        case "SW":
-          return new Vec2(1, 1);
-
-        case "C":
-          return new Vec2(0, 0);
-      }
-    } else if (typeof obj === "undefined") {
-      return new Vec2(0, 0);
-    } else {
-      throw new TypeError("Invalid direction");
-    }
-  }
-  /**
-   * Generate a text location, using an anchor, direction and spacing. This system is inspired by Asymptote Vector
-   * Graphics, where dir might be something like 'N' and the text would shift itself by that much in the north direction
-   * @param text {string} Text of the instruction
-   * @param textStyle {TextStyle} Style of the text
-   * @param anchor {Vec2} Location of the text's anchor
-   * @param dir {Vec2|string} Direction in which to shift the text. <1, 1> means shifting the text's bounding box so that the
-   * box's top left corner is on the anchor, <0, 1> means shifting so that the anchor is on the text's top midpoint
-   * @param spacing {number} Number of extra pixels to add to the shift
-   * @returns {BoundingBox} Bounding box of the text
-   */
-
-
-  function genTextRect(text, textStyle, anchor, dir, spacing = 1) {
-    let rect = measureText(text, textStyle);
-    dir = toDir(dir);
-    let shiftX = dir.x * rect.w / 2,
-        shiftY = dir.y * rect.h / 2;
-    let shiftLen = Math.hypot(shiftX, shiftY);
-    let scaleSpacing = (shiftLen + spacing) / shiftLen;
-    shiftX *= scaleSpacing;
-    shiftY *= scaleSpacing;
-    shiftX += -rect.w / 2 + anchor.x;
-    shiftY += -rect.h / 2 + anchor.y;
-    return rect.translate(new Vec2(shiftX, shiftY));
-  }
-  function genTextInstruction(text, textStyle, anchor, dir, spacing = 1) {
-    return {
-      type: 'text',
-      text: text,
-      pos: genTextRect(text, textStyle, anchor, dir, spacing).tl(),
-      style: textStyle
-    };
-  }
-
-  const DefaultOutlinePen = Pen.create({
-    endcap: 'square'
-  });
-  const DefaultGridlinePens = {
-    major: DefaultStyles.gridlinesMajor,
-    minor: DefaultStyles.gridlinesMinor,
-    axis: DefaultStyles.gridlinesAxis
-  };
-  const figureBaublesInterface = constructInterface({
-    interface: {
-      showOutline: {
-        typecheck: 'boolean',
-        description: 'Whether to show an outline of the figure'
-      },
-      showGridlines: {
-        setAs: 'user',
-        description: 'Whether to show gridlines'
-      },
-      sharpenGridlines: {
-        typecheck: 'boolean',
-        description: 'Whether to make the gridlines look sharp by aligning them to pixel boundaries'
-      },
-      outlinePen: {
-        setAs: 'user',
-        description: 'The pen used to draw the outline'
-      }
-    },
-    internal: {
-      // Whether to show a bounding outline of the figure
-      showOutline: {
-        type: 'boolean',
-        computed: 'default',
-        default: true
-      },
-      // Pen to use for the bounding outline
-      outlinePen: {
-        type: 'Pen',
-        computed: 'user',
-        default: DefaultOutlinePen,
-        compose: true
-      },
-      // Internal variable of the form { major: { x: [ ... ], y: [ ... ] }, minor: ... } expressed in graph coordinates
-      ticks: {
-        computed: 'none'
-      },
-      // Whether to show the figure's gridlines
-      showGridlines: {
-        type: 'BooleanDict',
-        computed: 'user',
-        default: {
-          major: true,
-          minor: true,
-          axis: true
-        },
-        compose: true
-      },
-      // Whether to show axes instead of major gridlines
-      generateGridlinesAxis: {
-        type: 'boolean',
-        computed: 'default',
-        default: true
-      },
-      // Whether to sharpen the gridlines
-      sharpenGridlines: {
-        type: 'boolean',
-        computed: 'default',
-        default: true
-      },
-      // Dictionary of pens
-      gridlinePens: {
-        type: 'Pens',
-        computed: 'user',
-        default: DefaultGridlinePens,
-        compose: true
-      },
-      // Whether to show labels
-      showLabels: {
-        type: 'boolean',
-        computed: 'default',
-        default: true
-      },
-      // Where to put the labels
-      labelPosition: {
-        type: 'LabelPosition',
-        computed: 'user',
-        default: DefaultStyles.plotLabelPositions,
-        compose: true
-      }
-    }
-  });
-  const exponentReference = {
-    '-': String.fromCharCode(8315),
-    '0': String.fromCharCode(8304),
-    '1': String.fromCharCode(185),
-    '2': String.fromCharCode(178),
-    '3': String.fromCharCode(179),
-    '4': String.fromCharCode(8308),
-    '5': String.fromCharCode(8309),
-    '6': String.fromCharCode(8310),
-    '7': String.fromCharCode(8311),
-    '8': String.fromCharCode(8312),
-    '9': String.fromCharCode(8313)
-  };
-  /* Convert a digit into its exponent form */
-
-  function convertChar(c) {
-    return exponentReference[c];
-  }
-  /* Convert an integer into its exponent form (of Unicode characters) */
-
-
-  function exponentify(integer) {
-    let stringi = integer + '';
-    let out = '';
-
-    for (let i = 0; i < stringi.length; ++i) {
-      out += convertChar(stringi[i]);
-    }
-
-    return out;
-  } // Credit: https://stackoverflow.com/a/20439411
-
-  /* Turns a float into a pretty float by removing dumb floating point things */
-
-
-  function beautifyFloat(f, prec = 12) {
-    let strf = f.toFixed(prec);
-
-    if (strf.includes('.')) {
-      return strf.replace(/\.?0+$/g, '');
-    } else {
-      return strf;
-    }
-  }
-
-  function isApproxEqual(v, w, eps = 1e-5) {
-    return Math.abs(v - w) < eps;
-  }
-
-  const CDOT = String.fromCharCode(183);
-
-  const standardLabelFunction = x => {
-    if (x === 0) return '0'; // special case
-    else if (Math.abs(x) < 1e5 && Math.abs(x) > 1e-5) // non-extreme floats displayed normally
-        return beautifyFloat(x);else {
-        // scientific notation for the very fat and very small!
-        let exponent = Math.floor(Math.log10(Math.abs(x)));
-        let mantissa = x / 10 ** exponent;
-        let prefix = isApproxEqual(mantissa, 1) ? '' : beautifyFloat(mantissa, 8) + CDOT;
-        let exponent_suffix = '10' + exponentify(exponent);
-        return prefix + exponent_suffix;
-      }
-  };
-  /**
-   * Given a plot transform, ticks and set of pens, generate a set of polyline calls that draw gridlines.
-   * @param plotTransform {LinearPlot2DTransform}
-   * @param ticks
-   * @param gridlinePens
-   * @param enabledPens {{}|null} Dict (pen name -> boolean) of enabled pens to generate ticks for
-   * @param sharpen {boolean} Whether to align the ticks to pixel boundaries to make them look sharper
-   * @returns {Array}
-   */
-
-
-  function generateGridlinesInstructions(plotTransform, ticks, gridlinePens, enabledPens = null, sharpen = true) {
-    let pixelBox = plotTransform.pixelBox();
-    let instructions = [];
-
-    for (let [style, entries] of Object.entries(ticks)) {
-      if (enabledPens && !enabledPens[style]) continue;
-      let pen = gridlinePens[style];
-      let thickness = pen.thickness; // Used to make thin lines appear "sharper"
-
-      let shift = thickness % 2 === 1 ? 0.5 : 0;
-      if (!pen) continue;
-      let vertices = [];
-
-      for (let tick of entries.x) {
-        let x = plotTransform.graphToPixelX(tick);
-
-        if (sharpen) {
-          x = (x | 0) + shift;
-        }
-
-        vertices.push(x, pixelBox.y, x, pixelBox.y2);
-        vertices.push(NaN, NaN);
-      }
-
-      for (let tick of entries.y) {
-        let y = (plotTransform.graphToPixelY(tick) | 0) + shift;
-
-        if (sharpen) {
-          y = (y | 0) + shift;
-        }
-
-        vertices.push(pixelBox.x, y, pixelBox.x2, y);
-        vertices.push(NaN, NaN);
-      }
-
-      instructions.push({
-        type: 'polyline',
-        vertices: new Float32Array(vertices),
-        pen
-      });
-    }
-
-    return instructions;
-  }
-
-  class FigureBaubles extends Group {
-    getInterface() {
-      return figureBaublesInterface;
-    }
-
-    _update() {
-      this.defaultInheritProps();
-      this.defaultComputeProps();
-      this.computeTicks();
-      this.computeGridlines();
-      this.computeLabels();
-      this.toggleOutline();
-      this.computeRenderInfo();
-    }
-
-    computeTicks() {
-      const {
-        props
-      } = this;
-
-      if (props.hasChanged('plotTransform')) {
-        let tr = props.get('plotTransform'),
-            ticks;
-        if (tr) ticks = get2DDemarcations(tr.gx1, tr.gx1 + tr.gw, tr.pw, tr.gy1, tr.gy1 + tr.gh, tr.ph, {
-          emitAxis: props.get('generateGridlinesAxis')
-        });
-        props.set('ticks', ticks);
-      }
-    }
-
-    computeLabels() {
-      const instructions = [];
-
-      if (this.props.haveChanged(['ticks', 'showLabels'])) {
-        let {
-          ticks,
-          plotTransform
-        } = this.props.proxy;
-        if (ticks && plotTransform) for (let style of ['major']) {
-          let entries = ticks[style];
-          let x = entries.x,
-              y = entries.y;
-
-          for (let i = 0; i < x.length; ++i) {
-            let pos = plotTransform.graphToPixel(new Vec2(x[i], 0));
-            instructions.push(genTextInstruction(standardLabelFunction(x[i]), DefaultStyles.label, pos, 'S', 3));
-          }
-
-          for (let i = 0; i < y.length; ++i) {
-            let pos = plotTransform.graphToPixel(new Vec2(0, y[i]));
-            instructions.push(genTextInstruction(standardLabelFunction(y[i]), DefaultStyles.label, pos, 'E', 3));
-          }
-        }
-        this.internal.labelInstructions = instructions;
-      }
-    }
-
-    computeGridlines() {
-      if (this.props.haveChanged(['ticks', 'showGridlines', 'sharpenGridlines'])) {
-        let {
-          showGridlines,
-          ticks,
-          gridlinePens,
-          plotTransform,
-          sharpenGridlines
-        } = this.props.proxy;
-        this.internal.gridlinesInstructions = ticks && plotTransform ? generateGridlinesInstructions(plotTransform, ticks, gridlinePens, showGridlines, sharpenGridlines) : [];
-      }
-    }
-
-    toggleOutline() {
-      let {
-        showOutline,
-        plotTransform,
-        outlinePen: pen
-      } = this.props.proxy;
-      let int = this.internal;
-
-      if (showOutline && plotTransform) {
-        // We inset the box by the thickness of the line so that it doesn't jut out
-        let box = plotTransform.pixelBox().squish(pen.thickness / 2);
-        let vertices = generateRectangleCycle(box);
-        int.outlineInstruction = {
-          type: 'polyline',
-          vertices,
-          pen
-        };
-      } else {
-        int.outlineInstruction = null;
-      }
-    }
-
-    computeRenderInfo() {
-      let int = this.internal;
-      int.renderInfo = {
-        instructions: [int.outlineInstruction, ...int.labelInstructions, ...int.gridlinesInstructions]
-      };
-    }
-
-  }
-
-  /**
-   * Convert a node into a function, or set of functions.
-   * @param root
-   * @param opts
-   */
-  function compileNode(root, opts = {}) {
-    // Whether to do typechecks to passed arguments
-    let doTypechecks = !!opts.typechecks; // Whether to allow optimizations which may change the output due to rounding
-
-    !!opts.fastMath; // We construct the text of a function of the form (imports) => { let setup = ... ; return function (...) { ... }}
-    // then create the function via new Function. The evaluation process basically involves generating variables $0, $1,
-    // $2, ... that correspond to the nodes in the graph. For example, x^2+3 becomes
-    // $0 = scope.x
-    // $1 = 2
-    // $2 = Math.pow($0, $1)
-    // $3 = 3
-    // $4 = $2 + $3
-    // return $4
-    // Breaking down the evaluation like this allows for much greater optimizations, including conditional eval (we'll
-    // get to that later).
-
-    let id = 0;
-    /**
-     * Get id to be used for intermediate functions and the like
-     * @returns {string}
-     */
-
-    function getVarName() {
-      return '$' + ++id;
-    } // Map between nodes and information about those nodes (corresponding var names, optimizations, etc.)
-
-
-    let nodeInfo = new Map(); // Create stores for each node for information about each
-
-    root.applyAll(node => {
-      nodeInfo.set(node, {});
-    }, false
-    /* call the function on all nodes, not just group nodes */
-    ); // Mapping between function/constant import objects and their variable names
-
-    let importInfo = new Map(); // Text of the setup code preceding all the exported functions
-
-    let globalSetup = '';
-    /**
-     * Import a function f and return a constant variable name corresponding to that function, to be placed in
-     * globalSetup. Importing the same function twice returns the same variable
-     * @param f {Function}
-     * @returns {string}
-     */
-
-    function importFunction(f) {
-      if (typeof f !== 'function') throw new TypeError("Unable to import function ".concat(f));
-      let stored = importInfo.get(f);
-      if (stored) return stored;
-      let fName = getVarName() + '_f';
-      if (doTypechecks) // Make sure f is actually a function
-        globalSetup += "if (typeof ".concat(fName, " !== \"function\") throw new TypeError(\"Imported parameter ").concat(fName, " is not a function\");\n");
-      importInfo.set(f, fName);
-      return fName;
-    }
-    /**
-     * Import a generic variable of any type
-     * @param c {any} External constant
-     * @returns {string} Variable name corresponding to the constant
-     */
-
-
-    function importConstant(c) {
-      let stored = importInfo.get(c);
-      if (stored) return stored;
-      let cName = getVarName() + '_c';
-      importInfo.set(c, cName);
-      return cName;
-    } // Dict of exported functions; mapping between names of functions and their arguments, setup and body
-
-
-    let exportedFunctions = {};
-
-    function exportFunction(name, args, body) {
-      exportedFunctions[name] = {
-        args,
-        body
-      };
-    } // Compile a function which, given a scope, evaluates the function
-
-
-    compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getVarName, opts); // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
-
-    let efText = 'return {' + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '}';
-    let nfText = globalSetup + efText;
-    let imports = Array.from(importInfo.keys());
-    let importNames = Array.from(importInfo.values()); // Last argument is the text of the function itself
-
-    importNames.push(nfText);
-    return Function.apply(null, importNames).apply(null, imports);
-  }
-
-  function compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getUnusedVarName, opts) {
-    var _opts$args;
-
-    // Whether to add typechecks to the passed variables
-    let doTypechecks = !!opts.typechecks; // List of arguments to be placed BEFORE the scope variable. For example, we might do
-    // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
-    // object.
-
-    let exportedArgs = (_opts$args = opts.args) !== null && _opts$args !== void 0 ? _opts$args : [];
-    exportedArgs.forEach(a => {
-      if (!isValidVariableName(a)) throw new Error("Invalid exported variable name ".concat(a));
-    });
-    let scopeVarName = 'scope';
-    let scopeUsed = false;
-    let fBody = '';
-    let fArgs = [...exportedArgs]; // Mapping between string variable name and information about that variable (varName)
-
-    let varInfo = new Map();
-    /**
-     * Get information, including the JS variable name
-     * @param name
-     */
-
-    function getScopedVariable(name) {
-      let stored = varInfo.get(name);
-      if (stored) return stored;
-      stored = {
-        varName: getUnusedVarName()
-      };
-      varInfo.set(name, stored);
-      return stored;
-    }
-
-    function prependLine(code) {
-      fBody = code + '\n' + fBody;
-    }
-
-    function addLine(code) {
-      fBody += code + '\n';
-    } // Import and typecheck variables
-
-
-    let requiredVariables = root.usedVariables();
-
-    for (const [name, type] of requiredVariables.entries()) {
-      let varInfo = getScopedVariable(name);
-      let varName = varInfo.varName;
-
-      if (exportedArgs.includes(name)) {
-        addLine("var ".concat(varName, "=").concat(name, ";"));
-      } else {
-        scopeUsed = true;
-        addLine("var ".concat(varName, "=").concat(scopeVarName, ".").concat(name, ";"));
-      }
-
-      if (doTypechecks) {
-        let typecheck = importFunction(TYPES[type].typecheck.generic.f);
-        addLine("if (".concat(varName, " === undefined) throw new Error(\"Variable ").concat(name, " is not defined in this scope\");"));
-        addLine("if (!".concat(typecheck, "(").concat(varName, ")) throw new Error(\"Expected variable ").concat(name, " to have a type of ").concat(type, "\");"));
-      }
-    }
-
-    compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts);
-    addLine("return ".concat(nodeInfo.get(root).varName, ";")); // Typecheck scope object
-
-    if (doTypechecks && scopeUsed) {
-      if (exportedArgs.length === 0) {
-        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed to evaluate function should be a scope\");"));
-      } else {
-        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed as last parameter to evaluate function should be a scope; there are undefined variables\");"));
-      }
-    } // Scope is last argument in function
-
-
-    if (scopeUsed) fArgs.push(scopeVarName);
-    exportFunction('evaluate', fArgs, fBody);
-  }
-
-  function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts) {
-    var _opts$o;
-
-    // How much to try and optimize the computations
-    (_opts$o = opts.o) !== null && _opts$o !== void 0 ? _opts$o : 0;
-
-    function compileOperator(node) {
-      let varName = getUnusedVarName();
-      let definition = node.definition;
-      let evaluator = definition.evaluators.generic;
-      let evaluatorType = evaluator.type;
-      let children = node.children;
-      let args = children.map((c, i) => {
-        let varName = nodeInfo.get(c).varName;
-        let srcType = c.type;
-        let dstType = definition.signature[i]; // Do type conversion
-
-        if (srcType !== dstType) {
-          let cast = getCast(srcType, dstType);
-
-          if (cast.name !== 'identity') {
-            let convertedVarName = getUnusedVarName();
-            addLine("var ".concat(convertedVarName, "=").concat(importFunction(cast.evaluators.generic.f), "(").concat(varName, ");"));
-            varName = convertedVarName;
-          }
-        }
-
-        return varName;
-      });
-
-      if (evaluatorType === 'special_binary') {
-        addLine("var ".concat(varName, "=").concat(args[0], " ").concat(evaluator.binary, " ").concat(args[1], ";"));
-      } else {
-        let fName = importFunction(evaluator.f);
-        addLine("var ".concat(varName, "=").concat(fName, "(").concat(args.join(','), ");"));
-      }
-
-      return varName;
-    }
-
-    root.applyAll(node => {
-      let info = nodeInfo.get(node);
-      let nodeType = node.nodeType();
-      let varName;
-
-      switch (nodeType) {
-        case 'op':
-          varName = compileOperator(node);
-          break;
-
-        case 'var':
-          varName = getScopedVariable(node.name).varName;
-          break;
-
-        case 'const':
-          varName = importConstant(node.value);
-          break;
-
-        case 'group':
-          // Forward the var name from the only child (since this is a grouping)
-          varName = nodeInfo.get(node.children[0]).varName;
-          break;
-
-        default:
-          throw new Error("Unknown node type ".concat(nodeType));
-      }
-
-      info.varName = varName;
-    }, false, true
-    /* children first, so bottom up */
-    );
-  }
-
-  const MAX_INITIAL_SAMPLE_COUNT = 1e6;
-  let samplingStrategies = {
-    // Simplest initial sampling algorithm, but doesn't do well with periodic functions
-    uniform: (t1, t2, samples) => {
-      let iStep = (t2 - t1) / (samples - 1);
-      let arr = new Float64Array(samples);
-
-      for (let i = 0; i < samples; ++i) {
-        arr[i] = i * iStep + t1;
-      }
-
-      return arr;
-    }
-  }; // Stack used for recursive adaptive sampling; a manually done recursion. It's also nice because it can be paused as
-  // with a bolus
-
-  let sampleStack = new Float64Array(10 * 2048);
-  function parametricPlot2D(f
-  /* R -> R^2 */
-  , tMin, tMax, plotBox, {
-    samples: sampleCount = 100,
-    // how many initial samples to take
-    samplingStrategy = "uniform",
-    // how to take the initial samples
-    samplingStrategyArgs = [],
-    // additional parameters for how to take the initial samples
-    adaptive = true,
-    // whether to do recursive, adaptive sampling
-    adaptiveRes = Infinity,
-    // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
-    simplify = true,
-    // whether to compress the vertices
-    simplifyRes = adaptiveRes // resolution of the collapse
-
-  } = {}) {
-    // Sanity checks
-    if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null;
-    if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number");
-    if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]");
-    let evaluate = f.evaluate;
-    let sampler = samplingStrategies[samplingStrategy];
-    if (!sampler) throw new Error("Invalid sampling strategy " + samplingStrategy); // t values for the initial samples
-
-    let samplesT = sampler(tMin, tMax, sampleCount, ...samplingStrategyArgs); // array to store the initial samples
-
-    let samples = new Float64Array(2 * sampleCount); // sample the function
-
-    for (let i = 0, j = 0; i < sampleCount; ++i, j += 2) {
-      let pos = evaluate(samplesT[i]);
-      samples[j] = pos.x;
-      samples[j + 1] = pos.y;
-    } // If we're doing adaptive sampling, we look for places to iteratively refine our sampling
-
-
-    if (adaptive) {
-      let x1 = 0,
-          y1 = 0,
-          x2 = samples[0],
-          y2 = samples[1],
-          x3 = samples[2],
-          y3 = samples[3];
-      let adaptiveResSquared = adaptiveRes * adaptiveRes;
-      let needsSubdivide = false; // whether the current segment needs subdivision, carried over from the previous iter
-
-      HEAPF64[0] = x2;
-      HEAPF64[1] = y2;
-      let newSamplesIndex = 1;
-
-      for (let i = 2; i <= sampleCount; ++i) {
-        x1 = x2;
-        y1 = y2;
-        x2 = x3;
-        y2 = y3;
-
-        if (i !== sampleCount) {
-          // Avoid OOB access
-          x3 = samples[2 * i];
-          y3 = samples[2 * i + 1];
-        } // (x1, y1) -- (x2, y2) is every segment sampled. We subdivide this segment if exactly one of the points
-        // p1 and p2 is undefined, or if the previous angle (or the next angle) needs refinement, which is determined by
-        // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
-        // efficiently requires some careful thinking.
-
-
-        let shouldSubdivide = needsSubdivide;
-        needsSubdivide = false;
-
-        if (!shouldSubdivide) {
-          // Two conditions for subdivision: undefinedness or insufficient linearity
-          if ((Number.isFinite(x1) && Number.isFinite(y1)) !== (Number.isFinite(x2) && Number.isFinite(y2))) {
-            shouldSubdivide = true;
-          } else {
-            let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
-
-            if (dstSquared > adaptiveResSquared) {
-              // If the distance is sufficient, both this segment and the next segment need division (stored in
-              // needsSubdivide)
-              needsSubdivide = true;
-              shouldSubdivide = true;
-            }
-          }
-        }
-
-        if (shouldSubdivide) {
-          // Need to subdivide p1 -- p2. We manually unroll the recursion, with two types of elements on the stack:
-          // [ x1, y1, x2, y2, s1, s2, 0 ] where f(s1) = (x1, y1) and f(s2) = (x2, y2), and
-          // [ x2, y2, 1], a point to insert into the list of samples. If we find that a segment is to be divided, we
-          // push the right half, then the midpoint (to be inserted into the list of samples), then the left half, which
-          // ensures that, since we're iterating from left to right, all the samples will be put in order
-          sampleStack[0] = x1;
-          sampleStack[1] = y1;
-          sampleStack[2] = x2;
-          sampleStack[3] = y2;
-          sampleStack[4] = samplesT[i - 2];
-          sampleStack[5] = samplesT[i - 1];
-          sampleStack[6] = 0;
-          let stackIndex = 7;
-
-          while (stackIndex > 0) {
-            let dType = sampleStack[--stackIndex];
-
-            if (dType === 1) {
-              let y2 = sampleStack[--stackIndex];
-              let x2 = sampleStack[--stackIndex];
-              HEAPF64[++newSamplesIndex] = x2;
-              HEAPF64[++newSamplesIndex] = y2;
-              continue;
-            }
-
-            let s3 = sampleStack[--stackIndex];
-            let s1 = sampleStack[--stackIndex];
-            let y3 = sampleStack[--stackIndex];
-            let x3 = sampleStack[--stackIndex];
-            let y1 = sampleStack[--stackIndex];
-            let x1 = sampleStack[--stackIndex];
-            let s2 = (s1 + s3) / 2;
-            let tooSmall = s1 === s2 || s2 === s3;
-
-            if (tooSmall) {
-              HEAPF64[++newSamplesIndex] = NaN;
-              HEAPF64[++newSamplesIndex] = NaN;
-              continue;
-            }
-
-            let pos = evaluate(s2);
-            let x2 = pos.x;
-            let y2 = pos.y;
-            let leftIsDefined = Number.isFinite(x1) && Number.isFinite(y1);
-            let midIsDefined = Number.isFinite(x2) && Number.isFinite(y2);
-            let rightIsDefined = Number.isFinite(x3) && Number.isFinite(y3);
-            let needsSubdivide = leftIsDefined !== midIsDefined || rightIsDefined !== midIsDefined;
-
-            if (!needsSubdivide) {
-              let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3);
-              if (dstSquared > adaptiveResSquared) needsSubdivide = true;
-            }
-
-            if (needsSubdivide) {
-              --stackIndex; // Right segment
-
-              sampleStack[++stackIndex] = x2;
-              sampleStack[++stackIndex] = y2;
-              sampleStack[++stackIndex] = x3;
-              sampleStack[++stackIndex] = y3;
-              sampleStack[++stackIndex] = s2;
-              sampleStack[++stackIndex] = s3;
-              sampleStack[++stackIndex] = 0; // dType 0
-              // Midpoint
-
-              sampleStack[++stackIndex] = x2;
-              sampleStack[++stackIndex] = y2;
-              sampleStack[++stackIndex] = 1; // dType 1
-              // Left segment
-
-              sampleStack[++stackIndex] = x1;
-              sampleStack[++stackIndex] = y1;
-              sampleStack[++stackIndex] = x2;
-              sampleStack[++stackIndex] = y2;
-              sampleStack[++stackIndex] = s1;
-              sampleStack[++stackIndex] = s2;
-              sampleStack[++stackIndex] = 0; // dType 0
-
-              ++stackIndex;
-            } else {
-              HEAPF64[++newSamplesIndex] = x2;
-              HEAPF64[++newSamplesIndex] = y2;
-            }
-          }
-        } else {
-          HEAPF64[++newSamplesIndex] = x2;
-          HEAPF64[++newSamplesIndex] = y2;
-        }
-      }
-
-      samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex + 1));
-    }
-
-    samples = simplifyPolyline(samples, {
-      minRes: simplifyRes
-    });
-    return samples;
-  }
-
-  const parametricPlotInterface = constructInterface({
-    interface: {
-      pen: {
-        setAs: 'user',
-        description: 'The pen used to draw the plot'
-      },
-      varName: {
-        description: 'The name of the varying variable',
-        typecheck: 'VariableName'
-      },
-      range: {
-        description: 'Range of the varying variable to plot',
-        aliases: ['t']
-      },
-      function: {
-        setAs: 'user',
-        description: 'The function R -> R^2 of the plot',
-        aliases: ['f']
-      },
-      samples: {
-        description: 'The number of samples to plot',
-        typecheck: {
-          type: 'integer',
-          min: 10,
-          max: 1e6
-        }
-      }
-    },
-    internal: {
-      // Pen used to draw the parametric plot
-      pen: {
-        type: 'Pen',
-        computed: 'user',
-        default: DefaultStyles.Pen,
-        compose: true
-      },
-      varName: {
-        type: 'string',
-        computed: 'default',
-        default: 't'
-      },
-      function: {
-        type: 'ASTNode',
-        computed: 'none'
-      },
-      samples: {
-        type: 'number',
-        computed: 'default',
-        default: 100
-      }
-    }
-  });
-  class ParametricPlot2D extends Element {
-    _update() {
-      this.defaultInheritProps();
-      this.defaultComputeProps();
-      this.compileFunction();
-      this.computePoints();
-    }
-
-    compileFunction() {
-      const {
-        props
-      } = this;
-
-      if (props.hasChanged('function')) {
-        let user = props.getUserValue('function');
-
-        if (!user) {
-          props.set('function', null);
-          return;
-        }
-
-        let node;
-
-        if (typeof user === 'string') {
-          node = parseString(user);
-        } else if (user instanceof ASTNode) {
-          node = user.clone();
-        } else {
-          throw new Error("Expected string or ASTNode, got ".concat(relaxedPrint(user)));
-        }
-
-        let varName = props.get('varName'); // default: 't'
-
-        let scope = {};
-        scope[varName] = 'real';
-        node.resolveTypes(scope, {
-          strict: true
-        });
-        props.set('functionNode', node);
-        if (node.type !== 'vec2') throw new Error("Expected expression with return type of vec2, got expression with return type of ".concat(node.type));
-        let compiled = compileNode(node, {
-          args: [varName]
-        });
-        props.set('function', compiled);
-      }
-    }
-
-    computePoints() {
-      const {
-        samples,
-        function: f,
-        range,
-        pen,
-        plotTransform
-      } = this.props.proxy;
-
-      if (!samples || !f || !range || !pen || !plotTransform) {
-        this.internal.renderInfo = null;
-        return;
-      }
-
-      let rangeStart = range[0],
-          rangeEnd = range[1];
-      let pts;
-      pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
-        samples,
-        adaptive: true,
-        adaptiveRes: plotTransform.graphPixelSize() / 20,
-        simplifyRes: plotTransform.graphPixelSize() / 4
-      }));
-      this.internal.pts = pts;
-      this.internal.renderInfo = {
-        instructions: {
-          type: 'polyline',
-          vertices: pts,
-          pen
-        }
-      };
-    }
-
-    getInterface() {
-      return parametricPlotInterface;
     }
 
   }
