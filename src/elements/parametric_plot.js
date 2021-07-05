@@ -108,12 +108,14 @@ export class ParametricPlot2D extends Element {
 
     let pts
 
-    pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
+    benchmark( () => pts = parametricPlot2D(f, rangeStart, rangeEnd, null, {
       samples,
       adaptive: true,
       adaptiveRes: plotTransform.graphPixelSize() / 20,
       simplifyRes: plotTransform.graphPixelSize() / 4
-    }))
+    }), 10000)
+
+    plotTransform.graphToPixelArrInPlace(pts)
 
     this.internal.pts = pts
     this.internal.renderInfo = {

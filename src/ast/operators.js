@@ -114,8 +114,8 @@ function defineUnaryReal (name, evaluator, fast_interval) {
 }
 
 defineUnaryReal('sin', Math.sin, FastRealInterval.sin)
-defineUnaryReal('cos', Math.cos)
-defineUnaryReal('tan', Math.tan)
+defineUnaryReal('cos', Math.cos, FastRealInterval.cos)
+defineUnaryReal('tan', Math.tan, FastRealInterval.tan)
 defineUnaryReal('asin', Math.asin)
 defineUnaryReal('acos', Math.acos)
 defineUnaryReal('atan', Math.atan)
@@ -135,7 +135,23 @@ registerOperator(
     signature: ['real', 'real'],
     returnType: 'vec2',
     evaluators: {
-      generic: (a, b) => new Vec2(a, b)
+      generic: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.x = x
+          v.y = y
+        }
+      },
+      fast_interval: {
+        type: "writes",
+        f: (int1, int2, v) => {
+          v.xMin = int1.min
+          v.xMax = int1.max
+          v.yMin = int2.min
+          v.yMax = int2.max
+          v.info = int1.info & int2.info
+        }
+      }
     }
   })
 )

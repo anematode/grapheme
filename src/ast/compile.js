@@ -11,11 +11,7 @@ export function compileNode (root, opts = {}) {
   // Whether to do typechecks to passed arguments
   let doTypechecks = !!opts.typechecks
 
-  // Mode of compilation
-  let mode = opts.mode ?? "generic"
-
-  // Whether to allow optimizations which may change the output due to rounding
-  let fastMath = !!opts.fastMath
+  if (!opts.mode) opts.mode = "generic"
 
   // We construct the text of a function of the form (imports) => { let setup = ... ; return function (...) { ... }}
   // then create the function via new Function. The evaluation process basically involves generating variables $0, $1,
@@ -253,7 +249,7 @@ function compileEvaluationFunction (
 
     if (evaluatorType === "writes") {
       varName = (local ? localVariable : allocateVariable)(type)
-      computationText += `${evalFunc}(${args.join(', ')}, ${varName}${contextArgs ? ', ' + contextArgs.join(', ') : ''})\n`
+      computationText += `${evalFunc}(${args.join(', ')}, ${varName}${contextArgs.length ? (', ' + contextArgs.join(', ')) : ''});\n`
     } else {
       varName = local ? getUnusedVarName() : allocateVariable(type)
       let allArgs = args.concat(contextArgs).join(', ')

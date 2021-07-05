@@ -7,11 +7,18 @@
 <body>
 
 <script id="setup">
-    var node = Grapheme.parseString("(x^2)+sin(y^2)")
+    var node = Grapheme.parseString("vec2(t,sin(50*t))")
     node.resolveTypes({ x: "real", y: "real" })
 
-    var res = Grapheme.compileNode(node, { mode: "fast_interval", casts: true })
-    console.log(res.evaluate({ x: 2, y: 3 }))
+    var res = Grapheme.compileNode(node, { mode: "generic" })
+
+    var scope = {
+      t: 1 //new Grapheme.FastRealInterval(1, 1.0001)
+    }
+
+    var cow = 0
+
+    Grapheme.utils.benchmark(() => cow += res.evaluate(scope).y, 1e8)
 </script>
 
 <script src="test_setup.js"></script>

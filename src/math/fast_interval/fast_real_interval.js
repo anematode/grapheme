@@ -124,7 +124,8 @@ export class FastRealInterval {
       return
     }
 
-    let s1min = src1.min, s1max = src1.max, s2min = src1.min, s2max = src2.max
+
+    let s1min = src1.min, s1max = src1.max, s2min = src2.min, s2max = src2.max
     let p1 = s1min * s2min, p2 = s1max * s2min, p3 = s1min * s2max, p4 = s1max * s2max
 
     let min = Math.min(p1, p2, p3, p4)

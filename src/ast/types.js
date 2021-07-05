@@ -1,5 +1,6 @@
 // List of valid types in Grapheme math language (as distinct from the props and stuff)
 import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
+import { FastVec2Interval } from '../math/fast_interval/fast_vec2_interval.js'
 import { Vec2 } from '../math/vec/vec2.js'
 
 
@@ -160,6 +161,14 @@ export const TYPES = {
       fast_interval: {
         f: () => new FastVec2Interval()
       }
+    },
+    cast: {
+      generic: {
+        f: v => new Vec2(v.x, v.y)
+      },
+      fast_interval: {
+        f: v => new FastVec2Interval(v.xMin, v.xMax, v.yMin, v.yMax, v.info)
+      }
     }
   },
   null: true
@@ -190,7 +199,7 @@ export function getFastInitializer (type, mode) {
   if (!info) throw new Error(`Invalid type ${type}`)
 
   let init = info.fast_init[mode]
-  if (!init) throw new Error(`No initializer`)
+  if (!init) throw new Error(`No fast initializer`)
 
   return init
 }

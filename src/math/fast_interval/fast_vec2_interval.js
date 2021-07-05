@@ -1,5 +1,5 @@
 
-class FastVec2Interval {
+export class FastVec2Interval {
   constructor () {
     this.xMin = 0
     this.xMax = 0
