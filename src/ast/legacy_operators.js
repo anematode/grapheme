@@ -1,6 +1,6 @@
 import { levenshtein } from '../core/utils'
 import { RealFunctions } from '../math/real/functions'
-import { RealIntervalFunctions } from '../math/real_interval/functions'
+import { RealIntervalFunctions } from '../math/fast_interval/functions'
 import { ComplexFunctions } from '../math/complex/functions'
 import { LatexMethods } from './latex'
 import { Typecasts } from '../math/other/typecasts'

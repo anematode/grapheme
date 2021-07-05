@@ -3,12 +3,16 @@
  * @param root
  * @param opts
  */
-import { getCast, TYPES } from './operator.js'
+import { getCast } from './operator.js'
+import { getCloner, getConvenienceCaster, getFastInitializer, getInitializer, getTypecheck, TYPES } from './types.js'
 import { isValidVariableName } from './parse_string.js'
 
 export function compileNode (root, opts = {}) {
   // Whether to do typechecks to passed arguments
   let doTypechecks = !!opts.typechecks
+
+  // Mode of compilation
+  let mode = opts.mode ?? "generic"
 
   // Whether to allow optimizations which may change the output due to rounding
   let fastMath = !!opts.fastMath
@@ -92,8 +96,8 @@ export function compileNode (root, opts = {}) {
   // Dict of exported functions; mapping between names of functions and their arguments, setup and body
   let exportedFunctions = {}
 
-  function exportFunction (name, args, body) {
-    exportedFunctions[name] = { args, body }
+  function exportFunction (name, args, body, setup) {
+    exportedFunctions[name] = { args, body, setup }
   }
 
   // Compile a function which, given a scope, evaluates the function
@@ -109,14 +113,16 @@ export function compileNode (root, opts = {}) {
 
   // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
   let efText =
-    'return {' +
+    Object.values(exportedFunctions).map(f => f.setup).join('\n') + // setup
+
+    'return {\n' +
     Object.entries(exportedFunctions)
       .map(
         ([name, info]) =>
           `${name}: function (${info.args.join(',')}) { ${info.body} }`
       )
       .join(',') +
-    '}'
+    '\n}'
 
   let nfText = globalSetup + efText
 
@@ -125,6 +131,8 @@ export function compileNode (root, opts = {}) {
 
   // Last argument is the text of the function itself
   importNames.push(nfText)
+
+  console.log(nfText)
 
   return Function.apply(null, importNames).apply(null, imports)
 }
@@ -138,8 +146,10 @@ function compileEvaluationFunction (
   getUnusedVarName,
   opts
 ) {
-  // Whether to add typechecks to the passed variables
   let doTypechecks = !!opts.typechecks
+  let doCasts = !!opts.casts
+  let mode = opts.mode
+  let copyResult = !!opts.copyResult
 
   // List of arguments to be placed BEFORE the scope variable. For example, we might do
   // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
@@ -151,174 +161,196 @@ function compileEvaluationFunction (
       throw new Error(`Invalid exported variable name ${a}`)
   })
 
-  let scopeVarName = 'scope'
-  let scopeUsed = false
-  let fBody = ''
-  let fArgs = [...exportedArgs]
+  let scopeVarName = "scope"
+  let scopeUsed = !!opts.scope
 
-  // Mapping between string variable name and information about that variable (varName)
-  let varInfo = new Map()
+  // Components to a compiled function:
+  // Pre-allocated variables
+  let allocationsText = ""
 
-  /**
-   * Get information, including the JS variable name
-   * @param name
-   */
-  function getScopedVariable (name) {
-    let stored = varInfo.get(name)
-    if (stored) return stored
+  // Typecheck scope
+  let typecheckScopeText = ""
 
-    stored = { varName: getUnusedVarName() }
-    varInfo.set(name, stored)
+  // Get scoped variables
+  let scopedText = ""
 
-    return stored
+  // Typecheck/cast variables
+  let typecheckText = ""
+
+  // Allocate local variables
+  let localsText = ""
+
+  // Computation
+  let computationText = ""
+
+  // Result
+  let returnText = ""
+
+  // Add a typecheck for a variable
+  function addTypecheck (jsVariableName, variableName, type) {
+    let typecheck = getTypecheck(type, mode)
+    let tcFunc = importFunction(typecheck.f)
+
+    typecheckText += `if (!${tcFunc}(${jsVariableName})) throw new TypeError(${jsVariableName} === undefined ? "Expected variable ${variableName} to be defined" : "Expected variable ${variableName} to have type ${type}");\n`
   }
 
-  function prependLine (code) {
-    fBody = code + '\n' + fBody
+  function addCast (jsVariableName, variableName, type) {
+    let typecheck = getConvenienceCaster(type, mode)
+    let tcFunc = importFunction(typecheck.f)
+
+    typecheckText += `${jsVariableName}=${tcFunc}(${jsVariableName});\nif (${jsVariableName} === undefined) throw new TypeError("Failed to cast variable ${variableName} to type ${type}");\n`
   }
 
-  function addLine (code) {
-    fBody += code + '\n'
-  }
-
-  // Import and typecheck variables
-  let requiredVariables = root.usedVariables()
-  for (const [name, type] of requiredVariables.entries()) {
-    let varInfo = getScopedVariable(name)
-    let varName = varInfo.varName
-
-    if (exportedArgs.includes(name)) {
-      addLine(`var ${varName}=${name};`)
-    } else {
-      scopeUsed = true
-      addLine(`var ${varName}=${scopeVarName}.${name};`)
-    }
-
-    if (doTypechecks) {
-      let typecheck = importFunction(TYPES[type].typecheck.generic.f)
-
-      addLine(
-        `if (${varName} === undefined) throw new Error("Variable ${name} is not defined in this scope");`
-      )
-      addLine(
-        `if (!${typecheck}(${varName})) throw new Error("Expected variable ${name} to have a type of ${type}");`
-      )
-    }
-  }
-
-  compileEvaluateVariables(
-    root,
-    nodeInfo,
-    importFunction,
-    importConstant,
-    getScopedVariable,
-    getUnusedVarName,
-    addLine,
-    opts
-  )
-  addLine(`return ${nodeInfo.get(root).varName};`)
-
-  // Typecheck scope object
-  if (doTypechecks && scopeUsed) {
-    if (exportedArgs.length === 0) {
-      prependLine(
-        `if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed to evaluate function should be a scope");`
-      )
-    } else {
-      prependLine(
-        `if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Object passed as last parameter to evaluate function should be a scope; there are undefined variables");`
-      )
-    }
-  }
-
-  // Scope is last argument in function
-  if (scopeUsed) fArgs.push(scopeVarName)
-
-  exportFunction('evaluate', fArgs, fBody)
-}
-
-function compileEvaluateVariables (
-  root,
-  nodeInfo,
-  importFunction,
-  importConstant,
-  getScopedVariable,
-  getUnusedVarName,
-  addLine,
-  opts
-) {
-  // How much to try and optimize the computations
-  let optimizationLevel = opts.o ?? 0
-
-  function compileOperator (node) {
+  // Get a variable from the scope
+  function getScopedVariable (scopedVarName) {
     let varName = getUnusedVarName()
 
-    let definition = node.definition
-    let evaluator = definition.evaluators.generic
-    let evaluatorType = evaluator.type
+    scopedText += `var ${varName}=${scopeVarName}.${scopedVarName};\n`
+    return varName
+  }
 
-    let children = node.children
-    let args = children.map((c, i) => {
-      let varName = nodeInfo.get(c).varName
-      let srcType = c.type
-      let dstType = definition.signature[i]
+  // Allocate a variable using a given allocator
+  function allocateVariable (type, initValue, local=false) {
+    let hasInitValue = initValue !== undefined
+    let text
 
-      // Do type conversion
-      if (srcType !== dstType) {
-        let cast = getCast(srcType, dstType)
+    let varName = getUnusedVarName()
 
-        if (cast.name !== 'identity') {
-          let convertedVarName = getUnusedVarName()
-
-          addLine(
-            `var ${convertedVarName}=${importFunction(
-              cast.evaluators.generic.f
-            )}(${varName});`
-          )
-          varName = convertedVarName
-        }
-      }
-
-      return varName
-    })
-
-    if (evaluatorType === 'special_binary') {
-      addLine(`var ${varName}=${args[0]} ${evaluator.binary} ${args[1]};`)
+    if (mode === "generic" && (type === "real" || type === "bool" || type === "int")) { // special case where the allocation function can be elided
+      text = `var ${varName}=${initValue ?? getFastInitializer(type, mode).f()};\n`
     } else {
-      let fName = importFunction(evaluator.f)
-      addLine(`var ${varName}=${fName}(${args.join(',')});`)
+      let allocator = (hasInitValue ? getInitializer : getFastInitializer)(type, mode)
+      let allFunc = importFunction(allocator.f)
+
+      text = `var ${varName}=${allFunc}(${hasInitValue ? importConstant(initValue) : ''});\n`
+    }
+
+    if (local) {
+      localsText += text
+    } else {
+      allocationsText += text
     }
 
     return varName
   }
 
-  root.applyAll(
-    node => {
-      let info = nodeInfo.get(node)
-      let nodeType = node.nodeType()
-      let varName
+  // Allocate a *local* variable using a given allocator
+  function localVariable (type, initValue) {
+    allocateVariable(type, initValue, true)
+  }
 
-      switch (nodeType) {
-        case 'op':
-          varName = compileOperator(node)
-          break
-        case 'var':
-          varName = getScopedVariable(node.name).varName
-          break
-        case 'const':
-          varName = importConstant(node.value)
-          break
-        case 'group':
-          // Forward the var name from the only child (since this is a grouping)
-          varName = nodeInfo.get(node.children[0]).varName
-          break
-        default:
-          throw new Error(`Unknown node type ${nodeType}`)
+  function computeVariable (type, args, contextArgs, evaluator, local=false) {
+    if (evaluator.type === "special") {
+      if (evaluator.name === "identity") {
+        return args[0]
       }
+    }
 
-      info.varName = varName
-    },
-    false,
-    true /* children first, so bottom up */
-  )
+    let evaluatorType = evaluator.type === "writes" ? "writes" : "returns"
+    let varName
+
+    let evalFunc = importFunction(evaluator.f)
+
+    if (evaluatorType === "writes") {
+      varName = (local ? localVariable : allocateVariable)(type)
+      computationText += `${evalFunc}(${args.join(', ')}, ${varName}${contextArgs ? ', ' + contextArgs.join(', ') : ''})\n`
+    } else {
+      varName = local ? getUnusedVarName() : allocateVariable(type)
+      let allArgs = args.concat(contextArgs).join(', ')
+
+      computationText += `${local ? "var " : ""}${varName}=${evalFunc}(${allArgs});\n`
+    }
+
+    return varName
+  }
+
+  function getCasted (node, dstType) {
+    let info = nodeInfo.get(node)
+    if (node.type === dstType) return info.varName
+
+    let casts = info.casts
+    if (!casts) casts = info.casts = {}
+
+    if (casts[dstType]) return casts[dstType]
+
+    let typecast = getCast(node.type, dstType)
+
+    return casts[dstType] = computeVariable(dstType, [info.varName], [], typecast.evaluators[mode])
+  }
+
+  // Map between variable name -> JS variable name
+  let varMap = new Map()
+
+  let variables = root.usedVariables()
+  for (const [ name, type ] of variables) {
+    let isExported = exportedArgs.includes(name)
+    let varName
+
+    if (isExported) {
+      varName = name
+    } else {
+      scopeUsed = true
+
+      // Does something like var $1 = scope.x
+      varName = getScopedVariable(name)
+    }
+
+    varMap.set(name, varName)
+    if (doTypechecks)
+      addTypecheck(varName, name, type)
+    if (doCasts)
+      addCast(varName, name, type)
+  }
+
+  if (scopeUsed) {
+    if (doTypechecks) {
+      typecheckScopeText += `if (typeof ${scopeVarName} !== "object" || Array.isArray(${scopeVarName})) throw new TypeError("Scope must be an object");\n`
+    }
+
+    exportedArgs.push(scopeVarName)
+  }
+
+  root.applyAll(node => {
+    let info = nodeInfo.get(node)
+
+    switch (node.nodeType()) {
+      case "var":
+        info.varName = varMap.get(node.name)
+        break
+      case "const":
+        info.varName = allocateVariable(node.type, node.value)
+        break
+      case "op":
+        let definition = node.definition
+        let signature = definition.signature
+        let children = node.children
+
+        let args = children.map((child, i) => getCasted(child, signature[i]))
+        let evaluator = definition.evaluators[mode]
+
+        if (!evaluator)
+          throw new Error(`No evaluator found for function ${definition.name} under mode ${mode}`)
+
+        info.varName = computeVariable(node.type, args, [], evaluator)
+
+        break
+      case "group":
+        info.varName = nodeInfo.get(node.children[0]).varName
+        break
+    }
+  }, false, true)
+
+  // Return text
+  let rootInfo = nodeInfo.get(root)
+  let rootVarName = rootInfo.varName
+
+  if (copyResult) {
+    rootVarName = computeVariable(rootInfo, [rootVarName], [], getCloner(type, mode), true)
+  }
+
+  returnText += `return ${rootVarName};\n`
+
+  let fText = typecheckScopeText + scopedText + typecheckText + localsText + computationText + returnText
+
+  exportFunction("evaluate", exportedArgs, fText, allocationsText)
 }

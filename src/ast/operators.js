@@ -1,5 +1,6 @@
 import { FixedOperatorDefinition } from './operator.js'
 import { Vec2 } from '../math/vec/vec2.js'
+import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
 
 /**
  * Mapping of operator name to list of operators with that name
@@ -37,29 +38,33 @@ function registerOperator (name, ...ops) {
   }
 }
 
-function defineSimpleBinaryOperator (type, name, generic) {
+function defineSimpleBinaryOperator (type, name, generic, fast_interval) {
   registerOperator(
     name,
     new FixedOperatorDefinition({
       signature: [type, type],
       returnType: type,
       evaluators: {
-        generic
+        generic,
+        fast_interval: {
+          type: "writes",
+          f: fast_interval
+        }
       }
     })
   )
 }
 
-defineSimpleBinaryOperator('int', '+', 'addition')
-defineSimpleBinaryOperator('int', '-', 'subtraction')
-defineSimpleBinaryOperator('int', '*', 'multiplication')
+defineSimpleBinaryOperator('int', '+', 'addition', FastRealInterval.add)
+defineSimpleBinaryOperator('int', '-', 'subtraction', FastRealInterval.sub)
+defineSimpleBinaryOperator('int', '*', 'multiplication', FastRealInterval.mul)
 defineSimpleBinaryOperator('int', '^', Math.pow)
 
-defineSimpleBinaryOperator('real', '+', 'addition')
-defineSimpleBinaryOperator('real', '-', 'subtraction')
-defineSimpleBinaryOperator('real', '*', 'multiplication')
-defineSimpleBinaryOperator('real', '/', 'division')
-defineSimpleBinaryOperator('real', '^', Math.pow)
+defineSimpleBinaryOperator('real', '+', 'addition', FastRealInterval.add)
+defineSimpleBinaryOperator('real', '-', 'subtraction', FastRealInterval.sub)
+defineSimpleBinaryOperator('real', '*', 'multiplication', FastRealInterval.mul)
+defineSimpleBinaryOperator('real', '/', 'division', FastRealInterval.div)
+defineSimpleBinaryOperator('real', '^', Math.pow, FastRealInterval.pow)
 
 registerOperator(
   '-',
@@ -67,7 +72,11 @@ registerOperator(
     signature: ['int'],
     returnType: 'int',
     evaluators: {
-      generic: 'unary_subtraction'
+      generic: 'unary_subtraction',
+      fast_interval: {
+        type: "writes",
+        f: FastRealInterval.unarySub
+      }
     }
   })
 )
@@ -78,25 +87,33 @@ registerOperator(
     signature: ['real'],
     returnType: 'real',
     evaluators: {
-      generic: 'unary_subtraction'
+      generic: 'unary_subtraction',
+      fast_interval: {
+        type: "writes",
+        f: FastRealInterval.unarySub
+      }
     }
   })
 )
 
-function defineUnaryReal (name, evaluator) {
+function defineUnaryReal (name, evaluator, fast_interval) {
   registerOperator(
     name,
     new FixedOperatorDefinition({
       signature: ['real'],
       returnType: 'real',
       evaluators: {
-        generic: evaluator
+        generic: evaluator,
+        fast_interval: {
+          type: "writes",
+          f: fast_interval
+        }
       }
     })
   )
 }
 
-defineUnaryReal('sin', Math.sin)
+defineUnaryReal('sin', Math.sin, FastRealInterval.sin)
 defineUnaryReal('cos', Math.cos)
 defineUnaryReal('tan', Math.tan)
 defineUnaryReal('asin', Math.asin)

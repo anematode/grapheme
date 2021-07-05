@@ -5,7 +5,8 @@ export function initTypecasts (TypecastDefinition, typecastList, typecastDict) {
     from: 'int',
     to: 'real',
     evaluators: {
-      generic: 'identity' // Identity conversion
+      generic: 'identity', // Identity conversion,
+      fast_interval: 'identity'
     }
   })
 

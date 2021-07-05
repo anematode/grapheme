@@ -44,9 +44,16 @@ export class FastRealInterval {
     dst.info = 0b111
   }
 
+  /**
+   * Add two fast real intervals, sending the result to dst
+   * @param src1 {FastRealInterval}
+   * @param src2 {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static add (src1, src2, dst, correctRounding) {
     let info = src1.info & src2.info
-    if (!(info & 1)) {
+    if (info === 0) {
       dst.info = 0
       return
     }
@@ -64,6 +71,13 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Subtract two fast real intervals, sending the result to dst
+   * @param src1 {FastRealInterval}
+   * @param src2 {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static sub (src1, src2, dst, correctRounding) {
     let info = src1.info & src2.info
     if (info === 0) {
@@ -84,6 +98,25 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Negate a real interval, sending the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
+  static unarySub (src, dst, correctRounding) {
+    dst.min = -src.max
+    dst.max = -src.min
+    dst.info = src.info
+  }
+
+  /**
+   * Multiply two fast real intervals, sending the result to dst
+   * @param src1 {FastRealInterval}
+   * @param src2 {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static mul (src1, src2, dst, correctRounding) {
     let info = src1.info & src2.info
     if (info === 0) {
@@ -107,6 +140,13 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Divide two fast real intervals, sending the result to dst
+   * @param src1 {FastRealInterval}
+   * @param src2 {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static div (src1, src2, dst, correctRounding) {
     let info = src1.info & src2.info
     if (info === 0) {
@@ -139,6 +179,12 @@ export class FastRealInterval {
     }
   }
 
+  /**
+   * Take the square root of a real interval, sending the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static sqrt (src, dst, correctRounding) {
     let info = src.info
     if (info === 0) {
@@ -179,12 +225,18 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the sine of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+   */
   static sin (src, dst, correctRounding) {
     const pio2 = Math.PI / 2
     const pi3o2 = 3 * Math.PI / 2
+    const pi2 = 2 * Math.PI
     const pi5o2 = 5 * Math.PI / 2
     const pi7o2 = 7 * Math.PI / 2
-    const pi2 = 2 * Math.PI
 
     let info = src.info
     if (info === 0) {
@@ -232,6 +284,12 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the cosine of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+   */
   static cos (src, dst, correctRounding) {
     const pi2 = 2 * Math.PI
     const pi3 = 3 * Math.PI
@@ -328,5 +386,73 @@ export class FastRealInterval {
     dst.min = min
     dst.max = max
     dst.info = info
+  }
+
+  static pow (src1, src2, dst, correctRounding) {
+    let info = src1.info & src2.info
+    if (info === 0) {
+      dst.info = 0
+      return
+    }
+
+    let s1min = src1.min, s1max = src1.max, s2min = src2.min, s2max = src2.max
+    if (s2min === s2max) {
+      let exp = s2min
+      let containsZero = (s1min <= 0 && s1max >= 0)
+
+      if (Number.isInteger(exp)) {
+        if (exp === 0) {
+          dst.min = 1
+          dst.max = 1
+          dst.info = info & (containsZero ? 0b010 : 0b111)
+
+          return
+        } else if (exp < 0) {
+          if (exp % 2 === 0) {
+            if (containsZero) {
+              dst.min = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp)
+              dst.max = Infinity
+              dst.info = info & 0b010
+              return
+            }
+          } else {
+            if (containsZero) {
+              dst.min = Infinity
+              dst.max = Infinity
+              dst.info = info & 0b010
+              return
+            }
+          }
+        } else {
+          if (exp % 2 === 0) {
+            if (containsZero) {
+              dst.min = 0
+              let max = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp)
+
+              if (correctRounding)
+                max = roundUp(max)
+
+              dst.max = max
+              dst.info = info
+
+              return
+            }
+          }
+        }
+
+        let powSrcMin = Math.pow(s1min, exp), powSrcMax = Math.pow(s1max, exp)
+        let min = Math.min(powSrcMin, powSrcMax)
+        let max = Math.max(powSrcMin, powSrcMax)
+
+        if (correctRounding) {
+          min = roundDown(min)
+          max = roundUp(max)
+        }
+
+        dst.min = min
+        dst.max = max
+        dst.info = info
+      }
+    }
   }
 }

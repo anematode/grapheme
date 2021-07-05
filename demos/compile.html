@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elements</title>
+</head>
+<body>
+
+<script id="setup">
+    var node = Grapheme.parseString("(x^2)+sin(y^2)")
+    node.resolveTypes({ x: "real", y: "real" })
+
+    var res = Grapheme.compileNode(node, { mode: "fast_interval", casts: true })
+    console.log(res.evaluate({ x: 2, y: 3 }))
+</script>
+
+<script src="test_setup.js"></script>
+
+
+</body>
+</html>

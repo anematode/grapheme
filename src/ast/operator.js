@@ -1,40 +1,6 @@
 import { levenshtein } from '../core/utils.js'
 import { initTypecasts } from './typecasts.js'
-import { Vec2 } from '../math/vec/vec2.js'
-
-// List of valid types in Grapheme math language (as distinct from the props and stuff)
-export const TYPES = {
-  bool: {
-    typecheck: {
-      generic: {
-        f: x => typeof x === 'boolean'
-      }
-    }
-  },
-  int: {
-    typecheck: {
-      generic: {
-        f: Number.isInteger
-      }
-    }
-  },
-  real: {
-    typecheck: {
-      generic: {
-        f: x => typeof x === 'number'
-      }
-    }
-  },
-  complex: true,
-  vec2: {
-    typecheck: {
-      generic: {
-        f: x => x instanceof Vec2
-      }
-    }
-  },
-  null: true
-}
+import { TYPES } from './types.js'
 
 /**
  * Get typecast definition between two types--if the definition exists. Can also be used as a boolean test for whether
@@ -174,6 +140,9 @@ const specialEvaluators = {
 /**
  * Given an evaluator description, return a normalized evaluator of the form { type: (str), f: (function) } and
  * potentially more information that the compiler can use to optimize the evaluator (identity, piecewiseness, etc.)
+ * An evaluator is either a special_binary, which can be optimized inline to a JS operator, a special, which has
+ * optimization information for the compiler, a returns, which means it returns the result of the function, and a
+ * writes, which means it writes the result of the function to a destination register.
  * @param obj
  */
 function evaluatorNormalize (obj) {
@@ -185,7 +154,7 @@ function evaluatorNormalize (obj) {
     return evaluator
   } else if (typeof obj === 'function') {
     return {
-      type: 'normal',
+      type: 'returns',
       f: obj
     }
   }
