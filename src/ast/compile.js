@@ -236,6 +236,10 @@ function compileEvaluationFunction (
   }
 
   function computeVariable (type, args, contextArgs, evaluator, local=false) {
+    if (!evaluator) {
+      throw new Error("No evaluator for function")
+    }
+
     if (evaluator.type === "special") {
       if (evaluator.name === "identity") {
         return args[0]

@@ -227,6 +227,32 @@ export class FastRealInterval {
   }
 
   /**
+   * Take the cube root of a real interval, sending the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
+  static cbrt (src, dst, correctRounding) {
+    let info = src.info
+    if (info === 0) {
+      dst.info = 0
+      return
+    }
+
+    let min = Math.cbrt(src.min)
+    let max = src.min === src.max ? min : Math.cbrt(src.max)
+
+    if (correctRounding) {
+      min = roundDown(min)
+      max = roundUp(max)
+    }
+
+    dst.min = min
+    dst.max = max
+    dst.info = info
+  }
+
+  /**
    * Take the sine of a fast real interval and send the result to dst
    * @param src {FastRealInterval}
    * @param dst {FastRealInterval}
@@ -381,6 +407,94 @@ export class FastRealInterval {
 
     if (correctRounding) {
       min = roundDown(min)
+      max = roundUp(max)
+    }
+
+    dst.min = min
+    dst.max = max
+    dst.info = info
+  }
+
+  static asin (src, dst, correctRounding) {
+    let info = src.info
+    if (info === 0) {
+      dst.info = 0
+      return
+    }
+
+    let srcMin = src.min, srcMax = src.max
+
+    if (srcMax < -1 || srcMin > 1) {
+      dst.info = 0
+      return
+    }
+
+    let min, max
+
+    if (srcMin === srcMax) {
+      min = max = Math.asin(srcMin)
+    } else {
+      if (srcMin < -1) {
+        min = -Math.PI / 2
+        info &= 0b010
+      } else {
+        min = Math.asin(srcMin)
+      }
+
+      if (srcMax > 1) {
+        max = Math.PI / 2
+        info &= 0b010
+      } else {
+        max = Math.asin(srcMax)
+      }
+    }
+
+    if (correctRounding) {
+      min = roundDown(min)
+      max = roundUp(max)
+    }
+
+    dst.min = min
+    dst.max = max
+    dst.info = info
+  }
+
+  static acos (src, dst, correctRounding) {
+    let info = src.info
+    if (info === 0) {
+      dst.info = 0
+      return
+    }
+
+    let srcMin = src.min, srcMax = src.max
+
+    if (srcMax < -1 || srcMin > 1) {
+      dst.info = 0
+      return
+    }
+
+    let min, max
+
+    if (srcMin === srcMax) {
+      min = max = Math.acos(srcMin)
+    } else {
+      if (srcMin < -1) {
+        max = Math.PI
+        info &= 0b010
+      } else {
+        max = Math.acos(srcMin)
+      }
+
+      if (srcMax > 1) {
+        min = 0
+        info &= 0b010
+      } else {
+        min = Math.acos(srcMax)
+      }
+    }
+
+    if (correctRounding) {
+      min = min === 0 ? min : roundDown(min)
       max = roundUp(max)
     }
 

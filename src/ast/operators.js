@@ -58,7 +58,7 @@ function defineSimpleBinaryOperator (type, name, generic, fast_interval) {
 defineSimpleBinaryOperator('int', '+', 'addition', FastRealInterval.add)
 defineSimpleBinaryOperator('int', '-', 'subtraction', FastRealInterval.sub)
 defineSimpleBinaryOperator('int', '*', 'multiplication', FastRealInterval.mul)
-defineSimpleBinaryOperator('int', '^', Math.pow)
+defineSimpleBinaryOperator('int', '^', Math.pow, FastRealInterval.pow)
 
 defineSimpleBinaryOperator('real', '+', 'addition', FastRealInterval.add)
 defineSimpleBinaryOperator('real', '-', 'subtraction', FastRealInterval.sub)
@@ -116,7 +116,7 @@ function defineUnaryReal (name, evaluator, fast_interval) {
 defineUnaryReal('sin', Math.sin, FastRealInterval.sin)
 defineUnaryReal('cos', Math.cos, FastRealInterval.cos)
 defineUnaryReal('tan', Math.tan, FastRealInterval.tan)
-defineUnaryReal('asin', Math.asin)
+defineUnaryReal('asin', Math.asin, FastRealInterval.asin)
 defineUnaryReal('acos', Math.acos)
 defineUnaryReal('atan', Math.atan)
 defineUnaryReal('sinh', Math.sinh)
@@ -126,8 +126,8 @@ defineUnaryReal('asinh', Math.asinh)
 defineUnaryReal('acosh', Math.acosh)
 defineUnaryReal('atanh', Math.atanh)
 
-defineUnaryReal('sqrt', Math.sqrt)
-defineUnaryReal('cbrt', Math.cbrt)
+defineUnaryReal('sqrt', Math.sqrt, FastRealInterval.sqrt)
+defineUnaryReal('cbrt', Math.cbrt, FastRealInterval.cbrt)
 
 registerOperator(
   'vec2',
