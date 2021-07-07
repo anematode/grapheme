@@ -25,17 +25,33 @@ let samplingStrategies = {
 // with a bolus
 let sampleStack = new Float64Array(10 * 2048)
 
-export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
-  samples: sampleCount = 100,      // how many initial samples to take
-  samplingStrategy = "uniform",    // how to take the initial samples
-  samplingStrategyArgs = [],       // additional parameters for how to take the initial samples
-  adaptive = true,                 // whether to do recursive, adaptive sampling
-  adaptiveRes = Infinity,          // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
-  simplify = true,                 // whether to compress the vertices
-  simplifyRes = adaptiveRes,       // resolution of the collapse
+/**
+ * Compute a parametric plot of a function f: real -> vec2 between tMin and tMax, using various tuning parameters. The
+ * routine takes in as required arguments the function f and tMin and tMax.
+ * @param f {{evaluate: Function}} The function, which should accept a single parameter t (double) and return a Vec2.
+ * @param tMin {number} The lower bound on t.
+ * @param tMax {number} The upper bound on t.
+ * @param samples {number} The number of initial samples to take, if adaptively
+ * @param samplingStrategy {string} The strategy with which the initial samples will be taken
+ * @param samplingStrategyArgs {Array} Additional parameters to pass to the sampling strategy
+ * @param adaptive {boolean} Whether to use adaptive sampling
+ * @param adaptiveRes {number} The resolution at which a segment is considered linear, and will not be subdivided further
+ * @param simplify {boolean} Whether to simplify the resulting contours, converting highly linear sections to lines
+ * @param simplifyRes {number} The resolution at which a set of segments is considered linear and will be simplified
+ * @param intervalFunc {{evaluate: Function}} A function, which should accept a single parameter t (FastRealInterval) and return a FastVec2Interval.
+ * @param plotBox {BoundingBox} The bounding box, in graph space, of the viewing window, which can be used for culling
+ * @returns {Float64Array|null}
+ */
+export function parametricPlot2D (f, tMin, tMax, {
+  samples: sampleCount = 100,
+  samplingStrategy = "uniform",
+  samplingStrategyArgs = [],
+  adaptive = true,
+  adaptiveRes = Infinity,
+  simplify = true,
+  simplifyRes = adaptiveRes,
   intervalFunc = null,
-  plotBox = null,                           // BoundingBox
-  intervalLimit = 3                // Heuristically, tries to keep the interval evaluations done this many subdivisions before the final subdivision
+  plotBox = null
 } = {}) {
   // Sanity checks
   if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null
@@ -122,21 +138,24 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
       // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
       // efficiently requires some careful thinking.
       let shouldSubdivide = needsSubdivide
+
       needsSubdivide = false
 
+      // Two conditions for subdivision: undefinedness or insufficient linearity
       if (!shouldSubdivide) {
-        // Two conditions for subdivision: undefinedness or insufficient linearity
         if ((Number.isFinite(x1) && Number.isFinite(y1)) !== (Number.isFinite(x2) && Number.isFinite(y2))) {
           shouldSubdivide = true
-        } else {
-          let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
-          if (dstSquared > adaptiveResSquared) {
-            // If the distance is sufficient, both this segment and the next segment need division (stored in
-            // needsSubdivide)
-            needsSubdivide = true
-            shouldSubdivide = true
-          }
         }
+      }
+
+      // We need to calculate this every time because it affects both this segment (should subdivide) and the next
+      // (needs subdivide)
+      let dstSquared = pointLineSegmentDistanceSquared(x2, y2, x1, y1, x3, y3)
+      if (dstSquared > adaptiveResSquared) {
+        // If the distance is sufficient, both this segment and the next segment need division (stored in
+        // needsSubdivide)
+        needsSubdivide = true
+        shouldSubdivide = true
       }
 
       if (shouldSubdivide) {
@@ -152,8 +171,14 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
         sampleStack[1] = y1
         sampleStack[2] = x2
         sampleStack[3] = y2
-        sampleStack[4] = samplesT[i-2]
-        sampleStack[5] = samplesT[i-1]
+
+        if (!doInterval) {
+          s1 = samplesT[i-2]
+          s2 = samplesT[i-1]
+        }
+
+        sampleStack[4] = s1
+        sampleStack[5] = s2
         sampleStack[6] = 0
 
         let stackIndex = 7
@@ -188,8 +213,6 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
             continue
           }
 
-          window.total += 1
-
           let pos = evaluate(s2)
 
           let x2 = pos.x
@@ -220,7 +243,6 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
             sampleStack[++stackIndex] = s3
             sampleStack[++stackIndex] = 0  // dType 0
 
-
             // Midpoint
             sampleStack[++stackIndex] = x2
             sampleStack[++stackIndex] = y2
@@ -250,7 +272,8 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
     samples = new Float64Array(HEAPF64.subarray(0, newSamplesIndex + 1))
   }
 
-  samples = simplifyPolyline(samples, { minRes: simplifyRes })
+  if (simplify)
+    samples = simplifyPolyline(samples, { minRes: simplifyRes })
 
   return samples
 }
