@@ -15,7 +15,6 @@
     var figure = new Grapheme.Figure({ interactivity: true })
     var baubles = new Grapheme.FigureBaubles()
     var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(6*cos(t/6),sin(50*t))+vec2(cos(49*t), 4*sin(t/5))", t: [ -50, 50 ], pen: { thickness: 2, color: "blue" }, samples: 500 })
-    var line = new Grapheme.PolylineElement({ pen: { thickness: 2}, vertices: [500, 200, 300, 100] })
 
     scene.add(figure.add(baubles).add(plot1))
     document.body.appendChild(scene.domElement)

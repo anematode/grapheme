@@ -1,8 +1,8 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Grapheme = {}));
-}(this, (function (exports) { 'use strict';
+  (global = global || self, factory(global.Grapheme = {}));
+}(this, function (exports) { 'use strict';
 
   /**
    * @file This file defines functions for bit-level manipulation of double-precision floating point numbers. More
@@ -368,7 +368,6 @@
   }
 
   var fp_manip = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     floatStore: floatStore,
     intView: intView,
     roundUp: roundUp,
@@ -715,7 +714,6 @@
   }, 0);
 
   var utils = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     getVersionID: getVersionID,
     benchmark: benchmark,
     time: time,
@@ -844,8 +842,8 @@
       const rectsToPack = this.queue.sort((r1, r2) => r1.w * r1.h - r2.w * r2.h); // The packing boundary is the minimal "step function" that encompasses the rectangles already allocated. Yes, I know
 
       for (const rect of rectsToPack) {
-        rect.w;
-            rect.h;
+        let rectW = rect.w,
+            rectH = rect.h;
       }
     }
 
@@ -1610,7 +1608,7 @@
 
     return arr;
   }
-  function fastAtan2$1(y, x) {
+  function fastAtan2(y, x) {
     let abs_x = Math.abs(x);
     let abs_y = Math.abs(y);
     let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x; // atan(x) is about x - x^3 / 3 + x^5 / 5. We also note that atan(1/x) = pi/2 - atan(x) for x > 0, etc.
@@ -1642,7 +1640,7 @@
 
     let x3d = x2 - x3;
     let y3d = y2 - y3;
-    let res = Math.abs(fastAtan2$1(y3d, x3d) - fastAtan2$1(y1d, x1d));
+    let res = Math.abs(fastAtan2(y3d, x3d) - fastAtan2(y1d, x1d));
 
     if (res > Math.PI) {
       return 2 * Math.PI - res;
@@ -1918,7 +1916,7 @@
     return fastSin(x + 1.570796326794);
   }
 
-  function fastAtan2(y, x) {
+  function fastAtan2$1(y, x) {
     let abs_x = x < 0 ? -x : x;
     let abs_y = y < 0 ? -y : y;
     let a = abs_x < abs_y ? abs_x / abs_y : abs_y / abs_x;
@@ -2026,7 +2024,7 @@
 
         if (endcap === 1) {
           // rounded endcap
-          let theta = fastAtan2(v2y, v2x) + Math.PI / 2;
+          let theta = fastAtan2$1(v2y, v2x) + Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
           let o_x = x2 - th * v2y,
               o_y = y2 + th * v2x;
@@ -2093,7 +2091,7 @@
         glVertices[++index] = y2 + th * v1x;
 
         if (endcap === 1) {
-          let theta = fastAtan2(v1y, v1x) + 3 * Math.PI / 2;
+          let theta = fastAtan2$1(v1y, v1x) + 3 * Math.PI / 2;
           let steps_needed = Math.ceil(Math.PI / pen.endcapRes);
           let o_x = x2 - th * v1y,
               o_y = y2 + th * v1x;
@@ -2179,8 +2177,8 @@
       glVertices[++index] = y2 + th * v1x;
 
       if (join === 1 || join === 3) {
-        let a1 = fastAtan2(-v1y, -v1x) - Math.PI / 2;
-        let a2 = fastAtan2(v2y, v2x) - Math.PI / 2; // if right turn, flip a2
+        let a1 = fastAtan2$1(-v1y, -v1x) - Math.PI / 2;
+        let a2 = fastAtan2$1(v2y, v2x) - Math.PI / 2; // if right turn, flip a2
         // if left turn, flip a1
 
         let start_a, end_a;
@@ -2675,8 +2673,9 @@
       from: 'int',
       to: 'real',
       evaluators: {
-        generic: 'identity' // Identity conversion
-
+        generic: 'identity',
+        // Identity conversion,
+        fast_interval: 'identity'
       }
     });
 
@@ -2710,11 +2709,898 @@
     }
   }
 
+  /**
+   * A real interval with only min, max, defMin (bit 0), defMax (bit 1), contMin (bit 2), contMax (bit 3)
+   */
+  class FastRealInterval {
+    constructor(min = 0, max = min, info = 0b111) {
+      this.min = min;
+      this.max = max;
+      this.info = info;
+    }
+
+    defMin() {
+      return this.info & 0b1;
+    }
+
+    defMax() {
+      return this.info & 0b10;
+    }
+
+    cont() {
+      return this.info & 0b100;
+    }
+
+    static set(src, dst) {
+      dst.min = src.min;
+      dst.max = src.max;
+      dst.info = src.info;
+    }
+
+    static setNumber(num, dst) {
+      if (Number.isNaN(num)) {
+        dst.info = 0;
+      } else {
+        dst.min = num;
+        dst.max = num;
+        dst.info = 0b111;
+      }
+    }
+
+    static setRange(min, max, dst) {
+      dst.min = min;
+      dst.max = max;
+      dst.info = 0b111;
+    }
+    /**
+     * Add two fast real intervals, sending the result to dst
+     * @param src1 {FastRealInterval}
+     * @param src2 {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static add(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src1.min + src2.min;
+      let max = src1.max + src2.max;
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Subtract two fast real intervals, sending the result to dst
+     * @param src1 {FastRealInterval}
+     * @param src2 {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static sub(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src1.min - src2.max;
+      let max = src1.max - src2.min;
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Negate a real interval, sending the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static unarySub(src, dst, correctRounding) {
+      dst.min = -src.max;
+      dst.max = -src.min;
+      dst.info = src.info;
+    }
+    /**
+     * Multiply two fast real intervals, sending the result to dst
+     * @param src1 {FastRealInterval}
+     * @param src2 {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static mul(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let s1min = src1.min,
+          s1max = src1.max,
+          s2min = src2.min,
+          s2max = src2.max;
+      let p1 = s1min * s2min,
+          p2 = s1max * s2min,
+          p3 = s1min * s2max,
+          p4 = s1max * s2max;
+      let min = Math.min(p1, p2, p3, p4);
+      let max = Math.max(p1, p2, p3, p4);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Divide two fast real intervals, sending the result to dst
+     * @param src1 {FastRealInterval}
+     * @param src2 {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static div(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let s2min = src2.min,
+          s2max = src2.max;
+
+      if (0 < s2min || 0 > s2max) {
+        // if 0 is outside the range...
+        let s1min = src1.min,
+            s1max = src1.max;
+        let p1 = s1min / s2min,
+            p2 = s1max / s2min,
+            p3 = s1min / s2max,
+            p4 = s1max / s2max;
+        let min = Math.min(p1, p2, p3, p4);
+        let max = Math.max(p1, p2, p3, p4);
+
+        if (correctRounding) {
+          min = roundDown(min);
+          max = roundUp(max);
+        }
+
+        dst.min = min;
+        dst.max = max;
+        dst.info = info;
+      } else {
+        dst.min = -Infinity;
+        dst.max = Infinity;
+        dst.info = 1;
+      }
+    }
+    /**
+     * Take the square root of a real interval, sending the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static sqrt(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = src.min,
+          max = src.max;
+
+      if (max < 0) {
+        dst.info = 0;
+        return;
+      } else if (max === 0) {
+        dst.min = 0;
+        dst.max = 0;
+        dst.info = min === 0 ? info : 1;
+        return;
+      } else {
+        if (min < 0) {
+          min = 0;
+          max = Math.sqrt(max);
+          if (correctRounding) max = roundUp(max);
+          info = 1;
+        } else {
+          min = Math.sqrt(min);
+          max = Math.sqrt(max);
+
+          if (correctRounding) {
+            min = roundDown(min);
+            max = roundUp(max);
+          }
+        }
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the cube root of a real interval, sending the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static cbrt(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let min = Math.cbrt(src.min);
+      let max = src.min === src.max ? min : Math.cbrt(src.max);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the sine of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+     */
+
+
+    static sin(src, dst, correctRounding) {
+      const pio2 = Math.PI / 2;
+      const pi3o2 = 3 * Math.PI / 2;
+      const pi2 = 2 * Math.PI;
+      const pi5o2 = 5 * Math.PI / 2;
+      const pi7o2 = 7 * Math.PI / 2;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > pi2 || Number.isNaN(diff)) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      srcMin = (srcMin % pi2 + pi2) % pi2;
+      srcMax = srcMin + diff; // Whether the range includes one and negative one
+
+      let includesOne = srcMin < pio2 && srcMax > pio2 || srcMin < pi5o2 && srcMax > pi5o2;
+      let includesNegOne = srcMin < pi3o2 && srcMax > pi3o2 || srcMin < pi7o2 && srcMax > pi7o2;
+
+      if (includesOne && includesNegOne) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      let sinSrcMin = Math.sin(srcMin);
+      let sinSrcMax = Math.sin(srcMax);
+      let min = includesNegOne ? -1 : Math.min(sinSrcMin, sinSrcMax);
+      let max = includesOne ? 1 : Math.max(sinSrcMin, sinSrcMax);
+
+      if (correctRounding) {
+        if (min !== -1) min = roundDown(min);
+        if (max !== 1) max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the cosine of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+     */
+
+
+    static cos(src, dst, correctRounding) {
+      const pi2 = 2 * Math.PI;
+      const pi3 = 3 * Math.PI;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > pi2 || Number.isNaN(diff)) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      srcMin = (srcMin % pi2 + pi2) % pi2;
+      srcMax = srcMin + diff; // Whether the range includes one and negative one
+
+      let includesOne = srcMin < pi2 && srcMax > pi2;
+      let includesNegOne = srcMin < Math.PI && srcMax > Math.PI || srcMin < pi3 && srcMax > pi3;
+
+      if (includesOne && includesNegOne) {
+        dst.min = -1;
+        dst.max = 1;
+        dst.info = info;
+        return;
+      }
+
+      let cosSrcMin = Math.cos(srcMin);
+      let cosSrcMax = Math.cos(srcMax);
+      let min = includesNegOne ? -1 : Math.min(cosSrcMin, cosSrcMax);
+      let max = includesOne ? 1 : Math.max(cosSrcMin, cosSrcMax);
+
+      if (correctRounding) {
+        if (min !== -1) min = roundDown(min);
+        if (max !== 1) max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the tangent of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+     */
+
+
+    static tan(src, dst, correctRounding) {
+      const pio2 = Math.PI / 2;
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let diff = srcMax - srcMin;
+
+      if (diff > Math.PI || Number.isNaN(diff)) {
+        dst.min = -Infinity;
+        dst.max = Infinity;
+        dst.info = 1;
+        return;
+      }
+
+      srcMin = (srcMin % Math.PI + Math.PI) % Math.PI;
+      srcMax = srcMin + diff; // Whether the range includes an undef
+
+      let includesInf = srcMin < pio2 && srcMax > pio2;
+
+      if (includesInf) {
+        dst.min = Infinity;
+        dst.max = -Infinity;
+        dst.info = 1;
+        return;
+      }
+
+      let tanSrcMin = Math.cos(srcMin);
+      let tanSrcMax = Math.cos(srcMax);
+      let min = Math.min(tanSrcMin, tanSrcMax);
+      let max = Math.max(tanSrcMin, tanSrcMax);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the arcsine of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static asin(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+
+      if (srcMax < -1 || srcMin > 1) {
+        dst.info = 0;
+        return;
+      }
+
+      let min, max;
+
+      if (srcMin === srcMax) {
+        min = max = Math.asin(srcMin);
+      } else {
+        if (srcMin < -1) {
+          min = -Math.PI / 2;
+          info &= 0b010;
+        } else {
+          min = Math.asin(srcMin);
+        }
+
+        if (srcMax > 1) {
+          max = Math.PI / 2;
+          info &= 0b010;
+        } else {
+          max = Math.asin(srcMax);
+        }
+      }
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the arccosine of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static acos(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+
+      if (srcMax < -1 || srcMin > 1) {
+        dst.info = 0;
+        return;
+      }
+
+      let min, max;
+
+      if (srcMin === srcMax) {
+        min = max = Math.acos(srcMin);
+      } else {
+        if (srcMin < -1) {
+          max = Math.PI;
+          info &= 0b010;
+        } else {
+          max = Math.acos(srcMin);
+        }
+
+        if (srcMax > 1) {
+          min = 0;
+          info &= 0b010;
+        } else {
+          min = Math.acos(srcMax);
+        }
+      }
+
+      if (correctRounding) {
+        min = min === 0 ? min : roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * Take the arctangent of a fast real interval and send the result to dst
+     * @param src {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+     */
+
+
+    static atan(src, dst, correctRounding) {
+      let info = src.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let srcMin = src.min,
+          srcMax = src.max;
+      let min = Math.atan(srcMin);
+      let max = Math.atan(srcMax);
+
+      if (correctRounding) {
+        min = roundDown(min);
+        max = roundUp(max);
+      }
+
+      dst.min = min;
+      dst.max = max;
+      dst.info = info;
+    }
+    /**
+     * The power operation on two integers. This is a mathematical pow, rather than powSpecial where we try to guess that
+     * numbers are rational. This function is a bit intricate because it needs to take care of a lot of cases. 0^0 = 0.
+     * @param src1 {FastRealInterval}
+     * @param src2 {FastRealInterval}
+     * @param dst {FastRealInterval}
+     * @param correctRounding {boolean}
+     */
+
+
+    static pow(src1, src2, dst, correctRounding) {
+      let info = src1.info & src2.info;
+
+      if (info === 0) {
+        dst.info = 0;
+        return;
+      }
+
+      let s1min = src1.min,
+          s1max = src1.max,
+          s2min = src2.min,
+          s2max = src2.max; // First special case: exponent is a single number
+
+      if (s2min === s2max) {
+        let exp = s2min;
+        let containsZero = s1min <= 0 && s1max >= 0;
+
+        if (exp === 0) {
+          // exponent 0
+          dst.min = 1;
+          dst.max = 1;
+          dst.info = info;
+          return;
+        } // There are six cases to consider: x^2-like, x^3-like, sqrt(x)-like, 1/x-like, 1/x^2-like, and 1/sqrt(x)-like.
+        // Suppose those cases are enumerated 0 through 5. Then positive even integers -> 0, positive odd integers -> 1,
+        // negative odd integers -> 3, negative even integers -> 4, positive numbers -> 2, negative numbers -> 5.
+
+
+        if (Number.isInteger(exp)) {
+          if (containsZero) {
+            if (exp < 0) {
+              // negative even integers: minimum is the pow of the maximum
+              if (exp % 2 === 0) {
+                // 1/x^2
+                dst.min = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp);
+                dst.max = Infinity;
+                dst.info = info & 0b010;
+              } else {
+                // Odd integers: if contains zero, contains an asymptote
+                // 1/x
+                dst.min = Infinity;
+                dst.max = Infinity;
+                dst.info = info & 0b010;
+              }
+
+              return;
+            } else if (exp % 2 === 0) {
+              // x^2
+              dst.min = 0;
+              let max = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp);
+              if (correctRounding) max = roundUp(max);
+              dst.max = max;
+              dst.info = info;
+              return;
+            }
+          } // containsZero
+
+        } else {
+          // Exponent is not an integer
+          // Totally in the undefined region
+          let isDefined = s1max > 0;
+
+          if (!isDefined) {
+            dst.info = 0;
+            return;
+          }
+
+          if (containsZero) {
+            let min = 0,
+                max = 0;
+
+            if (exp < 0) {
+              // 1/sqrt(x)
+              max = Infinity;
+              min = Math.pow(s1max, exp);
+              if (correctRounding) min = roundDown(min);
+            } else {
+              min = 0;
+              max = Math.pow(s1max, exp);
+              if (correctRounding) max = roundUp(max);
+            }
+
+            dst.min = min;
+            dst.max = max;
+            dst.info = info & 0b010;
+          }
+        } // If we've fallen through to here, pow is monotonic and defined
+
+
+        let powSrcMin = Math.pow(s1min, exp),
+            powSrcMax = Math.pow(s1max, exp);
+        let min = Math.min(powSrcMin, powSrcMax);
+        let max = Math.max(powSrcMin, powSrcMax);
+
+        if (correctRounding) {
+          min = roundDown(min);
+          max = roundUp(max);
+        }
+
+        dst.min = min;
+        dst.max = max;
+        dst.info = info;
+        return;
+      } // single-valued exponent
+      // Second special case: denominator is a single number
+
+
+      if (s1min === s1max) {
+        let base = s1min;
+
+        if (base === 0) {
+          let containsZero = s2max >= 0 && s2min <= 0;
+          dst.min = 0;
+          dst.max = containsZero ? 1 : 0; // 0^0 = 1
+
+          dst.info = info & (containsZero ? 0b011 : 0b111);
+          return;
+        } else if (base === 1) {
+          dst.min = 1;
+          dst.max = 1;
+          dst.info = info;
+          return;
+        } else if (base === -1) {
+          dst.min = -1;
+          dst.max = 1;
+          dst.info = info & 0b010;
+          return;
+        } // negative bases are weird. They have two branches depending on the denominator of the power they're being
+        // raised to... so we deal with it :)
+
+
+        let min = 0,
+            max = 0;
+
+        if (base < -1) {
+          // Shape: (-2)^x
+          let m = Math.pow(base, s2max);
+          min = -m;
+          max = m;
+          info &= 0b010;
+        } else if (base < 0) {
+          // Shape: (-1/2)^x
+          let m = Math.pow(base, s2min);
+          min = -m;
+          max = m;
+          info &= 0b010;
+        } else if (base < 1) {
+          // Monotonically decreasing
+          min = Math.pow(base, s2max);
+          max = Math.pow(base, s2min);
+        } else {
+          // Monotonically increasing
+          min = Math.pow(base, s2min);
+          max = Math.pow(base, s2max);
+        }
+
+        if (correctRounding) {
+          min = roundDown(min);
+          max = roundUp(max);
+        }
+
+        dst.min = min;
+        dst.max = max;
+        dst.info = info;
+        return;
+      } // If we've gotten here, things are a bit tricky. The key is that the minimum may be -Infinity, 0, or the minimum of
+      // evaluated pows, and the maximum may be 0, Infinity, or the maximum of evaluated pows. Because this is a fast
+      // real interval we don't have to get deep into the weeds of which are the actual attainable intervals (though that
+      // isn't *too* hard)
+
+
+      let hasAsymptote = s2min <= 0 && 0 <= s2max && s1min <= 0;
+
+      if (hasAsymptote) {
+        dst.min = -Infinity;
+        dst.max = Infinity;
+        dst.info = info & 0b010;
+        return;
+      } // Things are potentially undefined iff the denominator has negative numbers.
+
+
+      let isAllDefined = s1min < 0;
+      if (isAllDefined) info &= 0b010;
+      let minPow = Infinity,
+          maxPow = -Infinity;
+      let ps1mins2min = Math.pow(Math.abs(s1min), s2min);
+      let ps1mins2max = Math.pow(Math.abs(s1min), s2max);
+      let ps1maxs2min = Math.pow(Math.abs(s1max), s2min);
+      let ps1maxs2max = Math.pow(Math.abs(s1max), s2max);
+      minPow = Math.min(minPow, ps1mins2min);
+      maxPow = Math.max(maxPow, ps1mins2min);
+      minPow = Math.min(minPow, ps1mins2max);
+      maxPow = Math.max(maxPow, ps1mins2max);
+
+      if (s1min < 0) {
+        minPow = Math.min(minPow, -ps1mins2min);
+        maxPow = Math.max(maxPow, -ps1mins2min);
+        minPow = Math.min(minPow, -ps1mins2max);
+        maxPow = Math.max(maxPow, -ps1mins2max);
+      }
+
+      minPow = Math.min(minPow, ps1maxs2min);
+      maxPow = Math.max(maxPow, ps1maxs2min);
+      minPow = Math.min(minPow, ps1maxs2max);
+      maxPow = Math.max(maxPow, ps1maxs2max);
+
+      if (s2min < 0) {
+        minPow = Math.min(minPow, -ps1maxs2min);
+        maxPow = Math.max(maxPow, -ps1maxs2min);
+        minPow = Math.min(minPow, -ps1maxs2max);
+        maxPow = Math.max(maxPow, -ps1maxs2max);
+      }
+
+      if (correctRounding) {
+        minPow = roundDown(minPow);
+        maxPow = roundUp(maxPow);
+      }
+
+      dst.min = minPow;
+      dst.max = maxPow;
+      dst.info = info;
+    }
+
+  }
+
+  class FastVec2Interval {
+    constructor() {
+      this.xMin = 0;
+      this.xMax = 0;
+      this.yMin = 0;
+      this.yMax = 0;
+      this.info = 0b111;
+    }
+    /**
+     * Whether this vec2 interval intersects a given bounding box
+     * @param bbox {BoundingBox}
+     */
+
+
+    intersectsBoundingBox(bbox) {
+      if (this.info === 0) return false;
+      let x1 = bbox.x,
+          y1 = bbox.y,
+          w = bbox.w,
+          h = bbox.h,
+          x2 = x1 + w,
+          y2 = y1 + h;
+      let xMin = this.xMin,
+          xMax = this.xMax,
+          yMin = this.yMin,
+          yMax = this.yMax; // Two boxes intersect if each of their intervals taken individually intersect
+
+      return (xMin <= x1 && x1 <= xMax || x1 <= xMin && xMin <= x2) && (yMin <= y1 && y1 <= yMax || y1 <= yMin && yMin <= y2);
+    }
+
+    entirelyWithin(bbox) {
+      if (this.info === 0) return false;
+      let x1 = bbox.x,
+          y1 = bbox.y,
+          w = bbox.w,
+          h = bbox.h,
+          x2 = x1 + w,
+          y2 = y1 + h;
+      let xMin = this.xMin,
+          xMax = this.xMax,
+          yMin = this.yMin,
+          yMax = this.yMax;
+      return x1 <= xMin && xMax <= x2 && y1 <= yMin && yMax <= y2;
+    }
+
+  }
+
+  // List of valid types in Grapheme math language (as distinct from the props and stuff)
   const TYPES = {
     bool: {
       typecheck: {
         generic: {
           f: x => typeof x === 'boolean'
+        },
+        fast_interval: {
+          f: x => typeof x === "number" && 0 <= x && x < 16
+        }
+      },
+      init: {
+        generic: {
+          f: () => false
+        },
+        fast_interval: {
+          f: () => new FastRealInterval()
+        }
+      },
+      fast_init: {
+        generic: {
+          f: () => false
+        },
+        fast_interval: {
+          f: () => new FastRealInterval()
+        }
+      },
+      cast: {
+        generic: {
+          f: x => !!x
+        },
+        fast_interval: {
+          f: () => new FastRealInterval()
         }
       }
     },
@@ -2722,6 +3608,47 @@
       typecheck: {
         generic: {
           f: Number.isInteger
+        },
+        fast_interval: {
+          f: x => x instanceof FastRealInterval
+        }
+      },
+      init: {
+        generic: {
+          f: x => x
+        },
+        fast_interval: {
+          f: x => new FastRealInterval()
+        }
+      },
+      fast_init: {
+        generic: {
+          f: () => 0
+        },
+        fast_interval: {
+          f: () => new FastRealInterval()
+        }
+      },
+      clone: {
+        generic: {
+          f: x => x
+        },
+        fast_interval: {
+          f: x => {
+            return new FastRealInterval(x.min, x.max, x.info);
+          }
+        }
+      },
+      cast: {
+        generic: {
+          f: x => Math.round(+x)
+        },
+        fast_interval: {
+          f: int => {
+            if (int instanceof FastRealInterval) return int;
+            if (typeof int === "number") return new FastRealInterval(int, int);
+            return new FastRealInterval(0, 0, 0);
+          }
         }
       }
     },
@@ -2729,6 +3656,47 @@
       typecheck: {
         generic: {
           f: x => typeof x === 'number'
+        },
+        fast_interval: {
+          f: x => x instanceof FastRealInterval
+        }
+      },
+      init: {
+        generic: {
+          f: x => x
+        },
+        fast_interval: {
+          f: x => new FastRealInterval(x, x)
+        }
+      },
+      fast_init: {
+        generic: {
+          f: () => 0
+        },
+        fast_interval: {
+          f: () => new FastRealInterval()
+        }
+      },
+      clone: {
+        generic: {
+          f: x => x
+        },
+        fast_interval: {
+          f: x => {
+            return new FastRealInterval(x.min, x.max, x.info);
+          }
+        }
+      },
+      cast: {
+        generic: {
+          f: x => +x
+        },
+        fast_interval: {
+          f: int => {
+            if (int instanceof FastRealInterval) return int;
+            if (typeof int === "number") return new FastRealInterval(int, int);
+            return new FastRealInterval(0, 0, 0);
+          }
         }
       }
     },
@@ -2737,11 +3705,74 @@
       typecheck: {
         generic: {
           f: x => x instanceof Vec2
+        },
+        fast_interval: {
+          f: x => x instanceof FastVec2Interval
+        }
+      },
+      init: {
+        generic: {
+          f: v => new Vec2(v.x, v.y)
+        },
+        fast_interval: {
+          f: v => new FastVec2Interval(v.xMin, v.xMax, v.yMin, v.yMax, v.info)
+        }
+      },
+      fast_init: {
+        generic: {
+          f: () => new Vec2()
+        },
+        fast_interval: {
+          f: () => new FastVec2Interval()
+        }
+      },
+      cast: {
+        generic: {
+          f: v => new Vec2(v.x, v.y)
+        },
+        fast_interval: {
+          f: v => new FastVec2Interval(v.xMin, v.xMax, v.yMin, v.yMax, v.info)
         }
       }
     },
     null: true
   };
+  function getTypecheck(type, mode) {
+    let info = TYPES[type];
+    if (!info) throw new Error("Invalid type ".concat(type));
+    let typecheck = info.typecheck[mode];
+    if (!typecheck) throw new Error("No typecheck");
+    return typecheck;
+  }
+  function getInitializer(type, mode) {
+    let info = TYPES[type];
+    if (!info) throw new Error("Invalid type ".concat(type));
+    let init = info.cast[mode];
+    if (!init) throw new Error("No initializer");
+    return init;
+  }
+  function getFastInitializer(type, mode) {
+    let info = TYPES[type];
+    if (!info) throw new Error("Invalid type ".concat(type));
+    let init = info.fast_init[mode];
+    if (!init) throw new Error("No fast initializer");
+    return init;
+  }
+  function getCloner(type, mode) {
+    let info = TYPES[type];
+    if (!info) throw new Error("Invalid type ".concat(type));
+    let cloner = info.clone[mode];
+    if (!cloner) throw new Error("No cloner");
+    return cloner;
+  }
+  function getConvenienceCaster(type, mode) {
+    let info = TYPES[type];
+    if (!info) throw new Error("Invalid type ".concat(type));
+    let cast = info.cast[mode];
+    if (!cast) throw new Error("No cast");
+    return cast;
+  }
+
   /**
    * Get typecast definition between two types--if the definition exists. Can also be used as a boolean test for whether
    * two types are castable. The list of allowed casts is generated in typecasts.js
@@ -2879,6 +3910,9 @@
   /**
    * Given an evaluator description, return a normalized evaluator of the form { type: (str), f: (function) } and
    * potentially more information that the compiler can use to optimize the evaluator (identity, piecewiseness, etc.)
+   * An evaluator is either a special_binary, which can be optimized inline to a JS operator, a special, which has
+   * optimization information for the compiler, a returns, which means it returns the result of the function, and a
+   * writes, which means it writes the result of the function to a destination register.
    * @param obj
    */
 
@@ -2889,7 +3923,7 @@
       return evaluator;
     } else if (typeof obj === 'function') {
       return {
-        type: 'normal',
+        type: 'returns',
         f: obj
       };
     }
@@ -2996,69 +4030,124 @@
     }
   }
 
-  function defineSimpleBinaryOperator(type, name, generic) {
+  function defineSimpleBinaryOperator(type, name, generic, fast_interval) {
     registerOperator(name, new FixedOperatorDefinition({
       signature: [type, type],
       returnType: type,
       evaluators: {
-        generic
+        generic,
+        fast_interval: {
+          type: "writes",
+          f: fast_interval
+        }
       }
     }));
   }
 
-  defineSimpleBinaryOperator('int', '+', 'addition');
-  defineSimpleBinaryOperator('int', '-', 'subtraction');
-  defineSimpleBinaryOperator('int', '*', 'multiplication');
-  defineSimpleBinaryOperator('int', '^', Math.pow);
-  defineSimpleBinaryOperator('real', '+', 'addition');
-  defineSimpleBinaryOperator('real', '-', 'subtraction');
-  defineSimpleBinaryOperator('real', '*', 'multiplication');
-  defineSimpleBinaryOperator('real', '/', 'division');
-  defineSimpleBinaryOperator('real', '^', Math.pow);
+  defineSimpleBinaryOperator('int', '+', 'addition', FastRealInterval.add);
+  defineSimpleBinaryOperator('int', '-', 'subtraction', FastRealInterval.sub);
+  defineSimpleBinaryOperator('int', '*', 'multiplication', FastRealInterval.mul);
+  defineSimpleBinaryOperator('int', '^', Math.pow, FastRealInterval.pow);
+  defineSimpleBinaryOperator('real', '+', 'addition', FastRealInterval.add);
+  defineSimpleBinaryOperator('real', '-', 'subtraction', FastRealInterval.sub);
+  defineSimpleBinaryOperator('real', '*', 'multiplication', FastRealInterval.mul);
+  defineSimpleBinaryOperator('real', '/', 'division', FastRealInterval.div);
+  defineSimpleBinaryOperator('real', '^', Math.pow, FastRealInterval.pow);
   registerOperator('-', new FixedOperatorDefinition({
     signature: ['int'],
     returnType: 'int',
     evaluators: {
-      generic: 'unary_subtraction'
+      generic: 'unary_subtraction',
+      fast_interval: {
+        type: "writes",
+        f: FastRealInterval.unarySub
+      }
     }
   }));
   registerOperator('-', new FixedOperatorDefinition({
     signature: ['real'],
     returnType: 'real',
     evaluators: {
-      generic: 'unary_subtraction'
+      generic: 'unary_subtraction',
+      fast_interval: {
+        type: "writes",
+        f: FastRealInterval.unarySub
+      }
     }
   }));
 
-  function defineUnaryReal(name, evaluator) {
+  function defineUnaryReal(name, evaluator, fast_interval) {
     registerOperator(name, new FixedOperatorDefinition({
       signature: ['real'],
       returnType: 'real',
       evaluators: {
-        generic: evaluator
+        generic: evaluator,
+        fast_interval: {
+          type: "writes",
+          f: fast_interval
+        }
       }
     }));
   }
 
-  defineUnaryReal('sin', Math.sin);
-  defineUnaryReal('cos', Math.cos);
-  defineUnaryReal('tan', Math.tan);
-  defineUnaryReal('asin', Math.asin);
-  defineUnaryReal('acos', Math.acos);
-  defineUnaryReal('atan', Math.atan);
+  defineUnaryReal('sin', Math.sin, FastRealInterval.sin);
+  defineUnaryReal('cos', Math.cos, FastRealInterval.cos);
+  defineUnaryReal('tan', Math.tan, FastRealInterval.tan);
+  defineUnaryReal('asin', Math.asin, FastRealInterval.asin);
+  defineUnaryReal('acos', Math.acos, FastRealInterval.acos);
+  defineUnaryReal('atan', Math.atan, FastRealInterval.atan);
   defineUnaryReal('sinh', Math.sinh);
   defineUnaryReal('cosh', Math.cosh);
   defineUnaryReal('tanh', Math.tanh);
   defineUnaryReal('asinh', Math.asinh);
   defineUnaryReal('acosh', Math.acosh);
   defineUnaryReal('atanh', Math.atanh);
-  defineUnaryReal('sqrt', Math.sqrt);
-  defineUnaryReal('cbrt', Math.cbrt);
+  defineUnaryReal('sqrt', Math.sqrt, FastRealInterval.sqrt);
+  defineUnaryReal('cbrt', Math.cbrt, FastRealInterval.cbrt);
   registerOperator('vec2', new FixedOperatorDefinition({
     signature: ['real', 'real'],
     returnType: 'vec2',
     evaluators: {
-      generic: (a, b) => new Vec2(a, b)
+      generic: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.x = x;
+          v.y = y;
+        }
+      },
+      fast_interval: {
+        type: "writes",
+        f: (int1, int2, v) => {
+          v.xMin = int1.min;
+          v.xMax = int1.max;
+          v.yMin = int2.min;
+          v.yMax = int2.max;
+          v.info = int1.info & int2.info;
+        }
+      }
+    }
+  }));
+  registerOperator('+', new FixedOperatorDefinition({
+    signature: ["vec2", "vec2"],
+    returnType: "vec2",
+    evaluators: {
+      generic: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.x = x.x + y.x;
+          v.y = x.y + y.y;
+        }
+      },
+      fast_interval: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.xMin = x.xMin + y.xMin;
+          v.xMax = x.xMax + y.xMax;
+          v.yMin = x.yMin + y.yMin;
+          v.yMax = x.yMax + y.yMax;
+          v.info = x.info & y.info;
+        }
+      }
     }
   }));
 
@@ -3781,9 +4870,8 @@
    */
   function compileNode(root, opts = {}) {
     // Whether to do typechecks to passed arguments
-    let doTypechecks = !!opts.typechecks; // Whether to allow optimizations which may change the output due to rounding
-
-    !!opts.fastMath; // We construct the text of a function of the form (imports) => { let setup = ... ; return function (...) { ... }}
+    let doTypechecks = !!opts.typechecks;
+    if (!opts.mode) opts.mode = "generic"; // We construct the text of a function of the form (imports) => { let setup = ... ; return function (...) { ... }}
     // then create the function via new Function. The evaluation process basically involves generating variables $0, $1,
     // $2, ... that correspond to the nodes in the graph. For example, x^2+3 becomes
     // $0 = scope.x
@@ -3852,30 +4940,35 @@
 
     let exportedFunctions = {};
 
-    function exportFunction(name, args, body) {
+    function exportFunction(name, args, body, setup) {
       exportedFunctions[name] = {
         args,
-        body
+        body,
+        setup
       };
     } // Compile a function which, given a scope, evaluates the function
 
 
     compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getVarName, opts); // efText is of the form return { evaluate: function ($1, $2, ) { ... } }
 
-    let efText = 'return {' + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '}';
+    let efText = Object.values(exportedFunctions).map(f => f.setup).join('\n') + // setup
+    'return {\n' + Object.entries(exportedFunctions).map(([name, info]) => "".concat(name, ": function (").concat(info.args.join(','), ") { ").concat(info.body, " }")).join(',') + '\n}';
     let nfText = globalSetup + efText;
     let imports = Array.from(importInfo.keys());
     let importNames = Array.from(importInfo.values()); // Last argument is the text of the function itself
 
     importNames.push(nfText);
+    console.log(nfText);
     return Function.apply(null, importNames).apply(null, imports);
   }
 
   function compileEvaluationFunction(root, nodeInfo, importFunction, importConstant, exportFunction, getUnusedVarName, opts) {
     var _opts$args;
 
-    // Whether to add typechecks to the passed variables
-    let doTypechecks = !!opts.typechecks; // List of arguments to be placed BEFORE the scope variable. For example, we might do
+    let doTypechecks = !!opts.typechecks;
+    let doCasts = !!opts.casts;
+    let mode = opts.mode;
+    let copyResult = !!opts.copyResult; // List of arguments to be placed BEFORE the scope variable. For example, we might do
     // compileNode("x^2+y^2", { args: ["x", "y"] }) and then do res.evaluate(3, 4) -> 25, eliminating the need for a scope
     // object.
 
@@ -3883,143 +4976,176 @@
     exportedArgs.forEach(a => {
       if (!isValidVariableName(a)) throw new Error("Invalid exported variable name ".concat(a));
     });
-    let scopeVarName = 'scope';
-    let scopeUsed = false;
-    let fBody = '';
-    let fArgs = [...exportedArgs]; // Mapping between string variable name and information about that variable (varName)
+    let scopeVarName = "scope";
+    let scopeUsed = !!opts.scope; // Components to a compiled function:
+    // Pre-allocated variables
 
-    let varInfo = new Map();
-    /**
-     * Get information, including the JS variable name
-     * @param name
-     */
+    let allocationsText = ""; // Typecheck scope
 
-    function getScopedVariable(name) {
-      let stored = varInfo.get(name);
-      if (stored) return stored;
-      stored = {
-        varName: getUnusedVarName()
-      };
-      varInfo.set(name, stored);
-      return stored;
+    let typecheckScopeText = ""; // Get scoped variables
+
+    let scopedText = ""; // Typecheck/cast variables
+
+    let typecheckText = ""; // Allocate local variables
+
+    let localsText = ""; // Computation
+
+    let computationText = ""; // Result
+
+    let returnText = ""; // Add a typecheck for a variable
+
+    function addTypecheck(jsVariableName, variableName, type) {
+      let typecheck = getTypecheck(type, mode);
+      let tcFunc = importFunction(typecheck.f);
+      typecheckText += "if (!".concat(tcFunc, "(").concat(jsVariableName, ")) throw new TypeError(").concat(jsVariableName, " === undefined ? \"Expected variable ").concat(variableName, " to be defined\" : \"Expected variable ").concat(variableName, " to have type ").concat(type, "\");\n");
     }
 
-    function prependLine(code) {
-      fBody = code + '\n' + fBody;
-    }
-
-    function addLine(code) {
-      fBody += code + '\n';
-    } // Import and typecheck variables
+    function addCast(jsVariableName, variableName, type) {
+      let typecheck = getConvenienceCaster(type, mode);
+      let tcFunc = importFunction(typecheck.f);
+      typecheckText += "".concat(jsVariableName, "=").concat(tcFunc, "(").concat(jsVariableName, ");\nif (").concat(jsVariableName, " === undefined) throw new TypeError(\"Failed to cast variable ").concat(variableName, " to type ").concat(type, "\");\n");
+    } // Get a variable from the scope
 
 
-    let requiredVariables = root.usedVariables();
-
-    for (const [name, type] of requiredVariables.entries()) {
-      let varInfo = getScopedVariable(name);
-      let varName = varInfo.varName;
-
-      if (exportedArgs.includes(name)) {
-        addLine("var ".concat(varName, "=").concat(name, ";"));
-      } else {
-        scopeUsed = true;
-        addLine("var ".concat(varName, "=").concat(scopeVarName, ".").concat(name, ";"));
-      }
-
-      if (doTypechecks) {
-        let typecheck = importFunction(TYPES[type].typecheck.generic.f);
-        addLine("if (".concat(varName, " === undefined) throw new Error(\"Variable ").concat(name, " is not defined in this scope\");"));
-        addLine("if (!".concat(typecheck, "(").concat(varName, ")) throw new Error(\"Expected variable ").concat(name, " to have a type of ").concat(type, "\");"));
-      }
-    }
-
-    compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts);
-    addLine("return ".concat(nodeInfo.get(root).varName, ";")); // Typecheck scope object
-
-    if (doTypechecks && scopeUsed) {
-      if (exportedArgs.length === 0) {
-        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed to evaluate function should be a scope\");"));
-      } else {
-        prependLine("if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Object passed as last parameter to evaluate function should be a scope; there are undefined variables\");"));
-      }
-    } // Scope is last argument in function
-
-
-    if (scopeUsed) fArgs.push(scopeVarName);
-    exportFunction('evaluate', fArgs, fBody);
-  }
-
-  function compileEvaluateVariables(root, nodeInfo, importFunction, importConstant, getScopedVariable, getUnusedVarName, addLine, opts) {
-    var _opts$o;
-
-    // How much to try and optimize the computations
-    (_opts$o = opts.o) !== null && _opts$o !== void 0 ? _opts$o : 0;
-
-    function compileOperator(node) {
+    function getScopedVariable(scopedVarName) {
       let varName = getUnusedVarName();
-      let definition = node.definition;
-      let evaluator = definition.evaluators.generic;
-      let evaluatorType = evaluator.type;
-      let children = node.children;
-      let args = children.map((c, i) => {
-        let varName = nodeInfo.get(c).varName;
-        let srcType = c.type;
-        let dstType = definition.signature[i]; // Do type conversion
+      scopedText += "var ".concat(varName, "=").concat(scopeVarName, ".").concat(scopedVarName, ";\n");
+      return varName;
+    } // Allocate a variable using a given allocator
 
-        if (srcType !== dstType) {
-          let cast = getCast(srcType, dstType);
 
-          if (cast.name !== 'identity') {
-            let convertedVarName = getUnusedVarName();
-            addLine("var ".concat(convertedVarName, "=").concat(importFunction(cast.evaluators.generic.f), "(").concat(varName, ");"));
-            varName = convertedVarName;
-          }
-        }
+    function allocateVariable(type, initValue, local = false) {
+      let hasInitValue = initValue !== undefined;
+      let text;
+      let varName = getUnusedVarName();
 
-        return varName;
-      });
-
-      if (evaluatorType === 'special_binary') {
-        addLine("var ".concat(varName, "=").concat(args[0], " ").concat(evaluator.binary, " ").concat(args[1], ";"));
+      if (mode === "generic" && (type === "real" || type === "bool" || type === "int")) {
+        // special case where the allocation function can be elided
+        text = "var ".concat(varName, "=").concat(initValue !== null && initValue !== void 0 ? initValue : getFastInitializer(type, mode).f(), ";\n");
       } else {
-        let fName = importFunction(evaluator.f);
-        addLine("var ".concat(varName, "=").concat(fName, "(").concat(args.join(','), ");"));
+        let allocator = (hasInitValue ? getInitializer : getFastInitializer)(type, mode);
+        let allFunc = importFunction(allocator.f);
+        text = "var ".concat(varName, "=").concat(allFunc, "(").concat(hasInitValue ? importConstant(initValue) : '', ");\n");
+      }
+
+      if (local) {
+        localsText += text;
+      } else {
+        allocationsText += text;
+      }
+
+      return varName;
+    } // Allocate a *local* variable using a given allocator
+
+
+    function localVariable(type, initValue) {
+      allocateVariable(type, initValue, true);
+    }
+
+    function computeVariable(type, args, contextArgs, evaluator, local = false) {
+      if (!evaluator) {
+        throw new Error("No evaluator for function");
+      }
+
+      if (evaluator.type === "special") {
+        if (evaluator.name === "identity") {
+          return args[0];
+        }
+      }
+
+      let evaluatorType = evaluator.type === "writes" ? "writes" : "returns";
+      let varName;
+      let evalFunc = importFunction(evaluator.f);
+
+      if (evaluatorType === "writes") {
+        varName = (local ? localVariable : allocateVariable)(type);
+        computationText += "".concat(evalFunc, "(").concat(args.join(', '), ", ").concat(varName).concat(contextArgs.length ? ', ' + contextArgs.join(', ') : '', ");\n");
+      } else {
+        varName = local ? getUnusedVarName() : allocateVariable(type);
+        let allArgs = args.concat(contextArgs).join(', ');
+        computationText += "".concat(local ? "var " : "").concat(varName, "=").concat(evalFunc, "(").concat(allArgs, ");\n");
       }
 
       return varName;
     }
 
-    root.applyAll(node => {
+    function getCasted(node, dstType) {
       let info = nodeInfo.get(node);
-      let nodeType = node.nodeType();
+      if (node.type === dstType) return info.varName;
+      let casts = info.casts;
+      if (!casts) casts = info.casts = {};
+      if (casts[dstType]) return casts[dstType];
+      let typecast = getCast(node.type, dstType);
+      return casts[dstType] = computeVariable(dstType, [info.varName], [], typecast.evaluators[mode]);
+    } // Map between variable name -> JS variable name
+
+
+    let varMap = new Map();
+    let variables = root.usedVariables();
+
+    for (const [name, type] of variables) {
+      let isExported = exportedArgs.includes(name);
       let varName;
 
-      switch (nodeType) {
-        case 'op':
-          varName = compileOperator(node);
-          break;
+      if (isExported) {
+        varName = name;
+      } else {
+        scopeUsed = true; // Does something like var $1 = scope.x
 
-        case 'var':
-          varName = getScopedVariable(node.name).varName;
-          break;
-
-        case 'const':
-          varName = importConstant(node.value);
-          break;
-
-        case 'group':
-          // Forward the var name from the only child (since this is a grouping)
-          varName = nodeInfo.get(node.children[0]).varName;
-          break;
-
-        default:
-          throw new Error("Unknown node type ".concat(nodeType));
+        varName = getScopedVariable(name);
       }
 
-      info.varName = varName;
-    }, false, true
-    /* children first, so bottom up */
-    );
+      varMap.set(name, varName);
+      if (doTypechecks) addTypecheck(varName, name, type);
+      if (doCasts) addCast(varName, name, type);
+    }
+
+    if (scopeUsed) {
+      if (doTypechecks) {
+        typecheckScopeText += "if (typeof ".concat(scopeVarName, " !== \"object\" || Array.isArray(").concat(scopeVarName, ")) throw new TypeError(\"Scope must be an object\");\n");
+      }
+
+      exportedArgs.push(scopeVarName);
+    }
+
+    root.applyAll(node => {
+      let info = nodeInfo.get(node);
+
+      switch (node.nodeType()) {
+        case "var":
+          info.varName = varMap.get(node.name);
+          break;
+
+        case "const":
+          info.varName = allocateVariable(node.type, node.value);
+          break;
+
+        case "op":
+          let definition = node.definition;
+          let signature = definition.signature;
+          let children = node.children;
+          let args = children.map((child, i) => getCasted(child, signature[i]));
+          let evaluator = definition.evaluators[mode];
+          if (!evaluator) throw new Error("No evaluator found for function ".concat(definition.name, " under mode ").concat(mode));
+          info.varName = computeVariable(node.type, args, [], evaluator);
+          break;
+
+        case "group":
+          info.varName = nodeInfo.get(node.children[0]).varName;
+          break;
+      }
+    }, false, true); // Return text
+
+    let rootInfo = nodeInfo.get(root);
+    let rootVarName = rootInfo.varName;
+
+    if (copyResult) {
+      rootVarName = computeVariable(rootInfo, [rootVarName], [], getCloner(type, mode), true);
+    }
+
+    returnText += "return ".concat(rootVarName, ";\n");
+    let fText = typecheckScopeText + scopedText + typecheckText + localsText + computationText + returnText;
+    exportFunction("evaluate", exportedArgs, fText, allocationsText);
   }
 
   /**
@@ -4617,7 +5743,7 @@
     }
 
     configureProperty(propName, opts = {}) {
-      this.getPropertyStore(propName);
+      const store = this.getPropertyStore(propName);
 
       if (opts.inherit !== undefined) {
         this.setPropertyInheritance(propName, opts.inherit);
@@ -5890,19 +7016,24 @@
     }
   }
 
+  let CONVERSION_MSG;
+
   function colorConversion(obj) {
     obj = Color.fromObj(obj);
     if (obj) return obj;
+    CONVERSION_MSG = "Expected $p to be convertible to a Color, got $v.";
   }
 
   function vec2Conversion(obj) {
     let x = 0,
         y = 0;
 
-    if (typeof obj === 'number' || typeof obj === 'string') ; else if (typeof obj === 'object') {
+    if (typeof obj === 'number' || typeof obj === 'string') {
+      CONVERSION_MSG = 'Expected $p to be convertible to a Vec2, got $v.';
+    } else if (typeof obj === 'object') {
       if (Array.isArray(obj)) {
         if (obj.length !== 2) {
-          "Expected $p to be convertible to a Vec2, got $v (length ".concat(obj.length, ").");
+          CONVERSION_MSG = "Expected $p to be convertible to a Vec2, got $v (length ".concat(obj.length, ").");
         } else {
           x = obj[0];
           y = obj[1];
@@ -5930,14 +7061,14 @@
         ret[++retIndex] = elem.y;
       } else if (Array.isArray(elem)) {
         if (elem.length !== 2) {
-          "Expected $p to be convertible to a flat array of Vec2s, found element ".concat(relaxedPrint(elem), " at index ").concat(i);
+          CONVERSION_MSG = "Expected $p to be convertible to a flat array of Vec2s, found element ".concat(relaxedPrint(elem), " at index ").concat(i);
           return;
         }
 
         ret[++retIndex] = elem[0];
         ret[++retIndex] = elem[1];
       } else {
-        "Expected $p to be convertible to a flat array of Vec2s, found element ".concat(relaxedPrint(elem), " at index ").concat(i);
+        CONVERSION_MSG = "Expected $p to be convertible to a flat array of Vec2s, found element ".concat(relaxedPrint(elem), " at index ").concat(i);
         return;
       }
     }
@@ -5953,14 +7084,14 @@
 
 
       if (obj.length & 1) {
-        "Expected $p to be convertible to a flat array of Vec2s, got numeric array of odd length ".concat(obj.length, ".");
+        CONVERSION_MSG = "Expected $p to be convertible to a flat array of Vec2s, got numeric array of odd length ".concat(obj.length, ".");
         return;
       }
 
       return new (f32 ? Float32Array : Float64Array)(obj);
     } else if (isTypedArray(obj)) {
       if (obj.length & 1) {
-        "Expected $p to be convertible to a flat array of Vec2s, got typed array of odd length ".concat(obj.length, ".");
+        CONVERSION_MSG = "Expected $p to be convertible to a flat array of Vec2s, got typed array of odd length ".concat(obj.length, ".");
         return;
       }
 
@@ -6428,7 +7559,7 @@
 
   }
 
-  const sceneInterface$1 = constructInterface({
+  const sceneInterface = constructInterface({
     interface: {
       width: {
         description: 'The width of the scene',
@@ -6527,7 +7658,7 @@
 
   class Scene extends Group {
     getInterface() {
-      return sceneInterface$1;
+      return sceneInterface;
     }
 
     init() {
@@ -6600,16 +7731,16 @@
 
   }
 
-  let sceneInterface = Scene.prototype.getInterface();
+  let sceneInterface$1 = Scene.prototype.getInterface();
   let interactiveSceneInterface = {
-    interface: _objectSpread2(_objectSpread2({}, sceneInterface.description.interface), {}, {
+    interface: _objectSpread2(_objectSpread2({}, sceneInterface$1.description.interface), {}, {
       interactivity: {
         typecheck: {
           type: 'boolean'
         }
       }
     }),
-    internal: _objectSpread2(_objectSpread2({}, sceneInterface.description.internal), {}, {
+    internal: _objectSpread2(_objectSpread2({}, sceneInterface$1.description.internal), {}, {
       interactivity: {
         type: 'boolean',
         computed: 'default',
@@ -6622,17 +7753,17 @@
    * A scene endowed with an actual DOM element.
    */
 
-  var _disableInteractivityListeners$1 = new WeakSet();
+  var _disableInteractivityListeners = new WeakSet();
 
-  var _enableInteractivityListeners$1 = new WeakSet();
+  var _enableInteractivityListeners = new WeakSet();
 
   class InteractiveScene extends Scene {
     constructor(...args) {
       super(...args);
 
-      _enableInteractivityListeners$1.add(this);
+      _enableInteractivityListeners.add(this);
 
-      _disableInteractivityListeners$1.add(this);
+      _disableInteractivityListeners.add(this);
     }
 
     init(params) {
@@ -6646,7 +7777,7 @@
       let interactivity = this.props.get('interactivity');
 
       if (!!internal.interactivityListeners !== interactivity) {
-        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners$1, _enableInteractivityListeners2$1).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
+        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners, _enableInteractivityListeners2).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
       }
     }
 
@@ -6676,7 +7807,7 @@
 
   }
 
-  var _disableInteractivityListeners2$1 = function _disableInteractivityListeners2() {
+  var _disableInteractivityListeners2 = function _disableInteractivityListeners2() {
     let internal = this.internal;
     let interactivityListeners = internal.interactivityListeners;
     if (!interactivityListeners) return;
@@ -6689,8 +7820,8 @@
     internal.interactivityListeners = null;
   };
 
-  var _enableInteractivityListeners2$1 = function _enableInteractivityListeners2() {
-    _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
+  var _enableInteractivityListeners2 = function _enableInteractivityListeners2() {
+    _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
 
     let listeners = this.internal.interactivityListeners = {}; // Convert mouse event coords (which are relative to the top left corner of the page) to canvas coords
 
@@ -6972,17 +8103,17 @@
     }
   });
 
-  var _disableInteractivityListeners = new WeakSet();
+  var _disableInteractivityListeners$1 = new WeakSet();
 
-  var _enableInteractivityListeners = new WeakSet();
+  var _enableInteractivityListeners$1 = new WeakSet();
 
   class Figure extends Group {
     constructor(...args) {
       super(...args);
 
-      _enableInteractivityListeners.add(this);
+      _enableInteractivityListeners$1.add(this);
 
-      _disableInteractivityListeners.add(this);
+      _disableInteractivityListeners$1.add(this);
     }
 
     init() {
@@ -7005,7 +8136,7 @@
       let interactivity = this.props.get('interactivity');
 
       if (!!internal.interactivityListeners !== interactivity) {
-        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners, _enableInteractivityListeners2).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
+        interactivity ? _classPrivateMethodGet(this, _enableInteractivityListeners$1, _enableInteractivityListeners2$1).call(this) : _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
       }
     }
 
@@ -7054,7 +8185,7 @@
       plotTransform.resizeToPixelBox(plottingBox);
 
       if (preserveAspectRatio) {
-        plotTransform.graphBox();
+        let graphBox = plotTransform.graphBox();
       }
 
       props.markChanged('plotTransform');
@@ -7066,7 +8197,7 @@
 
   }
 
-  var _disableInteractivityListeners2 = function _disableInteractivityListeners2() {
+  var _disableInteractivityListeners2$1 = function _disableInteractivityListeners2() {
     let internal = this.internal;
     let interactivityListeners = internal.interactivityListeners;
     if (!interactivityListeners) return;
@@ -7079,8 +8210,8 @@
     internal.interactivityListeners = null;
   };
 
-  var _enableInteractivityListeners2 = function _enableInteractivityListeners2() {
-    _classPrivateMethodGet(this, _disableInteractivityListeners, _disableInteractivityListeners2).call(this);
+  var _enableInteractivityListeners2$1 = function _enableInteractivityListeners2() {
+    _classPrivateMethodGet(this, _disableInteractivityListeners$1, _disableInteractivityListeners2$1).call(this);
 
     let int = this.internal,
         props = this.props;
@@ -7805,7 +8936,7 @@
   let sampleStack = new Float64Array(10 * 2048);
   function parametricPlot2D(f
   /* R -> R^2 */
-  , tMin, tMax, plotBox, {
+  , tMin, tMax, {
     samples: sampleCount = 100,
     // how many initial samples to take
     samplingStrategy = "uniform",
@@ -7818,20 +8949,41 @@
     // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
     simplify = true,
     // whether to compress the vertices
-    simplifyRes = adaptiveRes // resolution of the collapse
+    simplifyRes = adaptiveRes,
+    // resolution of the collapse
+    intervalFunc = null,
+    plotBox = null,
+    // BoundingBox
+    intervalLimit = 3 // Heuristically, tries to keep the interval evaluations done this many subdivisions before the final subdivision
 
   } = {}) {
     // Sanity checks
     if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null;
     if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number");
     if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]");
+    if (plotBox !== null && !(plotBox instanceof BoundingBox)) throw new TypeError("Plot box must be null or a bounding box");
     let evaluate = f.evaluate;
     let sampler = samplingStrategies[samplingStrategy];
     if (!sampler) throw new Error("Invalid sampling strategy " + samplingStrategy); // t values for the initial samples
 
     let samplesT = sampler(tMin, tMax, sampleCount, ...samplingStrategyArgs); // array to store the initial samples
 
-    let samples = new Float64Array(2 * sampleCount); // sample the function
+    let samples = new Float64Array(2 * sampleCount); // Used to avoid unnecessary allocations
+
+    let fiStore = new FastRealInterval(); // Whether to actually use interval arithmetic
+
+    let doInterval = !!(intervalFunc && plotBox); // do a single overall interval computation and disable it if the entire graph is within bounds
+
+    if (doInterval) {
+      fiStore.min = tMin;
+      fiStore.max = tMax;
+      let res = intervalFunc.evaluate(fiStore);
+
+      if (res.entirelyWithin(plotBox)) {
+        doInterval = false;
+      }
+    } // sample the function
+
 
     for (let i = 0, j = 0; i < sampleCount; ++i, j += 2) {
       let pos = evaluate(samplesT[i]);
@@ -7847,6 +8999,9 @@
           y2 = samples[1],
           x3 = samples[2],
           y3 = samples[3];
+      let s1 = 0,
+          s2 = 0; // samples t for (x1, y1) and (x2, y2)
+
       let adaptiveResSquared = adaptiveRes * adaptiveRes;
       let needsSubdivide = false; // whether the current segment needs subdivision, carried over from the previous iter
 
@@ -7864,6 +9019,19 @@
           // Avoid OOB access
           x3 = samples[2 * i];
           y3 = samples[2 * i + 1];
+        }
+
+        if (doInterval) {
+          s1 = fiStore.min = samplesT[i - 2];
+          s2 = fiStore.max = samplesT[i - 1];
+          let vec2Interval = intervalFunc.evaluate(fiStore);
+
+          if (!vec2Interval.intersectsBoundingBox(plotBox)) {
+            // If the interval is entirely outside the plot box, we ignore it
+            HEAPF64[++newSamplesIndex] = NaN;
+            HEAPF64[++newSamplesIndex] = NaN;
+            continue;
+          }
         } // (x1, y1) -- (x2, y2) is every segment sampled. We subdivide this segment if exactly one of the points
         // p1 and p2 is undefined, or if the previous angle (or the next angle) needs refinement, which is determined by
         // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
@@ -7894,7 +9062,9 @@
           // [ x1, y1, x2, y2, s1, s2, 0 ] where f(s1) = (x1, y1) and f(s2) = (x2, y2), and
           // [ x2, y2, 1], a point to insert into the list of samples. If we find that a segment is to be divided, we
           // push the right half, then the midpoint (to be inserted into the list of samples), then the left half, which
-          // ensures that, since we're iterating from left to right, all the samples will be put in order
+          // ensures that, since we're iterating from left to right, all the samples will be put in order. If we're doing
+          // interval evaluation, we push an additional enum to the stack which is whether to do interval evaluation on
+          // the segment.
           sampleStack[0] = x1;
           sampleStack[1] = y1;
           sampleStack[2] = x2;
@@ -7930,6 +9100,7 @@
               continue;
             }
 
+            window.total += 1;
             let pos = evaluate(s2);
             let x2 = pos.x;
             let y2 = pos.y;
@@ -8085,6 +9256,11 @@
           args: [varName]
         });
         props.set('function', compiled);
+        let intervalCompiled = compileNode(node, {
+          args: [varName],
+          mode: "fast_interval"
+        });
+        props.set('fastIntervalFunction', intervalCompiled);
       }
     }
 
@@ -8092,6 +9268,7 @@
       const {
         samples,
         function: f,
+        fastIntervalFunction: fIf,
         range,
         pen,
         plotTransform
@@ -8104,13 +9281,16 @@
 
       let rangeStart = range[0],
           rangeEnd = range[1];
-      let pts;
-      pts = plotTransform.graphToPixelArrInPlace(parametricPlot2D(f, rangeStart, rangeEnd, null, {
+      let pts = parametricPlot2D(f, rangeStart, rangeEnd, {
         samples,
         adaptive: true,
         adaptiveRes: plotTransform.graphPixelSize() / 20,
-        simplifyRes: plotTransform.graphPixelSize() / 4
-      }));
+        simplifyRes: plotTransform.graphPixelSize() / 4,
+        intervalFunc: fIf,
+        plotBox: plotTransform.graphBox() //new BoundingBox(-1, -1, 2, 2)
+
+      });
+      plotTransform.graphToPixelArrInPlace(pts);
       this.internal.pts = pts;
       this.internal.renderInfo = {
         instructions: {
@@ -8740,7 +9920,7 @@
 
     destroyTextAtlas() {
       const renderer = this.renderer;
-      renderer.gl;
+      const gl = renderer.gl;
       let name = '__' + this.id + '-text';
       renderer.deleteTexture(name);
     }
@@ -10493,10 +11673,10 @@
 
     toNumber(roundingMode) {
       // Example: 17 = 0b10001
-      this.bitCount() - 1; // bitCount is 5, so the float will be of the form m * 2^4
+      let exponent = this.bitCount() - 1; // bitCount is 5, so the float will be of the form m * 2^4
 
-      this.getWordsAtBit(0, 2);
-      this.getWordAtBit(30);
+      let word1 = this.getWordsAtBit(0, 2);
+      let word2 = this.getWordAtBit(30);
     }
 
     toPow2RadixInternal(radix) {
@@ -11128,8 +12308,8 @@
 
   function subtractMantissas(mant1, mant2, mant2Shift, prec, target, round = CURRENT_ROUNDING_MODE) {
     // Important length variables
-    mant1.length;
-        mant2.length;
+    let mant1Len = mant1.length,
+        mant2Len = mant2.length;
     let targetLen = target.length; // New strategy; we iteratively compute words of the result until we get to the end of target, at which point we do
     // the carry. If the result has any leading zeros, shift left and continue computing words; if not, return if in
     // rounding mode: whatever, and if in a different rounding mode, compute whether a delta of -1 on the last word would
@@ -12908,349 +14088,6 @@
 
   const DOUBLE_STORE = BigFloat.new(53);
 
-  /**
-   * A real interval with only min, max, defMin (bit 0), defMax (bit 1), contMin (bit 2), contMax (bit 3)
-   */
-  class FastRealInterval {
-    constructor(min = 0, max = min, info = 0b111) {
-      this.min = min;
-      this.max = max;
-      this.info = info;
-    }
-
-    defMin() {
-      return this.info & 0b1;
-    }
-
-    defMax() {
-      return this.info & 0b10;
-    }
-
-    cont() {
-      return this.info & 0b100;
-    }
-
-    static set(src, dst) {
-      dst.min = src.min;
-      dst.max = src.max;
-      dst.info = src.info;
-    }
-
-    static setNumber(num, dst) {
-      if (Number.isNaN(num)) {
-        dst.info = 0;
-      } else {
-        dst.min = num;
-        dst.max = num;
-        dst.info = 0b111;
-      }
-    }
-
-    static setRange(min, max, dst) {
-      dst.min = min;
-      dst.max = max;
-      dst.info = 0b111;
-    }
-
-    static add(src1, src2, dst, correctRounding) {
-      let info = src1.info & src2.info;
-
-      if (!(info & 1)) {
-        dst.info = 0;
-        return;
-      }
-
-      let min = src1.min + src2.min;
-      let max = src1.max + src2.max;
-
-      if (correctRounding) {
-        min = roundDown(min);
-        max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static sub(src1, src2, dst, correctRounding) {
-      let info = src1.info & src2.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let min = src1.min - src2.max;
-      let max = src1.max - src2.min;
-
-      if (correctRounding) {
-        min = roundDown(min);
-        max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static mul(src1, src2, dst, correctRounding) {
-      let info = src1.info & src2.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let s1min = src1.min,
-          s1max = src1.max,
-          s2min = src1.min,
-          s2max = src2.max;
-      let p1 = s1min * s2min,
-          p2 = s1max * s2min,
-          p3 = s1min * s2max,
-          p4 = s1max * s2max;
-      let min = Math.min(p1, p2, p3, p4);
-      let max = Math.max(p1, p2, p3, p4);
-
-      if (correctRounding) {
-        min = roundDown(min);
-        max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static div(src1, src2, dst, correctRounding) {
-      let info = src1.info & src2.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let s2min = src1.min,
-          s2max = src2.max;
-
-      if (0 < s2min || 0 > s2max) {
-        // if 0 is outside the range...
-        let s1min = src1.min,
-            s1max = src1.max;
-        let p1 = s1min / s2min,
-            p2 = s1max / s2min,
-            p3 = s1min / s2max,
-            p4 = s1max / s2max;
-        let min = Math.min(p1, p2, p3, p4);
-        let max = Math.max(p1, p2, p3, p4);
-
-        if (correctRounding) {
-          min = roundDown(min);
-          max = roundUp(max);
-        }
-
-        dst.min = min;
-        dst.max = max;
-        dst.info = info;
-      } else {
-        dst.min = -Infinity;
-        dst.max = Infinity;
-        dst.info = 1;
-      }
-    }
-
-    static sqrt(src, dst, correctRounding) {
-      let info = src.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let min = src.min,
-          max = src.max;
-
-      if (max < 0) {
-        dst.info = 0;
-        return;
-      } else if (max === 0) {
-        dst.min = 0;
-        dst.max = 0;
-        dst.info = min === 0 ? info : 1;
-        return;
-      } else {
-        if (min < 0) {
-          min = 0;
-          max = Math.sqrt(max);
-          if (correctRounding) max = roundUp(max);
-          info = 1;
-        } else {
-          min = Math.sqrt(min);
-          max = Math.sqrt(max);
-
-          if (correctRounding) {
-            min = roundDown(min);
-            max = roundUp(max);
-          }
-        }
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static sin(src, dst, correctRounding) {
-      const pio2 = Math.PI / 2;
-      const pi3o2 = 3 * Math.PI / 2;
-      const pi5o2 = 5 * Math.PI / 2;
-      const pi7o2 = 7 * Math.PI / 2;
-      const pi2 = 2 * Math.PI;
-      let info = src.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let srcMin = src.min,
-          srcMax = src.max;
-      let diff = srcMax - srcMin;
-
-      if (diff > pi2 || Number.isNaN(diff)) {
-        dst.min = -1;
-        dst.max = 1;
-        dst.info = info;
-        return;
-      }
-
-      srcMin = (srcMin % pi2 + pi2) % pi2;
-      srcMax = srcMin + diff; // Whether the range includes one and negative one
-
-      let includesOne = srcMin < pio2 && srcMax > pio2 || srcMin < pi5o2 && srcMax > pi5o2;
-      let includesNegOne = srcMin < pi3o2 && srcMax > pi3o2 || srcMin < pi7o2 && srcMax > pi7o2;
-
-      if (includesOne && includesNegOne) {
-        dst.min = -1;
-        dst.max = 1;
-        dst.info = info;
-        return;
-      }
-
-      let sinSrcMin = Math.sin(srcMin);
-      let sinSrcMax = Math.sin(srcMax);
-      let min = includesNegOne ? -1 : Math.min(sinSrcMin, sinSrcMax);
-      let max = includesOne ? 1 : Math.max(sinSrcMin, sinSrcMax);
-
-      if (correctRounding) {
-        if (min !== -1) min = roundDown(min);
-        if (max !== 1) max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static cos(src, dst, correctRounding) {
-      const pi2 = 2 * Math.PI;
-      const pi3 = 3 * Math.PI;
-      let info = src.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let srcMin = src.min,
-          srcMax = src.max;
-      let diff = srcMax - srcMin;
-
-      if (diff > pi2 || Number.isNaN(diff)) {
-        dst.min = -1;
-        dst.max = 1;
-        dst.info = info;
-        return;
-      }
-
-      srcMin = (srcMin % pi2 + pi2) % pi2;
-      srcMax = srcMin + diff; // Whether the range includes one and negative one
-
-      let includesOne = srcMin < pi2 && srcMax > pi2;
-      let includesNegOne = srcMin < Math.PI && srcMax > Math.PI || srcMin < pi3 && srcMax > pi3;
-
-      if (includesOne && includesNegOne) {
-        dst.min = -1;
-        dst.max = 1;
-        dst.info = info;
-        return;
-      }
-
-      let cosSrcMin = Math.cos(srcMin);
-      let cosSrcMax = Math.cos(srcMax);
-      let min = includesNegOne ? -1 : Math.min(cosSrcMin, cosSrcMax);
-      let max = includesOne ? 1 : Math.max(cosSrcMin, cosSrcMax);
-
-      if (correctRounding) {
-        if (min !== -1) min = roundDown(min);
-        if (max !== 1) max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-    static tan(src, dst, correctRounding) {
-      const pio2 = Math.PI / 2;
-      let info = src.info;
-
-      if (info === 0) {
-        dst.info = 0;
-        return;
-      }
-
-      let srcMin = src.min,
-          srcMax = src.max;
-      let diff = srcMax - srcMin;
-
-      if (diff > Math.PI || Number.isNaN(diff)) {
-        dst.min = -Infinity;
-        dst.max = Infinity;
-        dst.info = 1;
-        return;
-      }
-
-      srcMin = (srcMin % Math.PI + Math.PI) % Math.PI;
-      srcMax = srcMin + diff; // Whether the range includes an undef
-
-      let includesInf = srcMin < pio2 && srcMax > pio2;
-
-      if (includesInf) {
-        dst.min = Infinity;
-        dst.max = -Infinity;
-        dst.info = 1;
-        return;
-      }
-
-      let tanSrcMin = Math.cos(srcMin);
-      let tanSrcMax = Math.cos(srcMax);
-      let min = Math.min(tanSrcMin, tanSrcMax);
-      let max = Math.max(tanSrcMin, tanSrcMax);
-
-      if (correctRounding) {
-        min = roundDown(min);
-        max = roundUp(max);
-      }
-
-      dst.min = min;
-      dst.max = max;
-      dst.info = info;
-    }
-
-  }
-
   exports.BigFloat = BigFloat;
   exports.BigInt = BigInt;
   exports.BooleanDict = BooleanDict;
@@ -13303,7 +14140,7 @@
   exports.divMantissas = divMantissas;
   exports.divMantissas2 = divMantissas2;
   exports.expBaseCase = expBaseCase;
-  exports.fastAtan2 = fastAtan2$1;
+  exports.fastAtan2 = fastAtan2;
   exports.fastHypot = fastHypot;
   exports.fillRepeating = fillRepeating;
   exports.flattenVec2Array = flattenVec2Array;
@@ -13357,4 +14194,4 @@
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));
