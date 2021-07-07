@@ -4,7 +4,7 @@
  * @param opts
  */
 import { getCast } from './operator.js'
-import { getCloner, getConvenienceCaster, getFastInitializer, getInitializer, getTypecheck, TYPES } from './types.js'
+import { getCloner, getConvenienceCaster, getFastInitializer, getInitializer, getTypecheck, TYPES } from './math_types.js'
 import { isValidVariableName } from './parse_string.js'
 
 export function compileNode (root, opts = {}) {

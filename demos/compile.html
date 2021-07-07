@@ -7,22 +7,20 @@
 <body>
 
 <script id="setup">
-    var node = Grapheme.parseString("vec2(t,asin(t))")
+    var node = Grapheme.parseString("vec2(t,t^t)")
     node.resolveTypes({ x: "real", y: "real" })
 
     var res = Grapheme.compileNode(node, { mode: "fast_interval" })
 
     var scope = {
-      t: new Grapheme.FastRealInterval(1, 1.0001)
+      t: new Grapheme.FastRealInterval(1, 2)
     }
 
     var cow = 0
     var chicken = res.evaluate(scope)
 
     Grapheme.utils.benchmark(() => {
-      let chicken = res.evaluate(scope)
-      cow += chicken.xMin
-      cow += chicken.yMin
+      chicken = res.evaluate(scope)
     }, 2e7)
 </script>
 

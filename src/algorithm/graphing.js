@@ -1,6 +1,8 @@
 import { approxAngleBetween, fastHypot, pointLineSegmentDistanceSquared } from './misc_geometry.js'
 import { HEAPF64 } from './heap.js'
 import { simplifyPolyline } from './polyline_utils.js'
+import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
+import { BoundingBox } from '../math/bounding_box.js'
 
 const MAX_INITIAL_SAMPLE_COUNT = 1e6
 
@@ -23,19 +25,23 @@ let samplingStrategies = {
 // with a bolus
 let sampleStack = new Float64Array(10 * 2048)
 
-export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
+export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, {
   samples: sampleCount = 100,      // how many initial samples to take
   samplingStrategy = "uniform",    // how to take the initial samples
   samplingStrategyArgs = [],       // additional parameters for how to take the initial samples
   adaptive = true,                 // whether to do recursive, adaptive sampling
   adaptiveRes = Infinity,          // resolution of the adaptive stage; distance of non-linearity which is considered linear and needs to be refined
   simplify = true,                 // whether to compress the vertices
-  simplifyRes = adaptiveRes        // resolution of the collapse
+  simplifyRes = adaptiveRes,       // resolution of the collapse
+  intervalFunc = null,
+  plotBox = null,                           // BoundingBox
+  intervalLimit = 3                // Heuristically, tries to keep the interval evaluations done this many subdivisions before the final subdivision
 } = {}) {
   // Sanity checks
   if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin >= tMax) return null
   if (adaptiveRes <= 0) throw new RangeError("Minimum resolution must be a positive number")
   if (sampleCount > MAX_INITIAL_SAMPLE_COUNT || sampleCount < 2) throw new RangeError("Initial sample count is not in the range [2, 1000000]")
+  if (plotBox !== null && !(plotBox instanceof BoundingBox)) throw new TypeError("Plot box must be null or a bounding box")
 
   let evaluate = f.evaluate
   let sampler = samplingStrategies[samplingStrategy]
@@ -48,6 +54,23 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
   // array to store the initial samples
   let samples = new Float64Array(2 * sampleCount)
 
+  // Used to avoid unnecessary allocations
+  let fiStore = new FastRealInterval()
+
+  // Whether to actually use interval arithmetic
+  let doInterval = !!(intervalFunc && plotBox)
+
+  // do a single overall interval computation and disable it if the entire graph is within bounds
+  if (doInterval) {
+    fiStore.min = tMin
+    fiStore.max = tMax
+
+    let res = intervalFunc.evaluate(fiStore)
+    if (res.entirelyWithin(plotBox)) {
+      doInterval = false
+    }
+  }
+
   // sample the function
   for (let i = 0, j = 0; i < sampleCount; ++i, j += 2) {
     let pos = evaluate(samplesT[i])
@@ -59,6 +82,7 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
   // If we're doing adaptive sampling, we look for places to iteratively refine our sampling
   if (adaptive) {
     let x1 = 0, y1 = 0, x2 = samples[0], y2 = samples[1], x3 = samples[2], y3 = samples[3]
+    let s1 = 0, s2 = 0 // samples t for (x1, y1) and (x2, y2)
 
     let adaptiveResSquared = adaptiveRes * adaptiveRes
     let needsSubdivide = false   // whether the current segment needs subdivision, carried over from the previous iter
@@ -79,11 +103,24 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
         y3 = samples[2 * i + 1]
       }
 
+      if (doInterval) {
+        s1 = fiStore.min = samplesT[i-2]
+        s2 = fiStore.max = samplesT[i-1]
+
+        let vec2Interval = intervalFunc.evaluate(fiStore)
+        if (!vec2Interval.intersectsBoundingBox(plotBox)) {
+          // If the interval is entirely outside the plot box, we ignore it
+          HEAPF64[++newSamplesIndex] = NaN
+          HEAPF64[++newSamplesIndex] = NaN
+
+          continue
+        }
+      }
+
       // (x1, y1) -- (x2, y2) is every segment sampled. We subdivide this segment if exactly one of the points
       // p1 and p2 is undefined, or if the previous angle (or the next angle) needs refinement, which is determined by
       // the distance from the point (x2, y2) to (x1, y1) -- (x3, y3). This subdivision is *recursive*, and doing so
       // efficiently requires some careful thinking.
-
       let shouldSubdivide = needsSubdivide
       needsSubdivide = false
 
@@ -107,7 +144,9 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
         // [ x1, y1, x2, y2, s1, s2, 0 ] where f(s1) = (x1, y1) and f(s2) = (x2, y2), and
         // [ x2, y2, 1], a point to insert into the list of samples. If we find that a segment is to be divided, we
         // push the right half, then the midpoint (to be inserted into the list of samples), then the left half, which
-        // ensures that, since we're iterating from left to right, all the samples will be put in order
+        // ensures that, since we're iterating from left to right, all the samples will be put in order. If we're doing
+        // interval evaluation, we push an additional enum to the stack which is whether to do interval evaluation on
+        // the segment.
 
         sampleStack[0] = x1
         sampleStack[1] = y1
@@ -149,6 +188,8 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
             continue
           }
 
+          window.total += 1
+
           let pos = evaluate(s2)
 
           let x2 = pos.x
@@ -178,6 +219,7 @@ export function parametricPlot2D (f /* R -> R^2 */, tMin, tMax, plotBox, {
             sampleStack[++stackIndex] = s2
             sampleStack[++stackIndex] = s3
             sampleStack[++stackIndex] = 0  // dType 0
+
 
             // Midpoint
             sampleStack[++stackIndex] = x2

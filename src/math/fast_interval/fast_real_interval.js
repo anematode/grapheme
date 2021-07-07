@@ -139,6 +139,7 @@ export class FastRealInterval {
     dst.min = min
     dst.max = max
     dst.info = info
+
   }
 
   /**
@@ -155,7 +156,7 @@ export class FastRealInterval {
       return
     }
 
-    let s2min = src1.min, s2max = src2.max
+    let s2min = src2.min, s2max = src2.max
 
     if (0 < s2min || 0 > s2max) {
       // if 0 is outside the range...
@@ -367,6 +368,12 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the tangent of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed TODO
+   */
   static tan (src, dst, correctRounding) {
     const pio2 = Math.PI / 2
 
@@ -415,6 +422,12 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the arcsine of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static asin (src, dst, correctRounding) {
     let info = src.info
     if (info === 0) {
@@ -459,6 +472,12 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the arccosine of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
   static acos (src, dst, correctRounding) {
     let info = src.info
     if (info === 0) {
@@ -503,6 +522,41 @@ export class FastRealInterval {
     dst.info = info
   }
 
+  /**
+   * Take the arctangent of a fast real interval and send the result to dst
+   * @param src {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean} Whether to use correct rounding so the result is mathematically guaranteed
+   */
+  static atan (src, dst, correctRounding) {
+    let info = src.info
+    if (info === 0) {
+      dst.info = 0
+      return
+    }
+
+    let srcMin = src.min, srcMax = src.max
+    let min = Math.atan(srcMin)
+    let max = Math.atan(srcMax)
+
+    if (correctRounding) {
+      min = roundDown(min)
+      max = roundUp(max)
+    }
+
+    dst.min = min
+    dst.max = max
+    dst.info = info
+  }
+
+  /**
+   * The power operation on two integers. This is a mathematical pow, rather than powSpecial where we try to guess that
+   * numbers are rational. This function is a bit intricate because it needs to take care of a lot of cases. 0^0 = 0.
+   * @param src1 {FastRealInterval}
+   * @param src2 {FastRealInterval}
+   * @param dst {FastRealInterval}
+   * @param correctRounding {boolean}
+   */
   static pow (src1, src2, dst, correctRounding) {
     let info = src1.info & src2.info
     if (info === 0) {
@@ -511,36 +565,43 @@ export class FastRealInterval {
     }
 
     let s1min = src1.min, s1max = src1.max, s2min = src2.min, s2max = src2.max
+
+    // First special case: exponent is a single number
     if (s2min === s2max) {
       let exp = s2min
       let containsZero = (s1min <= 0 && s1max >= 0)
 
-      if (Number.isInteger(exp)) {
-        if (exp === 0) {
-          dst.min = 1
-          dst.max = 1
-          dst.info = info & (containsZero ? 0b010 : 0b111)
+      if (exp === 0) { // exponent 0
+        dst.min = 1
+        dst.max = 1
+        dst.info = info
 
-          return
-        } else if (exp < 0) {
-          if (exp % 2 === 0) {
-            if (containsZero) {
-              dst.min = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp)
-              dst.max = Infinity
-              dst.info = info & 0b010
-              return
+        return
+      }
+
+      // There are six cases to consider: x^2-like, x^3-like, sqrt(x)-like, 1/x-like, 1/x^2-like, and 1/sqrt(x)-like.
+      // Suppose those cases are enumerated 0 through 5. Then positive even integers -> 0, positive odd integers -> 1,
+      // negative odd integers -> 3, negative even integers -> 4, positive numbers -> 2, negative numbers -> 5.
+      if (Number.isInteger(exp)) {
+        if (containsZero) {
+          if (exp < 0) {
+            // negative even integers: minimum is the pow of the maximum
+            if (exp % 2 === 0) {
+              // 1/x^2
+                dst.min = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp)
+                dst.max = Infinity
+                dst.info = info & 0b010
+            } else {
+              // Odd integers: if contains zero, contains an asymptote
+                // 1/x
+                dst.min = Infinity
+                dst.max = Infinity
+                dst.info = info & 0b010
             }
-          } else {
-            if (containsZero) {
-              dst.min = Infinity
-              dst.max = Infinity
-              dst.info = info & 0b010
-              return
-            }
-          }
-        } else {
-          if (exp % 2 === 0) {
-            if (containsZero) {
+
+            return
+          } else if (exp % 2 === 0) {
+              // x^2
               dst.min = 0
               let max = Math.pow(Math.max(Math.abs(s1min), Math.abs(s1max)), exp)
 
@@ -549,25 +610,181 @@ export class FastRealInterval {
 
               dst.max = max
               dst.info = info
-
-              return
-            }
+            return
           }
+        } // containsZero
+      } else {
+        // Exponent is not an integer
+
+        // Totally in the undefined region
+        let isDefined = s1max > 0
+        if (!isDefined) {
+          dst.info = 0
+          return
         }
 
-        let powSrcMin = Math.pow(s1min, exp), powSrcMax = Math.pow(s1max, exp)
-        let min = Math.min(powSrcMin, powSrcMax)
-        let max = Math.max(powSrcMin, powSrcMax)
+        if (containsZero) {
+          let min=0, max=0
 
-        if (correctRounding) {
-          min = roundDown(min)
-          max = roundUp(max)
+          if (exp < 0) {
+            // 1/sqrt(x)
+            max = Infinity
+            min = Math.pow(s1max, exp)
+            if (correctRounding)
+              min = roundDown(min)
+          } else {
+            min = 0
+            max = Math.pow(s1max, exp)
+            if (correctRounding)
+              max = roundUp(max)
+          }
+
+          dst.min = min
+          dst.max = max
+          dst.info = info & 0b010
         }
-
-        dst.min = min
-        dst.max = max
-        dst.info = info
       }
+
+      // If we've fallen through to here, pow is monotonic and defined
+      let powSrcMin = Math.pow(s1min, exp), powSrcMax = Math.pow(s1max, exp)
+      let min = Math.min(powSrcMin, powSrcMax)
+      let max = Math.max(powSrcMin, powSrcMax)
+
+      if (correctRounding) {
+        min = roundDown(min)
+        max = roundUp(max)
+      }
+
+      dst.min = min
+      dst.max = max
+      dst.info = info
+
+      return
+    } // single-valued exponent
+
+    // Second special case: denominator is a single number
+    if (s1min === s1max) {
+      let base = s1min
+
+      if (base === 0) {
+        let containsZero = s2max >= 0 && s2min <= 0
+
+        dst.min = 0
+        dst.max = containsZero ? 1 : 0 // 0^0 = 1
+        dst.info = info & (containsZero ? 0b011 : 0b111)
+
+        return
+      } else if (base === 1) {
+        dst.min = 1
+        dst.max = 1
+        dst.info = info
+
+        return
+      } else if (base === -1) {
+        dst.min = -1
+        dst.max = 1
+        dst.info = info & 0b010
+
+        return
+      }
+
+      // negative bases are weird. They have two branches depending on the denominator of the power they're being
+      // raised to... so we deal with it :)
+
+      let min=0, max=0
+
+      if (base < -1) {
+        // Shape: (-2)^x
+        let m = Math.pow(base, s2max)
+
+        min = -m
+        max = m
+        info &= 0b010
+      } else if (base < 0) {
+        // Shape: (-1/2)^x
+        let m = Math.pow(base, s2min)
+
+        min = -m
+        max = m
+        info &= 0b010
+      } else if (base < 1) {
+        // Monotonically decreasing
+        min = Math.pow(base, s2max)
+        max = Math.pow(base, s2min)
+      } else {
+        // Monotonically increasing
+        min = Math.pow(base, s2min)
+        max = Math.pow(base, s2max)
+      }
+
+      if (correctRounding) {
+        min = roundDown(min)
+        max = roundUp(max)
+      }
+
+      dst.min = min
+      dst.max = max
+      dst.info = info
+
+      return
     }
+
+    // If we've gotten here, things are a bit tricky. The key is that the minimum may be -Infinity, 0, or the minimum of
+    // evaluated pows, and the maximum may be 0, Infinity, or the maximum of evaluated pows. Because this is a fast
+    // real interval we don't have to get deep into the weeds of which are the actual attainable intervals (though that
+    // isn't *too* hard)
+
+    let hasAsymptote = s2min <= 0 && 0 <= s2max && s1min <= 0
+    if (hasAsymptote) {
+      dst.min = -Infinity
+      dst.max = Infinity
+      dst.info = info & 0b010
+
+      return
+    }
+
+    // Things are potentially undefined iff the denominator has negative numbers.
+    let isAllDefined = s1min < 0
+    if (isAllDefined) info &= 0b010
+
+    let minPow = Infinity, maxPow = -Infinity
+
+    let ps1mins2min = Math.pow(Math.abs(s1min), s2min)
+    let ps1mins2max = Math.pow(Math.abs(s1min), s2max)
+    let ps1maxs2min = Math.pow(Math.abs(s1max), s2min)
+    let ps1maxs2max = Math.pow(Math.abs(s1max), s2max)
+
+    minPow = Math.min(minPow, ps1mins2min)
+    maxPow = Math.max(maxPow, ps1mins2min)
+    minPow = Math.min(minPow, ps1mins2max)
+    maxPow = Math.max(maxPow, ps1mins2max)
+
+    if (s1min < 0) {
+      minPow = Math.min(minPow, -ps1mins2min)
+      maxPow = Math.max(maxPow, -ps1mins2min)
+      minPow = Math.min(minPow, -ps1mins2max)
+      maxPow = Math.max(maxPow, -ps1mins2max)
+    }
+
+    minPow = Math.min(minPow, ps1maxs2min)
+    maxPow = Math.max(maxPow, ps1maxs2min)
+    minPow = Math.min(minPow, ps1maxs2max)
+    maxPow = Math.max(maxPow, ps1maxs2max)
+
+    if (s2min < 0) {
+      minPow = Math.min(minPow, -ps1maxs2min)
+      maxPow = Math.max(maxPow, -ps1maxs2min)
+      minPow = Math.min(minPow, -ps1maxs2max)
+      maxPow = Math.max(maxPow, -ps1maxs2max)
+    }
+
+    if (correctRounding) {
+      minPow = roundDown(minPow)
+      maxPow = roundUp(maxPow)
+    }
+
+    dst.min = minPow
+    dst.max = maxPow
+    dst.info = info
   }
 }

@@ -117,8 +117,8 @@ defineUnaryReal('sin', Math.sin, FastRealInterval.sin)
 defineUnaryReal('cos', Math.cos, FastRealInterval.cos)
 defineUnaryReal('tan', Math.tan, FastRealInterval.tan)
 defineUnaryReal('asin', Math.asin, FastRealInterval.asin)
-defineUnaryReal('acos', Math.acos)
-defineUnaryReal('atan', Math.atan)
+defineUnaryReal('acos', Math.acos, FastRealInterval.acos)
+defineUnaryReal('atan', Math.atan, FastRealInterval.atan)
 defineUnaryReal('sinh', Math.sinh)
 defineUnaryReal('cosh', Math.cosh)
 defineUnaryReal('tanh', Math.tanh)
@@ -150,6 +150,33 @@ registerOperator(
           v.yMin = int2.min
           v.yMax = int2.max
           v.info = int1.info & int2.info
+        }
+      }
+    }
+  })
+)
+
+registerOperator(
+  '+',
+  new FixedOperatorDefinition( {
+    signature: ["vec2", "vec2"],
+    returnType: "vec2",
+    evaluators: {
+      generic: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.x = x.x + y.x
+          v.y = x.y + y.y
+        }
+      },
+      fast_interval: {
+        type: "writes",
+        f: (x, y, v) => {
+          v.xMin = x.xMin + y.xMin
+          v.xMax = x.xMax + y.xMax
+          v.yMin = x.yMin + y.yMin
+          v.yMax = x.yMax + y.yMax
+          v.info = x.info & y.info
         }
       }
     }

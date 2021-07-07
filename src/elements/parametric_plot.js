@@ -7,6 +7,7 @@ import { compileNode } from '../ast/compile.js'
 import { parametricPlot2D } from '../algorithm/graphing.js'
 import { benchmark } from '../core/utils.js'
 import { simplifyPolyline } from '../algorithm/polyline_utils.js'
+import { BoundingBox } from '../math/bounding_box.js'
 
 const parametricPlotInterface = constructInterface({
   interface: {
@@ -92,11 +93,13 @@ export class ParametricPlot2D extends Element {
 
       let compiled = compileNode(node, { args: [varName] })
       props.set('function', compiled)
+      let intervalCompiled = compileNode(node, { args: [varName],  mode: "fast_interval" })
+      props.set('fastIntervalFunction', intervalCompiled)
     }
   }
 
   computePoints () {
-    const { samples, function: f, range, pen, plotTransform } = this.props.proxy
+    const { samples, function: f, fastIntervalFunction: fIf, range, pen, plotTransform } = this.props.proxy
 
     if (!samples || !f || !range || !pen || !plotTransform) {
       this.internal.renderInfo = null
@@ -106,14 +109,14 @@ export class ParametricPlot2D extends Element {
     let rangeStart = range[0],
       rangeEnd = range[1]
 
-    let pts
-
-    benchmark( () => pts = parametricPlot2D(f, rangeStart, rangeEnd, null, {
+    let pts = parametricPlot2D(f, rangeStart, rangeEnd, {
       samples,
       adaptive: true,
       adaptiveRes: plotTransform.graphPixelSize() / 20,
-      simplifyRes: plotTransform.graphPixelSize() / 4
-    }), 10000)
+      simplifyRes: plotTransform.graphPixelSize() / 4,
+      intervalFunc: fIf,
+      plotBox: plotTransform.graphBox() //new BoundingBox(-1, -1, 2, 2)
+    })
 
     plotTransform.graphToPixelArrInPlace(pts)
 
