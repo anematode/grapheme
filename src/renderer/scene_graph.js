@@ -453,8 +453,9 @@ export class SceneGraph {
             let compiledStr = katex.renderToString(instruction.latex)
 
             let compiled = {
-              type: 'html_element',
+              type: 'latex',
               html: compiledStr,
+              content: instruction.latex,
               pos: instruction.pos,
               dir: instruction.dir ?? "C",
               spacing: instruction.spacing ?? 0

@@ -2,6 +2,8 @@ import { Scene } from './scene.js'
 import { constructInterface } from './interface.js'
 import { deepClone } from './utils.js'
 import { Vec2 } from '../math/vec/vec2.js'
+import { calculateRectShift } from '../other/text_utils.js'
+import { BoundingBox } from '../math/bounding_box.js'
 
 let sceneInterface = Scene.prototype.getInterface()
 
@@ -124,6 +126,90 @@ export class InteractiveScene extends Scene {
     let domElement = this.domElement
 
     domElement.appendChild(element)
+  }
+
+  setHTMLElements (instructions) {
+    let internal = this.internal, htmlElements
+    let that = this // huzzah
+
+    if (!internal.htmlElements) internal.htmlElements = []
+    htmlElements = internal.htmlElements
+
+    // A latex element is of the form { type: "html" | "latex", content: "...", pos: Vec2, domElement: (div), w: (number), h: (number), claimed: false }
+    htmlElements.forEach(elem => elem.claimed = false)
+
+    function addElementToDOM (html) {
+      let div = document.createElement("div")
+      div.innerHTML = html
+
+      div.style.position = "absolute"
+      div.style.left = div.style.top = '0'
+      div.style.visibility = "none"
+
+      that.domElement.appendChild(div)
+
+      let rect = div.getBoundingClientRect()
+      return { div, rect }
+    }
+
+    function addElement (html, pos, dir, spacing) {
+      let { div, rect } = addElementToDOM(html)
+
+      let shiftedRect = calculateRectShift(new BoundingBox(pos.x, pos.y, rect.width, rect.height), dir, spacing)
+
+      div.style.left = shiftedRect.x + 'px'
+      div.style.top = shiftedRect.y + 'px'
+
+      return { pos: new Vec2(shiftedRect.x, shiftedRect.y), domElement: div, w: rect.width, h: rect.height, claimed: true }
+    }
+
+    main: for (const instruction of instructions) {
+      if (instruction.type === "latex") {
+        let { pos, dir, spacing } = instruction
+
+        for (const elem of htmlElements) {
+          if (elem.claimed || elem.type !== "latex" || elem.content !== instruction.content) continue
+
+          // then the element's latex content is the same, so we calculate the new position. Note we reuse the old
+          // width/height values so that getBoundingClientRect() is only called once
+          let shiftedRect = calculateRectShift(new BoundingBox(pos.x, pos.y, elem.w, elem.h), dir, spacing)
+
+          pos = shiftedRect.tl()
+          if (elem.pos.x !== pos.x || elem.pos.y !== pos.y) { // need to move the element
+            elem.domElement.style.left = shiftedRect.x + 'px'
+            elem.domElement.style.top = shiftedRect.y + 'px'
+
+            elem.pos = pos
+          }
+
+          elem.claimed = true
+          continue main
+        }
+
+        console.log('hi')
+
+        // No latex element exists that's unclaimed and has the same content, so we create one
+        let elem = addElement(instruction.html, pos, dir, spacing)
+
+        elem.type = "latex"
+        elem.content = instruction.content
+
+        htmlElements.push(elem)
+      } else {
+        // ignore for now
+      }
+    }
+
+    // Destroy unclaimed html elements
+    this.internal.htmlElements = htmlElements.filter(elem => {
+      let claimed = elem.claimed
+
+      if (!claimed) {
+        this.domElement.removeChild(elem.domElement)
+      }
+
+      return claimed
+    })
   }
 
   destroyHTMLElements () {

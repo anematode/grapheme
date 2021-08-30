@@ -559,7 +559,7 @@ export class WebGLRenderer {
           break
         }
 
-        case 'html_element': {
+        case 'latex': {
           additionalHTML.push(instruction)
 
           break
@@ -617,26 +617,7 @@ export class WebGLRenderer {
     graph.destroy()
 
     if (additionalHTML.length && scene.domElement) {
-      scene.destroyHTMLElements()
-
-      for (const instruction of additionalHTML) {
-        let div = document.createElement("div")
-        div.innerHTML = instruction.html
-
-        div.style.position = "absolute"
-        div.style.left = div.style.top = '0'
-        div.style.visibility = "none"
-
-        scene.addHTMLElement(div)
-
-        let rect = div.getBoundingClientRect()
-        let { pos, dir, spacing } = instruction
-
-        let shiftedRect = calculateRectShift(new BoundingBox(pos.x, pos.y, rect.width, rect.height), dir, spacing)
-
-        div.style.left = shiftedRect.x + 'px'
-        div.style.top = shiftedRect.y + 'px'
-      }
+      scene.setHTMLElements(additionalHTML)
     }
   }
 
