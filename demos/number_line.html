@@ -5,31 +5,32 @@
     <title>Number line</title>
 </head>
 <body>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.16/dist/katex.min.css" integrity="sha384-6LkG2wmY8FK9E0vU9OOr8UvLwsaqUg9SETfpq4uTCN1agNe8HRdE9ABlk+fVx6gZ" crossorigin="anonymous">
 
 <script src="test_setup.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.16/dist/katex.min.css" integrity="sha384-6LkG2wmY8FK9E0vU9OOr8UvLwsaqUg9SETfpq4uTCN1agNe8HRdE9ABlk+fVx6gZ" crossorigin="anonymous">
 
 <script id="setup">
   var renderer = new Grapheme.WebGLRenderer()
   var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
 
-  var figure = new Grapheme.Figure({ interactivity: true })
+  var figure = new Grapheme.Plot2D({ interactivity: true })
   var baubles = new Grapheme.FigureBaubles()
 
-  var latexElement = new Grapheme.LatexElement({ latex: "\\sqrt{x^2}", position: [100, 100], dir: "S", spacing: 0 })
-  var point = new Grapheme.PointElement({ pos: [100, 100] })
-
-  scene.add(latexElement).add(point)
-  document.body.append(scene.domElement)
+  scene.add(figure.add(baubles))
+  document.body.appendChild(scene.domElement)
+  var cowf = 0
+  var total = 0
 
   function render() {
     renderer.renderDOMScene(scene)
 
-    //requestAnimationFrame(render)
+    //setTimeout(render, 1000)
+    requestAnimationFrame(render)
   }
 
   render()
 </script>
+
 
 </body>
 </html>

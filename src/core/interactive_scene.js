@@ -186,8 +186,6 @@ export class InteractiveScene extends Scene {
           continue main
         }
 
-        console.log('hi')
-
         // No latex element exists that's unclaimed and has the same content, so we create one
         let elem = addElement(instruction.html, pos, dir, spacing)
 

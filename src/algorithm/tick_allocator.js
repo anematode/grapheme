@@ -142,3 +142,9 @@ export function get2DDemarcations (
 
   return ret
 }
+
+export function getRationalDemarcations (xStart, xEnd, xLen) {
+  // Get a series of rational numbers [p, q] between xStart and xEnd.
+
+
+}

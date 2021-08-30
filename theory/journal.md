@@ -389,3 +389,7 @@ I'm going to partially rewrite the elements code to include stuff about instruct
 Progress made on the renderer; using VAOs now and in a way that will be eventually optimizable. Excited about that. Next focus is the prop system; it'd be annoying to have to recode a bunch of elements when the prop system changes. I've deliberated on this issue for many hours, but the overall approach is relatively simple. Each property has a *value*, a *changed* status, and potentially an *inherit* value, a *userValue*, and a *programValue*. *changed* contains a bitset of what has changed; the first bit is whether the value has changed, the second bit is whether the user value has changed, and the third bit is whether the program value has changed.
 
 The *value* of a certain property depends on many factors. Some properties have a very simple rule: default value of 0, user can set it to any value, and it will remain that way. When the user sets the value to *undefined*, it sets the value to the default of 0. Some properties may not even have a default value, and will be deleted when the user sets its value to undefined.
+
+# August 30
+
+Got LaTeX working! It adds them as HTML elements to the scene, actually. To avoid constant addition and removal of elements, which would cause countless style recomputations, it tries to reuse old elements by "claiming" them and moving them into position;  unclaimed elements are then removed.

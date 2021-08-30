@@ -99,8 +99,6 @@ function isApproxEqual (v, w, eps = 1e-5) {
   return Math.abs(v - w) < eps
 }
 
-const CDOT = String.fromCharCode(183)
-
 const standardLabelFunction = x => {
   if (x === 0) return '0'
   // special case
@@ -114,7 +112,7 @@ const standardLabelFunction = x => {
 
     let prefix = isApproxEqual(mantissa, 1)
       ? ''
-      : beautifyFloat(mantissa, 8) + CDOT
+      : beautifyFloat(mantissa, 8) + "\\cdot "
     let exponent_suffix = '10^' + exponent
 
     return prefix + exponent_suffix

@@ -3,6 +3,7 @@ import { constructInterface } from '../core/interface.js'
 import { TextStyle } from '../styles/definitions.js'
 import { toDir } from '../other/text_utils.js'
 import { Vec2 } from '../math/vec/vec2.js'
+import { katex } from '../../deps/katex.js'
 
 const latexElementInterface = constructInterface({
   interface: {
@@ -28,6 +29,24 @@ const latexElementInterface = constructInterface({
   }
 })
 
+function getLatexSizeAndHTML (content) {
+  let html = katex.renderToString(content)
+  let div = document.createElement("div")
+
+  div.style.visibility = "hidden"
+  div.style.position = "absolute"
+  div.style.top = "0"
+  div.style.left = "0"
+
+  div.innerHTML = html
+
+  document.body.appendChild(div)
+  let rect = div.getBoundingClientRect()
+  div.remove()
+
+  return { html, rect }
+}
+
 export class LatexElement extends Element {
   constructor (params) {
     super(params)
@@ -46,6 +65,10 @@ export class LatexElement extends Element {
     if (!code || !pos) {
       this.internal.renderInfo = null
       return
+    }
+
+    if (this.props.hasChanged("latex")) {
+      this.internal.rect = getLatexSizeAndHTML(code).rect
     }
 
     this.internal.renderInfo = {
