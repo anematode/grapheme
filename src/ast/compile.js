@@ -127,9 +127,6 @@ export function compileNode (root, opts = {}) {
 
   // Last argument is the text of the function itself
   importNames.push(nfText)
-
-  console.log(nfText)
-
   return Function.apply(null, importNames).apply(null, imports)
 }
 

@@ -12,6 +12,7 @@ import {
 } from '../algorithm/misc_geometry.js'
 import { BoundingBox } from '../math/bounding_box.js'
 import { Colors } from '../styles/definitions.js'
+import {katex} from '../../deps/katex.js'
 
 /**
  * Validate, shallow clone instructions and change their zIndex, et cetera
@@ -443,6 +444,20 @@ export class SceneGraph {
               buffers: [tcName, scName],
               vertexCount: 4,
               text: instruction.text
+            }
+            compiledInstructions.push(compiled)
+
+            break
+          }
+          case 'latex': {
+            let compiledStr = katex.renderToString(instruction.latex)
+
+            let compiled = {
+              type: 'html_element',
+              html: compiledStr,
+              pos: instruction.pos,
+              dir: instruction.dir ?? "C",
+              spacing: instruction.spacing ?? 0
             }
             compiledInstructions.push(compiled)
 

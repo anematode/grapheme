@@ -25,8 +25,15 @@ export class InteractiveScene extends Scene {
   init (params) {
     super.init(params)
 
-    this.domElement = document.createElement('canvas')
-    this.bitmapRenderer = this.domElement.getContext('bitmaprenderer')
+    this.domElement = document.createElement("div")
+    this.domElement.style.position = "relative" // so that absolute html children are positioned relative to the div
+
+    this.domCanvas = document.createElement('canvas')
+
+    this.domCanvas.id = this.id
+
+    this.domElement.appendChild(this.domCanvas)
+    this.bitmapRenderer = this.domCanvas.getContext('bitmaprenderer')
   }
 
   #disableInteractivityListeners () {
@@ -104,12 +111,29 @@ export class InteractiveScene extends Scene {
 
   resizeCanvas () {
     const { sceneDims } = this.props.proxy
-    const { domElement } = this
+    const { domCanvas } = this
 
-    domElement.width = sceneDims.canvasWidth
-    domElement.height = sceneDims.canvasWidth
+    domCanvas.width = sceneDims.canvasWidth
+    domCanvas.height = sceneDims.canvasHeight
 
-    domElement.style.width = sceneDims.width + 'px'
-    domElement.style.height = sceneDims.height + 'px'
+    domCanvas.style.width = sceneDims.width + 'px'
+    domCanvas.style.height = sceneDims.height + 'px'
+  }
+
+  addHTMLElement (element) {
+    let domElement = this.domElement
+
+    domElement.appendChild(element)
+  }
+
+  destroyHTMLElements () {
+    let children = Array.from(this.domElement.children)
+
+    for (const child of children) {
+      if (child.id !== this.id) {
+        child.style.visibility = "none"
+        this.domElement.removeChild(child)
+      }
+    }
   }
 }

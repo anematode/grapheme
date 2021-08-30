@@ -267,14 +267,26 @@ export class FigureBaubles extends Group {
             let pos = plotTransform
               .graphToPixel(new Vec2(x[i], 0))
 
-            instructions.push(genTextInstruction(standardLabelFunction(x[i]), DefaultStyles.label, pos, 'S', 3))
+            instructions.push({
+              type: "latex",
+              latex: standardLabelFunction(x[i]),
+              pos: pos,
+              dir: 'S',
+              spacing: 3
+            })
           }
 
           for (let i = 0; i < y.length; ++i) {
             let pos = plotTransform
               .graphToPixel(new Vec2(0, y[i]))
 
-            instructions.push(genTextInstruction(standardLabelFunction(y[i]), DefaultStyles.label, pos, 'E', 3))
+            instructions.push({
+              type: "latex",
+              latex: standardLabelFunction(y[i]),
+              pos: pos,
+              dir: 'E',
+              spacing: 3
+            })
           }
         }
 

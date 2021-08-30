@@ -72,6 +72,8 @@
 import { TextRenderer } from './text_renderer.js'
 import { Colors, Pen } from '../styles/definitions.js'
 import { SceneGraph } from './scene_graph.js'
+import { calculateRectShift } from '../other/text_utils.js'
+import { BoundingBox } from '../math/bounding_box.js'
 
 // Functions taken from Mozilla docs
 function createShaderFromSource (gl, shaderType, shaderSource) {
@@ -455,6 +457,8 @@ export class WebGLRenderer {
     graph.constructFromScene(scene)
     let endTime = performance.now()
 
+    let additionalHTML = []
+
     if (log) console.log(`Construction time: ${endTime - startTime}ms`)
 
     startTime = performance.now()
@@ -555,6 +559,12 @@ export class WebGLRenderer {
           break
         }
 
+        case 'html_element': {
+          additionalHTML.push(instruction)
+
+          break
+        }
+
         case 'triangle_strip': // LOL
           drawMode++
         case 'triangles':
@@ -605,6 +615,29 @@ export class WebGLRenderer {
     if (log) console.log(`Render time: ${endTime - globalStartTime}ms`)
 
     graph.destroy()
+
+    if (additionalHTML.length && scene.domElement) {
+      scene.destroyHTMLElements()
+
+      for (const instruction of additionalHTML) {
+        let div = document.createElement("div")
+        div.innerHTML = instruction.html
+
+        div.style.position = "absolute"
+        div.style.left = div.style.top = '0'
+        div.style.visibility = "none"
+
+        scene.addHTMLElement(div)
+
+        let rect = div.getBoundingClientRect()
+        let { pos, dir, spacing } = instruction
+
+        let shiftedRect = calculateRectShift(new BoundingBox(pos.x, pos.y, rect.width, rect.height), dir, spacing)
+
+        div.style.left = shiftedRect.x + 'px'
+        div.style.top = shiftedRect.y + 'px'
+      }
+    }
   }
 
   renderDOMScene (scene) {

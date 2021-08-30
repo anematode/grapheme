@@ -34,7 +34,7 @@ export function measureText (text, textStyle) {
   return new BoundingBox(0, 0, w, h)
 }
 
-function toDir (obj) {
+export function toDir (obj) {
   if (obj instanceof Vec2) {
     return obj
   } else if (typeof obj === "string") {
@@ -56,6 +56,23 @@ function toDir (obj) {
   }
 }
 
+export function calculateRectShift (rect, dir, spacing) {
+  dir = toDir(dir)
+
+  let shiftX = dir.x * rect.w / 2, shiftY = dir.y * rect.h / 2
+  let shiftLen = Math.hypot(shiftX, shiftY)
+
+  let scaleSpacing = (shiftLen === 0) ? 0 : (shiftLen + spacing) / shiftLen
+
+  shiftX *= scaleSpacing
+  shiftY *= scaleSpacing
+
+  shiftX += -rect.w / 2
+  shiftY += -rect.h / 2
+
+  return new BoundingBox(rect.x + shiftX, rect.y + shiftY, rect.w, rect.h)
+}
+
 /**
  * Generate a text location, using an anchor, direction and spacing. This system is inspired by Asymptote Vector
  * Graphics, where dir might be something like 'N' and the text would shift itself by that much in the north direction
@@ -69,20 +86,11 @@ function toDir (obj) {
  */
 export function genTextRect (text, textStyle, anchor, dir, spacing=1) {
   let rect = measureText(text, textStyle)
-  dir = toDir(dir)
 
-  let shiftX = dir.x * rect.w / 2, shiftY = dir.y * rect.h / 2
-  let shiftLen = Math.hypot(shiftX, shiftY)
+  rect.x = anchor.x
+  rect.y = anchor.y
 
-  let scaleSpacing = (shiftLen + spacing) / shiftLen
-
-  shiftX *= scaleSpacing
-  shiftY *= scaleSpacing
-
-  shiftX += -rect.w / 2 + anchor.x
-  shiftY += -rect.h / 2 + anchor.y
-
-  return rect.translate(new Vec2(shiftX, shiftY))
+  return calculateRectShift(rect, dir, spacing)
 }
 
 export function genTextInstruction (text, textStyle, anchor, dir, spacing=1) {

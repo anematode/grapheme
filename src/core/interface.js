@@ -14,7 +14,7 @@ import { Vec2 } from '../math/vec/vec2.js'
 import { deepMerge, isTypedArray } from './utils.js'
 import { Color, lookupCompositionType } from '../styles/definitions.js'
 import { Props } from './props.js'
-import { isValidVariableName } from '../ast/parse_string'
+import { isValidVariableName } from '../ast/parse_string.js'
 
 /**
  * Print object to string in a way that isn't too painful (limit the length of the string to 100 chars or so)

@@ -181,3 +181,7 @@ export class LinearPlot2DTransformConstraints {
     return newTransform
   }
 }
+
+export class LinearPlot1DTransform {
+
+}
