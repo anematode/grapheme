@@ -398,4 +398,6 @@ Got LaTeX working! It adds them as HTML elements to the scene, actually. To avoi
 
 I want to be productive today and get things cleaned up better. As always. Hm. Let's start off with examining what is good about Grapheme. The math, ast, and algorithm folders are relatively well-off and separated. In fact, I daresay the math folder could be split into its own repository. The code spans a wide variety of ages and could certainly be cleaned up and commentated, but I'll do that later. For now, I need to set achievable goals. Complicating matters is the fact that I don't remember how a lot of this code works.
 
-Let's first create a new rendering primitive, called polygon, which takes in a series of vertices and filldraws it.
+Let's first create a new rendering primitive, called polygon, which takes in a series of vertices and filldraws it. Okay, done. The scene graph code is rather ugly, unfortunately, as is the renderer code. I should create a specification for the rendering primitives when I have the time.
+
+The interface system is nice, but still not sophisticated enough for many tasks. Oh well, I will expand it as necessary. Let's see how we can style polygon with a color and border pen.

@@ -11,7 +11,7 @@
   var renderer = new Grapheme.WebGLRenderer()
   var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
 
-  var polygon = new Grapheme.Polygon({ vertices: [[100, 100], [170, 100], [150, 150], [100, 150]] })
+  var polygon = new Grapheme.Polygon({ vertices: [[100, 100], [170, 100], [150, 150], [100, 150]], color: "red" })
 
   scene.add(polygon)
   document.body.appendChild(scene.domElement)
