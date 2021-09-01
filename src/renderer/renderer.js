@@ -509,7 +509,7 @@ export class WebGLRenderer {
     let sceneHeight
 
     graph.forEachCompiledInstruction(instruction => {
-      let drawMode = 0
+      let primitiveEnum = 0
       switch (instruction.type) {
         case 'scene': {
           const { dims, backgroundColor } = instruction
@@ -566,13 +566,13 @@ export class WebGLRenderer {
         }
 
         case 'triangle_strip': // LOL
-          drawMode++
+          primitiveEnum++
         case 'triangles':
-          drawMode++
+          primitiveEnum++
         case 'line_strip':
-          drawMode += 2
+          primitiveEnum += 2
         case 'lines':
-          drawMode++
+          primitiveEnum++
           {
             const program = this.monochromaticGeometryProgram()
             gl.useProgram(program.glProgram)
@@ -589,7 +589,14 @@ export class WebGLRenderer {
             )
             gl.uniform2fv(program.uniforms.xyScale, this.getXYScale())
 
-            gl.drawArrays(drawMode, 0, instruction.vertexCount)
+            const mode = instruction.mode ?? "arrays"
+
+            if (mode === "arrays") {
+              gl.drawArrays(primitiveEnum, 0, instruction.vertexCount)
+            } else if (mode === "elements") {
+              gl.drawElements(primitiveEnum, instruction.vertexCount, gl.UNSIGNED_SHORT, 0)
+            }
+
             break
           }
         case 'pop_context': {

@@ -1,5 +1,5 @@
-import { packRectangles, potpack } from '../algorithm/rectangle_packing.js'
-import { getVersionID, nextPowerOfTwo } from '../core/utils.js'
+import { potpack } from '../algorithm/rectangle_packing.js'
+import { nextPowerOfTwo } from '../core/utils.js'
 
 export class TextRenderer {
   constructor () {

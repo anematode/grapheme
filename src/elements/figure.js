@@ -1,11 +1,5 @@
-import { Element } from '../core/element.js'
 import { constructInterface } from '../core/interface.js'
-import {
-  LinearPlot2DTransform,
-  LinearPlot2DTransformConstraints
-} from '../math/plot_transforms.js'
 import { Group } from '../core/group.js'
-import { Vec2 } from '../math/vec/vec2.js'
 
 const figureInterface = constructInterface({
   interface: {
@@ -36,10 +30,6 @@ const figureInterface = constructInterface({
 })
 
 export class Figure extends Group {
-  init () {
-    this.props.configureProperty('plotTransform', { inherit: true })
-  }
-
   _update () {
     this.defaultInheritProps()
     this.defaultComputeProps()

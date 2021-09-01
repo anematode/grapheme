@@ -1,6 +1,5 @@
 import { Vec2 } from '../math/vec/vec2.js'
 import { BoundingBox } from '../math/bounding_box.js'
-import { DefaultStyles } from '../styles/definitions.js'
 
 let canvas, ctx
 function initCanvas () {

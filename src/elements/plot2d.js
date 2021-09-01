@@ -38,8 +38,8 @@ const plot2DInterface = constructInterface({
  * A version of Figure which is intended for a 2D graph, and thus has an inheritable property plotTransform
  */
 export class Plot2D extends Figure {
-  constructor (params) {
-    super(params)
+  init () {
+    this.props.configureProperty('plotTransform', { inherit: true })
   }
 
   getInterface () {

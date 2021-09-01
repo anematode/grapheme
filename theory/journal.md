@@ -393,3 +393,9 @@ The *value* of a certain property depends on many factors. Some properties have 
 # August 30
 
 Got LaTeX working! It adds them as HTML elements to the scene, actually. To avoid constant addition and removal of elements, which would cause countless style recomputations, it tries to reuse old elements by "claiming" them and moving them into position;  unclaimed elements are then removed.
+
+# September 1
+
+I want to be productive today and get things cleaned up better. As always. Hm. Let's start off with examining what is good about Grapheme. The math, ast, and algorithm folders are relatively well-off and separated. In fact, I daresay the math folder could be split into its own repository. The code spans a wide variety of ages and could certainly be cleaned up and commentated, but I'll do that later. For now, I need to set achievable goals. Complicating matters is the fact that I don't remember how a lot of this code works.
+
+Let's first create a new rendering primitive, called polygon, which takes in a series of vertices and filldraws it.

@@ -12,7 +12,8 @@ import {
 } from '../algorithm/misc_geometry.js'
 import { BoundingBox } from '../math/bounding_box.js'
 import { Colors } from '../styles/definitions.js'
-import {katex} from '../../deps/katex.js'
+import { katex } from '../../deps/katex.js'
+import { earcut } from '../../deps/earcut.js'
 
 /**
  * Validate, shallow clone instructions and change their zIndex, et cetera
@@ -490,6 +491,44 @@ export class SceneGraph {
               color
             }
             compiledInstructions.push(compiled)
+
+            break
+          }
+          case 'polygon': {
+            let vertices = instruction.vertices
+            let triangulatedVertices = earcut(vertices)
+
+            let color = instruction.color ?? Colors.BLACK
+
+            let vertexBufferName = context.id + '-' + getVersionID()
+            let indexBufferName = context.id + '-' + getVersionID()
+            let vaoName = context.id + '-' + getVersionID()
+
+            let vertexBuffer = renderer.createBuffer(vertexBufferName)
+            let indexBuffer = renderer.createBuffer(indexBufferName)
+            let vao = renderer.createVAO(vaoName)
+
+            gl.bindVertexArray(vao)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+            gl.enableVertexAttribArray(0 /* position buffer */)
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(triangulatedVertices), gl.STATIC_DRAW)
+
+            let compiled = {
+              type: 'triangles',
+              mode: 'elements',
+              vao: vaoName,
+              buffers: [vertexBufferName],
+              vertexCount: triangulatedVertices.length,
+              color
+            }
+            compiledInstructions.push(compiled)
+
             break
           }
           case 'debug': {
@@ -555,11 +594,6 @@ export class SceneGraph {
       }
     }
   }
-
-  /**
-   * Get pre-rendering info so the renderer knows what to expect. This includes, notably, text
-   */
-  getPreRenderingInfo () {}
 
   destroy () {
     this.forEachContext(c =>

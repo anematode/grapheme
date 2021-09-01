@@ -227,7 +227,7 @@ function vec2Conversion (obj) {
 }
 
 function vec2NonFlatArrayConversion (arr, f32 = true) {
-  let ret = new (f32 ? Float32Array : Float64Array)(arr.length / 2)
+  let ret = new (f32 ? Float32Array : Float64Array)(arr.length * 2)
   let retIndex = -1
 
   for (let i = 0; i < arr.length; ++i) {
@@ -253,6 +253,8 @@ function vec2NonFlatArrayConversion (arr, f32 = true) {
       return
     }
   }
+
+  return ret
 }
 
 function vec2ArrayConversion (obj, f32 = true) {
@@ -381,12 +383,13 @@ export function constructInterface (description) {
 
     if (setter.typecheck) {
       let result = setter.typecheck(value)
-      if (result)
+      if (result) {
         throw new TypeError(
           `Failed typecheck: ${result
             .replace('$v', relaxedPrint(value))
             .replace('$p', 'parameter "' + propName + '"')}`
         )
+      }
     }
 
     if (setter.conversion) {
@@ -394,7 +397,7 @@ export function constructInterface (description) {
 
       if (newValue === undefined)
         throw new TypeError(
-          `Failed conversion: ${result
+          `Failed conversion: ${CONVERSION_MSG
             .replace('$v', relaxedPrint(value))
             .replace('$p', 'parameter "' + propName + '"')}`
         )
