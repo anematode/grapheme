@@ -7,6 +7,7 @@
 import { getStringID, getVersionID } from '../core/utils.js'
 import { convertTriangleStrip } from '../algorithm/polyline_triangulation.js'
 import {
+  flattenVec2Array,
   generateRectangleDebug,
   generateRectangleTriangleStrip
 } from '../algorithm/misc_geometry.js'
@@ -550,6 +551,8 @@ export class SceneGraph {
               if (!rect) throw new Error('Invalid rectangle debug instruction')
 
               vertices = generateRectangleDebug(rect)
+            } else if (instruction.polyline) {
+              vertices = new Float32Array(flattenVec2Array(instruction.polyline))
             } else {
               throw new Error('Unrecognized debug instruction')
             }

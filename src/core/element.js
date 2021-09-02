@@ -74,6 +74,10 @@ export class Element extends Eventful {
 
   _update () {}
 
+  add () {
+    throw new Error("Element is not a group and does not support having children")
+  }
+
   apply (callback) {
     callback(this)
   }

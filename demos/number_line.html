@@ -9,11 +9,14 @@
 <script src="test_setup.js"></script>
 <script id="setup">
   var renderer = new Grapheme.WebGLRenderer()
-  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
+  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 500, height: 500, dpr: devicePixelRatio })
 
   var polygon = new Grapheme.Polygon({ vertices: [[100, 100], [170, 100], [150, 150], [100, 150]], color: "red" })
+  var numberLine = new Grapheme.NumberLine()
 
   scene.add(polygon)
+  scene.add(numberLine)
+
   document.body.appendChild(scene.domElement)
 
   var total = 0
@@ -22,7 +25,7 @@
     renderer.renderDOMScene(scene)
 
     //setTimeout(render, 1000)
-    requestAnimationFrame(render)
+    //requestAnimationFrame(render)
   }
 
   render()
