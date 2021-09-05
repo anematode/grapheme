@@ -1,7 +1,9 @@
 import { constructInterface } from '../core/interface.js'
 import { Group } from '../core/group.js'
 
+const groupInterface = Group.prototype.getInterface()
 const figureInterface = constructInterface({
+  extends: [ groupInterface ],
   interface: {
     interactivity: {
       description: 'Whether interactivity is enabled',
@@ -22,52 +24,49 @@ const figureInterface = constructInterface({
     margins: {
       computed: 'default',
       default: { left: 30, right: 30, top: 30, bottom: 30 }
+    }
+  },
+  memberFunctions: {
+    _update () {
+      this.computeBoxes()
+      this.computeScissor()
     },
 
-    // Interactivity
-    interactivity: { computed: 'default', default: true }
+    computeBoxes () {
+      const { props } = this
+
+      props.set('figureBoundingBox', props.get('sceneDims').getBoundingBox())
+
+      let margins = props.get('margins')
+      props.set(
+        'plottingBox',
+        props
+          .get('figureBoundingBox')
+          .squishAsymmetrically(
+            margins.left,
+            margins.right,
+            margins.bottom,
+            margins.top
+          ),
+        0 /* real */,
+        2 /* deep equality */
+      )
+    },
+
+    computeScissor () {
+      const { props } = this
+
+      this.internal.renderInfo = {
+        contexts: { type: 'scissor', scissor: props.get('plottingBox') }
+      }
+    }
   }
 })
 
 export class Figure extends Group {
-  _update () {
-    this.defaultInheritProps()
-    this.defaultComputeProps()
-
-    this.computeBoxes()
-    this.computeScissor()
-  }
-
-  computeBoxes () {
-    const { props } = this
-
-    props.set('figureBoundingBox', props.get('sceneDims').getBoundingBox())
-
-    let margins = props.get('margins')
-    props.set(
-      'plottingBox',
-      props
-        .get('figureBoundingBox')
-        .squishAsymmetrically(
-          margins.left,
-          margins.right,
-          margins.bottom,
-          margins.top
-        ),
-      0 /* real */,
-      2 /* deep equality */
-    )
-  }
-
-  computeScissor () {
-    const { props } = this
-
-    this.internal.renderInfo = {
-      contexts: { type: 'scissor', scissor: props.get('plottingBox') }
-    }
-  }
-
   getInterface () {
     return figureInterface
   }
 }
+
+figureInterface.extend(Figure)

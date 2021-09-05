@@ -308,9 +308,47 @@ function createConversion (conversion) {
   }
 }
 
+let NullInterface
+
+/**
+ * Construct an interface from other interfaces and various property descriptors.
+ *
+ * @param description
+ * @param description.extends {Array} List of interfaces to extend from, inheriting interface, internal, and memberFunctions
+ * @param description.interface {{}} Map of external facing props to how to handle them
+ * @param description.internal {{}} Internal properties and how to handle them
+ * @param description.memberFunctions {{}} Functions to add to the class
+ * @returns {{extend: Function, set: Function, get: Function, description: {}, update: Function, computeProps: Function}}
+ */
 export function constructInterface (description) {
-  const interfaceDesc = description.interface
-  const internal = description.internal
+  let extends_ = description.extends ?? []
+  if (!Array.isArray(extends_)) extends_ = [ extends_ ]
+
+  if (NullInterface) extends_.unshift(NullInterface)
+
+  let interfaceDesc = description.interface ?? {}
+  let internal = description.internal ?? {}
+  let memberFunctions = description.memberFunctions ?? {}
+
+  // Extend interface, internal and memberFunctions
+  if (extends_.length !== 0) {
+    for (let i = extends_.length - 1; i >= 0; --i) {
+      let extendInterface = extends_[i]
+      if (!extendInterface) continue
+
+      const desc = extendInterface.description
+
+      // Extend the interface
+      interfaceDesc = { ...desc.interface, ...interfaceDesc }
+      internal = { ...desc.internal, ...internal }
+      memberFunctions = { ...desc.memberFunctions, ...memberFunctions }
+    }
+
+    // Update the description
+    description.interface = interfaceDesc
+    description.internal = internal
+    description.memberFunctions = memberFunctions
+  }
 
   //if (!interfaceDesc) throw new Error("Interface description lacks an interface")
   //if (!internal) throw new Error("Interface description lacks an internal description")
@@ -419,14 +457,33 @@ export function constructInterface (description) {
     }
   }
 
+  function _setDict (props, propDict) {
+    for (let propName in propDict) {
+      _set(props, propName, propDict[propName])
+    }
+  }
+
+  /**
+   * Set a property, or a series of properties, on an element, through the interface
+   * @param elem {Element} Element to set the properties on
+   * @param propName {string|{}} Name of the property, or a dictionary of properties to set
+   * @param value {*} Value to set the property to (unused if propName is a dictionary)
+   * @returns {*}
+   */
   function set (elem, propName, value) {
     if (typeof propName === 'object') {
-      setDict(elem.props, propName)
+      _setDict(elem.props, propName)
     } else if (typeof propName === 'string') {
       _set(elem.props, propName, value)
     }
   }
 
+  /**
+   * Retrieve a property from an element through the interface
+   * @param elem {Element} Element to retrieve the property from
+   * @param propName {string} Name of the property to retrieve
+   * @returns {*}
+   */
   function get (elem, propName) {
     let getter = getters[propName]
 
@@ -439,14 +496,6 @@ export function constructInterface (description) {
     let getAs = getter.getAs ?? 0 /* real */
 
     return elem.props.get(getter.target, getAs)
-  }
-
-  function setDict (props, propDict) {
-    let ret = {}
-
-    for (let propName in propDict) {
-      _set(props, propName, propDict[propName])
-    }
   }
 
   /**
@@ -471,6 +520,9 @@ export function constructInterface (description) {
     }
 
     for (let propName in internal) {
+      // shouldn't be an issue, but eh
+      if (!internal.hasOwnProperty(propName)) continue
+
       let instructions = internal[propName]
       let computed = instructions.computed
       let doCompose = !!instructions.compose
@@ -478,12 +530,15 @@ export function constructInterface (description) {
       if (computed === 'none') continue
       if (computed === 'default') {
         // Check whether the current value is undefined. If so, fill it with the default
+
+
         if (props.get(propName) === undefined) {
           props.set(propName, getDefault(instructions))
         }
       } else if (computed === 'user') {
         // Check whether the user value is undefined, then the value, then the default
         let store = props.getPropertyStore(propName) // just to make things more efficient
+
         if (!store) {
           props.set(propName, getDefault(instructions))
         } else {
@@ -515,11 +570,77 @@ export function constructInterface (description) {
     }
   }
 
-  return { set, get, computeProps, description }
+  const interface_ = { set, get, update, init, extend, computeProps, description }
+
+  /**
+   * Extend a class with the various member functions of the interface, as defined in memberFunctions. For example, if
+   * memberFunctions is { toggleInteractivity: function() { ... } }, then toggleInteractivity will be added to the
+   * prototype of the class. Yeah, I know mixing ES6 classes and prototypical inheritance isn't the greatest, especially
+   * for static analysis, but it's the only satisfactory way to do multiple inheritance that I can think of at the
+   * moment
+   * @param class_ Class to extend. Pass the class, NOT the prototype.
+   */
+  function extend (class_) {
+    if (!class_.prototype)
+      throw new Error("Given class doesn't have a prototype to extend")
+
+    const prototype = class_.prototype
+    for (const [ fName, f ] of Object.entries(memberFunctions)) {
+      // Functions starting with _ are effectively private functions
+      if (fName[0] === '_') continue
+
+      Object.defineProperty(prototype, fName, {
+        value: f,
+        writable: false,
+        configurable: true
+      })
+    }
+
+    Object.defineProperty(prototype, "getInterface", {
+      value: () => interface_
+    })
+  }
+
+  function update (elem) {
+    for (const extendedInterface of extends_) {
+      let _update = extendedInterface.description.memberFunctions?._update
+
+      if (_update) {
+        _update.bind(elem)()
+      }
+    }
+
+    if (memberFunctions._update) {
+      memberFunctions._update.bind(elem)()
+    }
+  }
+
+  function init (elem, params) {
+    for (const extendedInterface of extends_) {
+      let _init = extendedInterface._init
+
+      if (_init) {
+        _init.bind(elem)(params)
+      }
+    }
+
+    if (memberFunctions._init) {
+      memberFunctions._init.bind(elem)(params)
+    }
+  }
+
+  return interface_
 }
 
 const attachGettersAndSetters = () => null
 export { attachGettersAndSetters }
 
-const NullInterface = constructInterface({ interface: {}, internal: {} })
+NullInterface = constructInterface({ interface: {}, internal: {},
+  memberFunctions: {
+    _update () {
+      this.defaultInheritProps()
+      this.defaultComputeProps()
+    }
+  }
+})
 export { NullInterface }

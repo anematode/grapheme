@@ -5,6 +5,7 @@ import { Color, Colors } from '../styles/definitions.js'
 
 // Example interface
 const sceneInterface = constructInterface({
+  extends: [ Group.prototype.getInterface() ],
   interface: {
     width: {
       description: 'The width of the scene',
@@ -39,6 +40,47 @@ const sceneInterface = constructInterface({
       default: Colors.TRANSPARENT
     },
     sceneDims: { type: 'SceneDimensions', computed: 'none' }
+  },
+  memberFunctions: {
+    _update () {
+      this.updateProps()
+
+      this.internal.renderInfo = {
+        contexts: {
+          type: 'scene',
+          dims: this.get('sceneDims'),
+          backgroundColor: this.get('backgroundColor')
+        }
+      }
+    },
+
+    _init () {
+      this.scene = this
+
+      this.props.setPropertyInheritance('sceneDims', true)
+    },
+
+    calculateSceneDimensions () {
+      const { props } = this
+
+      if (props.haveChanged(['width', 'height', 'dpr'])) {
+        const { width, height, dpr } = props.proxy
+        const sceneDimensions = new SceneDimensions(width, height, dpr)
+
+        // Equality check of 2 for deep comparison, in case width, height, dpr have not actually changed
+        props.set(
+          'sceneDims',
+          sceneDimensions,
+          0 /* real */,
+          2 /* equality check */
+        )
+      }
+    },
+
+    updateProps () {
+      this.defaultComputeProps()
+      this.calculateSceneDimensions()
+    }
   }
 })
 
@@ -71,59 +113,12 @@ class SceneDimensions {
  * element knows its scene directly as its .scene property.
  */
 export class Scene extends Group {
-  getInterface () {
-    return sceneInterface
-  }
-
-  init () {
-    this.scene = this
-
-    this.props.setPropertyInheritance('sceneDims', true)
-  }
-
-  /**
-   * Compute the internal property "sceneDimensions"
-   */
-  calculateSceneDimensions () {
-    const { props } = this
-
-    if (props.haveChanged(['width', 'height', 'dpr'])) {
-      const { width, height, dpr } = props.proxy
-      const sceneDimensions = new SceneDimensions(width, height, dpr)
-
-      // Equality check of 2 for deep comparison, in case width, height, dpr have not actually changed
-      props.set(
-        'sceneDims',
-        sceneDimensions,
-        0 /* real */,
-        2 /* equality check */
-      )
-    }
-  }
-
-  updateProps () {
-    this.defaultComputeProps()
-    this.calculateSceneDimensions()
-  }
-
   /**
    * Only scenes (and derived scenes) return true
    * @returns {boolean}
    */
   isScene () {
     return true
-  }
-
-  _update () {
-    this.updateProps()
-
-    this.internal.renderInfo = {
-      contexts: {
-        type: 'scene',
-        dims: this.get('sceneDims'),
-        backgroundColor: this.get('backgroundColor')
-      }
-    }
   }
 
   /**
@@ -140,4 +135,4 @@ export class Scene extends Group {
   }
 }
 
-attachGettersAndSetters(Scene.prototype, sceneInterface)
+sceneInterface.extend(Scene)

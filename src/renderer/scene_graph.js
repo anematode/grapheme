@@ -5,14 +5,14 @@
 // Map: id -> { parent, elem id, info, children: [{ child: id, instructions: [] }, { , version, ... }
 
 import { getStringID, getVersionID } from '../core/utils.js'
-import { convertTriangleStrip } from '../algorithm/polyline_triangulation.js'
+import { calculatePolylineVertices, convertTriangleStrip } from '../algorithm/polyline_triangulation.js'
 import {
   flattenVec2Array,
   generateRectangleDebug,
   generateRectangleTriangleStrip
 } from '../algorithm/misc_geometry.js'
 import { BoundingBox } from '../math/bounding_box.js'
-import { Colors } from '../styles/definitions.js'
+import { Colors, DefaultStyles } from '../styles/definitions.js'
 import { katex } from '../../deps/katex.js'
 import { earcut } from '../../deps/earcut.js'
 
@@ -373,11 +373,13 @@ export class SceneGraph {
             compiledInstructions.push(instruction)
             break
           case 'polyline': {
-            let vertices = convertTriangleStrip(
-              instruction.vertices,
-              instruction.pen
+            const pen = instruction.pen ?? DefaultStyles.Pen
+
+            let vertices = calculatePolylineVertices(
+              flattenVec2Array(instruction.vertices),
+              pen
             )
-            let color = instruction.pen.color
+            let color = pen.color
 
             let buffName = context.id + '-' + getVersionID()
             let vaoName = context.id + '-' + getVersionID()

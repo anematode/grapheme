@@ -13,7 +13,10 @@ let figureInterface = Figure.prototype.getInterface()
  * automatically--eventually there will be a generic system which does the fitting automatically, basically the
  * equivalent algorithms as a CSS element.
  *
- * The axis is an inheritable property called numberLineTransform.
+ * The axis is an inheritable property called numberLineTransform. Graphically, there is the concept of an "offset",
+ * which corresponds to a point offset perpendicularly from the number line. On a horizontal number line oriented the
+ * typical direction, an offset of 15 corresponds to 15 pixels upwards--perpendicular to the number line. An orientation
+ * of -10 corresponds to 10 pixels downwards.
  */
 
 const numberLineInterface = constructInterface({
@@ -48,6 +51,14 @@ class NumberLineTransform {
 
   graphToPixel (x) {
     return this.end.sub(this.start).mul((x - this.startX) / (this.endX - this.startX)).add(this.start)
+  }
+
+  unitOffset () {
+    return new Vec2(this.end.y - this.start.y, this.start.x - this.end.x).unit()
+  }
+
+  len() {
+    return this.end.sub(this.start).len()
   }
 }
 

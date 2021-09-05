@@ -13,20 +13,21 @@
     var renderer = new Grapheme.WebGLRenderer()
     var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
 
-    var figure = new Grapheme.Figure({ interactivity: true })
+    var figure = new Grapheme.Plot2D({ interactivity: true })
     var baubles = new Grapheme.FigureBaubles()
-    var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(6*cos(t/6),sin(50*t))+vec2(cos(49*t), 4*sin(t/5))", t: [ -50, 50 ], pen: { thickness: 2, color: "blue" }, samples: 500 })
+    var plot1 = new Grapheme.ParametricPlot2D({
+      f: "vec2(6*cos(t/6),sin(50*t))+vec2(cos(49*t), 4*sin(t/5))",
+      t: [ -50, 50 ],
+      pen: { thickness: 2, color: "blue" },
+      samples: 500
+    })
 
     scene.add(figure.add(baubles).add(plot1))
     document.body.appendChild(scene.domElement)
-    var cowf = 0
-    var total = 0
 
     function render() {
       renderer.renderDOMScene(scene)
-
-        //setTimeout(render, 1000)
-     requestAnimationFrame(render)
+      requestAnimationFrame(render)
     }
 
     render()
