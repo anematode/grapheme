@@ -72,8 +72,6 @@ export class Element extends Eventful {
     this.set(params)
   }
 
-  _update () {}
-
   add () {
     throw new Error("Element is not a group and does not support having children")
   }
@@ -90,6 +88,16 @@ export class Element extends Eventful {
       )
   }
 
+  /**
+   * For all given properties, check which ones need to be filled in with default values.
+   */
+  defaultComputeProps () {
+    let inter = this.getInterface()
+    const needsInitialize = this.updateStage === -1
+
+    inter.computeProps(this.props, needsInitialize)
+  }
+
   getRenderingInfo () {
     if (this.internal.renderInfo) return this.internal.renderInfo
   }
@@ -102,7 +110,9 @@ export class Element extends Eventful {
     return false
   }
 
-  init (params) {}
+  init (params) {
+    this.getInterface().init(this, params)
+  }
 
   set (propName, value) {
     this.getInterface().set(this, propName, value)
@@ -114,18 +124,6 @@ export class Element extends Eventful {
 
   getDict (propNames) {
     return this.getInterface().getDict(this, propNames)
-  }
-
-  /**
-   * For all given properties, check which ones need to be filled in with default values.
-   * @param defaults
-   * @param evaluate
-   */
-  defaultComputeProps () {
-    let inter = this.getInterface()
-    const needsInitialize = this.updateStage === -1
-
-    inter.computeProps(this.props, needsInitialize)
   }
 
   getInterface () {
@@ -147,7 +145,7 @@ export class Element extends Eventful {
 
     if (this.updateStage === 100) return
 
-    this._update()
+    this.getInterface().update(this)
 
     this.updateStage = 100
   }

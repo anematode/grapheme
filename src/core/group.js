@@ -1,14 +1,19 @@
 import { Element } from './element.js'
+import { constructInterface } from './interface.js'
+
+const groupInterface = constructInterface({
+  memberFunctions: {
+    _update() {
+      this.informChildrenOfInheritance()
+    }
+  }
+})
 
 export class Group extends Element {
   constructor (params = {}) {
     super(params)
 
     this.children = []
-  }
-
-  _update () {
-    this.defaultInheritProps()
   }
 
   /**
@@ -95,9 +100,6 @@ export class Group extends Element {
 
     super.triggerEvent(eventName, data)
   }
-
-  update () {
-    super.update()
-    this.informChildrenOfInheritance()
-  }
 }
+
+groupInterface.extend(Group)

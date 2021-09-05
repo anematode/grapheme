@@ -4,6 +4,7 @@
 // common style system that allows composition of common things. We'll start with a line style.
 
 import * as utils from '../core/utils.js'
+import { deepClone } from '../core/utils.js'
 
 // Implementation of basic color functions
 // Could use a library, but... good experience for me too
@@ -644,39 +645,65 @@ export const Pen = {
   }
 }
 
-// Generic dictionary of pens, like { major: Pen, minor: Pen }. Partial pen specifications may be used and they will
-// turn into fully completed pens in the final product
-export const Pens = {
-  compose: (...args) => {
+function createDictionaryDefinition (Base, default_={}) {
+  function compose (...args) {
     let ret = {}
 
-    // Basically just combine all the pens
+    // Basically just combine all the elements
     for (let i = 0; i < args.length; ++i) {
       for (let key in args[i]) {
         let retVal = ret[key]
 
-        if (!retVal) ret[key] = retVal = Pen.default
-        ret[key] = Pen.compose(ret[key], args[key])
+        if (!retVal) ret[key] = retVal = Base.default
+        ret[key] = Base.compose(ret[key], args[key])
       }
     }
-  },
-  create: params => {
-    return Pens.compose(Pens.default, params)
-  },
-  default: Object.freeze({})
+
+    return ret
+  }
+  return {
+    compose,
+    create: params => {
+      return compose(Base.default, params)
+    },
+    default: Object.freeze(default_)
+  }
 }
 
-/**const textElementInterface = constructInterface({
-  font: { setAs: "user" },
-  fontSize: { setAs: "user" },
-  text: true,
-  align: { setAs: "user" },
-  baseline: { setAs: "user" },
-  color: { setAs: "user" },
-  shadowRadius: { setAs: "user" },
-  shadowColor: { setAs: "user" },
-  position: { conversion: Vec2.fromObj }
-}, */
+// Generic dictionary of pens, like { major: Pen, minor: Pen }. Partial pen specifications may be used and they will
+// turn into fully completed pens in the final product
+export const Pens = createDictionaryDefinition(Pen)
+
+export const TickStyle = {
+  compose: (...args) => {
+    let ret = deepClone(args[0])
+
+    for (let i = 1; i < args.length; ++i) {
+      ret.pen = Pen.compose(ret.pen, args[i]?.pen)
+      ret.offset = args[i].offset
+    }
+
+    return ret
+  },
+  create: params => {
+    return TickStyle.compose(TickStyle.default, params)
+  },
+  default: utils.deepFreeze({
+    offset: [ -5, 5 ],
+    pen: Pen.default
+  })
+}
+
+export const TickStyles = createDictionaryDefinition(TickStyle, {
+  major: {
+    offset: [-8, 8],
+    pen: TickStyle.default.pen
+  },
+  minor: {
+    offset: [-5, 5],
+    pen: TickStyle.default.pen
+  }
+})
 
 export const TextStyle = {
   compose: (...args) => {
@@ -778,6 +805,10 @@ export function lookupCompositionType (type) {
       return Pen
     case 'Pens':
       return Pens
+    case 'TickStyle':
+      return TickStyle
+    case 'TickStyles':
+      return TickStyles
     case 'LabelPosition':
       return LabelPosition
     case 'Object':
