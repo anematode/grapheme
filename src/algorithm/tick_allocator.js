@@ -1,16 +1,11 @@
-
 export function getDemarcations (
   xStart,
   xEnd,
   xLen,
-  desiredMinorSep=20,
-  desiredMajorSep=60,
-  subdivisions=[
-    [4, 5],
-    [5, 2],
-    [5, 1]
-  ],
-  includeAxis = true
+  desiredMinorSep,
+  desiredMajorSep,
+  subdivisions,
+  includeAxis = false
 ) {
   if (
     xStart >= xEnd ||

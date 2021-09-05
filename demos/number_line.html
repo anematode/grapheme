@@ -11,13 +11,11 @@
   var renderer = new Grapheme.WebGLRenderer()
   var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 500, height: 500, dpr: devicePixelRatio })
 
-  var polygon = new Grapheme.Polygon({ vertices: [100, 100, 170, 100, 150, 150, 100, 150] })
+  var polygon = new Grapheme.Polygon({ vertices: [[100, 100], [170, 100], [150, 150], [100, 150]], color: "red" })
   var numberLine = new Grapheme.NumberLine()
-  var ticks = new Grapheme.NumberLineTicks({ ticks: { algorithm: "normal" } })
 
   scene.add(polygon)
   scene.add(numberLine)
-  numberLine.add(ticks)
 
   document.body.appendChild(scene.domElement)
 

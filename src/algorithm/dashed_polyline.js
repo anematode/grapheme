@@ -19,12 +19,11 @@ const MAX_DASHED_POLYLINE_VERTICES = 1e7
  * @returns {Array}
  */
 export function getDashedPolyline (vertices, pen, box) {
-  if (!box) box = new BoundingBox(-1e6, -1e6, 2e6, 2e6)
+  if (!box) box = new BoundingBox(-Infinity, -Infinity, Infinity, Infinity)
 
   // dashPattern is the pattern of dashes, given as the length (in pixels) of consecutive dashes and gaps.
   // dashOffset is the pixel offset at which to start the dash pattern, beginning at the start of every sub polyline.
   let { dashPattern, dashOffset } = pen
-
 
   // If the dash pattern is odd in length, concat it to itself, creating a doubled, alternating dash pattern
   if (dashPattern.length % 2 === 1)
