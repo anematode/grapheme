@@ -6,7 +6,8 @@ import {
   flrLog2,
   getExponentAndMantissa,
   isDenormal,
-  pow2
+  pow2,
+  frExp
 } from '../real/fp_manip.js'
 import { ROUNDING_MODE } from '../rounding_modes.js'
 import { leftZeroPad } from '../../core/utils.js'
@@ -1574,6 +1575,114 @@ function cvtToBigFloat (arg) {
   throw new TypeError(`Cannot convert argument ${arg} to BigFloat`)
 }
 
+// A special float with a mantissa of 30 bits. Its value should be interpreted as 2^exp * mant. Infinity is represented
+// with a mantissa of Infinity, 0 is represented with a mantissa of 0, and NaN is represented with a mantissa of NaN
+export class DeltaFloat {
+  constructor (exp, mant) {
+    /**
+     * Exponent of the delta float
+     * @type {number}
+     */
+    this.exp = exp
+
+    /**
+     * Number ranging from 2^29 to 2^30 - 1 for normal numbers,
+     * @type {number}
+     */
+    this.mant = mant
+  }
+
+  /**
+   * Convert a JS number to a DeltaFloat. We always round up.
+   * @param num {number}
+   * @returns {DeltaFloat}
+   */
+  static fromNumber (num) {
+    num = Math.abs(num)
+
+    if (num === 0 || num === Infinity || Number.isNaN(num)) {
+      return new DeltaFloat(0, num)
+    } else {
+      // num = f * 2^exp where 0.5 <= f < 1
+      let [ f, exp ] = frExp(num)
+
+      f *= 1 << 30
+      exp -= 30
+
+      f = Math.ceil(f)
+      if (f === 1 << 30) {
+        f = 1 << 29
+        exp += 1
+      }
+
+      return new DeltaFloat(exp, f)
+    }
+  }
+
+  toNumber () {
+    // TODO handle denormal numbers
+    let mant = this.mant
+
+    if (mant === 0 || mant === Infinity || Number.isNaN(mant)) {
+      return mant
+    }
+
+    return mant * pow2(this.exp)
+  }
+
+  toBigFloat () {
+
+  }
+
+  /**
+   * Add two delta floats, always rounding up
+   * @param f1 {DeltaFloat}
+   * @param f2 {DeltaFloat}
+   * @param target {DeltaFloat}
+   */
+  static addTo (f1, f2, target) {
+    let f1mant = f1.mant, f1exp = f1.exp, f2mant = f2.mant, f2exp = f2.exp
+
+
+  }
+}
+
+/**
+ * Unlike a typical RealInterval, we represent a BigFloatInterval with a center and a radius. The radius need not have
+ * high precision, so we use a DeltaFloat--which has a fixed mantissa of 30 bits and an exponent that can range as
+ * necessary. Kudos to Frederick Johansson for this idea (see https://arblib.org/mag.html).
+ */
+export class BigFloatInterval {
+  constructor (center, delta) {
+    /**
+     * @type BigFloat
+     */
+    this.center = center
+
+    /**
+     * @type DeltaFloat
+     */
+    this.delta = delta
+  }
+
+  /**
+   *
+   * @param f1 {BigFloatInterval|BigFloat}
+   * @param f2 {BigFloatInterval|BigFloat}
+   * @param target {BigFloatInterval}
+   */
+  static addTo (f1, f2, target) {
+    let f1center, f1delta, f2center, f2delta
+
+    // We add the centers. The associated extra uncertainty is +- 1 ulp in the target precision
+    let targetPrecision = target.center.prec
+
+
+  }
+}
+
+const LOG210 = Math.log2(10)
+
 export class BigFloat {
   /**
    * BEGIN CONSTRUCTORS
@@ -1838,7 +1947,9 @@ export class BigFloat {
       return
 
     if (f1.exp < f2.exp) {
-      ;[f1, f2] = [f2, f1]
+      let tmp = f1
+      f1 = f2
+      f2 = tmp
     }
 
     let shift = multiplyMantissas2(
@@ -2460,6 +2571,23 @@ export class BigFloat {
    */
 
   /**
+   * Set the default precision, in digits of DECIMAL.
+   * @param prec
+   */
+  static setPrecision (prec) {
+    BigFloat.setBinaryPrecision(Math.ceil(LOG210 * prec))
+  }
+
+  static setBinaryPrecision (prec) {
+    if (typeof prec !== "number") throw new TypeError("Binary precision must be a number")
+
+    prec = prec | 0
+    if (prec < 4) throw new RangeError("Precision must be at least 4 bits")
+
+    CURRENT_PRECISION = prec
+  }
+
+  /**
    * User-friendly add function that takes in both JS numbers and plain floats.
    * @param f1 {BigFloat|number}
    * @param f2 {BigFloat|number}
@@ -2589,7 +2717,7 @@ export class BigFloat {
         return BigFloat.cmpFloats(a, DOUBLE_STORE)
       }
     } else if (typeof a === 'number' && b instanceof BigFloat) {
-      return -BigFloat.cmpNumber(b, a)
+      return -BigFloat.cmp(b, a)
     }
 
     throw new Error('Invalid arguments to cmpNumber')
@@ -2597,7 +2725,7 @@ export class BigFloat {
 
   /**
    * Returns true if the numbers are equal (allows for JS numbers to be used)
-   * @param f {BigFloat|f}
+   * @param f {BigFloat|number}
    * @returns {boolean}
    */
   equals (f) {
@@ -2606,7 +2734,7 @@ export class BigFloat {
 
   /**
    * Returns true if this float is greater than or equal to the argument (allows for JS numbers to be used)
-   * @param f {BigFloat|f}
+   * @param f {BigFloat|number}
    * @returns {boolean}
    */
   greaterEq (f) {
@@ -2615,7 +2743,7 @@ export class BigFloat {
 
   /**
    * Returns true if this float is greater than the argument (allows for JS numbers to be used)
-   * @param f {BigFloat|f}
+   * @param f {BigFloat|number}
    * @returns {boolean}
    */
   greaterThan (f) {
@@ -2633,7 +2761,7 @@ export class BigFloat {
 
   /**
    * Returns true if this float is less than the argument (allows for JS numbers to be used)
-   * @param f {BigFloat|f}
+   * @param f {BigFloat|number}
    * @returns {boolean}
    */
   lessThan (f) {
@@ -2664,10 +2792,12 @@ export class BigFloat {
       return BigFloat.fromNumber(f1Sign, precision)
     }
 
+    let workingPrecision = precision + 70
+
     // By what power of two to shift f, so that we get a number between 0.5 and 1
     let shift = BigFloat.floorLog2(f, true) + 1
-    let tmp = BigFloat.new(precision),
-      tmp2 = BigFloat.new(precision),
+    let tmp = BigFloat.new(workingPrecision),
+      tmp2 = BigFloat.new(workingPrecision),
       m = BigFloat.new(precision)
 
     BigFloat.mulPowTwoTo(f, -shift, m)
@@ -2681,11 +2811,11 @@ export class BigFloat {
     // Compute ln(f * lookup) - ln(lookup)
     BigFloat.mulNumberTo(m, lookup, tmp)
 
-    let part1 = lnBaseCase(tmp, precision)
-    let part2 = getCachedLnValue(lookup, precision)
+    let part1 = lnBaseCase(tmp, workingPrecision)
+    let part2 = getCachedLnValue(lookup, workingPrecision)
 
     BigFloat.subTo(part1, part2, tmp2)
-    BigFloat.mulNumberTo(getCachedLnValue(2, precision), shift, tmp)
+    BigFloat.mulNumberTo(getCachedLnValue(2, workingPrecision), shift, tmp)
 
     BigFloat.addTo(tmp, tmp2, m)
 
@@ -2747,7 +2877,7 @@ export class BigFloat {
   }
 
   /**
-   * Convert a float to a readable base-10 representation.
+   * Convert a float to a readable base-10 representation, with prec base-10 digits of precision.
    */
   toPrecision (prec = this.prec / 3.23 /* log2(10) */) {
     // f = m * 2^e; log10(f) = log10(m) + log10(2) * e
@@ -2755,25 +2885,16 @@ export class BigFloat {
 
     prec = prec | 0
 
-    let workingPrecision = ((prec * 3.23) | 0) + 5
+    let workingPrecision = ((prec * LOG210) | 0) + 10
     let log10 = BigFloat.log10(this, workingPrecision)
 
     let floor = BigFloat.new(53),
       frac = BigFloat.new(workingPrecision)
     BigFloat.splitIntegerTo(log10, floor, frac, ROUNDING_MODE.NEAREST)
 
-    console.log(floor.toNumber())
-
-    let base10mant = BigFloat.div(
-      BigFloat.pow10(frac, workingPrecision),
-      10,
-      workingPrecision
-    )
-
-    // We convert the base 10 mant to decimal and then round it to the
+    let base10mant = BigFloat.pow10(frac, workingPrecision)
 
     let mant = base10mant.mant
-
     let decimalOut = [0]
 
     function divPow30 () {
@@ -2801,7 +2922,13 @@ export class BigFloat {
       divPow30()
     }
 
-    return decimalOut
+    // each entry of decimalOut is a 15 digit string, zero padded from the left. The first 15 digits are 0s, followed by
+    // the decimal point, then the number. We want
+    let digits = '0.' + decimalOut.slice(1).map(entry => leftZeroPad(entry + '', 15, '0')).join('').slice(0, prec)
+
+
+
+    return digits
   }
 }
 

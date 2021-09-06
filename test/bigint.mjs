@@ -1,6 +1,6 @@
 import { assert, expect } from "chai"
-import { mulAddWords, BigInt as GraphemeBigInt } from "../src/math/bigint/bigint.js"
-import { prettyPrintFloat, roundMantissaToPrecision, BigFloat, multiplyMantissaByInteger, addMantissas } from "../src/math/bigint/bigfloat.js"
+import { mulAddWords, BigInt as GraphemeBigInt } from "../src/math/arb/bigint.js"
+import { prettyPrintFloat, roundMantissaToPrecision, BigFloat, multiplyMantissaByInteger, addMantissas } from "../src/math/arb/bigfloat.js"
 import { ROUNDING_MODE, roundingModeToString } from "../src/math/rounding_modes.js"
 
 const troublesomeWords = []

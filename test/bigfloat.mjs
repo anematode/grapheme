@@ -5,10 +5,11 @@ import {
   rightShiftMantissa,
   roundMantissaToPrecision,
   subtractMantissas
-} from "../src/math/bigint/bigfloat.js"
+} from "../src/math/arb/bigfloat.js"
 import {deepEquals, leftZeroPad, rightZeroPad} from "../src/core/utils.js"
 import {ROUNDING_MODE} from "../src/math/rounding_modes.js"
 import { expect } from "chai"
+import { DeltaFloat } from '../src/math/arb/bigfloat.js'
 
 const BF = BigFloat
 const RM = ROUNDING_MODE
@@ -301,5 +302,17 @@ describe("getTrailingInfo", () => {
     expect(getTrailingInfo([0x1f000000], 0)).to.equal(1)
     expect(getTrailingInfo([0x25000000], -1)).to.equal(1)
     expect(getTrailingInfo([0], -1)).to.equal(0)
+  })
+})
+
+describe("DeltaFloat", () => {
+  const DF = DeltaFloat
+
+  it('should convert correctly to and from numbers', () => {
+    function testNum (n) {
+      expect(Object.is(DF.fromNumber(n).toNumber(), n), `Result on ${n}`)
+    }
+
+    ;[0, NaN, Infinity, 1, 2, 1.5, 0.5, 0.75, 0.875].forEach(testNum)
   })
 })
