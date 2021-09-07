@@ -23,6 +23,9 @@ const BIGFLOAT_MAX_PRECISION_BITS = 1 << 24
 let CURRENT_PRECISION = 53
 let CURRENT_ROUNDING_MODE = ROUNDING_MODE.NEAREST
 
+const recip2Pow30 = pow2(-BIGFLOAT_WORD_BITS)
+const recip2Pow60 = pow2(-2 * BIGFLOAT_WORD_BITS)
+
 /**
  * The minimum number of words needed to store a mantissa with prec bits. The +1 is because the bits need to be stored
  * at any shift within the word, from 1 to 29, so some space may be needed. WELL TESTED
@@ -798,78 +801,6 @@ export function multiplyMantissaByInteger (
   return shift + roundingShift
 }
 
-/**
- * Multiply two mantissas TODO make more efficient
- * @param mant1
- * @param mant2
- * @param precision
- * @param targetMantissa
- * @param roundingMode
- * @returns {number} The corresponding shift
- */
-export function multiplyMantissas (
-  mant1,
-  mant2,
-  precision,
-  targetMantissa,
-  roundingMode = CURRENT_ROUNDING_MODE
-) {
-  let arr = new Int32Array(mant1.length + mant2.length + 1)
-
-  // Will definitely optimise later
-  for (let i = mant1.length; i >= 0; --i) {
-    let mant1Word = mant1[i] | 0
-    let mant1WordLo = mant1Word & 0x7fff
-    let mant1WordHi = mant1Word >> 15
-
-    let carry = 0,
-      j = mant2.length - 1
-    for (; j >= 0; --j) {
-      let mant2Word = mant2[j] | 0
-      let mant2WordLo = mant2Word & 0x7fff
-      let mant2WordHi = mant2Word >> 15
-
-      let low = Math.imul(mant1WordLo, mant2WordLo),
-        high = Math.imul(mant1WordHi, mant2WordHi)
-      let middle =
-        (Math.imul(mant2WordLo, mant1WordHi) +
-          Math.imul(mant1WordLo, mant2WordHi)) |
-        0
-
-      low += ((middle & 0x7fff) << 15) + carry + arr[i + j + 1]
-      low >>>= 0
-
-      if (low > 0x3fffffff) {
-        high += low >>> 30
-        low &= 0x3fffffff
-      }
-
-      high += middle >> 15
-
-      arr[i + j + 1] = low
-      carry = high
-    }
-
-    arr[i] += carry
-  }
-
-  let shift = 0
-
-  if (arr[0] === 0) {
-    leftShiftMantissa(arr, 30)
-    shift -= 1
-  }
-
-  shift += roundMantissaToPrecision(
-    arr,
-    precision,
-    targetMantissa,
-    roundingMode
-  )
-
-  return shift
-}
-
 export function sqrtMantissa (
   mantissa,
   precision,
@@ -890,7 +821,7 @@ export function sqrtMantissa (
  * @param roundingMode
  * @returns {number}
  */
-export function multiplyMantissas2 (
+export function multiplyMantissas (
   mant1,
   mant2,
   precision,
@@ -1198,7 +1129,7 @@ export function divMantissas2 (
   // Initial estimate for the reciprocal of the denominator (low precision, may inline this in future)
 
   // 1/D = 48/17 - 32/17 * D for 0.5 <= D < 1 is the estimate
-  let sdShift = multiplyMantissas2(
+  let sdShift = multiplyMantissas(
     dRecipConst1,
     sd,
     30,
@@ -1227,7 +1158,7 @@ export function divMantissas2 (
   let outerS = createMantissa(precision) // = X_n + outerP
 
   for (let i = 0; i < 5; ++i) {
-    let mShift = multiplyMantissas2(
+    let mShift = multiplyMantissas(
       sd,
       sdRecip,
       precision,
@@ -1257,7 +1188,7 @@ export function divMantissas2 (
       )
     }
 
-    let mShift2 = multiplyMantissas2(
+    let mShift2 = multiplyMantissas(
       innerS,
       sdRecip,
       precision,
@@ -1289,7 +1220,7 @@ export function divMantissas2 (
   }
 
   // 1 < sdRecip <= 2 is now 1/sd, so we multiply by the numerator
-  let mulShift = multiplyMantissas2(
+  let mulShift = multiplyMantissas(
     mant1,
     sdRecip,
     precision,
@@ -1386,183 +1317,6 @@ export function prettyPrintFloat (mantissa, precision) {
   return words + '\n' + indices
 }
 
-// Works for f in -0.5 <= f <= 0.5 using the straightforward Taylor series expansion
-function slowLn1pBounded (f, precision) {
-  // if (!(-0.5 <= f && f <= 0.5)) throw new RangeError("f must be between -0.5 and 0.5")
-
-  precision += 10
-
-  let fExp = BigFloat.fromNumber(1)
-
-  let fExp2 = BigFloat.new(precision)
-  let term = BigFloat.new(precision)
-  let accum = BigFloat.new(precision)
-  let accum2 = BigFloat.new(precision)
-
-  let bitsPerIteration = -BigFloat.floorLog2(f, true)
-  let iterations = precision / bitsPerIteration
-
-  // The rate of convergence depends on f, with about -log2(abs(f)) bits being generated each time. Since we
-  for (let i = 0; i < iterations; ++i) {
-    BigFloat.mulTo(fExp, f, fExp2, ROUNDING_MODE.WHATEVER)
-    BigFloat.divNumberTo(
-      fExp2,
-      (i & 1 ? -1 : 1) * (i + 1),
-      term,
-      ROUNDING_MODE.WHATEVER
-    )
-    BigFloat.addTo(accum, term, accum2, ROUNDING_MODE.WHATEVER)
-
-    // Swap the accumulators
-    let tmp = accum
-    accum = accum2
-    accum2 = tmp
-
-    tmp = fExp
-    fExp = fExp2
-    fExp2 = tmp
-  }
-
-  return accum
-}
-
-// Compute ln(x) for x in [0.5, 1.5] so we can later shift arguments via multiplication and subtraction into a
-// neighborhood of 1 by caching some of these values, then using slowLn1pBounded or arctanhSmallRange
-export function lnBaseCase (f, precision) {
-  // ln(x) = 2 arctanh((x-1)/(x+1))
-  precision += 10
-
-  let atanhArg = BF.new(precision)
-  let argNum = BF.new(precision),
-    argDen = BF.new(precision)
-
-  BF.subNumberTo(f, 1, argNum)
-  BF.addNumberTo(f, 1, argDen)
-  BF.divTo(argNum, argDen, atanhArg)
-
-  let result = arctanhSmallRange(atanhArg, precision - 10)
-  BF.mulPowTwoTo(result, 1, result)
-
-  return result
-}
-
-// Compute atanh(f) for f in [0, 1/5] for use in natural log calculations
-export function arctanhSmallRange (f, precision) {
-  precision += 10
-
-  // atanh(x) = x + x^3 / 3 + x^5 / 5 + ... meaning at worst we have convergence at -log2((1/5)^2) = 4.6 bits / iteration
-  let accum = BF.new(precision),
-    accumSwap = BF.new(precision),
-    fSq = BF.new(precision),
-    ret = BF.new(precision)
-  BF.mulTo(f, f, fSq)
-
-  // Compute 1 + x^2 / 3 + x^4 / 5 + ...
-  let pow = BF.fromNumber(1, precision)
-  let powSwap = BF.new(precision),
-    powDiv = BF.new(precision)
-
-  let bitsPerIteration = -BigFloat.floorLog2(fSq)
-  let iterations = precision / bitsPerIteration
-
-  for (let i = 0; i < iterations; ++i) {
-    BF.divNumberTo(pow, 2 * i + 1, powDiv)
-
-    BF.mulTo(pow, fSq, powSwap)
-    ;[powSwap, pow] = [pow, powSwap]
-
-    BF.addTo(accum, powDiv, accumSwap)
-    ;[accumSwap, accum] = [accum, accumSwap]
-  }
-
-  // Multiply by x
-  BF.mulTo(accum, f, ret)
-
-  return ret
-}
-
-/**
- * Compute e^f for 0.5 <= f < 1. e^f = 1 + f * (1 + f/2 * (1 + f/3 * ... ) ) )
- */
-export function expBaseCase (f, precision, target) {
-  let tmp = BigFloat.new(precision)
-  let tmp2 = BigFloat.new(precision)
-
-  // The number of iterations depends on f. Since the term is f^n / n!, we take logs -> n ln(f) - ln(n!) = n ln(f) - n ln(n) + n
-  // We want this to be less than ln(2^-(p + 1)) = -(p + 1) * ln(2) or so. We write the equation as n (ln f - ln n + 1) = -(p+1) * ln 2.
-  // This is an annoying equation. For now I just came up with an approximation by picking n = c*p for a constant c and
-  // fiddling around with it, till I got the approximation n = -l / (ln(f) - (ln(-l/(ln(f) - ln(p) + 2)) + 1), where l = p ln(2).
-  // No clue how it works, but it seems to be good enough. At 999 bits precision and 0.5 it reports 153 iterations are needed,
-  // while only 148 are sufficient. Oh well.
-
-  let pln2 = (precision + 1) * Math.log(2)
-  let lnf = Math.log(Math.abs(f.toNumber(ROUNDING_MODE.WHATEVER)))
-  let lnp = Math.log(precision)
-
-  const iters = Math.ceil(-pln2 / (lnf - Math.log(-pln2 / (lnf - lnp + 2)) + 1))
-
-  BigFloat.divNumberTo(f, iters, tmp)
-  BigFloat.addNumberTo(tmp, 1, target)
-
-  for (let m = iters - 1; m > 0; --m) {
-    BigFloat.divNumberTo(f, m, tmp)
-    BigFloat.mulTo(tmp, target, tmp2)
-
-    BigFloat.addNumberTo(tmp2, 1, target)
-  }
-}
-
-const CACHED_CONSTANTS = {
-  lnValues: new Map(),
-  recipLnValues: new Map()
-}
-
-const recip2Pow30 = pow2(-BIGFLOAT_WORD_BITS)
-const recip2Pow60 = pow2(-2 * BIGFLOAT_WORD_BITS)
-
-/**
- * Compute and return ln(x), intended for x between 1 and 2 for higher series convergence in ln. +- 1 ulp
- * @param value
- * @param minPrecision
- * @returns {any|BigFloat}
- */
-function getCachedLnValue (value, minPrecision) {
-  let c = CACHED_CONSTANTS.lnValues.get(value)
-
-  if (c && c.prec >= minPrecision) return c
-
-  if (value > 2 || value < 1) {
-    c = BigFloat.ln(value, minPrecision, ROUNDING_MODE.WHATEVER)
-  } else {
-    let f = BigFloat.fromNumber(value)
-
-    c = lnBaseCase(f, minPrecision)
-  }
-
-  CACHED_CONSTANTS.lnValues.set(value, c)
-
-  return c
-}
-
-/**
- * Compute and return 1/ln(x), intended for x = 10 and 2 for base conversions and the like.
- * @param value {number}
- * @param minPrecision {number}
- * @returns {any|BigFloat}
- */
-export function getCachedRecipLnValue (value, minPrecision) {
-  let c = CACHED_CONSTANTS.recipLnValues.get(value)
-
-  if (c && c.prec >= minPrecision) return c
-
-  c = BigFloat.ln(value, minPrecision + 1)
-  c = BigFloat.div(1, c, minPrecision + 1)
-
-  CACHED_CONSTANTS.recipLnValues.set(value, c)
-
-  return c
-}
-
 /**
  * Takes in an arbitrary input and converts to a corresponding big float. If passed a BigFloat, it does nothing; if
  * passed a number, it converts to BigFloat. Used for user-facing operations
@@ -1645,6 +1399,54 @@ export class DeltaFloat {
 
 
   }
+}
+
+export function computeLn2 (precision) {
+  // We use the rapid series ln(2) = 2/3 * sum(k=0 to inf, 1 / ((2k+1) * 9^k)). To compute ln(2) to 1 ulp of precision,
+  // we see that the error term after n terms is
+  //        1                  1                   1          1
+  //   -----------    +   -----------    + ... < ------ * --------- < 2^(-prec-1)
+  // (2n+3) * 9^(n+1)   (2n+5) * 9^(n+2)          2n+3     8^(n+1)
+  // and ignoring the 1/(2n+3) term for a moment, we see that n = prec / 4 + 2 iterations should be sufficient. The
+  // remaining concern is rounding, of course; how many extra bits of precision do we need? Well, probably on the order
+  // of 2 * log2(iters). I'm too bored to formalize it, so that's what we'll go with
+
+  let ln2 = BigFloat.new(precision)
+  let iters = Math.ceil(precision / 4) + 1
+
+  let workingPrecision = (precision + 2 * Math.log2(iters)) | 0
+
+  let twoThirds = BigFloat.div(2, 3, workingPrecision, ROUNDING_MODE.WHATEVER)
+  let oneNinth = BigFloat.div(1, 9, workingPrecision, ROUNDING_MODE.WHATEVER)
+
+  let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision), sum = BigFloat.fromNumber(1, workingPrecision)
+
+  let oneNinthPowed = BigFloat.fromNumber(1, workingPrecision)
+  let summand = BigFloat.new(workingPrecision)
+
+  for (let k = 1; k <= iters; ++k) {
+    BigFloat.mulTo(oneNinth, oneNinthPowed, tmp, ROUNDING_MODE.WHATEVER)
+    BigFloat.divNumberTo(tmp, 2 * k + 1, summand, ROUNDING_MODE.WHATEVER)
+
+    BigFloat.addTo(summand, sum, tmp2, ROUNDING_MODE.WHATEVER)
+
+    ;[tmp, oneNinthPowed] = [oneNinthPowed, tmp]
+    ;[tmp2, sum] = [sum, tmp2]
+  }
+
+  BigFloat.mulTo(twoThirds, sum, ln2)
+
+  return ln2
+}
+
+let cachedLn2
+
+function getCachedLn2 (precision) {
+  if (!cachedLn2 || cachedLn2.prec < precision) {
+    cachedLn2 = computeLn2(precision)
+  }
+
+  return cachedLn2
 }
 
 /**
@@ -1952,7 +1754,7 @@ export class BigFloat {
       f2 = tmp
     }
 
-    let shift = multiplyMantissas2(
+    let shift = multiplyMantissas(
       f1.mant,
       f2.mant,
       target.prec,
@@ -2792,34 +2594,47 @@ export class BigFloat {
       return BigFloat.fromNumber(f1Sign, precision)
     }
 
-    let workingPrecision = precision + 70
+    let workingPrecision = precision + 4
 
-    // By what power of two to shift f, so that we get a number between 0.5 and 1
-    let shift = BigFloat.floorLog2(f, true) + 1
-    let tmp = BigFloat.new(workingPrecision),
-      tmp2 = BigFloat.new(workingPrecision),
-      m = BigFloat.new(precision)
+    // Express ln(f) = ln(a) + n ln(2) where 0.5 <= a < 1
+    let n = BigFloat.floorLog2(f, true) + 1
+    let a = BigFloat.new(precision)
+    BigFloat.mulPowTwoTo(f, -n, a)
 
-    BigFloat.mulPowTwoTo(f, -shift, m)
+    // Compute ln(a) = 2 * sum(k = 0 to inf, 1/(2k+1) * ((a-1)/(a+1))^(2k+1)). As you can see, the series converges
+    // pretty rapidly for a close to 1; in the worst case we have convergence at a rate of ((0.5-1)/(0.5+1))^2k = (1/9)^k
+    // If b = ((a-1)/(a+1))^2 we'll need 1 - prec / log2(b) iterations
 
-    // 0.5 <= m < 1, integerPart is exponent. We have a lookup table of log(x) for x in 1 to 2, so that m
-    // can be put into a quickly converging series based on the inverse hyperbolic tangent. For now we aim for
-    // |1-x| < 0.125, meaning 8 brackets.
-    let mAsNumber = m.toNumber(ROUNDING_MODE.WHATEVER) // Makes things easier
-    let lookup = 1 + Math.floor((1 / mAsNumber - 1) * 8) / 8
+    let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision),
+      tmp3 = BigFloat.new(workingPrecision), b = BigFloat.new(workingPrecision)
 
-    // Compute ln(f * lookup) - ln(lookup)
-    BigFloat.mulNumberTo(m, lookup, tmp)
+    BigFloat.addNumberTo(a, -1, tmp)
+    BigFloat.addNumberTo(a, 1, tmp2)
+    BigFloat.divTo(tmp, tmp2, tmp3)  // tmp3 = (a-1)/(a+1)
+    BigFloat.mulTo(tmp3, tmp3, b)    // b = ((a-1)/(a+1))^2
 
-    let part1 = lnBaseCase(tmp, workingPrecision)
-    let part2 = getCachedLnValue(lookup, workingPrecision)
+    let iters = Math.ceil(-precision / BigFloat.floorLog2(b) + 2)
 
-    BigFloat.subTo(part1, part2, tmp2)
-    BigFloat.mulNumberTo(getCachedLnValue(2, workingPrecision), shift, tmp)
+    let sum = tmp3.clone()   // sum = 0th term of the series
+    let bPowed = tmp3.clone()
 
-    BigFloat.addTo(tmp, tmp2, m)
+    for (let k = 1; k <= iters; ++k) {
+      BigFloat.mulTo(b, bPowed, tmp)  // tmp = b ^ (2k+1)
+      BigFloat.divNumberTo(tmp, 2 * k + 1, tmp2)  // tmp2 = summand
 
-    return m
+      BigFloat.addTo(tmp2, sum, tmp3)
+
+      ;[tmp, bPowed] = [bPowed, tmp]
+      ;[tmp3, sum] = [sum, tmp3]
+    }
+
+    BigFloat.mulPowTwoTo(sum, 1, sum) // sum = ln(a)
+
+    let ln2 = getCachedLn2(workingPrecision)
+    BigFloat.mulNumberTo(ln2, n, tmp)   // tmp = n ln 2
+    BigFloat.addTo(tmp, sum, tmp3)        // tmp3 = ln(a) + n ln 2
+
+    return tmp3
   }
 
   /**
@@ -2887,6 +2702,8 @@ export class BigFloat {
 
     let workingPrecision = ((prec * LOG210) | 0) + 10
     let log10 = BigFloat.log10(this, workingPrecision)
+
+    console.log(log10.toNumber())
 
     let floor = BigFloat.new(53),
       frac = BigFloat.new(workingPrecision)
