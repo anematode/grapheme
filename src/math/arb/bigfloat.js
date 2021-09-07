@@ -1268,6 +1268,42 @@ function getCachedLn10 (precision) {
 }
 
 /**
+ * Compute e^f for 0.5 <= f < 1. e^f = 1 + f * (1 + f/2 * (1 + f/3 * ... ) ) )
+ */
+export function expBaseCase (f, precision) {
+  let workingPrecision = precision + 2
+  let tmp = BigFloat.new(workingPrecision)
+  let tmp2 = BigFloat.new(workingPrecision)
+
+  let target = BigFloat.new(precision)
+
+  // The number of iterations depends on f. Since the term is f^n / n!, we take logs -> n ln(f) - ln(n!) = n ln(f) - n ln(n) + n
+  // We want this to be less than ln(2^-(p + 1)) = -(p + 1) * ln(2) or so. We write the equation as n (ln f - ln n + 1) = -(p+1) * ln 2.
+  // This is an annoying equation. For now I just came up with an approximation by picking n = c*p for a constant c and
+  // fiddling around with it, till I got the approximation n = -l / (ln(f) - (ln(-l/(ln(f) - ln(p) + 2)) + 1), where l = p ln(2).
+  // No clue how it works, but it seems to be good enough. At 999 bits precision and 0.5 it reports 153 iterations are needed,
+  // while only 148 are sufficient. Oh well.
+
+  let pln2 = (precision + 1) * Math.log(2)
+  let lnf = Math.log(Math.abs(f.toNumber(ROUNDING_MODE.WHATEVER)))
+  let lnp = Math.log(precision)
+
+  const iters = Math.ceil(-pln2 / (lnf - Math.log(-pln2 / (lnf - lnp + 2)) + 1))
+
+  BigFloat.divNumberTo(f, iters, tmp)
+  BigFloat.addNumberTo(tmp, 1, target)
+
+  for (let m = iters - 1; m > 0; --m) {
+    BigFloat.divNumberTo(f, m, tmp)
+    BigFloat.mulTo(tmp, target, tmp2)
+
+    BigFloat.addNumberTo(tmp2, 1, target)
+  }
+
+  return target
+}
+
+/**
  * Unlike a typical RealInterval, we represent a BigFloatInterval with a center and a radius. The radius need not have
  * high precision, so we use a DeltaFloat--which has a fixed mantissa of 30 bits and an exponent that can range as
  * necessary. Kudos to Frederick Johansson for this idea (see https://arblib.org/mag.html).
@@ -1833,43 +1869,6 @@ export class BigFloat {
 
       fracPart.exp = word - shift
       fracPart.sign = f1.sign
-    }
-  }
-
-  // We'll deal with rounding later...
-  static exp (
-    f,
-    precision = CURRENT_PRECISION,
-    roundingMode = CURRENT_ROUNDING_MODE
-  ) {
-    f = cvtToBigFloat(f)
-    let sign = f.sign
-
-    if (Number.isNaN(sign)) return BigFloat.NaN(precision)
-    if (sign === 0) return BigFloat.fromNumber(1, precision)
-
-    let shifts = BigFloat.floorLog2(f, true)
-
-    if (shifts < 0) {
-      let ret = BigFloat.new(precision)
-
-      expBaseCase(f, precision, ret)
-
-      return ret
-    } else {
-      let tmp = BigFloat.new(precision)
-      let mul1 = BigFloat.new(precision)
-
-      BigFloat.mulPowTwoTo(f, -shifts, tmp)
-      expBaseCase(tmp, precision, mul1)
-
-      // Repeated squaring; every shift requires one squaring
-      for (; shifts >= 0; --shifts) {
-        BigFloat.mulTo(mul1, mul1, tmp)
-        ;[mul1, tmp] = [tmp, mul1]
-      }
-
-      return tmp
     }
   }
 
@@ -2474,6 +2473,50 @@ export class BigFloat {
     const den = getCachedLn10(precision)
 
     return BigFloat.div(num, den, precision)
+  }
+
+  static exp (
+    f,
+    precision = CURRENT_PRECISION,
+    roundingMode = CURRENT_ROUNDING_MODE
+  ) {
+    f = cvtToBigFloat(f)
+    let sign = f.sign
+
+    if (Number.isNaN(sign)) return BigFloat.NaN(precision)
+    if (sign === 0) return BigFloat.fromNumber(1, precision)
+
+    let n = BigFloat.floorLog2(f, true)
+
+    if (n < 0) {
+      // f < 0.5
+      return expBaseCase(f, precision)
+    } else {
+      let a = BigFloat.new(precision)
+
+      // f = a * 2^n, 0.5 <= a < 1
+      BigFloat.mulPowTwoTo(f, -n, a)
+
+      let mul = expBaseCase(a, precision)
+
+      // Repeated squaring; every shift requires one squaring
+      for (; n >= 0; --n) {
+        BigFloat.mulTo(mul, mul, a)
+        ;[mul, a] = [a, mul]
+      }
+
+      return a
+    }
+  }
+
+  static pow10 (f, precision=CURRENT_PRECISION) {
+    // 10^f = e^(f * ln(10))
+    f = cvtToBigFloat(f)
+
+    let workingPrecision = precision + 2
+    let tmp = BigFloat.mul(f, getCachedLn10(workingPrecision))
+
+    return BigFloat.exp(tmp, precision)
   }
 
   /**
