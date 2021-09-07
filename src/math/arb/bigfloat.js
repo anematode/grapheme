@@ -1052,198 +1052,6 @@ export function reciprocalMantissa (
 ) {}
 
 /**
- * Multiply a mantissa by a given power of two, with a rounding mode and precision if the target mantissa is shorter
- * than the given mantissa. This function allows aliasing.
- * @param mantissa
- * @param power {number} Exponent
- * @param targetMantissa
- * @param precision {number}
- * @param roundingMode
- */
-function multiplyMantissaPow2 (
-  mantissa,
-  power,
-  precision,
-  targetMantissa,
-  roundingMode = CURRENT_ROUNDING_MODE
-) {
-  let clz = Math.clz32(mantissa[0]) - 2
-  let newClz = clz - power
-
-  let expShift = 0
-
-  if (newClz > 29 || newClz < 0) {
-    expShift = Math.floor(newClz / 30)
-    newClz = newClz - expShift * 30
-  }
-
-  let bitshift = newClz - clz
-  if (bitshift <= 0) {
-    leftShiftMantissa(mantissa, -bitshift, targetMantissa)
-  } else if (bitshift > 0) {
-    rightShiftMantissa(mantissa, bitshift, targetMantissa)
-  }
-
-  let roundingShift = roundMantissaToPrecision(
-    targetMantissa,
-    precision,
-    targetMantissa,
-    roundingMode
-  )
-
-  return roundingShift - expShift
-}
-
-/**
- * Divide two mantissas and write the result to a target mantissa.
- * @param mant1
- * @param mant2
- * @param precision
- * @param targetMantissa
- * @param roundingMode
- */
-export function divMantissas2 (
-  mant1,
-  mant2,
-  precision,
-  targetMantissa,
-  roundingMode = CURRENT_ROUNDING_MODE
-) {
-  // We use a Newton-Raphson approach, narrowing down on the result with quadratic speed. The first step is determining
-  // the reciprocal of mant2, then multiplying by mant1. The approach is based on the wikipedia article
-  // https://en.wikipedia.org/wiki/Division_algorithm (yes, I gave up trying to figure this stuff out on my own)
-
-  let sdRecip = createMantissa(precision)
-
-  // Estimating the reciprocal
-  let tmp = new Int32Array(2)
-  let rEst = new Int32Array(2)
-
-  // Shift the denominator until mant[0] > 1 << 29
-  let sd = createMantissa(precision)
-  let dShift = clzMantissa(mant2)
-
-  if (dShift === -1) throw new RangeError('Division by zero')
-  leftShiftMantissa(mant2, dShift, sd)
-
-  // Initial estimate for the reciprocal of the denominator (low precision, may inline this in future)
-
-  // 1/D = 48/17 - 32/17 * D for 0.5 <= D < 1 is the estimate
-  let sdShift = multiplyMantissas(
-    dRecipConst1,
-    sd,
-    30,
-    tmp,
-    ROUNDING_MODE.WHATEVER
-  )
-  subtractMantissas(
-    dRecipConst2,
-    tmp,
-    -sdShift,
-    30,
-    rEst,
-    ROUNDING_MODE.WHATEVER
-  )
-
-  // Copy over the low-precision estimate
-  sdRecip[0] = rEst[0]
-  sdRecip[1] = rEst[1]
-
-  let one = new Int32Array([1])
-
-  // X_(n+1) = X_n + X_n(1 - D * X_n)
-  let innerP = createMantissa(precision) // = D * X_n
-  let innerS = createMantissa(precision) // = 1 - innerP
-  let outerP = createMantissa(precision) // = X_n * innerS
-  let outerS = createMantissa(precision) // = X_n + outerP
-
-  for (let i = 0; i < 5; ++i) {
-    let mShift = multiplyMantissas(
-      sd,
-      sdRecip,
-      precision,
-      innerP /*target*/,
-      ROUNDING_MODE.WHATEVER
-    ) // D * X_n
-    let sShift = 0
-    let isInnerPositive = mShift === -1 // inner is positive if D * X_n < 1, so positive when the shift is -1
-
-    if (isInnerPositive) {
-      sShift = subtractMantissas(
-        one,
-        innerP,
-        1,
-        precision,
-        innerS /*target*/,
-        ROUNDING_MODE.WHATEVER
-      )
-    } else {
-      sShift = subtractMantissas(
-        innerP,
-        one,
-        0,
-        precision,
-        innerS /*target*/,
-        ROUNDING_MODE.WHATEVER
-      )
-    }
-
-    let mShift2 = multiplyMantissas(
-      innerS,
-      sdRecip,
-      precision,
-      outerP /*target*/,
-      ROUNDING_MODE.WHATEVER
-    )
-
-    if (isInnerPositive) {
-      addMantissas(
-        sdRecip,
-        outerP,
-        -(mShift2 + sShift + 1),
-        precision,
-        outerS /*target*/,
-        ROUNDING_MODE.WHATEVER
-      )
-    } else {
-      subtractMantissas(
-        sdRecip,
-        outerP,
-        -(mShift2 + sShift + 1),
-        precision,
-        outerS /*target*/,
-        ROUNDING_MODE.WHATEVER
-      )
-    }
-
-    roundMantissaToPrecision(outerS, precision, sdRecip, ROUNDING_MODE.WHATEVER)
-  }
-
-  // 1 < sdRecip <= 2 is now 1/sd, so we multiply by the numerator
-  let mulShift = multiplyMantissas(
-    mant1,
-    sdRecip,
-    precision,
-    innerP /* tmp target */,
-    ROUNDING_MODE.WHATEVER
-  )
-  let powShift = multiplyMantissaPow2(
-    innerP,
-    dShift,
-    precision,
-    targetMantissa,
-    ROUNDING_MODE.WHATEVER
-  )
-
-  return -1 - mulShift + powShift
-}
-
-// debug mantissa function
-function dM (m, e = 0) {
-  return new BigFloat(1, e, 0, m).toNumber()
-}
-
-/**
  * Determine which of two mantissas is larger. -1 if mant1 is smaller, 0 if they are equal, and 1 if mant2 is larger.
  * @param mant1
  * @param mant2
@@ -1439,7 +1247,7 @@ export function computeLn2 (precision) {
   return ln2
 }
 
-let cachedLn2
+let cachedLn2, cachedLn10
 
 function getCachedLn2 (precision) {
   if (!cachedLn2 || cachedLn2.prec < precision) {
@@ -1447,6 +1255,16 @@ function getCachedLn2 (precision) {
   }
 
   return cachedLn2
+}
+
+function getCachedLn10 (precision) {
+  if (!cachedLn10 || cachedLn10.prec < precision) {
+    let workingPrecision = precision + 2
+
+    cachedLn10 = BigFloat.ln(10, workingPrecision)
+  }
+
+  return cachedLn10
 }
 
 /**
@@ -2653,42 +2471,9 @@ export class BigFloat {
 
     // log10 (x) = ln(x) / ln(10)
     const num = BigFloat.ln(f, precision)
-    const den = getCachedRecipLnValue(10, precision)
+    const den = getCachedLn10(precision)
 
-    return BigFloat.mul(num, den, precision)
-  }
-
-  /**
-   * Compute x raised to the power y.
-   * @param x
-   * @param y
-   * @param precision
-   * @param roundingMode
-   */
-  static pow (
-    x,
-    y,
-    precision = CURRENT_PRECISION,
-    roundingMode = CURRENT_ROUNDING_MODE
-  ) {
-    // x^y = exp(y ln x)
-  }
-
-  /**
-   * Compute 10^f.
-   * @param f
-   * @param precision
-   * @param roundingMode
-   */
-  static pow10 (
-    f,
-    precision = CURRENT_PRECISION,
-    roundingMode = CURRENT_ROUNDING_MODE
-  ) {
-    f = cvtToBigFloat(f)
-    let ln10 = getCachedLnValue(10, precision)
-
-    return BigFloat.exp(BigFloat.mul(f, ln10, precision), precision)
+    return BigFloat.div(num, den, precision)
   }
 
   /**
@@ -2702,8 +2487,6 @@ export class BigFloat {
 
     let workingPrecision = ((prec * LOG210) | 0) + 10
     let log10 = BigFloat.log10(this, workingPrecision)
-
-    console.log(log10.toNumber())
 
     let floor = BigFloat.new(53),
       frac = BigFloat.new(workingPrecision)
