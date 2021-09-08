@@ -237,6 +237,8 @@ export class SceneGraph {
           }
         } else {
           for (const instruction of child.instructions) {
+            if (!instruction) continue
+
             let adj = adjustInstruction(instruction)
 
             if (adj.escapeContext) {

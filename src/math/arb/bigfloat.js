@@ -28,7 +28,7 @@ const recip2Pow60 = pow2(-2 * BIGFLOAT_WORD_BITS)
 
 /**
  * The minimum number of words needed to store a mantissa with prec bits. The +1 is because the bits need to be stored
- * at any shift within the word, from 1 to 29, so some space may be needed. WELL TESTED
+ * at any shift within the word, from 1 to 29, so some space may be needed.
  * @param prec {number}
  * @returns {number}
  */
@@ -37,7 +37,7 @@ export function neededWordsForPrecision (prec) {
 }
 
 /**
- * Get an empty mantissa able to store a mantissa with prec bits. WELL TESTED
+ * Get an empty mantissa able to store a mantissa with prec bits.
  * @param prec
  * @returns {Int32Array}
  */
@@ -1041,16 +1041,6 @@ export function divMantissas (
   return newMantissaShift + roundingShift
 }
 
-let dRecipConst1 = new Int32Array([0x1, 0x38787878, 0x1e1e1e00]) // = 32/17
-let dRecipConst2 = new Int32Array([0x2, 0x34b4b4b4, 0x2d2d2e00]) // = 48/17
-
-export function reciprocalMantissa (
-  mantissa,
-  precision,
-  targetMantissa,
-  roundingMode = CURRENT_ROUNDING_MODE
-) {}
-
 /**
  * Determine which of two mantissas is larger. -1 if mant1 is smaller, 0 if they are equal, and 1 if mant2 is larger.
  * @param mant1
@@ -1084,6 +1074,59 @@ export function compareMantissas (mant1, mant2) {
   }
 
   return swapResult ? -result : result
+}
+
+function floorLog10 (n) {
+  if (n < 10) return 0
+  if (n < 1e2) return 1
+  if (n < 1e3) return 2
+  if (n < 1e4) return 3
+  if (n < 1e5) return 4
+  if (n < 1e6) return 5
+  if (n < 1e7) return 6
+  if (n < 1e8) return 7
+  if (n < 1e9) return 8
+  if (n < 1e10) return 9
+  if (n < 1e11) return 10
+  if (n < 1e12) return 11
+  if (n < 1e13) return 12
+  if (n < 1e14) return 13
+  if (n < 1e15) return 14
+  return 15
+}
+
+function mantissaToBaseWithPrecision (mant, digits, base=10) {
+  let decimalOut = [0]
+
+  function divPow30 () {
+    let carry = 0
+
+    for (let i = 0; i < decimalOut.length; ++i) {
+      let word = decimalOut[i]
+      let div = word / 2 ** 15
+      let flr = Math.floor(div)
+
+      let newWord = flr + carry
+
+      decimalOut[i] = newWord
+      carry = (div - flr) * 10 ** 15
+    }
+
+    if (carry) decimalOut.push(carry)
+  }
+
+  for (let i = mant.length - 2; i >= 0; --i) {
+    decimalOut[0] += mant[i] & 0x7fff
+    divPow30()
+
+    decimalOut[0] += mant[i] >> 15
+    divPow30()
+  }
+
+  let leading = 14 - floorLog10(decimalOut[1])
+  let end = leading + digits
+
+  return [ leading, decimalOut.slice(1).map(n => leftZeroPad(n, 15)).join('').slice(leading, end) ]
 }
 
 export function prettyPrintFloat (mantissa, precision) {
@@ -1227,7 +1270,9 @@ export function computeLn2 (precision) {
   let twoThirds = BigFloat.div(2, 3, workingPrecision, ROUNDING_MODE.WHATEVER)
   let oneNinth = BigFloat.div(1, 9, workingPrecision, ROUNDING_MODE.WHATEVER)
 
-  let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision), sum = BigFloat.fromNumber(1, workingPrecision)
+  let tmp = BigFloat.new(workingPrecision),
+    tmp2 = BigFloat.new(workingPrecision),
+    sum = BigFloat.fromNumber(1, workingPrecision)
 
   let oneNinthPowed = BigFloat.fromNumber(1, workingPrecision)
   let summand = BigFloat.new(workingPrecision)
@@ -1249,7 +1294,7 @@ export function computeLn2 (precision) {
 
 let cachedLn2, cachedLn10
 
-function getCachedLn2 (precision) {
+export function getCachedLn2 (precision) {
   if (!cachedLn2 || cachedLn2.prec < precision) {
     cachedLn2 = computeLn2(precision)
   }
@@ -1377,6 +1422,13 @@ export class BigFloat {
     return float
   }
 
+  static fromString(str, precision) {
+    let float = BigFloat.new(precision)
+    float.setFromString(str)
+
+    return float
+  }
+
   /**
    * Create a new BigFloat with a given precision, initialized to a value of 0.
    * @param prec {number} Precision, in bits, of the float
@@ -1406,7 +1458,10 @@ export class BigFloat {
    * @param f2 {BigFloat}
    * @returns {number}
    */
-  static cmpFloatMagnitudes (f1, f2) {
+  static cmpMagnitudes (f1, f2) {
+    f1 = cvtToBigFloat(f1)
+    f2 = cvtToBigFloat(f2)
+
     if (f1.exp < f2.exp) {
       return -1
     } else if (f1.exp > f2.exp) {
@@ -1506,7 +1561,7 @@ export class BigFloat {
     let targetMantissa = target.mant
 
     if (f1Sign !== f2Sign) {
-      let cmp = BigFloat.cmpFloatMagnitudes(f1, f2)
+      let cmp = BigFloat.cmpMagnitudes(f1, f2)
       let sign = 0
 
       if (cmp === 0) {
@@ -1678,7 +1733,7 @@ export class BigFloat {
    * Multiply a float by a power of two, writing the result to the target. This operation is very fast because it can
    * be accomplished via only bitshifts.
    * @param float
-   * @param exponent
+   * @param exponent {number}
    * @param target
    * @param roundingMode
    */
@@ -1798,7 +1853,6 @@ export class BigFloat {
     let word = f1.exp,
       mantLen = f1.length
     if (word <= 0) {
-      // |f1| < 1
       fracPart.setFromFloat(f1)
       integerPart.setZero()
     } else if (word >= mantLen) {
@@ -2023,6 +2077,79 @@ export class BigFloat {
 
     this.exp = newExp
     this.sign = Math.sign(num)
+  }
+
+  setFromString (str, base=10) {
+    str = str + ''
+
+    // Well this is going to be pain. We process strings of the form -?[0-9]+.?[0-9]*(e-?[0-9]+)?
+
+    const re = /(?<sign>[-+])?(?<digits1>[0-9]*)?\.?(?<digits2>[0-9]*)?(e(?<exponent>[-+]?[0-9]+))?/
+    let { sign, digits1, digits2, exponent } = str.match(re).groups
+
+    // Conditions for invalid string
+    valid: {
+      if ((!digits1 && !digits2)) {
+        break valid
+      }
+
+      exponent = exponent ? parseFloat(exponent) : 0
+      if (Number.isNaN(exponent)) { // might happen if exponent is '+', for example
+        break valid
+      }
+
+      sign = (sign === '-') ? -1 : 1
+      if (!digits1) digits1 = ''
+      if (!digits2) digits2 = ''
+
+      // We have a sign, digits before and/or after the decimal point, and an exponent. We now have to convert this
+      // to the nearest float in the current precision. Mathematically, we have
+      //
+      // f = (digits1 + digits2 / base^(digits2.length)) * base^exponent.
+      //
+      // Taking logs and letting d1 = digits1, d2 = digits2, b = base and e = exponent, we see
+      // log(f) = e * log(b) + log(d1 + d2 / d2.length). The first addend is simple; the second involves the actual base
+      // conversion. For now, I'm just going to go digit by digit and add the corresponding multiple of a power of b.
+      // Kinda slow, but we'll improve this algorithm later.
+
+      let workingPrecision = this.prec + 8
+
+      let convertedDigits = BigFloat.new(workingPrecision)
+      let bPowed = BigFloat.fromNumber(1, workingPrecision)
+
+      let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
+
+      for (let i = digits1.length - 1; i >= 0; --i) {
+        BigFloat.mulNumberTo(bPowed, parseInt(digits1[i]), tmp)
+        BigFloat.addTo(tmp, convertedDigits, tmp2)
+
+        BigFloat.mulNumberTo(bPowed, base, tmp)
+        ;[tmp, bPowed] = [bPowed, tmp]
+        ;[tmp2, convertedDigits] = [convertedDigits, tmp2]
+      }
+
+      BigFloat.divNumberTo(BigFloat.ONE, base, bPowed)
+
+      for (let i = 0; i < digits2.length; ++i) {
+        BigFloat.mulNumberTo(bPowed, parseInt(digits2[i]), tmp)
+        BigFloat.addTo(tmp, convertedDigits, tmp2)
+
+        BigFloat.divNumberTo(bPowed, base, tmp)
+        ;[tmp, bPowed] = [bPowed, tmp]
+        ;[tmp2, convertedDigits] = [convertedDigits, tmp2]
+      }
+
+      let lnConvertedDigits = BigFloat.ln(convertedDigits, workingPrecision)
+      BigFloat.mulNumberTo(BigFloat.ln(base), exponent, tmp)
+
+      BigFloat.addTo(lnConvertedDigits, tmp, tmp2)
+
+      this.setFromFloat(BigFloat.exp(tmp2, workingPrecision))
+      return this
+    }
+
+    this.setNaN()
+    return this
   }
 
   /**
@@ -2514,7 +2641,7 @@ export class BigFloat {
     f = cvtToBigFloat(f)
 
     let workingPrecision = precision + 2
-    let tmp = BigFloat.mul(f, getCachedLn10(workingPrecision))
+    let tmp = BigFloat.mul(f, getCachedLn10(workingPrecision), workingPrecision)
 
     return BigFloat.exp(tmp, precision)
   }
@@ -2523,52 +2650,30 @@ export class BigFloat {
    * Convert a float to a readable base-10 representation, with prec base-10 digits of precision.
    */
   toPrecision (prec = this.prec / 3.23 /* log2(10) */) {
-    // f = m * 2^e; log10(f) = log10(m) + log10(2) * e
-    // f = frac(log10(f)) * 10^floor(log10(f))
+    // f = frac(log10(f)) * 10^floor(log10(f)) = m * 10^e
 
     prec = prec | 0
 
     let workingPrecision = ((prec * LOG210) | 0) + 10
     let log10 = BigFloat.log10(this, workingPrecision)
 
-    let floor = BigFloat.new(53),
-      frac = BigFloat.new(workingPrecision)
-    BigFloat.splitIntegerTo(log10, floor, frac, ROUNDING_MODE.NEAREST)
+    let e = BigFloat.new(53),
+      m = BigFloat.new(workingPrecision)
+    BigFloat.splitIntegerTo(log10, e, m, ROUNDING_MODE.NEAREST)
 
-    let base10mant = BigFloat.pow10(frac, workingPrecision)
+    e = e.toNumber()
+    m = BigFloat.pow10(m, workingPrecision)
 
-    let mant = base10mant.mant
-    let decimalOut = [0]
+    let [ leading, digits ] = mantissaToBaseWithPrecision(m.mant, prec)
 
-    function divPow30 () {
-      let carry = 0
+    e += leading
 
-      for (let i = 0; i < decimalOut.length; ++i) {
-        let word = decimalOut[i]
-        let div = word / 2 ** 15
-        let flr = Math.floor(div)
+    if (true) {
+      e -= 1
+      digits = digits[0] + '.' + digits.slice(1)
 
-        let newWord = flr + carry
-
-        decimalOut[i] = newWord
-        carry = (div - flr) * 10 ** 15
-      }
-
-      if (carry) decimalOut.push(carry)
+      return `${digits}e${e}`
     }
-
-    for (let i = mant.length - 2; i >= 0; --i) {
-      decimalOut[0] += mant[i] & 0x7fff
-      divPow30()
-
-      decimalOut[0] += mant[i] >> 15
-      divPow30()
-    }
-
-    // each entry of decimalOut is a 15 digit string, zero padded from the left. The first 15 digits are 0s, followed by
-    // the decimal point, then the number. We want
-    let digits = '0.' + decimalOut.slice(1).map(entry => leftZeroPad(entry + '', 15, '0')).join('').slice(0, prec)
-
 
 
     return digits

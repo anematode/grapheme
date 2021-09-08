@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.16/dist/katex.min.css" integrity="sha384-6LkG2wmY8FK9E0vU9OOr8UvLwsaqUg9SETfpq4uTCN1agNe8HRdE9ABlk+fVx6gZ" crossorigin="anonymous">
 
 <script id="setup">
+
     var renderer = new Grapheme.WebGLRenderer()
     var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 1000, dpr: 2 })
 
-    var figure = new Grapheme.Figure({ interactivity: true })
+    var figure = new Grapheme.Plot2D({ interactivity: true })
     var baubles = new Grapheme.FigureBaubles()
     var plot1 = new Grapheme.ParametricPlot2D({ f: "vec2(6*cos(t/6),sin(50*t))+vec2(cos(49*t), 4*sin(t/5))", t: [ -50, 50 ], pen: { thickness: 2, color: "blue" }, samples: 500 })
 
@@ -26,10 +27,10 @@
       renderer.renderDOMScene(scene)
 
         //setTimeout(render, 1000)
-     requestAnimationFrame(render)
+      requestAnimationFrame(render)
     }
 
-    render()
+    //ender()
 </script>
 
 

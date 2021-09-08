@@ -176,11 +176,14 @@ export class Plot2D extends Figure {
       let graphBox = plotTransform.graphBox()
     }
 
+    console.log("hi")
+
     props.markChanged('plotTransform')
   }
 
   _update () {
     super._update()
+
 
     this.computePlotTransform()
     this.toggleInteractivity()
