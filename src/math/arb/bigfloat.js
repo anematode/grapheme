@@ -10,7 +10,7 @@ import {
   frExp
 } from '../real/fp_manip.js'
 import { ROUNDING_MODE } from '../rounding_modes.js'
-import { leftZeroPad } from '../../core/utils.js'
+import { leftZeroPad, trimLeft } from '../../core/utils.js'
 
 const BIGFLOAT_WORD_BITS = 30
 const BIGFLOAT_WORD_SIZE = 1 << BIGFLOAT_WORD_BITS
@@ -352,6 +352,10 @@ export function roundMantissaToPrecision (
   }
 
   return shift
+}
+
+function roundNonBinaryMantissa (mant, base, prec, round=CURRENT_ROUNDING_MODE) {
+
 }
 
 /**
@@ -1095,38 +1099,85 @@ function floorLog10 (n) {
   return 15
 }
 
-function mantissaToBaseWithPrecision (mant, digits, base=10) {
-  let decimalOut = [0]
+// Converting a binary mantissa to a base-10 sequence isn't trivial!
 
-  function divPow30 () {
-    let carry = 0
+function mantissaToBaseWithPrecision (mant, shift, digits, base=10) {
+  let beforeDecimalPoint = [0]
+  let afterDecimalPoint = [0]
 
-    for (let i = 0; i < decimalOut.length; ++i) {
-      let word = decimalOut[i]
-      let div = word / 2 ** 15
-      let flr = Math.floor(div)
+  // Fractional component
+  function computeAfterDecimalPoint () {
+    function divPow15 () {
+      let carry = 0
 
-      let newWord = flr + carry
+      for (let i = 0; i < afterDecimalPoint.length; ++i) {
+        let word = afterDecimalPoint[i]
+        let div = word / 2 ** 15
+        let flr = Math.floor(div)
 
-      decimalOut[i] = newWord
-      carry = (div - flr) * 10 ** 15
+        let newWord = flr + carry
+
+        afterDecimalPoint[i] = newWord
+        carry = (div - flr) * 10 ** 15
+      }
+
+      if (carry) afterDecimalPoint.push(carry)
     }
 
-    if (carry) decimalOut.push(carry)
+    for (let i = mant.length - 1; i >= shift; --i) {
+      if (i < 0) {
+        divPow15()
+        divPow15()
+        continue
+      }
+
+      afterDecimalPoint[0] += mant[i] & 0x7fff
+      divPow15()
+      afterDecimalPoint[0] += mant[i] >> 15
+      divPow15()
+    }
   }
 
-  for (let i = mant.length - 2; i >= 0; --i) {
-    decimalOut[0] += mant[i] & 0x7fff
-    divPow30()
+  function computeBeforeDecimalPoint () {
+    function mulPow30 () {
+      let carry = 0
 
-    decimalOut[0] += mant[i] >> 15
-    divPow30()
+      for (let i = 0; i < beforeDecimalPoint.length; ++i) {
+        let word = beforeDecimalPoint[i]
+        let mul = word * 2 ** 30
+
+        let rem = mul % (10 ** 15)
+        let flr = Math.floor((mul - rem) / (10 ** 15) + 0.5)
+
+        rem += carry
+        if (rem > 10 ** 15) {
+          rem -= 10 ** 15
+          flr += 1
+        }
+
+        beforeDecimalPoint[i] = rem
+        carry = flr
+      }
+
+      if (carry) {
+        beforeDecimalPoint.push(carry)
+      }
+    }
+
+    for (let i = 0; i < Math.min(shift, mant.length); ++i) {
+      mulPow30()
+      beforeDecimalPoint[0] += mant[i]
+    }
   }
 
-  let leading = 14 - floorLog10(decimalOut[1])
-  let end = leading + digits
+  computeBeforeDecimalPoint()
+  computeAfterDecimalPoint()
 
-  return [ leading, decimalOut.slice(1).map(n => leftZeroPad(n, 15)).join('').slice(leading, end) ]
+  function collapseDigits (digits) {
+    return digits.map(d => leftZeroPad(d + '', 15)).join('')
+  }
+
+  return [ collapseDigits(beforeDecimalPoint.reverse()), collapseDigits(afterDecimalPoint.slice(1)) ]
 }
 
 export function prettyPrintFloat (mantissa, precision) {
@@ -1178,78 +1229,6 @@ function cvtToBigFloat (arg) {
   if (typeof arg === 'number') return BigFloat.fromNumber(arg, 53)
 
   throw new TypeError(`Cannot convert argument ${arg} to BigFloat`)
-}
-
-// A special float with a mantissa of 30 bits. Its value should be interpreted as 2^exp * mant. Infinity is represented
-// with a mantissa of Infinity, 0 is represented with a mantissa of 0, and NaN is represented with a mantissa of NaN
-export class DeltaFloat {
-  constructor (exp, mant) {
-    /**
-     * Exponent of the delta float
-     * @type {number}
-     */
-    this.exp = exp
-
-    /**
-     * Number ranging from 2^29 to 2^30 - 1 for normal numbers,
-     * @type {number}
-     */
-    this.mant = mant
-  }
-
-  /**
-   * Convert a JS number to a DeltaFloat. We always round up.
-   * @param num {number}
-   * @returns {DeltaFloat}
-   */
-  static fromNumber (num) {
-    num = Math.abs(num)
-
-    if (num === 0 || num === Infinity || Number.isNaN(num)) {
-      return new DeltaFloat(0, num)
-    } else {
-      // num = f * 2^exp where 0.5 <= f < 1
-      let [ f, exp ] = frExp(num)
-
-      f *= 1 << 30
-      exp -= 30
-
-      f = Math.ceil(f)
-      if (f === 1 << 30) {
-        f = 1 << 29
-        exp += 1
-      }
-
-      return new DeltaFloat(exp, f)
-    }
-  }
-
-  toNumber () {
-    // TODO handle denormal numbers
-    let mant = this.mant
-
-    if (mant === 0 || mant === Infinity || Number.isNaN(mant)) {
-      return mant
-    }
-
-    return mant * pow2(this.exp)
-  }
-
-  toBigFloat () {
-
-  }
-
-  /**
-   * Add two delta floats, always rounding up
-   * @param f1 {DeltaFloat}
-   * @param f2 {DeltaFloat}
-   * @param target {DeltaFloat}
-   */
-  static addTo (f1, f2, target) {
-    let f1mant = f1.mant, f1exp = f1.exp, f2mant = f2.mant, f2exp = f2.exp
-
-
-  }
 }
 
 export function computeLn2 (precision) {
@@ -1348,22 +1327,110 @@ export function expBaseCase (f, precision) {
   return target
 }
 
+// A special float with a mantissa of 30 bits. Its value should be interpreted as 2^exp * mant. Infinity is represented
+// with a mantissa of Infinity, 0 is represented with a mantissa of 0, and NaN is represented with a mantissa of NaN
+export class DeltaFloat {
+  constructor (exp, mant) {
+    /**
+     * Exponent of the delta float
+     * @type {number}
+     */
+    this.exp = exp
+
+    /**
+     * Number ranging from 2^29 to 2^30 - 1 for normal numbers,
+     * @type {number}
+     */
+    this.mant = mant
+  }
+
+  /**
+   * Convert a JS number to a DeltaFloat. We always round up.
+   * @param num {number}
+   * @returns {DeltaFloat}
+   */
+  static fromNumber (num) {
+    num = Math.abs(num)
+
+    if (num === 0 || num === Infinity || Number.isNaN(num)) {
+      return new DeltaFloat(0, num)
+    } else {
+      // num = f * 2^exp where 0.5 <= f < 1
+      let [ f, exp ] = frExp(num)
+
+      f *= 1 << 30
+      exp -= 30
+
+      f = Math.ceil(f)
+      if (f === 1 << 30) {
+        f = 1 << 29
+        exp += 1
+      }
+
+      return new DeltaFloat(exp, f)
+    }
+  }
+
+  toNumber () {
+    // TODO handle denormal numbers
+    let mant = this.mant
+
+    if (mant === 0 || mant === Infinity || Number.isNaN(mant)) {
+      return mant
+    }
+
+    return mant * pow2(this.exp)
+  }
+
+  toBigFloat (prec=30, roundingMode=CURRENT_ROUNDING_MODE) {
+    let bigFloat = BigFloat.fromNumber(this.mant, prec, roundingMode)
+
+    // Note this is permissible because mulPowTwoTo permits aliasing
+    BigFloat.mulPowTwoTo(bigFloat, this.exp, bigFloat, roundingMode)
+
+    return bigFloat
+  }
+
+  /**
+   * Add two delta floats, always rounding up
+   * @param f1 {DeltaFloat}
+   * @param f2 {DeltaFloat}
+   * @param target {DeltaFloat}
+   */
+  static addTo (f1, f2, target) {
+    let f1mant = f1.mant, f1exp = f1.exp, f2mant = f2.mant, f2exp = f2.exp
+
+
+  }
+
+  toPrecision (prec, roundingMode=CURRENT_ROUNDING_MODE) {
+    return this.toBigFloat().toPrecision(prec, roundingMode)
+  }
+}
+
 /**
  * Unlike a typical RealInterval, we represent a BigFloatInterval with a center and a radius. The radius need not have
  * high precision, so we use a DeltaFloat--which has a fixed mantissa of 30 bits and an exponent that can range as
  * necessary. Kudos to Frederick Johansson for this idea (see https://arblib.org/mag.html).
  */
 export class BigFloatInterval {
-  constructor (center, delta) {
+  constructor (prec) {
     /**
      * @type BigFloat
      */
-    this.center = center
+    this.center = BigFloat.new(prec)
 
     /**
      * @type DeltaFloat
      */
-    this.delta = delta
+    this.delta = new DeltaFloat(0, 0)
+  }
+
+  static fromNumber (num, prec=CURRENT_PRECISION, roundingMode=CURRENT_ROUNDING_MODE) {
+    const interval = new BigFloatInterval(prec)
+
+    interval.center.setFromNumber(num)
+    return interval
   }
 
   /**
@@ -1731,7 +1798,8 @@ export class BigFloat {
 
   /**
    * Multiply a float by a power of two, writing the result to the target. This operation is very fast because it can
-   * be accomplished via only bitshifts.
+   * be accomplished via only bitshifts. This function allows aliasing, meaning the target float can be the same as the
+   * argument.
    * @param float
    * @param exponent {number}
    * @param target
@@ -1898,31 +1966,19 @@ export class BigFloat {
         return
       }
 
-      let fracWordCount = mantLen - shift
+      let roundingShift = roundMantissaToPrecision(
+        mant.subarray(word),
+        fracPart.prec,
+        fracPartMant,
+        roundingMode
+      )
 
-      if (fracPartMant.length > fracWordCount) {
-        for (let i = 0; i < fracWordCount; ++i)
-          fracPartMant[i] = mant[i + shift]
-        for (let i = fracPartMant.length - 1; i >= mantLen; --i)
-          fracPartMant[i] = 0
-
-        roundMantissaToPrecision(
-          fracPartMant,
-          fracPart.prec,
-          fracPartMant,
-          roundingMode
-        )
+      if (fracPartMant.every(a => a === 0)) {
+        fracPart.exp = fracPart.sign = 0
       } else {
-        roundMantissaToPrecision(
-          mant.subarray(word),
-          fracPart.prec,
-          fracPartMant,
-          roundingMode
-        )
+        fracPart.exp = word - shift + roundingShift
+        fracPart.sign = f1.sign
       }
-
-      fracPart.exp = word - shift
-      fracPart.sign = f1.sign
     }
   }
 
@@ -2112,7 +2168,7 @@ export class BigFloat {
       // conversion. For now, I'm just going to go digit by digit and add the corresponding multiple of a power of b.
       // Kinda slow, but we'll improve this algorithm later.
 
-      let workingPrecision = this.prec + 8
+      let workingPrecision = this.prec + 12
 
       let convertedDigits = BigFloat.new(workingPrecision)
       let bPowed = BigFloat.fromNumber(1, workingPrecision)
@@ -2140,7 +2196,7 @@ export class BigFloat {
       }
 
       let lnConvertedDigits = BigFloat.ln(convertedDigits, workingPrecision)
-      BigFloat.mulNumberTo(BigFloat.ln(base), exponent, tmp)
+      BigFloat.mulNumberTo(BigFloat.ln(base, workingPrecision), exponent, tmp)
 
       BigFloat.addTo(lnConvertedDigits, tmp, tmp2)
 
@@ -2576,9 +2632,9 @@ export class BigFloat {
 
     let ln2 = getCachedLn2(workingPrecision)
     BigFloat.mulNumberTo(ln2, n, tmp)   // tmp = n ln 2
-    BigFloat.addTo(tmp, sum, tmp3)        // tmp3 = ln(a) + n ln 2
+    BigFloat.addTo(tmp, sum, a)        // a = ln(a) + n ln 2
 
-    return tmp3
+    return a
   }
 
   /**
@@ -2649,28 +2705,51 @@ export class BigFloat {
   /**
    * Convert a float to a readable base-10 representation, with prec base-10 digits of precision.
    */
-  toPrecision (prec = this.prec / 3.23 /* log2(10) */) {
-    // f = frac(log10(f)) * 10^floor(log10(f)) = m * 10^e
+  toPrecision (prec, roundingMode=CURRENT_ROUNDING_MODE) {
+    const MAX_PRECISION = 1000
+
+    if (typeof prec !== "number" || !Number.isInteger(prec) || prec < 1 || prec > MAX_PRECISION)
+      throw new Error(`Precision must be an integer between 1 and ${MAX_PRECISION}`)
+
+    let sign = this.sign
+
+    if (!Number.isFinite(sign)) {
+      return sign + ''
+    } else if (sign === 0) {
+      if (prec === 1) return '0'
+      return '0.' + '0'.repeat(prec - 1)
+    }
+
+    // The number is non-zero. We have a couple of methods to convert the number to a decimal representation, rounded
+    // in the correct direction; the rounding makes things a bit more complicated, though, because we need to keep track
+    // of errors in the computation.
 
     prec = prec | 0
+    // f = 10^frac(log10(f)) * 10^floor(log10(f)) = m * 10^e
 
     let workingPrecision = ((prec * LOG210) | 0) + 10
+
+    this.sign = Math.abs(sign)
+
     let log10 = BigFloat.log10(this, workingPrecision)
+    this.sign = sign
 
     let e = BigFloat.new(53),
       m = BigFloat.new(workingPrecision)
     BigFloat.splitIntegerTo(log10, e, m, ROUNDING_MODE.NEAREST)
-
     e = e.toNumber()
+
+    if (BigFloat.cmp(m, 0) === 0) {
+      e -= 1
+      m.setFromFloat(BigFloat.ONE)
+    }
+
     m = BigFloat.pow10(m, workingPrecision)
 
-    let [ leading, digits ] = mantissaToBaseWithPrecision(m.mant, prec)
-
-    e += leading
+    let [ beforeDigits, afterDigits ] = mantissaToBaseWithPrecision(m.mant, m.exp, prec)
 
     if (true) {
-      e -= 1
-      digits = digits[0] + '.' + digits.slice(1)
+      let digits = ((sign === -1) ? '-' : '') + trimLeft(beforeDigits, '0') + '.' + afterDigits.slice(0, prec)
 
       return `${digits}e${e}`
     }

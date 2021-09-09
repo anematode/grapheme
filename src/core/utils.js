@@ -264,6 +264,16 @@ export function rightZeroPad (str, len, char = '0') {
   return str + char.repeat(len - str.length)
 }
 
+export function trimLeft (str, char) {
+  let i = 0
+  for (; i < str.length; ++i) {
+    if (str.charAt(i) !== char)
+      break
+  }
+
+  return str.substring(i)
+}
+
 /**
  * Credit to https://github.com/gustf/js-levenshtein/blob/master/index.js. Find the Levenshtein distance between two
  * strings.
