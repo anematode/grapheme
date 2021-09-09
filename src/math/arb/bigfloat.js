@@ -27,7 +27,7 @@ const recip2Pow30 = pow2(-BIGFLOAT_WORD_BITS)
 const recip2Pow60 = pow2(-2 * BIGFLOAT_WORD_BITS)
 
 /**
- * The minimum number of words needed to store a mantissa with prec bits. The +1 is because the bits need to be stored
+ * The minimum number of words needed to store a mantissa with prec bits. The +2 is because the bits need to be stored
  * at any shift within the word, from 1 to 29, so some space may be needed.
  * @param prec {number}
  * @returns {number}
@@ -65,8 +65,12 @@ export function getTrailingInfo (mantissa, index) {
       } else if (mantissa[index] > 1 << 29) {
         return 3
       }
-    } else return 0
-  } else index = 0
+    } else {
+      return 0
+    }
+  } else {
+    index = 0
+  }
 
   for (let i = index; i < mantissa.length; ++i) {
     if (mantissa[i] !== 0) return 1
@@ -76,7 +80,7 @@ export function getTrailingInfo (mantissa, index) {
 }
 
 /**
- * Count the number of leading zeros in a mantissa, including invalid mantissas in which the first word is not 0.
+ * Count the number of leading zeros in a mantissa, including "invalid" mantissas in which the first word is not 0.
  * Returns -1 if the mantissa is all zeros.
  * @param mantissa {Int32Array}
  * @returns {number}
@@ -316,7 +320,7 @@ export function roundMantissaToPrecision (
   }
 
   // Set all the words following the truncated word to 0
-  for (let j = truncWord; ++j < targetLen; ) {
+  for (let j = truncWord; ++j < targetLen;) {
     target[j] = 0
   }
 
@@ -352,10 +356,6 @@ export function roundMantissaToPrecision (
   }
 
   return shift
-}
-
-function roundNonBinaryMantissa (mant, base, prec, round=CURRENT_ROUNDING_MODE) {
-
 }
 
 /**
@@ -395,7 +395,7 @@ export function addMantissas (
     newMant = new Int32Array(newMantLen)
   }
 
-  // We first sum all the parts of the addition we definitely need:
+  // We first copy over all the parts of the addition we definitely need:
   if (!isAliased) {
     for (let i = 0; i < mant1Len; ++i) {
       newMant[i] = mant1[i]
@@ -438,7 +438,8 @@ export function addMantissas (
     let trailingShift = newMantLen - mant2Shift
     trailingInfo = getTrailingInfo(mant2, Math.max(trailingShift, 0))
 
-    if (trailingShift < 0) trailingInfo = +!!trailingInfo // Lol, if the trailing info is shifted, then round it to 0 or 1 as appropriate
+    // If the trailing info is shifted, then round it to 0 or 1 as appropriate
+    if (trailingShift < 0) trailingInfo = +!!trailingInfo
   }
 
   let shift = 0
@@ -547,8 +548,7 @@ export function subtractMantissas (
   // Important length variables
   let mant1Len = mant1.length,
     mant2Len = mant2.length,
-    mant2End = mant2Len + mant2Shift,
-    maxEnd = Math.max(mant1Len, mant2End)
+    mant2End = mant2Len + mant2Shift
   let targetLen = target.length
 
   // New strategy; we iteratively compute words of the result until we get to the end of target, at which point we do
@@ -596,7 +596,7 @@ export function subtractMantissas (
 
     if (target[0] === 0) {
       let i = 0
-      for (; !target[i] && i < targetLen; ++i);
+      for (; !target[i] && i < targetLen; ++i)
 
       leftShiftMantissa(target, 30 * i, target)
       shift += i
@@ -653,8 +653,9 @@ export function rightShiftMantissa (
 
     // Fill empty stuff with zeros
     for (let i = 0; i < integerShift; ++i) targetMantissa[i] = 0
-    for (let i = lastFilledIndex + integerShift + 1; i < targetMantissaLen; ++i)
+    for (let i = lastFilledIndex + integerShift + 1; i < targetMantissaLen; ++i) {
       targetMantissa[i] = 0
+    }
   } else {
     let invBitShift = 30 - bitShift
     let firstNeededIndex = mantissaLen - integerShift - 1
@@ -666,15 +667,17 @@ export function rightShiftMantissa (
       let word = mantissa[i]
 
       // Two components from each word
-      if (i !== firstNeededIndex)
+      if (i !== firstNeededIndex) {
         targetMantissa[i + integerShift + 1] +=
           (word & ((1 << bitShift) - 1)) << invBitShift
+      }
       targetMantissa[i + integerShift] = word >> bitShift
     }
 
     for (let i = 0; i < integerShift; ++i) targetMantissa[i] = 0
-    for (let i = lastFilledIndex; i < targetMantissaLen; ++i)
+    for (let i = lastFilledIndex; i < targetMantissaLen; ++i) {
       targetMantissa[i] = 0
+    }
   }
 }
 
@@ -817,7 +820,7 @@ export function sqrtMantissa (
 /**
  * Not yet fully resistant, but a significantly faster (2x speedup) multiplication operation that works by only
  * multiplying the words which must appear in the final result. Hard to optimize beyond here until we get to Karatsuba
- * and the like, which isn't really relevant at these small scales.
+ * and the like, which isn't really relevant at small scales.
  * @param mant1
  * @param mant2
  * @param precision
@@ -840,6 +843,9 @@ export function multiplyMantissas (
 
   let highestWord = 0
 
+  // Low words that weren't counted on the first pass. Note that this number may overflow the 32 bit integer limit
+  let ignoredLows = 0
+
   // Only add the products whose high words are within targetMantissa
   for (let i = Math.min(targetMantissaLen, mant1Len - 1); i >= 0; --i) {
     let mant1Word = mant1[i]
@@ -850,6 +856,7 @@ export function multiplyMantissas (
     for (let j = Math.min(targetMantissaLen - i, mant2Len - 1); j >= 0; --j) {
       let writeIndex = i + j
 
+
       let mant2Word = mant2[j]
       let mant2Lo = mant2Word & 0x7fff
       let mant2Hi = mant2Word >> 15
@@ -858,6 +865,8 @@ export function multiplyMantissas (
       let high = Math.imul(mant1Hi, mant2Hi)
       let middle =
         (Math.imul(mant1Hi, mant2Lo) + Math.imul(mant1Lo, mant2Hi)) | 0
+
+      console.log(i, j)
 
       low +=
         ((middle & 0x7fff) << 15) +
@@ -873,6 +882,8 @@ export function multiplyMantissas (
       high += middle >> 15
 
       if (writeIndex < targetMantissaLen) targetMantissa[writeIndex] = low
+      else ignoredLows += low
+
       carry = high
     }
 
@@ -900,6 +911,15 @@ export function multiplyMantissas (
   )
 
   return shift + roundingShift
+}
+
+export function fmodMantissas (
+  mant1,
+  mant2,
+  mant2Shift,
+  targetMantissa,
+  roundingMode
+) {
 }
 
 /**
@@ -1080,28 +1100,8 @@ export function compareMantissas (mant1, mant2) {
   return swapResult ? -result : result
 }
 
-function floorLog10 (n) {
-  if (n < 10) return 0
-  if (n < 1e2) return 1
-  if (n < 1e3) return 2
-  if (n < 1e4) return 3
-  if (n < 1e5) return 4
-  if (n < 1e6) return 5
-  if (n < 1e7) return 6
-  if (n < 1e8) return 7
-  if (n < 1e9) return 8
-  if (n < 1e10) return 9
-  if (n < 1e11) return 10
-  if (n < 1e12) return 11
-  if (n < 1e13) return 12
-  if (n < 1e14) return 13
-  if (n < 1e15) return 14
-  return 15
-}
-
 // Converting a binary mantissa to a base-10 sequence isn't trivial!
-
-function mantissaToBaseWithPrecision (mant, shift, digits, base=10) {
+function mantissaToBaseWithPrecision (mant, shift, digits, base = 10) {
   let beforeDecimalPoint = [0]
   let afterDecimalPoint = [0]
 
@@ -1177,7 +1177,7 @@ function mantissaToBaseWithPrecision (mant, shift, digits, base=10) {
     return digits.map(d => leftZeroPad(d + '', 15)).join('')
   }
 
-  return [ collapseDigits(beforeDecimalPoint.reverse()), collapseDigits(afterDecimalPoint.slice(1)) ]
+  return [collapseDigits(beforeDecimalPoint.reverse()), collapseDigits(afterDecimalPoint.slice(1))]
 }
 
 export function prettyPrintFloat (mantissa, precision) {
@@ -1356,7 +1356,7 @@ export class DeltaFloat {
       return new DeltaFloat(0, num)
     } else {
       // num = f * 2^exp where 0.5 <= f < 1
-      let [ f, exp ] = frExp(num)
+      let [f, exp] = frExp(num)
 
       f *= 1 << 30
       exp -= 30
@@ -1382,7 +1382,7 @@ export class DeltaFloat {
     return mant * pow2(this.exp)
   }
 
-  toBigFloat (prec=30, roundingMode=CURRENT_ROUNDING_MODE) {
+  toBigFloat (prec = 30, roundingMode = CURRENT_ROUNDING_MODE) {
     let bigFloat = BigFloat.fromNumber(this.mant, prec, roundingMode)
 
     // Note this is permissible because mulPowTwoTo permits aliasing
@@ -1400,10 +1400,9 @@ export class DeltaFloat {
   static addTo (f1, f2, target) {
     let f1mant = f1.mant, f1exp = f1.exp, f2mant = f2.mant, f2exp = f2.exp
 
-
   }
 
-  toPrecision (prec, roundingMode=CURRENT_ROUNDING_MODE) {
+  toPrecision (prec, roundingMode = CURRENT_ROUNDING_MODE) {
     return this.toBigFloat().toPrecision(prec, roundingMode)
   }
 }
@@ -1426,7 +1425,7 @@ export class BigFloatInterval {
     this.delta = new DeltaFloat(0, 0)
   }
 
-  static fromNumber (num, prec=CURRENT_PRECISION, roundingMode=CURRENT_ROUNDING_MODE) {
+  static fromNumber (num, prec = CURRENT_PRECISION, roundingMode = CURRENT_ROUNDING_MODE) {
     const interval = new BigFloatInterval(prec)
 
     interval.center.setFromNumber(num)
@@ -1444,7 +1443,6 @@ export class BigFloatInterval {
 
     // We add the centers. The associated extra uncertainty is +- 1 ulp in the target precision
     let targetPrecision = target.center.prec
-
 
   }
 }
@@ -1489,7 +1487,7 @@ export class BigFloat {
     return float
   }
 
-  static fromString(str, precision) {
+  static fromString (str, precision) {
     let float = BigFloat.new(precision)
     float.setFromString(str)
 
@@ -1506,10 +1504,11 @@ export class BigFloat {
       prec < BIGFLOAT_MIN_PRECISION_BITS ||
       prec > BIGFLOAT_MAX_PRECISION_BITS ||
       !Number.isInteger(prec)
-    )
+    ) {
       throw new RangeError(
         `BigFloat precision must be an integer in the range [${BIGFLOAT_MIN_PRECISION_BITS}, ${BIGFLOAT_MAX_PRECISION_BITS}]`
       )
+    }
 
     return new BigFloat(0, 0, prec, createMantissa(prec))
   }
@@ -1634,8 +1633,11 @@ export class BigFloat {
       if (cmp === 0) {
         target.setZero()
         return
-      } else if (cmp === 1) sign = f1Sign
-      else sign = f2Sign
+      } else if (cmp === 1) {
+        sign = f1Sign
+      } else {
+        sign = f2Sign
+      }
       if (cmp === -1) swapF1F2()
 
       let shift = subtractMantissas(
@@ -1721,8 +1723,9 @@ export class BigFloat {
       f2Sign === 0 ||
       !Number.isFinite(f1Sign) ||
       !Number.isFinite(f2Sign)
-    )
+    ) {
       return
+    }
 
     if (f1.exp < f2.exp) {
       let tmp = f1
@@ -1891,6 +1894,16 @@ export class BigFloat {
     BigFloat.divTo(f1, DOUBLE_STORE, target, roundingMode)
   }
 
+  static fmodTo (f1, f2, target, roundingMode = CURRENT_ROUNDING_MODE) {
+    const remainder = createMantissa(Math.max(f1.prec, f2.prec))
+    let f1exp = f1.exp, f2exp = f2.exp, f1mant = f1.mant, f2mant = f2.mant
+
+    // Algorithm: suppose we want to compute fmod(m1 * (2^30)^e1, m2 * (2^30)^e2), where e1 >= e2 and if e1 == e2, m1 > m2.
+    // We use a shift-and-subtract approach, noting that the answer is equivalent to 2^e2 * fmod(m1 * (2^30)^(e1-e2), m2).
+    // We basically calculate m1 mod m2, then multiply by 2 over and over and subtract m2 each time.
+
+  }
+
   /**
    * Split a float f1 into an integer part and a fractional part, such that int + frac = f1, int and frac do not have
    * opposite sign, and |frac| < 1.
@@ -1936,8 +1949,9 @@ export class BigFloat {
 
       if (intPartMant.length > intWordCount) {
         for (let i = 0; i < intWordCount; ++i) intPartMant[i] = mant[i]
-        for (let i = intPartMant.length - 1; i >= intWordCount; --i)
+        for (let i = intPartMant.length - 1; i >= intWordCount; --i) {
           intPartMant[i] = 0
+        }
 
         roundMantissaToPrecision(
           intPartMant,
@@ -1959,7 +1973,7 @@ export class BigFloat {
       integerPart.sign = f1.sign
 
       let shift
-      for (shift = word; shift < mantLen && mant[shift] === 0; ++shift);
+      for (shift = word; shift < mantLen && mant[shift] === 0; ++shift)
 
       if (shift === mantLen) {
         fracPart.setZero()
@@ -2135,7 +2149,7 @@ export class BigFloat {
     this.sign = Math.sign(num)
   }
 
-  setFromString (str, base=10) {
+  setFromString (str, base = 10) {
     str = str + ''
 
     // Well this is going to be pain. We process strings of the form -?[0-9]+.?[0-9]*(e-?[0-9]+)?
@@ -2321,16 +2335,20 @@ export class BigFloat {
           if (
             roundingMode === ROUNDING_MODE.TOWARD_INF ||
             roundingMode === ROUNDING_MODE.UP
-          )
+          ) {
             return MIN_VALUE
-          else return 0
+          } else {
+            return 0
+          }
         } else {
           if (
             roundingMode === ROUNDING_MODE.TOWARD_ZERO ||
             roundingMode === ROUNDING_MODE.UP
-          )
+          ) {
             return 0
-          else return -MIN_VALUE
+          } else {
+            return -MIN_VALUE
+          }
         }
       }
     } else if (exp > MAX_EXPONENT) {
@@ -2348,16 +2366,20 @@ export class BigFloat {
         if (
           roundingMode === ROUNDING_MODE.TOWARD_INF ||
           roundingMode === ROUNDING_MODE.UP
-        )
+        ) {
           return Infinity
-        else return MAX_VALUE
+        } else {
+          return MAX_VALUE
+        }
       } else {
         if (
           roundingMode === ROUNDING_MODE.TOWARD_ZERO ||
           roundingMode === ROUNDING_MODE.UP
-        )
+        ) {
           return -MAX_VALUE
-        else return -Infinity
+        } else {
+          return -Infinity
+        }
       }
     } else {
       return this.sign * mAsInt * pow2(exp)
@@ -2381,10 +2403,10 @@ export class BigFloat {
   }
 
   static setBinaryPrecision (prec) {
-    if (typeof prec !== "number") throw new TypeError("Binary precision must be a number")
+    if (typeof prec !== 'number') throw new TypeError('Binary precision must be a number')
 
     prec = prec | 0
-    if (prec < 4) throw new RangeError("Precision must be at least 4 bits")
+    if (prec < 4) throw new RangeError('Precision must be at least 4 bits')
 
     CURRENT_PRECISION = prec
   }
@@ -2488,10 +2510,15 @@ export class BigFloat {
     }
 
     if (typeof a === 'number' && typeof b === 'number') {
-      if (a < b) return -1
-      else if (a === b) return 0
-      else if (a > b) return 1
-      else return NaN
+      if (a < b) {
+        return -1
+      } else if (a === b) {
+        return 0
+      } else if (a > b) {
+        return 1
+      } else {
+        return NaN
+      }
     }
 
     if (a instanceof BigFloat && typeof b === 'number') {
@@ -2500,8 +2527,9 @@ export class BigFloat {
       const aSign = a.sign
       const bSign = Math.sign(b)
 
-      if (aSign < bSign) return -1
-      else if (aSign > bSign) return 1
+      if (aSign < bSign) {
+        return -1
+      } else if (aSign > bSign) return 1
 
       if (aSign === Infinity || aSign === -Infinity || aSign === 0) return 0
 
@@ -2692,7 +2720,7 @@ export class BigFloat {
     }
   }
 
-  static pow10 (f, precision=CURRENT_PRECISION) {
+  static pow10 (f, precision = CURRENT_PRECISION) {
     // 10^f = e^(f * ln(10))
     f = cvtToBigFloat(f)
 
@@ -2705,11 +2733,12 @@ export class BigFloat {
   /**
    * Convert a float to a readable base-10 representation, with prec base-10 digits of precision.
    */
-  toPrecision (prec, roundingMode=CURRENT_ROUNDING_MODE) {
+  toPrecision (prec, roundingMode = CURRENT_ROUNDING_MODE) {
     const MAX_PRECISION = 1000
 
-    if (typeof prec !== "number" || !Number.isInteger(prec) || prec < 1 || prec > MAX_PRECISION)
+    if (typeof prec !== 'number' || !Number.isInteger(prec) || prec < 1 || prec > MAX_PRECISION) {
       throw new Error(`Precision must be an integer between 1 and ${MAX_PRECISION}`)
+    }
 
     let sign = this.sign
 
@@ -2746,14 +2775,13 @@ export class BigFloat {
 
     m = BigFloat.pow10(m, workingPrecision)
 
-    let [ beforeDigits, afterDigits ] = mantissaToBaseWithPrecision(m.mant, m.exp, prec)
+    let [beforeDigits, afterDigits] = mantissaToBaseWithPrecision(m.mant, m.exp, prec)
 
     if (true) {
       let digits = ((sign === -1) ? '-' : '') + trimLeft(beforeDigits, '0') + '.' + afterDigits.slice(0, prec)
 
       return `${digits}e${e}`
     }
-
 
     return digits
   }

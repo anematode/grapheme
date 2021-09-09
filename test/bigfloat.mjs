@@ -1,11 +1,11 @@
 import {
   addMantissas,
   BigFloat,
-  compareMantissas, getTrailingInfo, neededWordsForPrecision,
+  compareMantissas, getTrailingInfo, leftShiftMantissa, multiplyMantissas, neededWordsForPrecision,
   rightShiftMantissa,
   roundMantissaToPrecision,
   subtractMantissas
-} from "../src/math/arb/bigfloat.js"
+} from '../src/math/arb/bigfloat.js'
 import {deepEquals, leftZeroPad, rightZeroPad} from "../src/core/utils.js"
 import {ROUNDING_MODE} from "../src/math/rounding_modes.js"
 import { expect } from "chai"
@@ -286,6 +286,93 @@ describe("subtractMantissas", () => {
 
     let endTime = Date.now()
     console.log(`Completed ${cases} test cases for addMantissas, comparing to referenceAddMantissas, in ${(endTime - startTime) / 1000} seconds.`)
+  })
+})
+
+function referenceMultiplyMantissas (mant1, mant2, precision, targetMantissa, roundingMode) {
+  let arr = new Int32Array(mant1.length + mant2.length + 1)
+
+  for (let i = mant1.length; i >= 0; --i) {
+    let mant1Word = mant1[i] | 0
+    let mant1WordLo = mant1Word & 0x7fff
+    let mant1WordHi = mant1Word >> 15
+
+    let carry = 0,
+      j = mant2.length - 1
+    for (; j >= 0; --j) {
+      let mant2Word = mant2[j] | 0
+      let mant2WordLo = mant2Word & 0x7fff
+      let mant2WordHi = mant2Word >> 15
+
+      let low = Math.imul(mant1WordLo, mant2WordLo),
+        high = Math.imul(mant1WordHi, mant2WordHi)
+      let middle =
+        (Math.imul(mant2WordLo, mant1WordHi) +
+          Math.imul(mant1WordLo, mant2WordHi)) |
+        0
+
+      low += ((middle & 0x7fff) << 15) + carry + arr[i + j + 1]
+      low >>>= 0
+
+      if (low > 0x3fffffff) {
+        high += low >>> 30
+        low &= 0x3fffffff
+      }
+
+      high += middle >> 15
+
+      arr[i + j + 1] = low
+      carry = high
+    }
+
+    arr[i] += carry
+  }
+
+  let shift = 0
+
+  if (arr[0] === 0) {
+    leftShiftMantissa(arr, 30)
+    shift -= 1
+  }
+
+  shift += roundMantissaToPrecision(
+    arr,
+    precision,
+    targetMantissa,
+    roundingMode
+  )
+
+  return shift
+}
+
+describe("multiplyMantissas", () => {
+  it("should behave identically to the reference implementation", () => {
+    let argNames = ["mant1", "mant2", "prec", "target", "round"]
+
+    let cases = 0
+    let startTime = Date.now()
+
+    for (let i = 0; i < difficultMantissas.length; ++i) {
+      const m1 = difficultMantissas[i]
+      for (const m2 of difficultMantissas) {
+        for (let targetSize = 0; targetSize < 5; ++targetSize) {
+          for (let precision of [30, 53, 59, 60, 120]) {
+            for (let roundingMode of [0, 1, 2, 5]) {
+              let target = new Int32Array(neededWordsForPrecision(precision))
+              let ret = referenceMultiplyMantissas(m1, m2, precision, target, roundingMode)
+
+              testMantissaCase(multiplyMantissas, [m1, m2, precision, target.length, roundingMode], argNames, target, ret)
+              cases++
+            }
+          }
+        }
+      }
+
+      (!(i % 10)) ? console.log(`Progress: ${(i / difficultMantissas.length * 100).toPrecision(4)}% complete`) : 0
+    }
+
+    let endTime = Date.now()
+    console.log(`Completed ${cases} test cases for multiplyMantissas, comparing to referenceMultiplyMantissas, in ${(endTime - startTime) / 1000} seconds.`)
   })
 })
 
