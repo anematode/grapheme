@@ -730,7 +730,11 @@ export function subtractMantissas (
 
       if (!(trailingInfo & 1)) {
         // trailingInfo = 0, or 2, and more information is required!!!!!!
-        for (++wordIndex; wordIndex < exactEnd; ++wordIndex) {
+
+        ++wordIndex
+        if (mant2Shift > mant1Len) wordIndex = Math.max(wordIndex, mant2Shift)  // skip ahead to second mantissa
+
+        for (; wordIndex < exactEnd; ++wordIndex) {
           let word = (mant1[wordIndex] | 0) - (mant2[wordIndex - mant2Shift] | 0)
 
           if (word === 0) continue
