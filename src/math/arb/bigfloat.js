@@ -524,7 +524,7 @@ export function canMantissaBeRounded (
     if (truncateLen === 1) return false
 
     let min = rem - maxNeg, max = rem + maxPos, tie = 1 << (truncateLen - 1)
-    return ((min < tie && max < tie) || (min > tie && max > tie))
+    return ((min < tie && max < tie) || (min > tie && max > tie)) && (min > -tie && max < 3 * tie)
   }
 }
 
@@ -961,7 +961,63 @@ export function sqrtMantissa (
   targetMantissa,
   roundingMode = CURRENT_ROUNDING_MODE
 ) {
-  // We proceed by estimating the square root, then do a root finding search basically
+
+}
+
+function slowExactMultiplyMantissas (mant1, mant2, precision, targetMantissa, roundingMode) {
+  let arr = new Int32Array(mant1.length + mant2.length + 1)
+
+  for (let i = mant1.length; i >= 0; --i) {
+    let mant1Word = mant1[i] | 0
+    let mant1WordLo = mant1Word & 0x7fff
+    let mant1WordHi = mant1Word >> 15
+
+    let carry = 0,
+      j = mant2.length - 1
+    for (; j >= 0; --j) {
+      let mant2Word = mant2[j] | 0
+      let mant2WordLo = mant2Word & 0x7fff
+      let mant2WordHi = mant2Word >> 15
+
+      let low = Math.imul(mant1WordLo, mant2WordLo),
+        high = Math.imul(mant1WordHi, mant2WordHi)
+      let middle =
+        (Math.imul(mant2WordLo, mant1WordHi) +
+          Math.imul(mant1WordLo, mant2WordHi)) |
+        0
+
+      low += ((middle & 0x7fff) << 15) + carry + arr[i + j + 1]
+      low >>>= 0
+
+      if (low > 0x3fffffff) {
+        high += low >>> 30
+        low &= 0x3fffffff
+      }
+
+      high += middle >> 15
+
+      arr[i + j + 1] = low
+      carry = high
+    }
+
+    arr[i] += carry
+  }
+
+  let shift = 0
+
+  if (arr[0] === 0) {
+    leftShiftMantissa(arr, 30)
+    shift -= 1
+  }
+
+  shift += roundMantissaToPrecision(
+    arr,
+    precision,
+    targetMantissa,
+    roundingMode
+  )
+
+  return shift
 }
 
 /**
@@ -1039,19 +1095,29 @@ export function multiplyMantissas (
   }
 
   let shift = -1
+  let trailingInfo = 0
+  let maxErr = Math.ceil(ignoredLows / 0x40000000) + 2
 
   if (highestWord !== 0) {
+    maxErr = Math.ceil((targetMantissa[targetMantissaLen - 1] + maxErr) / 0x40000000)
     rightShiftMantissa(targetMantissa, 30)
 
     targetMantissa[0] = highestWord
     shift = 0
   }
 
+  let canBeRounded = canMantissaBeRounded(targetMantissa, precision, roundingMode, 0, maxErr)
+
+  if (!canBeRounded) { // pain ensues, but this is relatively rare
+    return slowExactMultiplyMantissas(mant1, mant2, precision, targetMantissa, roundingMode)
+  }
+
   let roundingShift = roundMantissaToPrecision(
     targetMantissa,
     precision,
     targetMantissa,
-    roundingMode
+    roundingMode,
+    trailingInfo
   )
 
   return shift + roundingShift
@@ -2036,6 +2102,10 @@ export class BigFloat {
     DOUBLE_STORE.setFromNumber(num)
 
     BigFloat.divTo(f1, DOUBLE_STORE, target, roundingMode)
+  }
+
+  static sqrtTo (f1, target, roundingMode = CURRENT_ROUNDING_MODE) {
+    
   }
 
   static fmodTo (f1, f2, target, roundingMode = CURRENT_ROUNDING_MODE) {

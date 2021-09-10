@@ -24,7 +24,7 @@
     }
   }
 
-  var precision = 100 // decimal digits
+  var precision = 15 // decimal digits
   var binaryPrecision = (precision * 3.23) | 0
   Decimal.config({ precision })
 
@@ -33,7 +33,7 @@
   var boundedFloats = floats.map(f => Math.log2(f) % 500)
 
   var bigFloats = floats.map(f => BF.fromNumber(f, binaryPrecision))
-  var decimalFloats = floats.map(f => new Decimal(f.toPrecision(precision)))
+  var decimalFloats = bigFloats.map(f => new Decimal(f.toPrecision(precision)))
 
   var boundedBigFloats = boundedFloats.map(f => BF.fromNumber(f, binaryPrecision))
   var boundedDecimalFloats = boundedFloats.map(f => new Decimal(f.toPrecision(precision)))
@@ -91,7 +91,7 @@
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
-        BF.mulTo(boundedBigFloats[i], boundedBigFloats[j], res, Grapheme.ROUNDING_MODE.WHATEVER)
+        BF.mulTo(boundedBigFloats[i], boundedBigFloats[j], res, Grapheme.ROUNDING_MODE.NEAREST)
       }
     }
   }
@@ -179,8 +179,7 @@
   //var ln2 = BF.ln(2, 200)
 
   var target = new Int32Array(2)
-  Grapheme.subtractMantissas([0x00000001], [0x1fffffff, 0x00000000, 0x20000000], 0, 30, target, Grapheme.ROUNDING_MODE.NEAREST)
-
+  var cow = 0, cow2 = 0
   /**
    Before moving primitive functions to C-like writing instead of returning value
    Benchmark fromNumber: 0.158 ms per iteration for 1000 iterations
