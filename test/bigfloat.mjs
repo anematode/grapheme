@@ -285,7 +285,7 @@ describe("subtractMantissas", () => {
     }
 
     let endTime = Date.now()
-    console.log(`Completed ${cases} test cases for addMantissas, comparing to referenceAddMantissas, in ${(endTime - startTime) / 1000} seconds.`)
+    console.log(`Completed ${cases} test cases for subtractMantissas, comparing to referenceSubtractMantissas, in ${(endTime - startTime) / 1000} seconds.`)
   })
 })
 

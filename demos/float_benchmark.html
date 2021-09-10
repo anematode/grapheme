@@ -71,7 +71,7 @@
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
-        BF.addTo(boundedBigFloats[i], boundedBigFloats[j], res, Grapheme.ROUNDING_MODE.WHATEVER)
+        BF.addTo(bigFloats[i], bigFloats[j], res, Grapheme.ROUNDING_MODE.NEAREST)
       }
     }
   }
@@ -81,7 +81,7 @@
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
-        res = boundedDecimalFloats[i].add(boundedDecimalFloats[j])
+        res = decimalFloats[i].add(decimalFloats[j])
       }
     }
   }
@@ -178,8 +178,8 @@
 
   //var ln2 = BF.ln(2, 200)
 
-  var deltaFloat = Grapheme.DeltaFloat.fromNumber(10)
   var target = new Int32Array(2)
+  Grapheme.subtractMantissas([0x00000001], [0x1fffffff, 0x00000000, 0x20000000], 0, 30, target, Grapheme.ROUNDING_MODE.NEAREST)
 
   /**
    Before moving primitive functions to C-like writing instead of returning value
