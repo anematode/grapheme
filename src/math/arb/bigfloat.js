@@ -718,6 +718,7 @@ export function subtractMantissas (
         break
       }
 
+      // Various splitting points for rounding. 0 and 2 require more words to be examined
       if (nextWord === 0x00000000) {
         trailingInfo = 0
       } else if (nextWord < 0x20000000) {
@@ -729,10 +730,13 @@ export function subtractMantissas (
       }
 
       if (!(trailingInfo & 1)) {
-        // trailingInfo = 0, or 2, and more information is required!!!!!!
-
+        // trailingInfo = 0 or 2
         ++wordIndex
-        if (mant2Shift > mant1Len) wordIndex = Math.max(wordIndex, mant2Shift)  // skip ahead to second mantissa
+
+        // If the second mantissa is wholly after the first mantissa, skip ahead to the second mantissa since all the
+        // words in between will be 0
+        if (mant2Shift > mant1Len)
+          wordIndex = Math.max(wordIndex, mant2Shift)
 
         for (; wordIndex < exactEnd; ++wordIndex) {
           let word = (mant1[wordIndex] | 0) - (mant2[wordIndex - mant2Shift] | 0)
@@ -740,10 +744,12 @@ export function subtractMantissas (
           if (word === 0) continue
           else if (word < 0) {
             if (trailingInfo === 2) {
+              // Negative word on a tie means it's below a tie
               trailingInfo = 1
               break
             }
 
+            // Subtract one ulp, then set trailing info to 3 (equivalent to "trailing mode -1")
             target[targetLen - 1]--
             let zeros = doCarry(targetLen - 1)
 
@@ -760,8 +766,6 @@ export function subtractMantissas (
         }
       }
     }
-
-    //console.log(target,positiveComputedWordIndex)
 
     return -positiveComputedWordIndex + roundMantissaToPrecision(target, prec, target, round, trailingInfo)
   }
@@ -2105,7 +2109,7 @@ export class BigFloat {
   }
 
   static sqrtTo (f1, target, roundingMode = CURRENT_ROUNDING_MODE) {
-    
+
   }
 
   static fmodTo (f1, f2, target, roundingMode = CURRENT_ROUNDING_MODE) {
