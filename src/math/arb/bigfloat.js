@@ -366,27 +366,31 @@ export function roundMantissaToPrecision (
  * we continue computing until we can determine with certainty the carry and the rounding direction. This function
  * allows aliasing mant1 to be the target mantissa. TODO optimize
  * @param mant1 {Int32Array}
+ * @param mant1Len {number} Length of the first mantissa; how many words to actually use
  * @param mant2 {Int32Array} Nonnegative shift applied to mantissa 2
+ * @param mant2Len {number} Length of the second mantissa; how many words to actually use
  * @param mant2Shift {number}
- * @param prec {number}
+ * @param prec {number} Precision to compute and round to
  * @param target {Int32Array} The mantissa that is written to
+ * @param targetLen {number} Number of words in the target mantissa
  * @param round {number}
  */
 export function addMantissas (
   mant1,
+  mant1Len,
   mant2,
+  mant2Len,
   mant2Shift,
   prec,
   target,
+  targetLen,
   round = CURRENT_ROUNDING_MODE
 ) {
   let isAliased = mant1 === target
 
-  let mant1Len = mant1.length,
-    mant2Len = mant2.length,
-    mant2End = mant2Len + mant2Shift
+  let mant2End = mant2Len + mant2Shift
 
-  let newMantLen = target.length
+  let newMantLen = targetLen
   let newMant = target
 
   // Need to compute to higher precision first
@@ -394,6 +398,7 @@ export function addMantissas (
     newMantLen = Math.max(mant1Len, neededWordsForPrecision(prec))
     newMant = new Int32Array(newMantLen)
   }
+
 
   // We first copy over all the parts of the addition we definitely need:
   if (!isAliased) {
@@ -447,7 +452,7 @@ export function addMantissas (
   if (carry) {
     // Get trailing info from beyond the end of the truncation due to right shifting LOL
     if (needsTrailingInfo) {
-      let lastWord = newMant[newMant.length - 1]
+      let lastWord = newMant[newMantLen - 1]
 
       if (lastWord === 0) {
         trailingInfo = +!!trailingInfo
@@ -968,6 +973,7 @@ export function sqrtMantissa (
 
 }
 
+// Slow function used as a fallback when accumulated error is too large
 function slowExactMultiplyMantissas (mant1, mant2, precision, targetMantissa, roundingMode) {
   let arr = new Int32Array(mant1.length + mant2.length + 1)
 
@@ -1025,9 +1031,7 @@ function slowExactMultiplyMantissas (mant1, mant2, precision, targetMantissa, ro
 }
 
 /**
- * Not yet fully resistant, but a significantly faster (2x speedup) multiplication operation that works by only
- * multiplying the words which must appear in the final result. Hard to optimize beyond here until we get to Karatsuba
- * and the like, which isn't really relevant at small scales.
+ * Multiply two mantissas
  * @param mant1
  * @param mant2
  * @param precision
@@ -1276,7 +1280,50 @@ export function divMantissas (
     trailingInfo,
     1
   )
+
   return newMantissaShift + roundingShift
+}
+
+class MantissaFactory {
+  constructor () {
+    this.arr = new Int32Array(8)
+  }
+
+  getStore (precision) {
+    let words = neededWordsForPrecision(precision)
+    if (this.arr.length < words) {
+      this.arr = new Int32Array(words)
+    }
+
+    return this.arr
+  }
+}
+
+// To calculate N/D... I'm genuinely not sure. We have an exact method already, which is good to compare to, but
+// computing N/D *with correct rounding* is difficult. We can compute 1/D to within 1 ulp of precision using a root-
+// finding method, sure... but then what? I think the strategy is to compute 1/D to the target precision, then multiply
+// by N and keep track of the maximum relative error (which will be 2 ulp in either direction in this case), then check
+// whether the result can be correctly rounded. If not, we compute 1/D to one extra word of precision (which isn't
+// difficult) and try again... but couldn't this result in an infinite loop? A key observation is that sometimes we will
+// have to compute the division to full precision, like when round is a floor operation and mant2 divides mant1 exactly.
+// So perhaps we try computing 1/D to *one extra word of precision*, then when all else fails, we fall back to the slow
+// bit-by-bit approach, similar to what we do with multiplication.
+
+const divStore = new MantissaFactory()
+
+export function divMantissas2 (mant1, mant2, precision, target, round) {
+  let estimate = (2 ** 30) / (mant2[0] * (2 ** 30) + mant2[1])
+  let reciprocalTarget = divStore.getStore(precision)
+
+  let estimateShift = 0
+
+  estimate -= (reciprocalTarget[0] = Math.floor(estimate))
+  estimate *= 2 ** 30
+  reciprocalTarget[1] = Math.floor(estimate)
+
+  // Target is now quite close to the final answer. We apply a Newton–Raphson approach,
+
+  console.log("mant1", mant1, "mant2", mant2, "target", target)
 }
 
 /**
@@ -1870,10 +1917,13 @@ export class BigFloat {
 
       let shift = addMantissas(
         f1.mant,
+        f1.mant.length,
         f2.mant,
+        f2.mant.length,
         f1.exp - f2.exp,
         targetPrecision,
         targetMantissa,
+        targetMantissa.length,
         roundingMode
       )
 
@@ -2090,6 +2140,8 @@ export class BigFloat {
       target.mant,
       roundingMode
     )
+
+    divMantissas2(f1.mant, f2.mant, target.prec, target.mant, roundingMode)
 
     target.exp = f1.exp - f2.exp + shift
     target.sign = f1Sign / f2Sign

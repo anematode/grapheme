@@ -52,7 +52,7 @@
         zIm.setFromFloat(plotIm)
 
         let iterations = 0
-        let maxIterations = 2
+        let maxIterations = 100
 
         for (; iterations < maxIterations; ++iterations) {
           BF.mulTo(zRe, zRe, tmp1)
@@ -60,12 +60,6 @@
 
           BF.subTo(tmp1, tmp2, tmp3)
           BF.addTo(tmp3, plotRe, newRe)
-
-          if (tmp1.toNumber() - tmp2.toNumber() !== tmp3.toNumber()) {
-            console.log(tmp1, tmp2, tmp3)
-            Object.assign(window, {tmp1, tmp2, tmp3})
-            throw new Error()
-          }
 
           BF.mulTo(zRe, zIm, tmp1)
           BF.addTo(tmp1, tmp1, tmp2)

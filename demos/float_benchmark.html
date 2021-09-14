@@ -24,6 +24,40 @@
     }
   }
 
+  function referenceAddMantissas (mant1, mant1Len, mant2, mant2Len, mant2Shift, prec, target, targetLen, round=CURRENT_ROUNDING_MODE) {
+    let output = new Int32Array(Math.max(mant1Len, mant2Len + mant2Shift) + 1)
+
+    for (let i = 0; i < mant1Len; ++i) {
+      output[i] += mant1[i]
+    }
+
+    for (let i = 0; i < mant2Len; ++i) {
+      output[i + mant2Shift] += mant2[i]
+    }
+
+    let carry = 0
+    for (let i = output.length - 1; i >= 0; --i) {
+      let word = output[i] + carry
+
+      if (word > 0x3fffffff) {
+        word -= 0x40000000
+        carry = 1
+      } else {
+        carry = 0
+      }
+
+      output[i] = word
+    }
+
+    if (carry === 1) {
+      Grapheme.rightShiftMantissa(output, 30, output)
+      output[0] = carry
+    }
+
+    let roundingShift = Grapheme.roundMantissaToPrecision(output, prec, target, round)
+    return carry + roundingShift
+  }
+
   var precision = 15 // decimal digits
   var binaryPrecision = (precision * 3.23) | 0
   Decimal.config({ precision })
@@ -33,7 +67,7 @@
   var boundedFloats = floats.map(f => Math.log2(f) % 500)
 
   var bigFloats = floats.map(f => BF.fromNumber(f, binaryPrecision))
-  var decimalFloats = bigFloats.map(f => new Decimal(f.toPrecision(precision)))
+  var decimalFloats = floats.map(f => new Decimal(f.toPrecision(precision)))
 
   var boundedBigFloats = boundedFloats.map(f => BF.fromNumber(f, binaryPrecision))
   var boundedDecimalFloats = boundedFloats.map(f => new Decimal(f.toPrecision(precision)))

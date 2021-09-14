@@ -148,14 +148,14 @@ describe("roundMantissaToPrecision", () => {
 })
 
 // Reference function. Slow but (hopefully) accurate
-function referenceAddMantissas (mant1, mant2, mant2Shift, prec, target, round=CURRENT_ROUNDING_MODE) {
-  let output = new Int32Array(Math.max(mant1.length, mant2.length + mant2Shift) + 1)
+function referenceAddMantissas (mant1, mant1Len, mant2, mant2Len, mant2Shift, prec, target, targetLen, round=CURRENT_ROUNDING_MODE) {
+  let output = new Int32Array(Math.max(mant1Len, mant2Len + mant2Shift) + 1)
 
-  for (let i = 0; i < mant1.length; ++i) {
+  for (let i = 0; i < mant1Len; ++i) {
     output[i] += mant1[i]
   }
 
-  for (let i = 0; i < mant2.length; ++i) {
+  for (let i = 0; i < mant2Len; ++i) {
     output[i + mant2Shift] += mant2[i]
   }
 
@@ -177,6 +177,7 @@ function referenceAddMantissas (mant1, mant2, mant2Shift, prec, target, round=CU
     rightShiftMantissa(output, 30, output)
     output[0] = carry
   }
+
   let roundingShift = roundMantissaToPrecision(output, prec, target, round)
 
   return carry + roundingShift
@@ -184,7 +185,7 @@ function referenceAddMantissas (mant1, mant2, mant2Shift, prec, target, round=CU
 
 describe("addMantissas", () => {
   it("should behave identically to the reference implementation", () => {
-    let argNames = ["mant1", "mant2", "mant2Shift", "prec", "target", "round"]
+    let argNames = ["mant1", "mant1Len", "mant2", "mant2Len", "mant2Shift", "prec", "target", "targetLen", "round"]
 
     let cases = 0
     let startTime = Date.now()
@@ -198,9 +199,10 @@ describe("addMantissas", () => {
             for (let precision of [30, 53, 59, 60, 120]) {
               for (let roundingMode of [0, 1, 2, 5]) {
                 let target = new Int32Array(Math.max(neededWordsForPrecision(precision), targetSize))
-                let ret = referenceAddMantissas(m1, m2, shift, precision, target, roundingMode)
+                const args = [m1, m1.length, m2, m2.length, shift, precision, target, target.length, roundingMode]
+                let ret = referenceAddMantissas(...args)
 
-                testMantissaCase(addMantissas, [m1, m2, shift, precision, target.length, roundingMode], argNames, target, ret)
+                testMantissaCase(addMantissas, args, argNames, target, ret)
                 cases++
               }
             }
