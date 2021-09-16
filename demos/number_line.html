@@ -13,9 +13,10 @@
 
   var polygon = new Grapheme.Polygon({ vertices: [[100, 100], [170, 100], [150, 150], [100, 150]], color: "red" })
   var numberLine = new Grapheme.NumberLine()
+  var ticks = new Grapheme.NumberLineTicks({ ticks: [0, 0.5, 1] })
 
   scene.add(polygon)
-  scene.add(numberLine)
+  scene.add(numberLine.add(ticks))
 
   document.body.appendChild(scene.domElement)
 
