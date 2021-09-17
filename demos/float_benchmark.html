@@ -58,18 +58,19 @@
     return carry + roundingShift
   }
 
-  var precision = 15 // decimal digits
+  var precision = 100 // decimal digits
   var binaryPrecision = (precision * 3.23) | 0
   Decimal.config({ precision })
+  BF.setPrecision(precision)
 
   var res
   var floats = generateRandomFloats()
-  var boundedFloats = floats.map(f => Math.log2(f) % 500)
+  var boundedFloats = floats.map(f => Math.log2(Math.abs(f)) % 500)
 
-  var bigFloats = floats.map(f => BF.fromNumber(f, binaryPrecision))
+  var bigFloats = floats.map(f => BF.fromNumber(f))
   var decimalFloats = floats.map(f => new Decimal(f.toPrecision(precision)))
 
-  var boundedBigFloats = boundedFloats.map(f => BF.fromNumber(f, binaryPrecision))
+  var boundedBigFloats = boundedFloats.map(f => BF.fromNumber(f))
   var boundedDecimalFloats = boundedFloats.map(f => new Decimal(f.toPrecision(precision)))
 
   function generateRandomFloats() {
@@ -156,6 +157,18 @@
     }
   }
 
+  function sqrt () {
+    for (let i = 0; i < floats.length; ++i) {
+      res = BF.sqrt(boundedBigFloats[i])
+    }
+  }
+
+  function decimalSqrt () {
+    for (let i = 0; i < floats.length; ++i) {
+      res = boundedDecimalFloats[i].sqrt()
+    }
+  }
+
   function ln() {
     for (let i = 0; i < floats.length; ++i) {
       res = BF.ln(boundedBigFloats[i])
@@ -203,6 +216,11 @@
     benchmark(division, "BF division", 10)
   }
 
+  function benchmarkSqrt () {
+    benchmark(decimalSqrt, "decimal.js sqrt", 10)
+    benchmark(sqrt, "BF sqrt", 10)
+  }
+
   function benchmarkLn () {
     benchmark(decimalLn, "decimal.js ln", 10)
     benchmark(ln, "BF ln", 10)
@@ -214,6 +232,8 @@
 
   var target = new Int32Array(2)
   var cow = 0, cow2 = 0
+
+  Decimal.precision = 1000;
   /**
    Before moving primitive functions to C-like writing instead of returning value
    Benchmark fromNumber: 0.158 ms per iteration for 1000 iterations

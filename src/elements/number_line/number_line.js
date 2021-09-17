@@ -36,11 +36,13 @@ class NumberLineTransform {
     /** @type {Vec2} */
     this.end = end
 
-    /** @type {number} */
+    /** @type {BigFloat} */
     this.startX = startX
-    /** @type {number} */
+    /** @type {BigFloat} */
     this.endX = endX
   }
+
+
 
   pixelToGraph (x, y) {
 

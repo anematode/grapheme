@@ -1588,6 +1588,46 @@ export function expBaseCase (f, precision) {
   return target
 }
 
+export function getCachedPi (precision) {
+  // We use the rapidly converging Gauss-Legendre algorithm to get pi, which is based on the arithmetic-geometric mean.
+  // See https://en.wikipedia.org/wiki/Gauss%E2%80%93Legendre_algorithm for details.
+
+  let an = BigFloat.new(precision), tn = BigFloat.new(precision), pn = BigFloat.new(precision),
+    tmp = BigFloat.new(precision), tmp2 = BigFloat.new(precision), tmp3 = BigFloat.new(precision), tmp4 = BigFloat.new(precision)
+
+  an.setFromNumber(1)
+  let bn = BigFloat.div(1, BigFloat.sqrt(2, precision), precision)
+  tn.setFromNumber(0.25)
+  pn.setFromNumber(1)
+
+  let iters = 4 + Math.log2(precision)
+
+  for (let i = 0; i < iters; ++i) {
+    BigFloat.mulTo(an, bn, tmp)
+    tmp = BigFloat.sqrt(tmp, precision)
+
+    BigFloat.addTo(an, bn, tmp2)
+    BigFloat.mulPowTwoTo(tmp2, -1, tmp2)
+
+    BigFloat.subTo(an, tmp2, tmp3)
+    BigFloat.mulTo(tmp3, tmp3, tmp4)
+    BigFloat.mulTo(tmp4, pn, tmp3)
+    BigFloat.subTo(tn, tmp3, tmp4)
+    BigFloat.mulPowTwoTo(pn, 1, pn)
+
+    ;[an, tmp] = [tmp, an]
+    ;[bn, tmp2] = [tmp2, bn]
+    ;[tn, tmp4] = [tmp4, tn]
+  }
+
+  BigFloat.addTo(an, bn, tmp)
+  BigFloat.mulTo(tmp, tmp, tmp2)
+  BigFloat.divTo(tmp2, tn, tmp)
+  BigFloat.mulPowTwoTo(tmp, -2, tmp)
+
+  return tmp
+}
+
 // A special float with a mantissa of 30 bits. Its value should be interpreted as 2^exp * mant. Infinity is represented
 // with a mantissa of Infinity, 0 is represented with a mantissa of 0, and NaN is represented with a mantissa of NaN
 export class DeltaFloat {
@@ -2141,7 +2181,7 @@ export class BigFloat {
       roundingMode
     )
 
-    divMantissas2(f1.mant, f2.mant, target.prec, target.mant, roundingMode)
+    //divMantissas2(f1.mant, f2.mant, target.prec, target.mant, roundingMode)
 
     target.exp = f1.exp - f2.exp + shift
     target.sign = f1Sign / f2Sign
@@ -2158,10 +2198,6 @@ export class BigFloat {
     DOUBLE_STORE.setFromNumber(num)
 
     BigFloat.divTo(f1, DOUBLE_STORE, target, roundingMode)
-  }
-
-  static sqrtTo (f1, target, roundingMode = CURRENT_ROUNDING_MODE) {
-
   }
 
   static fmodTo (f1, f2, target, roundingMode = CURRENT_ROUNDING_MODE) {
@@ -2866,6 +2902,95 @@ export class BigFloat {
    */
   lessThan (f) {
     return BigFloat.cmp(this, f) === -1
+  }
+
+  static sqrt (f1, precision = CURRENT_PRECISION, roundingMode = CURRENT_ROUNDING_MODE) {
+    f1 = cvtToBigFloat(f1)
+    let xn = BigFloat.new(precision)
+
+    let sign = f1.sign
+
+    // Special handlers
+    if (sign === 0) {
+      xn.setZero()
+    } else if (sign < 0) {
+      xn.setNaN()
+    } else if (sign === Infinity) {
+      xn.sign = Infinity
+    } else {
+      // We get a high accuracy estimate of the square root by converting f1 to a number ;)
+      let mant = f1.mant
+      let mantEstimate = (mant[0] * BIGFLOAT_WORD_MAX) + mant[1] + (mant.length > 2 ? (mant[2] / BIGFLOAT_WORD_MAX) : 0)
+      let sqrtEstimate = Math.sqrt(mantEstimate)
+
+      // We use a Newton-Raphson approach, which has quadratic convergence. With 52 bits of precision already, we need
+      // ceil(log2(prec / 52)) iterations to achieve full precision.
+
+      // x_0 = sqrtEstimate; x_(n+1) = 0.5 * (x_n + mantEstimate / x_n).
+
+      let workingPrecision = precision + 4
+      let iters = Math.ceil(Math.log2(workingPrecision / 52))
+
+      let f = BigFloat.new(workingPrecision)
+      f.setFromFloat(f1)
+      f.exp = 2  // f == mantEstimate
+
+      let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
+      xn.setFromNumber(sqrtEstimate)
+
+      for (let i = 0; i < iters; ++i) {
+        BigFloat.divTo(f, xn, tmp, ROUNDING_MODE.WHATEVER) // tmp = mantEstimate / x_n
+        BigFloat.addTo(xn, tmp, tmp2, ROUNDING_MODE.WHATEVER)
+        BigFloat.mulPowTwoTo(tmp2, -1, tmp2)
+
+        ;[tmp2, xn] = [xn, tmp2]
+      }
+
+      BigFloat.mulPowTwoTo(xn, -30 + 15 * f1.exp, xn)
+    }
+
+    return xn
+  }
+
+  /**
+   * Compute the arithmetic-geometric mean of two numbers
+   * @param f1
+   * @param f2
+   * @param precision
+   */
+  static agm (f1, f2, precision=CURRENT_PRECISION) {
+    f1 = cvtToBigFloat(f1)
+    f2 = cvtToBigFloat(f2)
+
+    let an = BigFloat.new(precision), bn = BigFloat.new(precision), tmp = BigFloat.new(precision), tmp2 = BigFloat.new(precision)
+
+    an.setFromFloat(f1)
+    bn.setFromFloat(f2)
+
+    // agm convergence is a bit finnicky... for wildly different f1 and f2 it first converges slowly (bit by bit), then
+    // suddenly quadratically. It's still pretty fast, though.
+
+    let iters = Math.abs(f1.exp - f2.exp) * 30
+    let prevErr
+
+    for (let i = 0; i < 30; ++i) {
+      BigFloat.addTo(an, bn, tmp)
+      BigFloat.mulPowTwoTo(tmp, -1, tmp)
+      BigFloat.mulTo(an, bn, tmp2)
+      bn = BigFloat.sqrt(tmp2, precision)
+
+      ;[an, tmp] = [tmp, an]
+      let err = BigFloat.sub(an, bn).toNumber()
+
+      if (Math.abs(1 - err/prevErr) < 0.000001) {
+        console.log(i)
+        break
+      }
+
+      prevErr = err
+    }
+
+    console.log(an.toNumber())
   }
 
   /**
