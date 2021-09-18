@@ -1312,16 +1312,21 @@ class MantissaFactory {
 const divStore = new MantissaFactory()
 
 export function divMantissas2 (mant1, mant2, precision, target, round) {
-  let estimate = (2 ** 30) / (mant2[0] * (2 ** 30) + mant2[1])
+  let estimate = (2 ** 60) / (mant2[0] * (2 ** 30) + mant2[1] + ((mant2.length > 2) ? mant2[2] : 0) * (2 ** -30))
   let reciprocalTarget = divStore.getStore(precision)
 
   let estimateShift = 0
 
   estimate -= (reciprocalTarget[0] = Math.floor(estimate))
   estimate *= 2 ** 30
-  reciprocalTarget[1] = Math.floor(estimate)
+  estimate -= (reciprocalTarget[1] = Math.floor(estimate))
+  estimate *= 2 ** 30
+  reciprocalTarget[2] = Math.floor(estimate)
 
-  // Target is now quite close to the final answer. We apply a Newton–Raphson approach,
+  console.log(estimate, reciprocalTarget, mant2)
+
+
+  return divMantissas(mant1, mant2, precision, target, round)
 
   console.log("mant1", mant1, "mant2", mant2, "target", target)
 }
@@ -2177,7 +2182,7 @@ export class BigFloat {
       return
     }
 
-    let shift = divMantissas(
+    let shift = divMantissas2(
       f1.mant,
       f2.mant,
       target.prec,
@@ -2946,8 +2951,6 @@ export class BigFloat {
         BigFloat.addTo(xn, tmp, tmp2, ROUNDING_MODE.WHATEVER)
         BigFloat.mulPowTwoTo(tmp2, -1, tmp2)
 
-        window.cow+=1
-
         ;[tmp2, xn] = [xn, tmp2]
       }
 
@@ -2981,6 +2984,8 @@ export class BigFloat {
       BigFloat.mulPowTwoTo(tmp, -1, tmp)
       BigFloat.mulTo(an, bn, tmp2)
       bn = BigFloat.sqrt(tmp2, workingPrecision)
+
+      console.log(i)
 
       ;[an, tmp] = [tmp, an]
       BigFloat.subTo(an, bn, err)
