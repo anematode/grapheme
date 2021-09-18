@@ -1588,7 +1588,11 @@ export function expBaseCase (f, precision) {
   return target
 }
 
+let cachedPi
+
 export function getCachedPi (precision) {
+  if (cachedPi?.prec >= precision) return cachedPi
+
   // We use the rapidly converging Gauss-Legendre algorithm to get pi, which is based on the arithmetic-geometric mean.
   // See https://en.wikipedia.org/wiki/Gauss%E2%80%93Legendre_algorithm for details.
 
@@ -1625,7 +1629,7 @@ export function getCachedPi (precision) {
   BigFloat.divTo(tmp2, tn, tmp)
   BigFloat.mulPowTwoTo(tmp, -2, tmp)
 
-  return tmp
+  return cachedPi = tmp
 }
 
 // A special float with a mantissa of 30 bits. Its value should be interpreted as 2^exp * mant. Infinity is represented
@@ -2906,17 +2910,16 @@ export class BigFloat {
 
   static sqrt (f1, precision = CURRENT_PRECISION, roundingMode = CURRENT_ROUNDING_MODE) {
     f1 = cvtToBigFloat(f1)
-    let xn = BigFloat.new(precision)
 
     let sign = f1.sign
 
     // Special handlers
     if (sign === 0) {
-      xn.setZero()
+      return BigFloat.fromNumber(0, precision)
     } else if (sign < 0) {
-      xn.setNaN()
+      return BigFloat.fromNumber(NaN, precision)
     } else if (sign === Infinity) {
-      xn.sign = Infinity
+      return BigFloat.fromNumber(Infinity, precision)
     } else {
       // We get a high accuracy estimate of the square root by converting f1 to a number ;)
       let mant = f1.mant
@@ -2929,9 +2932,9 @@ export class BigFloat {
       // x_0 = sqrtEstimate; x_(n+1) = 0.5 * (x_n + mantEstimate / x_n).
 
       let workingPrecision = precision + 4
-      let iters = Math.ceil(Math.log2(workingPrecision / 52))
+      let iters = Math.ceil(Math.log2(workingPrecision / 52)) + 1
 
-      let f = BigFloat.new(workingPrecision)
+      let f = BigFloat.new(workingPrecision), xn = BigFloat.new(workingPrecision)
       f.setFromFloat(f1)
       f.exp = 2  // f == mantEstimate
 
@@ -2943,13 +2946,14 @@ export class BigFloat {
         BigFloat.addTo(xn, tmp, tmp2, ROUNDING_MODE.WHATEVER)
         BigFloat.mulPowTwoTo(tmp2, -1, tmp2)
 
+        window.cow+=1
+
         ;[tmp2, xn] = [xn, tmp2]
       }
 
       BigFloat.mulPowTwoTo(xn, -30 + 15 * f1.exp, xn)
+      return xn.toBigFloat(precision)
     }
-
-    return xn
   }
 
   /**
@@ -2962,35 +2966,31 @@ export class BigFloat {
     f1 = cvtToBigFloat(f1)
     f2 = cvtToBigFloat(f2)
 
-    let an = BigFloat.new(precision), bn = BigFloat.new(precision), tmp = BigFloat.new(precision), tmp2 = BigFloat.new(precision)
+    let workingPrecision = precision + 4
+
+    let an = BigFloat.new(workingPrecision), bn = BigFloat.new(workingPrecision), tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
+    let err = BigFloat.new(30)
 
     an.setFromFloat(f1)
     bn.setFromFloat(f2)
 
     // agm convergence is a bit finnicky... for wildly different f1 and f2 it first converges slowly (bit by bit), then
     // suddenly quadratically. It's still pretty fast, though.
-
-    let iters = Math.abs(f1.exp - f2.exp) * 30
-    let prevErr
-
-    for (let i = 0; i < 30; ++i) {
+    for (let i = 0; i < 100; ++i) {
       BigFloat.addTo(an, bn, tmp)
       BigFloat.mulPowTwoTo(tmp, -1, tmp)
       BigFloat.mulTo(an, bn, tmp2)
-      bn = BigFloat.sqrt(tmp2, precision)
+      bn = BigFloat.sqrt(tmp2, workingPrecision)
 
       ;[an, tmp] = [tmp, an]
-      let err = BigFloat.sub(an, bn).toNumber()
+      BigFloat.subTo(an, bn, err)
 
-      if (Math.abs(1 - err/prevErr) < 0.000001) {
-        console.log(i)
+      if (BigFloat.floorLog2(err, true) < BigFloat.floorLog2(bn) - precision) {
         break
       }
-
-      prevErr = err
     }
 
-    console.log(an.toNumber())
+    return an.toBigFloat(precision)
   }
 
   /**
@@ -3017,47 +3017,20 @@ export class BigFloat {
       return BigFloat.fromNumber(f1Sign, precision)
     }
 
-    let workingPrecision = precision + 4
+    // ln(f) is about pi * f * 2^(m-2) / (2 * agm(f * 2^(m-2), 1)) - m * ln(2), where m + ln2(x) > prec / 2
 
-    // Express ln(f) = ln(a) + n ln(2) where 0.5 <= a < 1
-    let n = BigFloat.floorLog2(f, true) + 1
-    let a = BigFloat.new(precision)
-    BigFloat.mulPowTwoTo(f, -n, a)
+    let m = Math.ceil(precision / 2 - BigFloat.floorLog2(f))
+    let tmp = BigFloat.new(precision), tmp2 = BigFloat.new(precision)
 
-    // Compute ln(a) = 2 * sum(k = 0 to inf, 1/(2k+1) * ((a-1)/(a+1))^(2k+1)). As you can see, the series converges
-    // pretty rapidly for a close to 1; in the worst case we have convergence at a rate of ((0.5-1)/(0.5+1))^2k = (1/9)^k
-    // If b = ((a-1)/(a+1))^2 we'll need 1 - prec / log2(b) iterations
+    BigFloat.mulPowTwoTo(f, m - 2, tmp) // tmp = 2 ^ (m-2)
+    let den = BigFloat.agm(tmp, 1, precision)
+    BigFloat.mulPowTwoTo(den, 1, den)
 
-    let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision),
-      tmp3 = BigFloat.new(workingPrecision), b = BigFloat.new(workingPrecision)
+    BigFloat.mulTo(tmp, getCachedPi(precision), tmp2) // tmp = pi * f * 2 ^ (m-2)
+    BigFloat.divTo(tmp2, den, tmp)
 
-    BigFloat.addNumberTo(a, -1, tmp)
-    BigFloat.addNumberTo(a, 1, tmp2)
-    BigFloat.divTo(tmp, tmp2, tmp3)  // tmp3 = (a-1)/(a+1)
-    BigFloat.mulTo(tmp3, tmp3, b)    // b = ((a-1)/(a+1))^2
-
-    let iters = Math.ceil(-precision / BigFloat.floorLog2(b) + 2)
-
-    let sum = tmp3.clone()   // sum = 0th term of the series
-    let bPowed = tmp3.clone()
-
-    for (let k = 1; k <= iters; ++k) {
-      BigFloat.mulTo(b, bPowed, tmp)  // tmp = b ^ (2k+1)
-      BigFloat.divNumberTo(tmp, 2 * k + 1, tmp2)  // tmp2 = summand
-
-      BigFloat.addTo(tmp2, sum, tmp3)
-
-      ;[tmp, bPowed] = [bPowed, tmp]
-      ;[tmp3, sum] = [sum, tmp3]
-    }
-
-    BigFloat.mulPowTwoTo(sum, 1, sum) // sum = ln(a)
-
-    let ln2 = getCachedLn2(workingPrecision)
-    BigFloat.mulNumberTo(ln2, n, tmp)   // tmp = n ln 2
-    BigFloat.addTo(tmp, sum, a)        // a = ln(a) + n ln 2
-
-    return a
+    BigFloat.mulNumberTo(getCachedLn2(precision), m, tmp2)
+    return BigFloat.sub(tmp, tmp2, precision)
   }
 
   /**
