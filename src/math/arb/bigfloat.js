@@ -594,8 +594,9 @@ export function subtractMantissas (
   let wordIndex = 0
 
   for (; wordIndex < exactEnd; ++wordIndex) {
-    // casting with "| 0" converts OOB undefined values to 0 (TODO: test if bounds checking makes this faster)
-    let mant1Word = mant1[wordIndex] | 0, mant2Word = mant2[wordIndex - mant2Shift] | 0
+    let mant2Index = wordIndex - mant2Shift
+    let mant1Word = (wordIndex < mant1Len) ? mant1[wordIndex] : 0,
+      mant2Word = (mant2Index >= 0 && mant2Index < mant2Len) ? mant2[mant2Index] : 0
 
     let computedWord = mant1Word - mant2Word
     if (computedWord > 0) {
@@ -666,8 +667,10 @@ export function subtractMantissas (
       }
     }
 
-    let mant1Word = mant1[wordIndex] | 0, mant2Word = mant2[wordIndex - mant2Shift] | 0
-    let computedWord = mant1Word - mant2Word
+    let mant2Index = wordIndex - mant2Shift
+    let mant1Word = (wordIndex < mant1Len) ? mant1[wordIndex] : 0,
+      mant2Word = (mant2Index >= 0 && mant2Index < mant2Len) ? mant2[mant2Index] : 0
+    let computedWord = (mant1Word - mant2Word) | 0
 
     target[targetIndex] = computedWord
   }
@@ -689,7 +692,11 @@ export function subtractMantissas (
       let nextWord = 0
 
       while (1) {
-        nextWord = (mant1[wordIndex] | 0) - (mant2[wordIndex - mant2Shift] | 0)
+        let mant2Index = wordIndex - mant2Shift
+        let mant1Word = (wordIndex < mant1Len) ? mant1[wordIndex] : 0,
+          mant2Word = (mant2Index >= 0 && mant2Index < mant2Len) ? mant2[mant2Index] : 0
+
+        nextWord = (mant1Word - mant2Word) | 0
 
         if (nextWord < 0) {
           target[targetLen - 1] -= 1
@@ -736,7 +743,11 @@ export function subtractMantissas (
           wordIndex = Math.max(wordIndex, mant2Shift)
 
         for (; wordIndex < exactEnd; ++wordIndex) {
-          let word = (mant1[wordIndex] | 0) - (mant2[wordIndex - mant2Shift] | 0)
+          let mant2Index = wordIndex - mant2Shift
+          let mant1Word = (wordIndex < mant1Len) ? mant1[wordIndex] : 0,
+            mant2Word = (mant2Index >= 0 && mant2Index < mant2Len) ? mant2[mant2Index] : 0
+
+          let word = (mant1Word - mant2Word) | 0
 
           if (word === 0) continue
           else if (word < 0) {
@@ -1315,7 +1326,10 @@ export function divMantissas2 (mant1, mant2, precision, target, round) {
   estimate *= 2 ** 30
   reciprocalTarget[2] = Math.floor(estimate)
 
-  //console.log(estimate, reciprocalTarget, mant2)
+  // reciprocalTarget is now accurate to at least 52 bits. We compute X_(i+1) = X_i + X_i * (1 - D * X_i), which has
+  // quadratic convergence
+
+
 
 
   return divMantissas(mant1, mant2, precision, target, round)
@@ -2198,6 +2212,10 @@ export class BigFloat {
 
     target.exp = f1.exp - f2.exp + shift
     target.sign = f1Sign / f2Sign
+  }
+
+  static reciprocal (f) {
+
   }
 
   /**
