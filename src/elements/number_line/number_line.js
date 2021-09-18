@@ -4,6 +4,7 @@ import { Figure } from '../figure.js'
 import { Vec2 } from '../../math/vec/vec2.js'
 import { BigFloat } from '../../math/arb/bigfloat.js'
 import { ROUNDING_MODE } from '../../math/rounding_modes.js'
+import { ulp } from '../../math/real/fp_manip.js'
 
 let figureInterface = Figure.prototype.getInterface()
 
@@ -36,38 +37,96 @@ const numberLineInterface = constructInterface({
 // are recommended to be used when each pixel in the space between start and end can be subdivided at least 1000 times.
 // Otherwise, BigFloats are recommended, with a given precision sufficient to subdivide each pixel 1000 times.
 
-class NumberLineTransform {
+export class NumberLineTransform {
   constructor (start, end, startX, endX) {
     /** @type {Vec2} */
-    this.start = start
+    this.start = Vec2.fromObj(start)
     /** @type {Vec2} */
-    this.end = end
+    this.end = Vec2.fromObj(end)
 
-    /** @type {BigFloat} */
-    this.startX = BigFloat.ZERO
-    /** @type {BigFloat} */
-    this.endX = BigFloat.ONE
-
-    this.setStart(startX)
-    this.setEnd(endX)
+    this.setStart(BigFloat.ZERO)
+    this.setEnd(BigFloat.ONE)
 
     /** @type {string} Either "double" or "bigfloat" */
     this.recommendedMode = "double"
     this.recommendedPrecision = 53
+
+    this.isValid = true
   }
 
   setStart (s) {
     this.startX = BigFloat.from(s)
-    this.startXAsNumber = this.startX.toNumber(ROUNDING_MODE.NEAREST)
 
-    this.ascertainMode()
+    this.normalize()
   }
 
   setEnd (e) {
     this.endX = BigFloat.from(e)
-    this.endXAsNumber = this.startX.toNumber(ROUNDING_MODE.NEAREST)
 
-    this.ascertainMode()
+    this.normalize()
+  }
+
+  pixelLen () {
+    return this.start.sub(this.end).len()
+  }
+
+  calculateDeltaX () {
+    BigFloat.withWorkingBinaryPrecision(this.recommendedPrecision, () => {
+      this.deltaX = BigFloat.sub(this.endX, this.startX)
+
+      this.reciprocalDeltaX = BigFloat.div(1, this.deltaX)
+    })
+  }
+
+  normalize () {
+    const { endXAsNumber: endX, startXAsNumber: startX } = this
+    let mode = "double"
+
+    this.valid = true
+
+    let fineness = this.pixelLen() * 1000
+    if (fineness === 0 || endX === undefined || startX === undefined) {
+      this.valid = false
+      return
+    }
+
+    let neededUlp = Math.abs(startX - endX) / fineness
+
+    // Determine whether double-precision is sufficient
+    if (!Number.isFinite(endX) || !Number.isFinite(startX) || ulp(endX) > neededUlp || ulp(startX) > neededUlp) {
+      mode = "bigfloat"
+    }
+
+    this.recommendedMode = mode
+    if (mode === "double") {
+      this.recommendedPrecision = 53
+    } else {
+      const { startX, endX } = this
+
+      console.log(endX)
+        // Need to use big float arithmetic to calculate precision
+
+        BigFloat.withWorkingBinaryPrecision(Math.max(endX.prec, startX.prec), () => {
+          neededUlp = BigFloat.mul(BigFloat.sub(endX, startX), 1 / fineness)
+
+          if (BigFloat.cmp(neededUlp, 0) === 0) {
+            this.valid = false
+            return
+          } else {
+            let startXLog2 = BigFloat.floorLog2(startX, true)
+            let endXLog2 = BigFloat.floorLog2(endX, true)
+
+            let exp = BigFloat.floorLog2(neededUlp, true)
+            this.recommendedPrecision = Math.max(startXLog2 - exp, endXLog2 - exp, 53)
+          }
+        })
+    }
+
+    this.calculateDeltaX()
+  }
+
+  reset () {
+
   }
 
   getStart () {

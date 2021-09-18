@@ -97,14 +97,6 @@ function clzMantissa (mantissa) {
   return -1
 }
 
-export function setGlobalRoundingMode (roundingMode) {
-  CURRENT_ROUNDING_MODE = roundingMode
-}
-
-export function setGlobalPrecision (precision) {
-  CURRENT_PRECISION = precision
-}
-
 /**
  * Round an (unsigned) mantissa to a given precision, in one of a few rounding modes. Also returns a shift if the
  * rounding operation brings the float to a higher exponent. Trailing information may be provided about the digits
@@ -1785,6 +1777,8 @@ export class BigFloat {
       return BigFloat.fromString(obj)
     } else if (obj instanceof BigFloat) {
       return obj.clone()
+    } else {
+      throw new TypeError()
     }
   }
 
@@ -2719,11 +2713,18 @@ export class BigFloat {
    * BEGIN USER-FRIENDLY FUNCTIONS
    */
 
+  static setPrecision () {
+    throw new Error("Use setDecimalPrecision or setBinaryPrecision")
+  }
+
   /**
-   * Set the default precision, in digits of DECIMAL.
+   * Set the default precision, in digits of DECIMAL. Note that while setBinaryPrecision/getBinaryPrecision is an
+   * identity, setDecimalPrecision and getDecimalPrecision
    * @param prec
    */
-  static setPrecision (prec) {
+  static setDecimalPrecision (prec) {
+    if (typeof prec !== 'number') throw new TypeError('Decimal precision must be a number')
+
     BigFloat.setBinaryPrecision(Math.ceil(LOG210 * prec))
   }
 
@@ -2731,9 +2732,21 @@ export class BigFloat {
     if (typeof prec !== 'number') throw new TypeError('Binary precision must be a number')
 
     prec = prec | 0
-    if (prec < 4) throw new RangeError('Precision must be at least 4 bits')
+    if (prec < BIGFLOAT_MIN_PRECISION_BITS || prec > BIGFLOAT_MAX_PRECISION_BITS) {
+      throw new RangeError(
+        `BigFloat binary precision must be an integer in the range [${BIGFLOAT_MIN_PRECISION_BITS}, ${BIGFLOAT_MAX_PRECISION_BITS}]`
+      )
+    }
 
     CURRENT_PRECISION = prec
+  }
+
+  static getDecimalPrecision () {
+    return Math.floor(CURRENT_PRECISION / LOG210)
+  }
+
+  static getBinaryPrecision () {
+    return CURRENT_PRECISION
   }
 
   /**
@@ -2878,6 +2891,45 @@ export class BigFloat {
     throw new Error('Invalid arguments to cmpNumber')
   }
 
+  static abs (f, precision=CURRENT_PRECISION) {
+    let ret = BigFloat.new(precision)
+
+    ret.setFromFloat(f)
+    if (ret.sign === -1) ret.sign = 1
+
+    return ret
+  }
+
+  /**
+   * Set the working precision and run the given function, then reset the precision to what it was before
+   * @param precision {number}
+   * @param callback {Function}
+   */
+  static withWorkingBinaryPrecision (precision, callback) {
+    let currentPrecision = BigFloat.getBinaryPrecision()
+
+    BigFloat.setBinaryPrecision(precision)
+    callback()
+    BigFloat.setBinaryPrecision(currentPrecision)
+  }
+
+  /**
+   * Set the working precision and run the given function, then reset the precision to what it was before
+   * @param precision {number}
+   * @param callback {Function}
+   */
+  static withWorkingDecimalPrecision (precision, callback) {
+    let currentPrecision = BigFloat.getBinaryPrecision()
+
+    BigFloat.setDecimalPrecision(precision)
+    callback()
+    BigFloat.setBinaryPrecision(currentPrecision)
+  }
+
+  valueOf () {
+    return this.toNumber(ROUNDING_MODE.NEAREST)
+  }
+
   /**
    * Returns true if the numbers are equal (allows for JS numbers to be used)
    * @param f {BigFloat|number}
@@ -2994,8 +3046,6 @@ export class BigFloat {
       BigFloat.mulPowTwoTo(tmp, -1, tmp)
       BigFloat.mulTo(an, bn, tmp2)
       bn = BigFloat.sqrt(tmp2, workingPrecision)
-
-      console.log(i)
 
       ;[an, tmp] = [tmp, an]
       BigFloat.subTo(an, bn, err)

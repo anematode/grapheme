@@ -390,3 +390,13 @@ export function flrLog2 (x) {
 
   return exp - 1
 }
+
+export function ulp (x) {
+  if (!Number.isFinite(x)) return Infinity
+  if (x === 0) return Number.MIN_VALUE
+
+  let exp = getExponent(x)
+  if (exp === -1022) return Number.MIN_VALUE // denormal
+
+  return pow2(exp - 52)
+}
