@@ -1323,7 +1323,7 @@ export function divMantissas2 (mant1, mant2, precision, target, round) {
   estimate *= 2 ** 30
   reciprocalTarget[2] = Math.floor(estimate)
 
-  console.log(estimate, reciprocalTarget, mant2)
+  //console.log(estimate, reciprocalTarget, mant2)
 
 
   return divMantissas(mant1, mant2, precision, target, round)
@@ -1776,6 +1776,16 @@ export class BigFloat {
     this.exp = exp
     this.prec = prec
     this.mant = mant
+  }
+
+  static from (obj) {
+    if (typeof obj === "number") {
+      return BigFloat.fromNumber(obj, 53)
+    } else if (typeof obj === "string") {
+      return BigFloat.fromString(obj)
+    } else if (obj instanceof BigFloat) {
+      return obj.clone()
+    }
   }
 
   /**

@@ -2,6 +2,8 @@ import { Element } from '../../core/element.js'
 import { constructInterface } from '../../core/interface.js'
 import { Figure } from '../figure.js'
 import { Vec2 } from '../../math/vec/vec2.js'
+import { BigFloat } from '../../math/arb/bigfloat.js'
+import { ROUNDING_MODE } from '../../math/rounding_modes.js'
 
 let figureInterface = Figure.prototype.getInterface()
 
@@ -29,6 +31,11 @@ const numberLineInterface = constructInterface({
   }
 })
 
+
+// A NumberLineTransform has arbitrary precision (huzzah!) but allows for plain JS floats to be used as well. JS floats
+// are recommended to be used when each pixel in the space between start and end can be subdivided at least 1000 times.
+// Otherwise, BigFloats are recommended, with a given precision sufficient to subdivide each pixel 1000 times.
+
 class NumberLineTransform {
   constructor (start, end, startX, endX) {
     /** @type {Vec2} */
@@ -37,12 +44,39 @@ class NumberLineTransform {
     this.end = end
 
     /** @type {BigFloat} */
-    this.startX = startX
+    this.startX = BigFloat.ZERO
     /** @type {BigFloat} */
-    this.endX = endX
+    this.endX = BigFloat.ONE
+
+    this.setStart(startX)
+    this.setEnd(endX)
+
+    /** @type {string} Either "double" or "bigfloat" */
+    this.recommendedMode = "double"
+    this.recommendedPrecision = 53
   }
 
+  setStart (s) {
+    this.startX = BigFloat.from(s)
+    this.startXAsNumber = this.startX.toNumber(ROUNDING_MODE.NEAREST)
 
+    this.ascertainMode()
+  }
+
+  setEnd (e) {
+    this.endX = BigFloat.from(e)
+    this.endXAsNumber = this.startX.toNumber(ROUNDING_MODE.NEAREST)
+
+    this.ascertainMode()
+  }
+
+  getStart () {
+
+  }
+
+  getEnd () {
+
+  }
 
   pixelToGraph (x, y) {
 
