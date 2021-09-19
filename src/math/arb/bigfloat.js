@@ -2333,13 +2333,17 @@ export class BigFloat {
     }
   }
 
+  static round (f, precision=CURRENT_PRECISION) {
+    // This isn't too difficult... I think?
+  }
+
   /**
    * Return the floored base-2 logarithm of a number, which can be useful for many reasons
    * @param f1
    * @param ignoreSign
    * @returns {number}
    */
-  static floorLog2 (f1, ignoreSign = false) {
+  static floorLog2 (f1, ignoreSign = true) {
     if (f1.sign === 0 || !Number.isFinite(f1.sign)) return Math.log2(f1.sign)
     if (!ignoreSign && f1.sign < 0) return NaN
 
@@ -3068,7 +3072,7 @@ export class BigFloat {
       ;[an, tmp] = [tmp, an]
       BigFloat.subTo(an, bn, err)
 
-      if (BigFloat.floorLog2(err, true) < BigFloat.floorLog2(bn) - precision) {
+      if (BigFloat.floorLog2(err) < BigFloat.floorLog2(bn) - precision) {
         break
       }
     }
@@ -3148,7 +3152,7 @@ export class BigFloat {
     if (Number.isNaN(sign)) return BigFloat.NaN(precision)
     if (sign === 0) return BigFloat.fromNumber(1, precision)
 
-    let n = BigFloat.floorLog2(f, true)
+    let n = BigFloat.floorLog2(f)
 
     if (n < 0) {
       // f < 0.5

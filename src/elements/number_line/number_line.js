@@ -51,7 +51,7 @@ export class NumberLineTransform {
     this.recommendedMode = "double"
     this.recommendedPrecision = 53
 
-    this.isValid = true
+    this.valid = true
   }
 
   setStart (s) {
@@ -103,7 +103,6 @@ export class NumberLineTransform {
     } else {
       const { startX, endX } = this
 
-      console.log(endX)
         // Need to use big float arithmetic to calculate precision
 
         BigFloat.withWorkingBinaryPrecision(Math.max(endX.prec, startX.prec), () => {
