@@ -2333,8 +2333,77 @@ export class BigFloat {
     }
   }
 
-  static round (f, precision=CURRENT_PRECISION) {
-    // This isn't too difficult... I think?
+  /**
+   *
+   * @param f {BigFloat}
+   * @param target {BigFloat}
+   * @param roundingMode {number}
+   * @param mode {number} 0 if rounding, 1 if flooring, 2 if ceiling
+   * @returns {BigFloat|BigFloat|BigFloat|BigFloat|*}
+   */
+  static roundTo (f, target, roundingMode=CURRENT_ROUNDING_MODE, mode=0) {
+    // This isn't too difficult... I think? We identify the first fractional word of f, then getTrailingInfo, then round
+
+    let fSign = f.sign
+    if (!Number.isFinite(fSign) || fSign === 0) {
+      target.setFromFloat(f, roundingMode)
+      return
+    }
+
+    let fMant = f.mant, fExp = f.exp
+
+    if (fMant.length <= fExp) {
+      // f is already an integer
+      target.setFromFloat(f, roundingMode)
+      return
+    } else if (fExp <= -1) {
+      // |f| < 1
+      if (mode === 0 || (fSign === -1 && mode === 2) || (fSign === 1 && mode === 1)) // round, floor of positive operations, ceiling of negative operations
+        target.setZero()
+      else {
+        // flooring a negative number, or ceiling a positive number; target is either -1 or 1, depending on the sign
+        target.setFromNumber(fSign)
+      }
+
+      return
+    }
+
+    // f is not an integer and |f| >= 1
+
+    // Arguments to roundMantissaToPrecision, which we'll abuse to do the actual rounding :)
+    let prec = 2 - Math.clz32(fMant[0]) + BIGFLOAT_WORD_BITS * fExp
+    let roundMode = (mode === 0) ? ROUNDING_MODE.NEAREST :
+      (((fSign === -1 && mode === 1) || (fSign === 1 && mode === 2)) ? ROUNDING_MODE.UP
+        : ROUNDING_MODE.DOWN)
+
+    // We do a fun little abuse here and use roundMantissaToPrecision to round it with the given trailingInfo
+    let shift = roundMantissaToPrecision(fMant, prec, target.mant, roundMode)
+    shift += roundMantissaToPrecision(target.mant, target.prec, target.mant, roundingMode) // the actual rounding... which in most cases will do nothing
+
+    target.exp = fExp + shift
+    target.sign = fSign
+  }
+
+  /**
+   *
+   * @param f
+   * @param precision
+   * @param roundingMode
+   * @param mode {number}
+   * @returns {BigFloat}
+   */
+  static round (f, precision=CURRENT_PRECISION, roundingMode=CURRENT_ROUNDING_MODE, mode=0) {
+    let ret = BigFloat.new(precision)
+    BigFloat.roundTo(f, ret, roundingMode, mode)
+    return ret
+  }
+
+  static floor (f, precision=CURRENT_PRECISION, roundingMode=CURRENT_ROUNDING_MODE) {
+    return BigFloat.round(f, precision, roundingMode, 1)
+  }
+
+  static ceil (f, precision=CURRENT_PRECISION, roundingMode=CURRENT_ROUNDING_MODE) {
+    return BigFloat.round(f, precision, roundingMode, 2)
   }
 
   /**
@@ -2565,16 +2634,20 @@ export class BigFloat {
 
   /**
    * Set this number to NaN. Doesn't actually touch the mantissa
+   * @return {BigFloat}
    */
   setNaN () {
     this.sign = NaN
+    return this
   }
 
   /**
    * Set this number to 0. Doesn't actually touch the mantissa
+   * @return {BigFloat}
    */
   setZero () {
     this.sign = 0
+    return this
   }
 
   /**
