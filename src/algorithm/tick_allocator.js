@@ -1,4 +1,4 @@
-import { BigFloat } from '../math/arb/bigfloat.js'
+import { BigFloat as BF } from '../math/arb/bigfloat.js'
 
 export function getArbitraryPrecisionDemarcations (
   xStart,
@@ -12,44 +12,46 @@ export function getArbitraryPrecisionDemarcations (
   // We only use a 30-bit number for the graph length, because it's only used for estimation-type stuff. A 30-bit number
   // however is able to store a larger (or smaller) exponent than a double, which is why it's necessary over a JS number
 
-  let xGraphLen = BigFloat.sub(xEnd, xStart, 30)
+  let xGraphLen = BF.sub(xEnd, xStart, 30)
   let estimatedMajors = xLen / desiredMajorSep
 
-  if (BigFloat.cmp(xGraphLen, 0) <= 0) { // graph length is 0 or negative; not okay
+  if (BF.cmp(xGraphLen, 0) <= 0) { // graph length is 0 or negative; not okay
     return []
   }
 
   // Our working precision will be 1000x finer than one pixel, based on xLen (which is the number of pixels)
-  let fineness = BigFloat.mul(xGraphLen, 1 / (xLen * 1000), 30)
-  let finenessExp = BigFloat.floorLog2(fineness)
+  let fineness = BF.mul(xGraphLen, 1 / (xLen * 1000), 30)
+  let finenessExp = BF.floorLog2(fineness)
 
-  let neededWorkingPrecision = Math.max(floorLog2(xEnd) - finenessExp, floorLog2(xStart) - finenessExp, 53)
+  let neededWorkingPrecision = Math.max(BF.floorLog2(xEnd) - finenessExp, BF.floorLog2(xStart) - finenessExp, 53)
 
   let bestBase = 0
   let bestErr = Infinity
   let bestSubdivision = [1, 1]
 
-  BigFloat.withWorkingBinaryPrecision(30, () => {
+  BF.withWorkingBinaryPrecision(60 /* to accommodate powers of 10 between 2^53-ish */, () => {
     // We look for the base b and subdivision s such that the number of major subdivisions that result would be closest
     // to the number implied by the desired major sep
 
     for (const subdiv of subdivisions) {
       let maj = subdiv[1]
 
-      let desiredBase = BigFloat.log10(BigFloat.mul(xGraphLen, maj / estimatedMajors))
-      let nearest = BigFloat.round(desiredBase)
+      let desiredBase = BF.log10(BF.mul(xGraphLen, maj / estimatedMajors))
+      let nearest = BF.round(desiredBase)
 
       let err = Math.abs(
-        (maj * xGraphLen) / Math.pow(10, nearest) - estimatedMajors
+        BF.div(xGraphLen, BF.pow10(nearest)) /* should be representable as a number */ * maj - estimatedMajors
       )
 
       if (err < bestErr) {
         bestErr = err
         bestSubdivision = subdiv
-        bestBase = nearest
+        bestBase = +nearest
       }
     }
   })
+
+  console.log(bestBase, bestErr, bestSubdivision)
 }
 
 export function getDemarcations (
