@@ -2413,6 +2413,8 @@ export class BigFloat {
    * @returns {number}
    */
   static floorLog2 (f1, ignoreSign = true) {
+    if (typeof f1 === "number") return flrLog2(f1, ignoreSign)
+
     if (f1.sign === 0 || !Number.isFinite(f1.sign)) return Math.log2(f1.sign)
     if (!ignoreSign && f1.sign < 0) return NaN
 
@@ -3114,6 +3116,23 @@ export class BigFloat {
       BigFloat.mulPowTwoTo(xn, -30 + 15 * f1.exp, xn)
       return xn.toBigFloat(precision)
     }
+  }
+
+  /**
+   * Returns whether a given float is an integer.
+   * @param f {number|BigFloat}
+   * @returns {boolean}
+   */
+  static isInteger (f) {
+    if (typeof f === "number") return Number.isInteger(f)
+
+    let fSign = f.sign
+    if (fSign === 0) return true
+    if (!Number.isFinite(fSign)) return false
+
+    let fMant = f.mant, fExp = f.exp
+
+    return (fMant.length <= fExp) || getTrailingInfo(fMant, fExp) === 0
   }
 
   /**

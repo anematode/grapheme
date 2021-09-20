@@ -24,44 +24,10 @@
     }
   }
 
-  function referenceAddMantissas (mant1, mant1Len, mant2, mant2Len, mant2Shift, prec, target, targetLen, round=CURRENT_ROUNDING_MODE) {
-    let output = new Int32Array(Math.max(mant1Len, mant2Len + mant2Shift) + 1)
-
-    for (let i = 0; i < mant1Len; ++i) {
-      output[i] += mant1[i]
-    }
-
-    for (let i = 0; i < mant2Len; ++i) {
-      output[i + mant2Shift] += mant2[i]
-    }
-
-    let carry = 0
-    for (let i = output.length - 1; i >= 0; --i) {
-      let word = output[i] + carry
-
-      if (word > 0x3fffffff) {
-        word -= 0x40000000
-        carry = 1
-      } else {
-        carry = 0
-      }
-
-      output[i] = word
-    }
-
-    if (carry === 1) {
-      Grapheme.rightShiftMantissa(output, 30, output)
-      output[0] = carry
-    }
-
-    let roundingShift = Grapheme.roundMantissaToPrecision(output, prec, target, round)
-    return carry + roundingShift
-  }
-
-  var precision = 100 // decimal digits
+  var precision = 15 // decimal digits
   var binaryPrecision = (precision * 3.23) | 0
   Decimal.config({ precision })
-  BF.setBinaryPrecision(precision)
+  BF.setDecimalPrecision(precision)
 
   var res
   var floats = generateRandomFloats()
@@ -194,13 +160,6 @@
     })
   }
 
-  function blah () {
-    benchmark(fromNumber, "fromNumber", 100)
-    benchmark(toNumber, "toNumber", 100)
-    benchmark(addition, "addition", 300)
-    benchmark(multiplication, "multiplication", 10)
-  }
-
   function benchmarkAddition () {
     benchmark(decimalAddition, "decimal.js addition", 10)
     benchmark(addition, "BF addition", 10)
@@ -226,33 +185,26 @@
     benchmark(ln, "BF ln", 10)
   }
 
-  var ln2str = "0.6931471805599453094172321214581765680755001343602552541206800094933936219696947156058633269964186875420014810205706857336855202357581305570326707516350759619307275708283714351903070386238916734711233501153644979552391204751726815749320651555247341395258829504530070953263666426541042391578149520437404303855008019441706416715186447128399681717845469570262716310645461502572074024816377733896385506952606683411372738737229289564935470257626520988596932019650585547647033067936544325476327449512504060694381471046899465062201677204245245296126879465461931651746813926725041038025462596568691441928716082938031727143677826548775664850856740776484514644399404614226031930967354025744460703080960850474866385231381816767514386674766478908814371419854942315199735488037516586127535291661000710535582498794147295092931138971559982056543928717000721808576102523688921324497138932037843935308877482597017155910708823683627589842589185353024363421436706118923678919237231467232172053401649256872747782344535348"
+  function benchmarkAll () {
+    benchmarkAddition()
+    benchmarkMultiplication()
+    benchmarkDivision()
+    benchmarkSqrt()
+  }
 
-  //var ln2 = BF.ln(2, 200)
-
-  var target = new Int32Array(2)
-  var cow = 0, cow2 = 0
-
-  Decimal.precision = 1000;
-  /**
-   Before moving primitive functions to C-like writing instead of returning value
-   Benchmark fromNumber: 0.158 ms per iteration for 1000 iterations
-   Benchmark toNumber: 1.4 ms per iteration for 10 iterations
-   Benchmark addition: 385 ms per iteration for 2 iterations
-   Benchmark multiplication: 466.5 ms per iteration for 2 iterations
-   Benchmark division: 4340 ms per iteration for 2 iterations
-   */
+  var m = BF.div(1, 3)
+  var str = ".33333333333333333333333333333346481015087016863423528809421379770494553440585150383412837982177734375"
 
   /**
-   * As of Sep 18
-   Benchmark decimal.js addition: 735 ms per iteration for 10 iterations
-   Benchmark BF addition: 166.9 ms per iteration for 10 iterations
-   Benchmark decimal.js multiplication: 1083.2 ms per iteration for 10 iterations
-   Benchmark BF multiplication: 271.4 ms per iteration for 10 iterations
-   Benchmark decimal.js sqrt: 1696.1 ms per iteration for 10 iterations
-   Benchmark BF sqrt: 11.2 ms per iteration for 10 iterations
-   Benchmark decimal.js division: 50133 ms per iteration for 10 iterations
-   Benchmark BF division: 13065.6 ms per iteration for 10 iterations
+   * As of Sep 20 (100 digits)
+   Benchmark decimal.js multiplication: 1086.6 ms per iteration for 10 iterations
+   Benchmark BF multiplication: 647.1 ms per iteration for 10 iterations
+   Benchmark decimal.js addition: 1209.7 ms per iteration for 10 iterations
+   Benchmark BF addition: 268.8 ms per iteration for 10 iterations
+   Benchmark decimal.js division: 6909 ms per iteration for 10 iterations
+   Benchmark BF division: 21758.4 ms per iteration for 10 iterations
+   Benchmark decimal.js sqrt: 40.2 ms per iteration for 10 iterations
+   Benchmark BF sqrt: 59.9 ms per iteration for 10 iterations
    */
 </script>
 

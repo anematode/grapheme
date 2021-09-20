@@ -23,6 +23,8 @@ export function getArbitraryPrecisionDemarcations (
   let fineness = BF.mul(xGraphLen, 1 / (xLen * 1000), 30)
   let finenessExp = BF.floorLog2(fineness)
 
+  console.log(finenessExp)
+
   let neededWorkingPrecision = Math.max(BF.floorLog2(xEnd) - finenessExp, BF.floorLog2(xStart) - finenessExp, 53)
 
   let bestBase = 0
@@ -51,7 +53,55 @@ export function getArbitraryPrecisionDemarcations (
     }
   })
 
-  console.log(bestBase, bestErr, bestSubdivision)
+  let majTicks = []
+  let minTicks = []
+
+  BF.withWorkingBinaryPrecision(neededWorkingPrecision, () => {
+    // Generate the ticks based on the chosen base and subdivision. We first find the offset of the nearest multiple of
+    // 10^b preceding xStart, say m * 10^b, then for each interval (m, m+1) generate the ticks that are in the range of
+    // xStart and xEnd
+    let based = BF.pow10(bestBase)
+    let firstMultiple = BF.floor(BF.div(xStart, based))
+    let lastMultiple = BF.ceil(BF.div(xEnd, based))
+
+    if (BF.isInteger(lastMultiple)) lastMultiple = BF.add(lastMultiple, 1)
+    lastMultiple = BF.ceil(lastMultiple)
+
+    let totalPowers = +BF.sub(lastMultiple, firstMultiple, 30)
+
+    let [min, maj] = bestSubdivision
+
+    // fracParts[i] is (i / (min * maj)) * based
+    let fracParts = [...new Array(min * maj)].map((_,i) => BF.mul(i / (min * maj), based))
+
+
+    // We scale the problem to [0, totalMajors]
+    for (let offset = 0; offset < totalPowers; ++offset) {
+      // Generate ticks
+      let i = BF.add(firstMultiple, offset)
+      let h = BF.mul(i, based)
+
+      for (let j = 0; j < maj; ++j) {
+        let tick = BF.add(h, fracParts[j * min])
+        if (BF.cmp(tick, xEnd) === 1) continue
+
+        if (BF.cmp(tick, xStart) >= 0) majTicks.push({
+          tick
+        })
+
+        for (let k = 1; k < min; ++k) {
+          tick = BF.add(h, fracParts[j * min + k])
+          if (BF.cmp(tick, xEnd) === 1 || BF.cmp(tick, xStart) === -1) continue
+
+          minTicks.push({ tick })
+        }
+      }
+    }
+  })
+
+  return { min: minTicks, maj: majTicks }
+
+  console.log(bestBase, bestErr, bestSubdivision, finenessExp, neededWorkingPrecision)
 }
 
 export function getDemarcations (
