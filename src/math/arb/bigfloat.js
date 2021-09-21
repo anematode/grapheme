@@ -16,6 +16,9 @@ const BIGFLOAT_WORD_BITS = 30
 const BIGFLOAT_WORD_SIZE = 1 << BIGFLOAT_WORD_BITS
 const BIGFLOAT_WORD_MAX = BIGFLOAT_WORD_SIZE - 1
 
+const BIGFLOAT_MAX_EXP = Number.MAX_SAFE_INTEGER
+const BIGFLOAT_MIN_EXP = -Number.MAX_SAFE_INTEGER
+
 // Kinda arbitrary, but whatever
 const BIGFLOAT_MIN_PRECISION_BITS = 4
 const BIGFLOAT_MAX_PRECISION_BITS = 1 << 24
@@ -2035,6 +2038,8 @@ export class BigFloat {
       target.sign = f1Sign
       target.exp = f1.exp + shift
     }
+
+    target.finalize(roundingMode)
   }
 
   /**
@@ -2109,7 +2114,9 @@ export class BigFloat {
       target.mant,
       roundingMode
     )
+
     target.exp = f1.exp + f2.exp + shift
+    target.finalize(roundingMode)
   }
 
   /**
@@ -2151,6 +2158,7 @@ export class BigFloat {
 
         target.sign = float.sign * Math.sign(num)
         target.exp = float.exp + shift
+        target.finalize(roundingMode)
 
         return
       }
@@ -2215,6 +2223,7 @@ export class BigFloat {
     }
 
     target.sign = float.sign
+    target.finalize(roundingMode)
   }
 
   /**
@@ -2251,6 +2260,7 @@ export class BigFloat {
 
       target.exp = f1.exp - f2.exp + shift
       target.sign = f1Sign / f2Sign
+      target.finalize(roundingMode)
     } else {
       let workingPrecision = target.prec + 2
       let reciprocal = BigFloat.new(workingPrecision), tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
@@ -2295,10 +2305,6 @@ export class BigFloat {
 
       BigFloat.mulTo(f1, reciprocal, target, roundingMode)
     }
-  }
-
-  static reciprocal (f) {
-
   }
 
   /**
@@ -3392,7 +3398,6 @@ export class BigFloat {
 
     this.sign = Math.abs(sign)
 
-
     let log10 = BigFloat.log10(this, workingPrecision)
     this.sign = sign
 
@@ -3416,6 +3421,24 @@ export class BigFloat {
     }
 
     return digits
+  }
+
+  finalize (roundingMode) {
+    let exp = this.exp
+    if (exp > BIGFLOAT_MAX_EXP) {
+      let sign = this.sign
+
+      if (roundingMode === ROUNDING_MODE.TOWARD_ZERO || (roundingMode === ROUNDING_MODE.DOWN && sign === 1) || (roundingMode === ROUNDING_MODE.UP && sign === -1)) {
+        this.exp = BIGFLOAT_MAX_EXP
+        this.mant.fill(BIGFLOAT_WORD_MAX)
+
+        roundMantissaToPrecision(this.mant, this.prec, this.mant, ROUNDING_MODE.DOWN)
+      } else {
+        this.sign = sign * Infinity
+      }
+    } else if (exp < BIGFLOAT_MIN_EXP) {
+      this.setZero()
+    }
   }
 }
 
