@@ -476,7 +476,8 @@ export function addMantissas (
 
 /**
  * Returns whether a mantissa can be correctly rounded, assuming a maximum error of maxNeg and maxPos in the last word.
- * This often allows rounding to happen before extra computation is requested.
+ * This often allows rounding to happen before extra computation is requested. Assumes maxNeg < BIGFLOAT_WORD_MAX and
+ * maxPos < BIGFLOAT_WORD_MAX
  * @param mantissa {Int32Array}
  * @param precision {number}
  * @param round {number}
@@ -496,28 +497,84 @@ export function canMantissaBeRounded (
 
   let endOfPrec = zeros + precision
   let endWord = (endOfPrec / 30) | 0
+  let mantissaLen = mantissa.length
 
-  if (endWord >= mantissa.length) {
+  if (endWord >= mantissaLen) {
     return false
   }
 
-  if (endWord < mantissa.length - 1) return false // TODO
-
   let truncateLen = 30 - (endOfPrec - endWord * 30)
+  let truncatedWord = (mantissa[endWord] >> truncateLen) << truncateLen
+  let rem = mantissa[endWord] - truncatedWord
+
+  let isUp = round === ROUNDING_MODE.UP || round === ROUNDING_MODE.TOWARD_INF
+  let isDown = round === ROUNDING_MODE.DOWN || round === ROUNDING_MODE.TOWARD_ZERO
+  let isTies = round === ROUNDING_MODE.TIES_AWAY || round === ROUNDING_MODE.TIES_EVEN
+
+  function wontCarryUp () {
+    for (let i = endWord + 1; i < mantissaLen - 1; ++i) {
+      if (mantissa[i] < BIGFLOAT_WORD_MAX) return true
+    }
+
+    let last = mantissa[mantissaLen - 1] + maxPos
+
+    return isDown ? (last < BIGFLOAT_WORD_SIZE) : (last <= BIGFLOAT_WORD_SIZE)
+  }
+
+  function wontCarryDown () {
+    for (let i = endWord + 1; i < mantissaLen - 1; ++i) {
+      if (mantissa[i] > 0) return true
+    }
+
+    let last = mantissa[mantissaLen - 1] - maxNeg
+
+    return isUp ? (last > 0) : last >= 0
+  }
+
+  if (endWord < mantissaLen - 1) {
+    // We examine rem and the words after endWord to make our conclusion
+
+    if (round === ROUNDING_MODE.WHATEVER) {
+      return maxNeg + maxPos < BIGFLOAT_WORD_MAX
+    }
+
+    if (isUp || isDown) {
+      if (rem === 0) {
+        if (!wontCarryDown()) return false
+      }
+
+      if (rem === ((1 << truncateLen) - 1)) {
+        return wontCarryUp()
+      }
+
+      return true
+    }
+
+    if (isTies) {
+      let tie = 1 << (truncateLen - 1)
+
+      if (rem === tie) {
+        return wontCarryDown()
+      } else if (rem === tie - 1) {
+        return wontCarryUp()
+      }
+
+      return true
+    }
+  }
+
   if (round === ROUNDING_MODE.WHATEVER) {
     // To be within 1 ulp of the result
     return (maxNeg + maxPos < (1 << truncateLen))
   }
 
-  let truncatedWord = (mantissa[endWord] >> truncateLen) << truncateLen
-  let rem = mantissa[endWord] - truncatedWord
-
-  if (round === ROUNDING_MODE.UP || round === ROUNDING_MODE.TOWARD_INF ||
-    round === ROUNDING_MODE.DOWN || round === ROUNDING_MODE.TOWARD_ZERO) {
+  if (isUp) {
     return (rem - maxNeg > 0 && rem + maxPos <= (1 << truncateLen))
+  } else if (isDown) {
+    return (rem - maxNeg >= 0 && rem + maxPos < (1 << truncateLen))
   }
 
-  if (round === ROUNDING_MODE.TIES_AWAY || round === ROUNDING_MODE.TIES_EVEN) {
+  if (isTies) {
     if (truncateLen === 1) return false
 
     let min = rem - maxNeg, max = rem + maxPos, tie = 1 << (truncateLen - 1)
@@ -1076,8 +1133,7 @@ export function multiplyMantissas (
 
       let low = Math.imul(mant1Lo, mant2Lo)
       let high = Math.imul(mant1Hi, mant2Hi)
-      let middle =
-        (Math.imul(mant1Hi, mant2Lo) + Math.imul(mant1Lo, mant2Hi)) | 0
+      let middle = (Math.imul(mant1Hi, mant2Lo) + Math.imul(mant1Lo, mant2Hi)) | 0
 
       low +=
         ((middle & 0x7fff) << 15) +
@@ -1095,7 +1151,7 @@ export function multiplyMantissas (
       if (writeIndex < targetMantissaLen) targetMantissa[writeIndex] = low
       else ignoredLows += low
 
-      carry = high
+      carry = high | 0
     }
 
     if (i > 0) {
@@ -1294,11 +1350,12 @@ class MantissaFactory {
 
   getStore (precision) {
     let words = neededWordsForPrecision(precision)
+
     if (this.arr.length < words) {
       this.arr = new Int32Array(words)
     }
 
-    return this.arr
+    return [ this.arr, words ]
   }
 }
 
@@ -1315,26 +1372,7 @@ class MantissaFactory {
 const divStore = new MantissaFactory()
 
 export function divMantissas2 (mant1, mant2, precision, target, round) {
-  let estimate = (2 ** 60) / (mant2[0] * (2 ** 30) + mant2[1] + ((mant2.length > 2) ? mant2[2] : 0) * (2 ** -30))
-  let reciprocalTarget = divStore.getStore(precision)
-
-  let estimateShift = 0
-
-  estimate -= (reciprocalTarget[0] = Math.floor(estimate))
-  estimate *= 2 ** 30
-  estimate -= (reciprocalTarget[1] = Math.floor(estimate))
-  estimate *= 2 ** 30
-  reciprocalTarget[2] = Math.floor(estimate)
-
-  // reciprocalTarget is now accurate to at least 52 bits. We compute X_(i+1) = X_i + X_i * (1 - D * X_i), which has
-  // quadratic convergence
-
-
-
-
   return divMantissas(mant1, mant2, precision, target, round)
-
-  console.log("mant1", mant1, "mant2", mant2, "target", target)
 }
 
 /**
@@ -2200,18 +2238,63 @@ export class BigFloat {
       return
     }
 
-    let shift = divMantissas2(
-      f1.mant,
-      f2.mant,
-      target.prec,
-      target.mant,
-      roundingMode
-    )
+    let shift
 
-    //divMantissas2(f1.mant, f2.mant, target.prec, target.mant, roundingMode)
+    if (target.prec < 100 || roundingMode !== ROUNDING_MODE.WHATEVER) {
+      shift = divMantissas2(
+        f1.mant,
+        f2.mant,
+        target.prec,
+        target.mant,
+        roundingMode
+      )
 
-    target.exp = f1.exp - f2.exp + shift
-    target.sign = f1Sign / f2Sign
+      target.exp = f1.exp - f2.exp + shift
+      target.sign = f1Sign / f2Sign
+    } else {
+      let workingPrecision = target.prec + 2
+      let reciprocal = BigFloat.new(workingPrecision), tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
+
+      let reciprocalTarget = reciprocal.mant
+      reciprocal.exp = 1
+      reciprocal.sign = 1
+
+      let f2Mant = f2.mant, f2Exp = f2.exp, f2Sign = f2.sign
+      f2.exp = 0
+      f2.sign = 1
+
+      let estimate = (2 ** 60) / (f2Mant[0] * (2 ** 30) + f2Mant[1] + ((f2Mant.length > 2) ? f2Mant[2] : 0) * (2 ** -30))
+
+      estimate -= (reciprocalTarget[0] = Math.floor(estimate))
+      estimate *= 2 ** 30
+      estimate -= (reciprocalTarget[1] = Math.floor(estimate))
+
+      if (reciprocalTarget.length > 2) {
+        estimate *= 2 ** 30
+        reciprocalTarget[2] = Math.floor(estimate)
+      }
+
+      // reciprocalTarget is now accurate to at least 52 bits. We compute X_(i+1) = X_i + X_i * (1 - D * X_i), which has
+      // quadratic convergence
+
+      let iters = Math.ceil(Math.log2((target.prec + 2) / 52))
+
+      for (let i = 0; i < iters; ++i) {
+        BigFloat.mulTo(reciprocal, f2, tmp)
+        BigFloat.subTo(BigFloat.TWO, tmp, tmp2)
+        BigFloat.mulTo(reciprocal, tmp2, tmp)
+
+        ;[tmp, reciprocal] = [reciprocal, tmp]
+      }
+
+      reciprocal.exp = 1 - f2Exp
+      reciprocal.sign = f2Sign
+
+      f2.exp = f2Exp
+      f2.sign = f2Sign
+
+      BigFloat.mulTo(f1, reciprocal, target, roundingMode)
+    }
   }
 
   static reciprocal (f) {
@@ -2449,8 +2532,9 @@ export class BigFloat {
     return f.sign === 0
   }
 
-  static ZERO = Object.freeze(BigFloat.fromNumber(0, 53))
-  static ONE = Object.freeze(BigFloat.fromNumber(1, 53))
+  static ZERO = Object.freeze(BigFloat.fromNumber(0, 30))
+  static ONE = Object.freeze(BigFloat.fromNumber(1, 30))
+  static TWO = Object.freeze(BigFloat.fromNumber(2, 30))
 
   /**
    * Clone this big float
@@ -3246,6 +3330,7 @@ export class BigFloat {
 
     let n = BigFloat.floorLog2(f)
 
+
     if (n < 0) {
       // f < 0.5
       return expBaseCase(f, precision)
@@ -3307,6 +3392,7 @@ export class BigFloat {
 
     this.sign = Math.abs(sign)
 
+
     let log10 = BigFloat.log10(this, workingPrecision)
     this.sign = sign
 
@@ -3321,7 +3407,6 @@ export class BigFloat {
     }
 
     m = BigFloat.pow10(m, workingPrecision)
-
     let [beforeDigits, afterDigits] = mantissaToBaseWithPrecision(m.mant, m.exp, prec)
 
     if (true) {

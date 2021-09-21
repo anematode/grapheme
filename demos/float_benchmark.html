@@ -24,20 +24,23 @@
     }
   }
 
-  var precision = 15 // decimal digits
-  var binaryPrecision = (precision * 3.23) | 0
+  var floatCount = 1000
+  var precision = 100 // decimal digits
   Decimal.config({ precision })
   BF.setDecimalPrecision(precision)
+
 
   var res
   var floats = generateRandomFloats()
   var boundedFloats = floats.map(f => Math.log2(Math.abs(f)) % 500)
 
   var bigFloats = floats.map(f => BF.fromNumber(f))
-  var decimalFloats = floats.map(f => new Decimal(f.toPrecision(precision)))
+  var decimalFloats = bigFloats.map(f => new Decimal(f.toPrecision(precision)))
 
   var boundedBigFloats = boundedFloats.map(f => BF.fromNumber(f))
-  var boundedDecimalFloats = boundedFloats.map(f => new Decimal(f.toPrecision(precision)))
+  var boundedDecimalFloats = boundedBigFloats.map(f => new Decimal(f.toPrecision(precision)))
+
+  console.log("loaded")
 
   function generateRandomFloats() {
     let seed = 6
@@ -47,7 +50,7 @@
     var view = new BigUint64Array(a.buffer)
     var arr = []
 
-    for (var i = 0; i < 1000; ++i) {
+    for (var i = 0; i < floatCount; ++i) {
       view[0] = BigInt((gen() * 2 ** 32) >>> 0) + BigInt(gen() * 2 ** 64)
       arr.push(a[0])
     }
@@ -68,7 +71,7 @@
   }
 
   function addition() {
-    res = BF.new(binaryPrecision)
+    res = BF.new()
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
@@ -88,7 +91,7 @@
   }
 
   function multiplication() {
-    res = BF.new(binaryPrecision)
+    res = BF.new()
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
@@ -106,7 +109,7 @@
   }
 
   function division() {
-    res = BF.new(binaryPrecision)
+    res = BF.new()
 
     for (let i = 0; i < floats.length; ++i) {
       for (let j = 0; j < floats.length; ++j) {
@@ -171,8 +174,8 @@
   }
 
   function benchmarkDivision () {
-    benchmark(decimalDivision, "decimal.js division", 10)
-    benchmark(division, "BF division", 10)
+    benchmark(decimalDivision, "decimal.js division", 1)
+    benchmark(division, "BF division", 1)
   }
 
   function benchmarkSqrt () {
@@ -192,8 +195,12 @@
     benchmarkSqrt()
   }
 
-  var m = BF.div(1, 3)
   var str = ".33333333333333333333333333333346481015087016863423528809421379770494553440585150383412837982177734375"
+
+  var cow = 0
+  var cow2 = 0
+
+  var target = new Int32Array(3)
 
   /**
    * As of Sep 20 (100 digits)
