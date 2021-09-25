@@ -2,13 +2,7 @@
 // the float. m = m_1 / 2^30 + m_2 / 2^60 + ... . The precision is the number of bits kept track of in the words. Since
 // the start of the significant bits can occur anywhere from 0 to 29 bits into the first word,
 
-import {
-  flrLog2,
-  getExponentAndMantissa,
-  isDenormal,
-  pow2,
-  frExp
-} from '../real/fp_manip.js'
+import { flrLog2, frExp, getExponentAndMantissa, isDenormal, pow2 } from '../real/fp_manip.js'
 import { ROUNDING_MODE } from '../rounding_modes.js'
 import { leftZeroPad, trimLeft } from '../../core/utils.js'
 
@@ -1594,7 +1588,7 @@ export function getCachedLn2 (precision) {
   return cachedLn2
 }
 
-function getCachedLn10 (precision) {
+export function getCachedLn10 (precision) {
   if (!cachedLn10 || cachedLn10.prec < precision) {
     let workingPrecision = precision + 2
 
@@ -3286,19 +3280,21 @@ export class BigFloat {
       return BigFloat.fromNumber(f1Sign, precision)
     }
 
+    let workingPrecision = precision + 20
+
     // ln(f) is about pi * f * 2^(m-2) / (2 * agm(f * 2^(m-2), 1)) - m * ln(2), where m + ln2(x) > prec / 2
 
-    let m = Math.ceil(precision / 2 - BigFloat.floorLog2(f))
-    let tmp = BigFloat.new(precision), tmp2 = BigFloat.new(precision)
+    let m = Math.ceil(workingPrecision / 2 - BigFloat.floorLog2(f))
+    let tmp = BigFloat.new(workingPrecision), tmp2 = BigFloat.new(workingPrecision)
 
     BigFloat.mulPowTwoTo(f, m - 2, tmp) // tmp = 2 ^ (m-2)
-    let den = BigFloat.agm(tmp, 1, precision)
+    let den = BigFloat.agm(tmp, 1, workingPrecision)
     BigFloat.mulPowTwoTo(den, 1, den)
 
-    BigFloat.mulTo(tmp, getCachedPi(precision), tmp2) // tmp = pi * f * 2 ^ (m-2)
+    BigFloat.mulTo(tmp, getCachedPi(workingPrecision), tmp2) // tmp = pi * f * 2 ^ (m-2)
     BigFloat.divTo(tmp2, den, tmp)
 
-    BigFloat.mulNumberTo(getCachedLn2(precision), m, tmp2)
+    BigFloat.mulNumberTo(getCachedLn2(workingPrecision), m, tmp2)
     return BigFloat.sub(tmp, tmp2, precision)
   }
 
@@ -3362,10 +3358,27 @@ export class BigFloat {
     // 10^f = e^(f * ln(10))
     f = cvtToBigFloat(f)
 
-    let workingPrecision = precision + 2
+    let workingPrecision = precision + 4
     let tmp = BigFloat.mul(f, getCachedLn10(workingPrecision), workingPrecision)
 
-    return BigFloat.exp(tmp, precision)
+    return BigFloat.exp(tmp, workingPrecision).toBigFloat(precision)
+  }
+
+  static pow2 (f, precision = CURRENT_PRECISION) {
+    if (typeof f === "number" && Number.isInteger(f)) {
+      let mant = createMantissa(precision)
+      let exp = Math.floor(f / 30) + 1
+      mant[0] = 1 << (((f % 30) + 30) % 30)
+
+      return new BigFloat(1, exp, precision, mant)
+    }
+
+    f = cvtToBigFloat(f)
+
+    let workingPrecision = precision + 4
+    let tmp = BigFloat.mul(f, getCachedLn10(workingPrecision), workingPrecision)
+
+    return BigFloat.exp(tmp, workingPrecision).toBigFloat(precision)
   }
 
   /**
@@ -3439,6 +3452,18 @@ export class BigFloat {
     } else if (exp < BIGFLOAT_MIN_EXP) {
       this.setZero()
     }
+  }
+
+  ulp (precision=30) {
+    let c = BigFloat.floorLog2(this)
+
+    // 1 ulp = 2 ^ (c - prec + 1)
+    return BigFloat.pow2(c - this.prec + 1, precision)
+  }
+
+  up () {
+    // Return the next float after this float
+    return BigFloat.add(this, this.ulp())
   }
 }
 

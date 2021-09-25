@@ -74,7 +74,6 @@ export function getArbitraryPrecisionDemarcations (
     // fracParts[i] is (i / (min * maj)) * based
     let fracParts = [...new Array(min * maj)].map((_,i) => BF.mul(i / (min * maj), based))
 
-
     // We scale the problem to [0, totalMajors]
     for (let offset = 0; offset < totalPowers; ++offset) {
       // Generate ticks
