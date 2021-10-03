@@ -21,13 +21,18 @@ let figureInterface = Figure.prototype.getInterface()
 
 const numberLineInterface = constructInterface({
   interface: {
-    ...figureInterface.description.interface
+    ...figureInterface.description.interface,
+    startX: {},
+    endX: {},
+    numberLineTransform: {}
   },
   internal: {
     ...figureInterface.description.internal,
 
     start: { type: "Vec2", computed: 'none' },
     end: { type: "Vec2", computed: 'none' },
+    startX: { type: "number", computed: 'default', default: -1 },
+    endX: { type: "number", computed: 'default', default: 1 },
     numberLineTransform: { computed: 'none' }
   }
 })
@@ -44,8 +49,8 @@ export class NumberLineTransform {
     /** @type {Vec2} */
     this.end = Vec2.fromObj(end)
 
-    this.setStart(BigFloat.ZERO)
-    this.setEnd(BigFloat.ONE)
+    this.setStart(startX)
+    this.setEnd(endX)
 
     /** @type {string} Either "double" or "bigfloat" */
     this.recommendedMode = "double"
@@ -161,8 +166,7 @@ export class NumberLine extends Figure {
   computeNumberLineTransform () {
     // For now, we'll just use the midpoint of the sides of the bounding box
 
-    /** @type {BoundingBox} */
-    let box = this.props.get("plottingBox")
+    const { startX, endX, plottingBox: box } = this.props.proxy
 
     let start = new Vec2(box.x, box.y + box.h / 2)
     let end = new Vec2(box.getX2(), box.y + box.h / 2)
@@ -170,9 +174,21 @@ export class NumberLine extends Figure {
     this.props.set("start", start)
     this.props.set("end", end)
 
-    let startX = 0, startY = 1
+    this.props.set("numberLineTransform", new NumberLineTransform(start, end, startX, endX), 0, 3)
+  }
 
-    this.props.set("numberLineTransform", new NumberLineTransform(start, end, startX, startY), 0, 2)
+  zoomOn (x, factor) {
+    const { startX, endX } = this.props.proxy
+
+    let shift = x - startX
+    let newShift = shift * factor
+    let endXShift = x - endX
+    let newEndXShift = endXShift * factor
+
+    this.props.set("startX", x - newShift)
+    this.props.set("endX", x - newEndXShift)
+
+    this.computeNumberLineTransform()
   }
 
   _update () {
@@ -183,7 +199,7 @@ export class NumberLine extends Figure {
     const { start, end, numberLineTransform } = this.props.proxy
 
     this.internal.renderInfo = {
-      instructions: { type: "debug", polyline: [ start, end ]}
+      instructions: { type: "polyline", vertices: [ start, end ]}
     }
   }
 }

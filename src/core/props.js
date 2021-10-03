@@ -368,7 +368,7 @@ export class Props {
    * @param value {any} The value of the property
    * @param as {number} Which value to change. 0 if real, 1 if user, 2 if program
    * @param equalityCheck {number} What type of equality check to perform against the current value, if any, to assess
-   * the changed value. 0 - no check, 1 - strict equals, 2 - deep equals
+   * the changed value. 0 - no check, 1 - strict equals, 2 - deep equals, 3 - deep equals, looking for "equals()" methods
    * @param markChanged {boolean} Whether to actually mark the value as changed. In turn, if the property is a changed
    * inheritable property, that will be noted
    * @returns {any}
@@ -449,7 +449,7 @@ export class Props {
 
       // Perform various equality checks
       if (equalityCheck === 1 && storeValue === value) return value
-      else if (equalityCheck === 2 && deepEquals(storeValue, value))
+      else if (equalityCheck > 1 && deepEquals(storeValue, value, equalityCheck === 3))
         return value
     }
 

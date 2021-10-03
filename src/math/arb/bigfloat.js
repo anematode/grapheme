@@ -3256,6 +3256,16 @@ export class BigFloat {
     return an.toBigFloat(precision)
   }
 
+  static toCompressed (f, precision=CURRENT_PRECISION) {
+    if (precision <= 53) {
+      if (f.sign === 0 || (Math.abs(f.exp) < 34)) {
+        return +f
+      }
+    }
+
+    return f
+  }
+
   /**
    * Returns the natural logarithm of f.
    * @param f

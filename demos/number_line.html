@@ -12,10 +12,27 @@
 
 <script id="setup">
   var renderer = new Grapheme.WebGLRenderer()
-  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 500, height: 500, dpr: devicePixelRatio })
+  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1920, height: 500, dpr: devicePixelRatio })
 
-  var line = new Grapheme.NumberLine()
+  var line = new Grapheme.NumberLine({ startX: 0, endX: 2 })
   var ticks = new Grapheme.NumberLineTicks()
+
+  function setTicks () {
+    let transform = line.get("numberLineTransform")
+
+    console.log(+transform.endX)
+
+    let params = {
+      ticks: {
+        special: [{tick: Math.sqrt(2), label: "\\text{``}\\sqrt{2}\\,\\text{\"}" }],
+        normal: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, 20).map(({ n, d, v }) => ({ tick: v, label: `\\dfrac{${n}}{${d}}`}))
+      }
+    }
+
+    ticks.set(params)
+  }
+
+
 
   scene.add(line.add(ticks))
 

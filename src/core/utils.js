@@ -69,14 +69,23 @@ export function getStringID () {
 }
 
 // Simple deep equals. Uses Object.is-type equality, though. Doesn't handle circularity or any of the fancy new containers
-export function deepEquals (x, y) {
+/**
+ *
+ * @param x {*}
+ * @param y {*}
+ * @param lookForEqualsMethod {boolean} Whether to look for a method "equals()" on x to use instead of the standard method of comparison
+ * @returns {boolean}
+ */
+export function deepEquals (x, y, lookForEqualsMethod=false) {
   if (typeof x !== 'object' || x === null) return Object.is(x, y)
+
+  if (lookForEqualsMethod && x.equals) return x.equals(y)
   if (x.constructor !== y.constructor) return false
 
   if (Array.isArray(x) && Array.isArray(y)) {
     if (x.length !== y.length) return false
     for (let i = x.length - 1; i >= 0; --i) {
-      if (!deepEquals(x[i], y[i])) return false
+      if (!deepEquals(x[i], y[i], lookForEqualsMethod)) return false
     }
 
     return true
@@ -119,6 +128,24 @@ export function deepEquals (x, y) {
   }
 
   return true
+}
+
+export function gcd (a, b) {
+  a = Math.abs(a)
+  b = Math.abs(b)
+
+  if (b > a) {
+    let tmp = a
+    a = b
+    b = tmp
+  }
+
+  while (true) {
+    if (b === 0) return a
+    a %= b
+    if (a === 0) return b
+    b %= a
+  }
 }
 
 /**

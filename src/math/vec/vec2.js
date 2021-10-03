@@ -12,7 +12,7 @@ class Vec2 {
     if (Array.isArray(obj)) {
       x = obj[0]
       y = obj[1]
-    } else if (typeof obj === 'object' && obj.x) {
+    } else if (typeof obj === 'object' && obj.x !== undefined) {
       x = obj.x
       y = obj.y
     } else if (typeof obj === 'string') {

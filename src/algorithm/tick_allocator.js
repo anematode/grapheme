@@ -1,12 +1,64 @@
 import { BigFloat as BF } from '../math/arb/bigfloat.js'
 
+function prettyPrintDecimal (offset, base, opts={}) {
+  // Both offset and base are integers
+
+  if (offset === 0) {
+    return 0
+  }
+}
+
+class Ticks {
+  constructor (params={}) {
+    // Map between tick types and arrays of tick information. A tick looks as follows:
+    // { tick: (BigFloat|number) (location of the actual tick), decimalOffset?: (number) (offset in decimal), label?: (string) (LaTeX string) }
+    this.ticks = params.ticks ?? {}
+
+    /**
+     * Offset between where the given decimals of the ticks are and the intended ticks are. The location of a tick in
+     * decimal is given as (decimalOffset + tick.decimalOffset) * 10 ^ decimalExp, which can then be converted as
+     * pleased to a "nice" form
+     * @type {number|BigFloat}
+     */
+    this.decimalOffset = params.decimalOffset ?? 0
+
+    /**
+     *
+     * @type {number}
+     */
+    this.decimalExp = params.decimalExp ?? 0
+  }
+
+  union (ticks) {
+    if (!(ticks instanceof Ticks)) {
+      ticks = new Ticks(ticks)
+    }
+
+
+  }
+}
+
+/**
+ *
+ * @param xStart
+ * @param xEnd
+ * @param xLen
+ * @param desiredMinorSep
+ * @param desiredMajorSep
+ * @param subdivisions
+ * @param includeAxis
+ */
 export function getArbitraryPrecisionDemarcations (
   xStart,
   xEnd,
   xLen,
-  desiredMinorSep,
-  desiredMajorSep,
-  subdivisions,
+  desiredMinorSep=20,
+  desiredMajorSep=150,
+  subdivisions=[
+    [4 /* minor */, 5 /* major */],
+    [5, 2],
+    [5, 1]
+  ],
   includeAxis = false
 ) {
   // We only use a 30-bit number for the graph length, because it's only used for estimation-type stuff. A 30-bit number
@@ -22,8 +74,6 @@ export function getArbitraryPrecisionDemarcations (
   // Our working precision will be 1000x finer than one pixel, based on xLen (which is the number of pixels)
   let fineness = BF.mul(xGraphLen, 1 / (xLen * 1000), 30)
   let finenessExp = BF.floorLog2(fineness)
-
-  console.log(finenessExp)
 
   let neededWorkingPrecision = Math.max(BF.floorLog2(xEnd) - finenessExp, BF.floorLog2(xStart) - finenessExp, 53)
 
@@ -55,13 +105,14 @@ export function getArbitraryPrecisionDemarcations (
 
   let majTicks = []
   let minTicks = []
+  let firstMultiple
 
   BF.withWorkingBinaryPrecision(neededWorkingPrecision, () => {
     // Generate the ticks based on the chosen base and subdivision. We first find the offset of the nearest multiple of
     // 10^b preceding xStart, say m * 10^b, then for each interval (m, m+1) generate the ticks that are in the range of
     // xStart and xEnd
     let based = BF.pow10(bestBase)
-    let firstMultiple = BF.floor(BF.div(xStart, based))
+    firstMultiple = BF.floor(BF.div(xStart, based))
     let lastMultiple = BF.ceil(BF.div(xEnd, based))
 
     if (BF.isInteger(lastMultiple)) lastMultiple = BF.add(lastMultiple, 1)
@@ -72,7 +123,7 @@ export function getArbitraryPrecisionDemarcations (
     let [min, maj] = bestSubdivision
 
     // fracParts[i] is (i / (min * maj)) * based
-    let fracParts = [...new Array(min * maj)].map((_,i) => BF.mul(i / (min * maj), based))
+    let fracParts = [...new Array(min * maj)].map((_, i) => BF.mul(i / (min * maj), based))
 
     // We scale the problem to [0, totalMajors]
     for (let offset = 0; offset < totalPowers; ++offset) {
@@ -85,22 +136,30 @@ export function getArbitraryPrecisionDemarcations (
         if (BF.cmp(tick, xEnd) === 1) continue
 
         if (BF.cmp(tick, xStart) >= 0) majTicks.push({
-          tick
+          tick: BF.toCompressed(tick),
+          decimalOffset: (100 * (offset + j / maj) | 0)
         })
 
         for (let k = 1; k < min; ++k) {
           tick = BF.add(h, fracParts[j * min + k])
           if (BF.cmp(tick, xEnd) === 1 || BF.cmp(tick, xStart) === -1) continue
 
-          minTicks.push({ tick })
+          minTicks.push({
+            tick: BF.toCompressed(tick),
+            decimalOffset: (100 * (offset + j / maj + k / (min * maj)) | 0)
+          })
         }
       }
     }
+
+    firstMultiple = BF.mul(firstMultiple, 100)
   })
 
-  return { min: minTicks, maj: majTicks }
+  return new Ticks({ ticks: { min: minTicks, maj: majTicks }, decimalExp: bestBase - 2, decimalOffset: BF.toCompressed(firstMultiple), subdivisionUsed: bestSubdivision })
+}
 
-  console.log(bestBase, bestErr, bestSubdivision, finenessExp, neededWorkingPrecision)
+export function getRationalNumberDemarcations (xStart, xEnd, xLen) {
+  
 }
 
 export function getDemarcations (
