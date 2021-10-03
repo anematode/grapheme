@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parse TTF</title>
+</head>
+<body>
+
+<script src="test_setup.js"></script>
+<script id="setup">
+  fetch("./test.ttf").then(a => a.arrayBuffer()).then(Grapheme.parseTTF)
+</script>
+
+</body>
+</html>

@@ -140,6 +140,10 @@ export class NumberLineTransform {
 
   }
 
+  getOffset () {
+    return new Vec2(this.end.y - this.start.y, this.start.x - this.end.x).unit()
+  }
+
   graphToPixel (x) {
     return this.end.sub(this.start).mul((x - this.startX) / (this.endX - this.startX)).add(this.start)
   }
