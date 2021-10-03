@@ -159,6 +159,7 @@ export class InteractiveScene extends Scene {
 
       div.style.left = shiftedRect.x + 'px'
       div.style.top = shiftedRect.y + 'px'
+      div.style.transform = "matrix(2, 0, 0, 2, 0, 0)"
 
       return { pos: new Vec2(shiftedRect.x, shiftedRect.y), domElement: div, w: rect.width, h: rect.height, claimed: true }
     }

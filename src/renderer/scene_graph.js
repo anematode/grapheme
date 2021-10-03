@@ -471,7 +471,7 @@ export class SceneGraph {
           }
           case 'triangle_strip': {
             let vertices = instruction.vertices
-            let color = instruction.color
+            let color = instruction.color ?? Colors.BLACK
 
             let buffName = context.id + '-' + getVersionID()
             let vaoName = context.id + '-' + getVersionID()

@@ -5,6 +5,7 @@ import { Vec2 } from '../../math/vec/vec2.js'
 import { BigFloat } from '../../math/arb/bigfloat.js'
 import { ROUNDING_MODE } from '../../math/rounding_modes.js'
 import { ulp } from '../../math/real/fp_manip.js'
+import { Pen } from '../../styles/definitions.js'
 
 let figureInterface = Figure.prototype.getInterface()
 
@@ -129,6 +130,10 @@ export class NumberLineTransform {
     this.calculateDeltaX()
   }
 
+  getReducedGraphToPixelTransform() {
+
+  }
+
   reset () {
 
   }
@@ -199,7 +204,7 @@ export class NumberLine extends Figure {
     const { start, end, numberLineTransform } = this.props.proxy
 
     this.internal.renderInfo = {
-      instructions: { type: "polyline", vertices: [ start, end ]}
+      instructions: { type: "polyline", vertices: [ start, end ], pen: Pen.create({ thickness: 4 }) }
     }
   }
 }

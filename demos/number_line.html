@@ -12,43 +12,90 @@
 
 <script id="setup">
   var renderer = new Grapheme.WebGLRenderer()
-  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 500, dpr: devicePixelRatio })
+  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1920, height: 500, dpr: 2 })
 
-  var line = new Grapheme.NumberLine({ startX: Math.sqrt(2) - 1, endX: Math.sqrt(2) + 1 })
-  var ticks = new Grapheme.NumberLineTicks()
+  var onRender = () => null
 
-  function setTicks () {
-    let transform = line.get("numberLineTransform")
-    let count = 20 + 0.5 * Math.log2(transform.endX - transform.startX)
+  function scene1 () {
+    var line = new Grapheme.NumberLine({
+      startX: -2,
+      endX: 1
+    })
+    var ticks = new Grapheme.NumberLineTicks()
+    var count = 0
+    var points = new Grapheme.NumberLinePoints({ pointRadius: 5 })
+    var label = new Grapheme.LatexElement({ position: [ 200, 100 ]})
 
-    let params = {
-      ticks: {
-        special: [{tick: Math.sqrt(2), label: "\\text{``}\\sqrt{2}\\,\\text{\"}" }],
-        normal: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, count).map(({ n, d, v }) => ({ tick: v, label: `\\dfrac{${n}}{${d}}`}))
+    function setTicks () {
+      let transform = line.get("numberLineTransform")
+
+      let params = {
+        ticks: {
+          normal: [-2, -1, 0, 1].map(n => ({ tick: n, label: n + '' }))
+        }
       }
+
+      ticks.set(params)
     }
 
-    ticks.set(params)
+    scene.add(line.add(ticks).add(points)).add(label)
+
+    onRender = () => {
+      count = (count > 100) ? 1000 : count + 1
+      setTicks()
+
+      let data = [...new Array(count).keys()].map(n => -1/(n+1))
+
+      points.set({ data })
+      label.set({ latex: `\\textcolor{blue}{S}=\\left\\{${data.slice(0, 10).map(n => (n === -1) ? "-1" : "-\\frac{1}{" + ((-1/n) | 0) + "}").join(',') + (data.length > 10 ? ',...': '')}\\right\\}`, dir: 'W' })
+    }
   }
 
+  function scene2 () {
+    var line = new Grapheme.NumberLine({
+      startX: Math.sqrt(2) - 1,
+      endX: Math.sqrt(2) + 1
+    })
+    var ticks = new Grapheme.NumberLineTicks()
+    var points = new Grapheme.NumberLinePoints({ pointRadius: 5 })
 
+    function setTicks () {
+      let transform = line.get("numberLineTransform")
+      let count = 20 + 0.5 * Math.log2(transform.endX - transform.startX)
 
-  scene.add(line.add(ticks))
+      let params = {
+        ticks: {
+          special: [{
+            tick: Math.sqrt(2),
+            label: "\\text{``}\\sqrt{2}\\,\\text{\"}"
+          }],
+          normal: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, count).map(({ n, d, v }) => ({
+            tick: v,
+            label: `\\dfrac{${n}}{${d}}`
+          }))
+        }
+      }
+
+      ticks.set(params)
+      points.set({ data: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, 200).map(({ v }) => v) })
+    }
+
+    scene.add(line.add(ticks).add(points))
+
+    onRender = () => {
+      line.zoomOn(Math.sqrt(2), 0.99)
+      setTicks()
+    }
+  }
 
   document.body.appendChild(scene.domElement)
 
-  var total = 0
-
   function render() {
     renderer.renderDOMScene(scene)
-
-    line.zoomOn(Math.sqrt(2), 0.99)
-    setTicks()
+    onRender()
 
     setTimeout(render, 100)
   }
-
-  render()
 </script>
 
 

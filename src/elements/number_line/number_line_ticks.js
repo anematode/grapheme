@@ -7,8 +7,8 @@ import { Pen } from '../../styles/definitions.js'
 // { pen?: (Pen), offset?: (number)|[number, number], labelPosition?: (dir), labelSpacing?: (dir) }
 
 const defaultTickStyles = {
-  special: { pen: Pen.create({ thickness: 2 }), offset: [ -10, 50 ], labelPosition: 'N', labelSpacing: 10 },
-  normal: { pen: Pen.create({ thickness: 1 }), offset: [ 5, -5 ], labelPosition: 'S', labelSpacing: 10 }
+  special: { pen: Pen.create({ thickness: 4 }), offset: [ -10, 50 ], labelPosition: 'N', labelSpacing: 10 },
+  normal: { pen: Pen.create({ thickness: 4 }), offset: [ 5, -5 ], labelPosition: 'S', labelSpacing: 10 }
 }
 
 const numberLineTicksInterface = constructInterface({
@@ -67,8 +67,10 @@ export class NumberLineTicks extends Element {
 
         instructions.push({
           type: "polyline",
-          vertices: [start, end]
+          vertices: [start, end],
+          pen
         })
+
         if (label) {
           latexInstructions.push({
             type: "latex",
