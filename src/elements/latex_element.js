@@ -29,7 +29,7 @@ const latexElementInterface = constructInterface({
   }
 })
 
-function getLatexSizeAndHTML (content) {
+export function getLatexSizeAndHTML (content) {
   let html = katex.renderToString(content)
   let div = document.createElement("div")
 

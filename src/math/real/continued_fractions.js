@@ -107,7 +107,6 @@ export function limitedRationalsBetween (f1, f2, count=10) {
       }
 
       if (!(val > f2 && rightVal > f2)) {
-        console.log(val, rightVal, f2, nMid, dMid)
         newQueue.push({ nLeft: nMid, dLeft: dMid, leftVal: val, nRight, dRight, rightVal })
       }
     }

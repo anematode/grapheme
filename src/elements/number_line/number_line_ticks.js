@@ -1,9 +1,15 @@
 import { constructInterface } from '../../core/interface.js'
 import { Element } from '../../core/element.js'
-import { Colors as Pens } from '../../styles/definitions.js'
+import { getLatexSizeAndHTML } from '../latex_element.js'
+import { Pen } from '../../styles/definitions.js'
 
 // A tick style has the following parameters:
-// { pen?: (Pen), offset?: (number)|[number, number], labelPosition: (dir), labelSpacing: (dir) }
+// { pen?: (Pen), offset?: (number)|[number, number], labelPosition?: (dir), labelSpacing?: (dir) }
+
+const defaultTickStyles = {
+  special: { pen: Pen.create({ thickness: 2 }), offset: [ -10, 50 ], labelPosition: 'N', labelSpacing: 10 },
+  normal: { pen: Pen.create({ thickness: 1 }), offset: [ 5, -5 ], labelPosition: 'S', labelSpacing: 10 }
+}
 
 const numberLineTicksInterface = constructInterface({
   interface: {
@@ -11,7 +17,7 @@ const numberLineTicksInterface = constructInterface({
   },
   internal: {
     ticks: { computed: "none" },
-    tickStyles: { computed: "default", }
+    tickStyles: { computed: "default", default: defaultTickStyles }
   }
 })
 
@@ -24,30 +30,57 @@ export class NumberLineTicks extends Element {
     this.defaultInheritProps()
     this.defaultComputeProps()
 
-    let { ticks, numberLineTransform } = this.props.proxy
+    let { ticks, tickStyles, numberLineTransform } = this.props.proxy
     if (!ticks || !numberLineTransform) {
       this.internal.renderInfo = null
       return
     }
 
     const instructions = []
-    const offset = numberLineTransform.getOffset()
+    const offsetVec = numberLineTransform.getOffset()
 
-    for (const tickInfo of ticks) {
-      let { tick, label } = tickInfo
+    const latexInstructions = []
 
-      if (tick === undefined) continue
+    for (const [ styleName, tickList ] of Object.entries(ticks)) {
+      let style = tickStyles[styleName]
+      if (!style) continue
 
-      let loc = numberLineTransform.graphToPixel(tick)
-      let start = loc.add(offset.mul(5))
-      let end = loc.add(offset.mul(-5))
+      let startOffset, endOffset
+      let offset = style.offset, pen = style.pen ?? Pen.default, labelDir = style.labelPosition, labelSpacing = style.labelSpacing
 
-      instructions.push({ type: "polyline", vertices: [start, end] })
-      if (label) {
-        instructions.push({ type: "latex", latex: label, pos: start, dir: 'N', spacing: 10 })
+      if (Array.isArray(offset)) {
+        startOffset = offset[0]
+        endOffset = offset[1]
+      } else {
+        startOffset = -(offset ?? 5)
+        endOffset = -startOffset
+      }
+
+      for (let tickInfo of tickList) {
+        let { tick, label } = tickInfo
+
+        if (tick === undefined) continue
+
+        let loc = numberLineTransform.graphToPixel(tick)
+        let start = loc.add(offsetVec.mul(startOffset))
+        let end = loc.add(offsetVec.mul(endOffset))
+
+        instructions.push({
+          type: "polyline",
+          vertices: [start, end]
+        })
+        if (label) {
+          latexInstructions.push({
+            type: "latex",
+            latex: label,
+            pos: end,
+            dir: labelDir,
+            spacing: labelSpacing
+          })
+        }
       }
     }
 
-    this.internal.renderInfo = { instructions }
+    this.internal.renderInfo = { instructions: instructions.concat(latexInstructions) }
   }
 }

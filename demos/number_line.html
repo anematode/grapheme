@@ -12,20 +12,19 @@
 
 <script id="setup">
   var renderer = new Grapheme.WebGLRenderer()
-  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1920, height: 500, dpr: devicePixelRatio })
+  var scene = new Grapheme.InteractiveScene({ interactivity: true, width: 1000, height: 500, dpr: devicePixelRatio })
 
-  var line = new Grapheme.NumberLine({ startX: 0, endX: 2 })
+  var line = new Grapheme.NumberLine({ startX: Math.sqrt(2) - 1, endX: Math.sqrt(2) + 1 })
   var ticks = new Grapheme.NumberLineTicks()
 
   function setTicks () {
     let transform = line.get("numberLineTransform")
-
-    console.log(+transform.endX)
+    let count = 20 + 0.5 * Math.log2(transform.endX - transform.startX)
 
     let params = {
       ticks: {
         special: [{tick: Math.sqrt(2), label: "\\text{``}\\sqrt{2}\\,\\text{\"}" }],
-        normal: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, 20).map(({ n, d, v }) => ({ tick: v, label: `\\dfrac{${n}}{${d}}`}))
+        normal: Grapheme.limitedRationalsBetween(+transform.startX, +transform.endX, count).map(({ n, d, v }) => ({ tick: v, label: `\\dfrac{${n}}{${d}}`}))
       }
     }
 
@@ -43,8 +42,10 @@
   function render() {
     renderer.renderDOMScene(scene)
 
-    //setTimeout(render, 1000)
-    //requestAnimationFrame(render)
+    line.zoomOn(Math.sqrt(2), 0.99)
+    setTicks()
+
+    setTimeout(render, 100)
   }
 
   render()
