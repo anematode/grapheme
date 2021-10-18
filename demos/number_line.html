@@ -41,13 +41,13 @@
     scene.add(line.add(ticks).add(points)).add(label)
 
     onRender = () => {
-      count = (count > 100) ? 1000 : count + 1
       setTicks()
 
       let data = [...new Array(count).keys()].map(n => -1/(n+1))
 
       points.set({ data })
       label.set({ latex: `\\textcolor{blue}{S}=\\left\\{${data.slice(0, 10).map(n => (n === -1) ? "-1" : "-\\frac{1}{" + ((-1/n) | 0) + "}").join(',') + (data.length > 10 ? ',...': '')}\\right\\}`, dir: 'W' })
+      count = (count > 100) ? 1000 : count + 1
     }
   }
 
@@ -94,7 +94,7 @@
     renderer.renderDOMScene(scene)
     onRender()
 
-    setTimeout(render, 100)
+    //setTimeout(render, 100)
   }
 </script>
 

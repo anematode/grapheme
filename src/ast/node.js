@@ -113,7 +113,7 @@ export class ASTGroup extends ASTNode {
    * @param typeInfo {{}} Dictionary of variable name -> variable type
    * @param opts {{}}
    */
-  resolveTypes (typeInfo, opts = {}) {
+  resolveTypes (typeInfo={}, opts = {}) {
     this.children.forEach(child => child.resolveTypes(typeInfo, opts))
 
     this.type = this.children[0].type
@@ -155,7 +155,7 @@ export class VariableNode extends ASTNode {
    * @param typeInfo {{}} Dictionary of variable name -> variable type
    * @param opts {{}}
    */
-  resolveTypes (typeInfo, opts = {}) {
+  resolveTypes (typeInfo={}, opts = {}) {
     let type = typeInfo[this.name]
     let strict = !!opts.strict
 

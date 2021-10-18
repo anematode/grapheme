@@ -463,7 +463,8 @@ export class SceneGraph {
               content: instruction.latex,
               pos: instruction.pos,
               dir: instruction.dir ?? "C",
-              spacing: instruction.spacing ?? 0
+              spacing: instruction.spacing ?? 0,
+              scale: instruction.scale ?? 1
             }
             compiledInstructions.push(compiled)
 

@@ -9,6 +9,11 @@ import { flattenVec2Array } from '../algorithm/misc_geometry.js'
 export class Arrowhead {
   constructor (points, preshift) {
     this.points = points
+
+    // Shift in pixels that represents where the line should actually join up with the arrow head
+    this.preshift = preshift
+
+    // The type of join that should be used when joining with this arrowhead
   }
 
   _triangulate () {

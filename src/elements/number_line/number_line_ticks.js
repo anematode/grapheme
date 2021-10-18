@@ -77,7 +77,8 @@ export class NumberLineTicks extends Element {
             latex: label,
             pos: end,
             dir: labelDir,
-            spacing: labelSpacing
+            spacing: labelSpacing,
+            scale: 2
           })
         }
       }

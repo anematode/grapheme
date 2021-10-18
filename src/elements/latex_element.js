@@ -14,18 +14,14 @@ const latexElementInterface = constructInterface({
     },
     latex: { description: 'The latex code to be displayed.', typecheck: 'string' },
     dir: { description: 'Alignment direction; "E" is east, a vector is a vector', conversion: toDir },
-    spacing: { description: 'How much extra spacing to provide', typecheck: 'number' }
+    spacing: { description: 'How much extra spacing to provide', typecheck: 'number' },
+    size: { description: 'The scaling to apply to the LaTeX element'}
   },
   internal: {
     pos: { type: 'Vec2', computed: 'none' },
-    style: {
-      type: 'TextStyle',
-      computed: 'user',
-      compose: true,
-      default: TextStyle.default
-    },
     dir: { type: 'Vec2', computed: 'default', default: new Vec2(0, 0) },
-    spacing: { type: 'number', computed: 'default', default: 0 }
+    spacing: { type: 'number', computed: 'default', default: 0 },
+    size: { type: 'number', computed: 'default', default: 2 }
   }
 })
 
@@ -57,10 +53,13 @@ export class LatexElement extends Element {
   }
 
   _update () {
+    this.defaultComputeProps()
+
     let code = this.props.get("latex")
     let pos = this.props.get("pos")
     let dir = this.props.get("dir") ?? "C"
     let spacing = this.props.get("spacing") ?? 0
+    let size = this.props.get("size") ?? 1
 
     if (!code || !pos) {
       this.internal.renderInfo = null
@@ -77,7 +76,8 @@ export class LatexElement extends Element {
         latex: code,
         pos: pos,
         dir,
-        spacing
+        spacing,
+        scale: size
       }
     }
   }

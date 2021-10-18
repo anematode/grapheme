@@ -152,21 +152,21 @@ export class InteractiveScene extends Scene {
       return { div, rect }
     }
 
-    function addElement (html, pos, dir, spacing) {
+    function addElement (html, pos, dir, spacing, transform) {
       let { div, rect } = addElementToDOM(html)
 
       let shiftedRect = calculateRectShift(new BoundingBox(pos.x, pos.y, rect.width, rect.height), dir, spacing)
 
       div.style.left = shiftedRect.x + 'px'
       div.style.top = shiftedRect.y + 'px'
-      div.style.transform = "matrix(2, 0, 0, 2, 0, 0)"
+      div.style.transform = transform
 
       return { pos: new Vec2(shiftedRect.x, shiftedRect.y), domElement: div, w: rect.width, h: rect.height, claimed: true }
     }
 
     main: for (const instruction of instructions) {
       if (instruction.type === "latex") {
-        let { pos, dir, spacing } = instruction
+        let { pos, dir, spacing, scale } = instruction
 
         for (const elem of htmlElements) {
           if (elem.claimed || elem.type !== "latex" || elem.content !== instruction.content) continue
@@ -188,7 +188,7 @@ export class InteractiveScene extends Scene {
         }
 
         // No latex element exists that's unclaimed and has the same content, so we create one
-        let elem = addElement(instruction.html, pos, dir, spacing)
+        let elem = addElement(instruction.html, pos, dir, spacing, `matrix(${scale}, 0, 0, ${scale}, 0, 0)`)
 
         elem.type = "latex"
         elem.content = instruction.content
