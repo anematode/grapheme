@@ -1,0 +1,4 @@
+
+describe('Path2D', () => {
+
+})
