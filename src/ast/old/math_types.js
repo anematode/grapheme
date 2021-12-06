@@ -1,7 +1,7 @@
 // List of valid types in Grapheme math language (as distinct from the props and stuff)
-import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
-import { FastVec2Interval } from '../math/fast_interval/fast_vec2_interval.js'
-import { Vec2 } from '../math/vec/vec2.js'
+import { FastRealInterval } from '../../math/fast_interval/fast_real_interval.js'
+import { FastVec2Interval } from '../../math/fast_interval/fast_vec2_interval.js'
+import { Vec2 } from '../../math/vec/vec2.js'
 
 
 

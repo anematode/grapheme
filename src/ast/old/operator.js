@@ -1,5 +1,5 @@
-import { levenshtein } from '../core/utils.js'
-import { initTypecasts } from './typecasts.js'
+import { levenshtein } from '../../core/utils.js'
+import { initTypecasts } from '../typecasts.js'
 import { TYPES } from './math_types.js'
 
 /**

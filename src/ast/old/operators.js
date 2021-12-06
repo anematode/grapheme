@@ -1,6 +1,6 @@
 import { FixedOperatorDefinition } from './operator.js'
-import { Vec2 } from '../math/vec/vec2.js'
-import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
+import { Vec2 } from '../../math/vec/vec2.js'
+import { FastRealInterval } from '../../math/fast_interval/fast_real_interval.js'
 
 /**
  * Mapping of operator name to list of operators with that name
