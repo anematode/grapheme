@@ -57,7 +57,7 @@ export class ASTGroup extends ASTNode {
     this.children = children
 
     /**
-     * Type of this ASTNode (real, complex, etc.)
+     * MathematicalType of this ASTNode (real, complex, etc.)
      * @type {string}
      */
     this.type = type

@@ -73,7 +73,7 @@ export class ConcreteType {
 // class instead of a string. Note the distinction between this "type" and the concrete types used underneath. For
 // example, "complex" is a type, while the Grapheme.Complex class is a concrete type. The unqualified word "type" refers
 // to the former; "concrete type" is used in the latter case.
-export class Type {
+export class MathematicalType {
   constructor (params={}) {
     // Name of the type
     this.name = params.name

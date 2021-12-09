@@ -4,7 +4,7 @@
  */
 
 /**
- * Helper function
+ * Helper function (doesn't need to be fast)
  * @param node {ASTNode}
  * @param name {string}
  * @param keys {Array<string>} Keys to look for
@@ -35,13 +35,19 @@ const KNOWN_KEYS = ["type", "value", "name", "children"]
 export class ASTNode {
   constructor (params={}) {
     /**
-     * Type of the node (int, complex, etc.). Null if not resolved
+     * MathematicalType of the node (int, complex, etc.). Null if not resolved
      */
     this.type = params.type ?? null
+
+    /**
+     * EvaluationConte
+     * @type {*|null}
+     */
+    this.ctx = params.ctx ?? null
   }
 
   toString () {
-    return `[object ${getNodeType()}]`
+    return `[object ${this.getNodeTypeAsString()}]`
   }
 
   getNodeType () {

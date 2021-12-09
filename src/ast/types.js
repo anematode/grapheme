@@ -3,7 +3,7 @@
 
 // CONCRETE TYPES
 
-import { ConcreteType, Type } from './type.js'
+import { ConcreteType, MathematicalType } from './type.js'
 import { NullableBoolean } from '../math/other/boolean_functions.js'
 import { NullableInteger } from '../math/other/integer_functions.js'
 import { FastBooleanInterval } from '../math/fast_interval/fast_boolean_interval.js'
@@ -74,7 +74,7 @@ let concreteTypeDict = {}
  * ABSTRACT TYPES
  */
 
-let abstractReal = new Type({
+let abstractReal = new MathematicalType({
   name: "real",
   concreteTypes: {
     "normal": concreteReal,

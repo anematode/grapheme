@@ -4382,7 +4382,7 @@
 
       this.children = children;
       /**
-       * Type of this ASTNode (real, complex, etc.)
+       * MathematicalType of this ASTNode (real, complex, etc.)
        * @type {string}
        */
 
@@ -4481,7 +4481,7 @@
     resolveTypes(typeInfo, opts = {}) {
       let type = typeInfo[this.name];
       let strict = !!opts.strict;
-      if (strict && !type) throw new Error("Type of variable ".concat(this.name, " is unknown"));
+      if (strict && !type) throw new Error("MathematicalType of variable ".concat(this.name, " is unknown"));
       this.type = type !== null && type !== void 0 ? type : 'real';
     }
 
