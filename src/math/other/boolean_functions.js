@@ -83,13 +83,29 @@ function isNullableBoolean (b) {
   return b === 1 || b !== b || Object.is(b, 0)
 }
 
+/**
+ * Returns a descriptive nonempty string if b is not a usable nullable boolean
+ * @param {*} b
+ * @returns {string}
+ */
+function typecheckUsableNullableBoolean (b) {
+  if (typeof b === "boolean") return ""
+  if (typeof b === "number") {
+    if (b === 0 || b === 1 || b !== b) return ""
+    return `Expected nullable boolean (0, 1, NaN, false, or true), got number ${b}`
+  }
+
+  return `Expected nullable boolean (0, 1, NaN, false, or true), got type ${typeof b}`
+}
+
 const NullableBoolean = Object.freeze({
   Functions,
   Comparisons,
   Test,
   toNullableBoolean,
   isUsableNullableBoolean,
-  isNullableBoolean
+  isNullableBoolean,
+  typecheckUsableNullableBoolean
 })
 
 export { NullableBoolean }

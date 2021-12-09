@@ -4,40 +4,34 @@
 // CONCRETE TYPES
 
 import { ConcreteType, Type } from './type.js'
+import { NullableBoolean } from '../math/other/boolean_functions.js'
+import { NullableInteger } from '../math/other/integer_functions.js'
 import { FastBooleanInterval } from '../math/fast_interval/fast_boolean_interval.js'
 import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
 
-// A boolean may be true/false OR NaN, the latter signifying an undefined value
-let concreteNormalBoolean = new ConcreteType({
+// The boolean type is nullable. meaning it takes on a value of 0, 1, or NaN. -0, false, and true are also accepted as
+// values, but aren't used that way internally
+let concreteBoolean = new ConcreteType({
   name: "bool",
   isPrimitive: true,
   init: () => false,
-  typecheck: b => typeof b === "boolean" || Number.isNaN(b),
-  typecheckVerbose: b => (typeof b !== "boolean" && !Number.isNaN(b)) ? ("Expected JS boolean, found type " + (typeof b)) : "",
+
+  // The typechecks are for usability, not strictness
+  typecheck: NullableBoolean.isUsableNullableBoolean,
+  typecheckVerbose: NullableBoolean.typecheckUsableNullableBoolean,
 })
 
-let concreteNormalInt = new ConcreteType({
+// Concrete integers are required to be in the safe range; operations outside this range will return NaN
+let concreteInt = new ConcreteType({
   name: "int",
   isPrimitive: true,
   init: () => 0,
-  typecheck: i => Number.isInteger(i) || Number.isNaN(i),
-  typecheckVerbose: i => {
-    let isInteger = Number.isInteger(i)
-    let isNaN = Number.isNaN(i)
 
-    if (!isInteger && !isNaN) {
-      if (typeof i === "number") {
-        return "Expected integral JS number or NaN, found type " + (typeof i)
-      } else {
-        return "Expected integer or NaN, found non-integral number " + i
-      }
-    }
-
-    return ""
-  }
+  typecheck: NullableInteger.isNullableInteger,
+  typecheckVerbose: NullableInteger.typecheckNullableInteger
 })
 
-let concreteNormalReal = new ConcreteType({
+let concreteReal = new ConcreteType({
   name: "real",
   isPrimitive: true,
   init: () => 0,
@@ -69,7 +63,7 @@ let concreteFastIntervalInt = new ConcreteType({
 })
 
 let concreteTypeDict = {}
-;[concreteNormalBoolean, concreteNormalInt, concreteNormalReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(concreteType => {
+;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(concreteType => {
   concreteTypeDict[concreteType.name] = concreteType
 })
 
@@ -80,7 +74,7 @@ let concreteTypeDict = {}
 let abstractReal = new Type({
   name: "real",
   concreteTypes: {
-    "normal": concreteNormalReal,
+    "normal": concreteReal,
     "fast_interval": concreteFastIntervalReal
   }
 })

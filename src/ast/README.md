@@ -22,3 +22,13 @@ The "types" of expressions are still abstracts over the *underlying type* that w
 In general, Grapheme thinks about things at varying levels of abstraction. At the top is the unparsed expression. In the middle, each subexpression has been assigned a (abstract) type based on the types of each variable and the resolutions of various functions, including implicit casting. At the bottom, an evaluation mode has been selected and each subexpression has been assigned a concrete type. We call the latter two the "abstract" amd "concrete" world, respectively.
  
  Currently types are fairly simple, but in the future they may include generics—something like `list<int>`, for example.
+
+### Concrete types
+
+#### bool
+
+Takes on one of `0`, `1`, `NaN`, with `0` meaning "false", `1` meaning true, and `NaN` being the null value (undefined).
+
+#### int
+
+Integer between `-2 ** 53 = -9007199254740992` and `2 ** 53 - 1 = 9007199254740991`

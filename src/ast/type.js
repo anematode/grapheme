@@ -28,6 +28,9 @@ export class ConcreteType {
     // Returns a verbose error message if the passed parameter is not of this type, otherwise an empty string
     this.typecheckVerbose = params.typecheckVerbose ?? null
 
+    // Returns true if the passed parameter is considered defined. For example, Complex(0, NaN) would give false
+    this.isDefined = params.isDefined ?? null
+
     // FUNCTION which, when called with a single argument, deep clones the type. Only used for non-primitives
     this.clone = params.clone ?? (x => x)
 
@@ -44,11 +47,11 @@ export class ConcreteType {
       if (!this.init || !this.initStr) {
         let init, initStr
 
-        switch (typeof this.defaultValue) {
-          case "boolean": init = () => false; initStr = "false"; break;
-          case "number": init = () => 0; initStr = "0"; break;
-          default:
-            throw new Error("Invalid primitive")
+        if (typeof this.defaultValue === "number") { // nullable booleans, ints, and reals are all represented by a JS number
+          init = () => 0;
+          initStr = "0";
+        } else {
+          throw new Error("Invalid primitive")
         }
 
         this.init = init
