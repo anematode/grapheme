@@ -9,8 +9,9 @@ import { NullableInteger } from '../math/other/integer_functions.js'
 import { FastBooleanInterval } from '../math/fast_interval/fast_boolean_interval.js'
 import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
 
-// The boolean type is nullable. meaning it takes on a value of 0, 1, or NaN. -0, false, and true are also accepted as
-// values, but aren't used that way internally
+// The boolean type is nullable. meaning it takes on a value of 0, 1, or NaN. -0, false, and true are also ACCEPTED as
+// values, but aren't used that way internally, since each is implicitly casted to the correct value in all numeric
+// calculations.
 let concreteBoolean = new ConcreteType({
   name: "bool",
   isPrimitive: true,
@@ -21,7 +22,7 @@ let concreteBoolean = new ConcreteType({
   typecheckVerbose: NullableBoolean.typecheckUsableNullableBoolean,
 })
 
-// Concrete integers are required to be in the safe range; operations outside this range will return NaN
+// Integers can be any number that's not a non-integral finite number (so they can be ±Infinity, NaN)
 let concreteInt = new ConcreteType({
   name: "int",
   isPrimitive: true,
@@ -31,10 +32,12 @@ let concreteInt = new ConcreteType({
   typecheckVerbose: NullableInteger.typecheckNullableInteger
 })
 
+// Real can be any floating-point number
 let concreteReal = new ConcreteType({
   name: "real",
   isPrimitive: true,
   init: () => 0,
+
   typecheck: b => typeof b === "number",
   typecheckVerbose: b => (typeof b !== "number") ? ("Expected JS number, found type " + (typeof b)) : "",
 })
