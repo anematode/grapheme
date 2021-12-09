@@ -3,14 +3,20 @@
  * example, sqrt(-1) == sqrt(-2) and sqrt(-1) == sqrt(-1) will both return the null boolean. We represent booleans as
  * 0 (false), 1 (true), or NaN (null). The reasoning here is that we want to propagate undefinedness. If an undefined
  * operation like sqrt(-1) is hidden away behind some boolean operation that in turn returns false, the result may
- * appear "defined" when it should be considered meaningless, since an invalid operation was used.
+ * appear "defined" when it should be considered meaningless, since an invalid operation was used. For example, suppose
+ * piecewise(condition, a, b) is a when condition is true and b when condition is false. For example, piecewise(x > 0, 1,
+ * 0) is 1 for positive x and 0 for nonpositive x. But what if there was something like piecewise(sqrt(x) < 1, 1, 0)?
+ * Then it is clearly 1 for x in [0, 1) and 0 for x in [1, inf), but what about x < 0? The sqrt operation is undefined
+ * in that range. We have a couple options: throw an error, pretend that undefined operations are false, or return
+ * an undefined value (in this case, probably NaN). The last case is the most sensible, but then we need some third
+ * boolean value besides true or false. Thus, we use the nullable boolean.
  *
  * Ints and reals have their own "nullable" values: NaN. Interval classes usually have some form of definedness built
- * into them. The only real problem is the boolean. We *could* use (true, false, undefined) or (true, false, NaN) to be
+ * into them. The only tricky problem is the boolean. We *could* use (true, false, undefined) or (true, false, NaN) to be
  * the representation, but these use different underlying primitives. Choosing (0, 1, NaN) means everything operates in
  * floating-point, enabling greater optimization. Furthermore, NaN is implicitly converted to false in a boolean
- * expression, so user code that doesn't care about undefinedness will treat undefined results as false--which is
- * usually the most sensible.
+ * expression, so user code that doesn't handle undefinedness will treat undefined results as false--which is
+ * usually what is intended.
  */
 
 // All these functions assume their inputs are in (-0, +0, 1, false, true, NaN). They return results in the range (0, 1, NaN)
@@ -33,6 +39,14 @@ const Comparisons = Object.freeze({
   greaterEq: (a, b) => 0 - Math.sign(Math.sign(b - a) - 1),
   eq: (a, b) => 1 - Math.sign(Math.abs(a - b)),
   notEq: (a, b) => Math.sign(Math.abs(a - b))
+})
+
+// Test for values
+const Test = Object.freeze({
+  true: a => a === 1,
+  false: a => a === 0,
+  defined: a => a === a,
+  undefined: a => a !== a
 })
 
 /**
@@ -72,6 +86,7 @@ function isNullableBoolean (b) {
 const NullableBoolean = Object.freeze({
   Functions,
   Comparisons,
+  Test,
   toNullableBoolean,
   isUsableNullableBoolean,
   isNullableBoolean
