@@ -7,55 +7,8 @@
 <body>
 
 <script id="setup">
-    var expr = "vec2(x^2,y^2)"
-    var node = Grapheme.parseString(expr).resolveTypes()
-    var compiled = Grapheme.compileNode(node, { args: ['x', 'y'], typechecks: true })
 
-    /*var renderer = new Grapheme.WebGLRenderer()
-    var scene = new Grapheme.InteractiveScene()
-
-    var line = new Grapheme.NumberLine()
-
-    document.body.append(scene.domElement)
-
-    scene.add(line).set({ backgroundColor: "black" })
-
-    function render() {
-      renderer.renderDOMScene(scene)
-    }
-
-    render()*/
-
-    var canv = document.createElement("canvas")
-    document.body.appendChild(canv)
-    var ctx = canv.getContext("2d");
-
-    function clear () {
-      ctx.clearRect(0, 0, canv.width, canv.height)
-    }
-
-    function render () {
-      clear()
-
-      let rot = (Date.now() / 1e4) % (2 * Math.PI )
-
-      ctx.fillStyle = "#000000"
-      ctx.ellipse(100, 100, 20, 100, rot, 0, 3000 * Math.PI, false)
-      ctx.fill()
-
-      ctx.beginPath()
-      ctx.fillStyle = "#ff0000"
-      ctx.ellipse(100, 100, 20, 40, rot, 0, 2 * Math.PI, false)
-      ctx.fill()
-
-      requestAnimationFrame(render)
-    }
-
-    render()
-
-
-
-    var path = new Grapheme.Path2D()
+  var context = Grapheme.createEvaluationContext()
 
 </script>
 

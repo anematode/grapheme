@@ -40,7 +40,7 @@ export class ASTNode {
     this.type = params.type ?? null
 
     /**
-     * EvaluationConte
+     * EvaluationContext
      * @type {*|null}
      */
     this.ctx = params.ctx ?? null

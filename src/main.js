@@ -13,7 +13,7 @@ export { FP }
  */
 export { utils }
 
-export * from './math/other/boolean_functions.js'
+export * from './ast/default_context.js'
 
 /*export * from './algorithm/rectangle_packing.js'
 export * from './algorithm/misc_geometry.js'
