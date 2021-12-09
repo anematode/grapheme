@@ -13,12 +13,13 @@ export { FP }
  */
 export { utils }
 
-export * from './algorithm/rectangle_packing.js'
+export * from './math/other/boolean_functions.js'
+
+/*export * from './algorithm/rectangle_packing.js'
 export * from './algorithm/misc_geometry.js'
 export * from './algorithm/polyline_triangulation.js'
 export * from './algorithm/polyline_utils.js'
 export * from './algorithm/tick_allocator.js'
-export * from './ast/old/parse_string.js'
 export * from './core/eventful.js'
 export * from './core/element.js'
 export * from './core/group.js'
@@ -53,4 +54,4 @@ export * from './elements/number_line/number_line_points.js'
 export * from './elements/polygon.js'
 export * from '../deps/katex.js'
 export * from './other/truetype.js'
-export * from './math/real/continued_fractions.js'
+export * from './math/real/continued_fractions.js'*/
