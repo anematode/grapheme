@@ -33,6 +33,10 @@ export class EvaluationContext {
     }
   }
 
+  getConcreteType (type) {
+
+  }
+
   /**
    * Register an (abstract) evaluator. Some builtin evaluators are handled specially. For example, you won't be able to
    * override *(real, real), but it's conceivable to override *(fancy_type, int).

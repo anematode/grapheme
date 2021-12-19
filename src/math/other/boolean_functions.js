@@ -52,7 +52,7 @@ const Test = Object.freeze({
 /**
  * Convert any object to a nullable boolean via the following conversion:
  * undefined, null, NaN -> NaN;
- * -0, 0, 0n, "", false, document.all -> 0,
+ * -0, 0, 0n, "", false, document.all (:P) -> 0,
  * everything else -> 1
  * @param {*} b
  * @returns {number} The nullable boolean

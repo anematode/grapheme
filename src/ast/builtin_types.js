@@ -22,7 +22,8 @@ let concreteBoolean = new ConcreteType({
   typecheckVerbose: NullableBoolean.typecheckUsableNullableBoolean,
 })
 
-// Integers can be any number that's not a non-integral finite number (so they can be ±Infinity, NaN)
+// Integers can be any number that's not a non-integral finite number (so they can be ±Infinity, NaN) but they can
+// overflow--meaning any operation that takes them out of the [-2^53 - 1, 2^53 - 1] safe range
 let concreteInt = new ConcreteType({
   name: "int",
   isPrimitive: true,
@@ -32,7 +33,7 @@ let concreteInt = new ConcreteType({
   typecheckVerbose: NullableInteger.typecheckNullableInteger
 })
 
-// Real can be any floating-point number
+// Real can be ANY floating-point number
 let concreteReal = new ConcreteType({
   name: "real",
   isPrimitive: true,
@@ -46,6 +47,7 @@ let concreteFastIntervalBoolean = new ConcreteType({
   name: "fast_interval_bool",
   isPrimitive: false,
   init: () => new FastBooleanInterval(false, false, 0b111),
+
   typecheck: b => b instanceof FastBooleanInterval,
   clone: b => new FastBooleanInterval(b.min, b.max, b.info),
   copyTo: (src, dst) => { dst.min = src.min; dst.max = src.max; dst.info = src.info }
@@ -55,6 +57,7 @@ let concreteFastIntervalReal = new ConcreteType({
   name: "fast_interval_real",
   isPrimitive: false,
   init: () => new FastRealInterval(0, 0, 0b1111),
+
   typecheck: b => b instanceof FastRealInterval,
   clone: b => new FastRealInterval(b.min, b.max, b.info),
   copyTo: (src, dst) => { dst.min = src.min; dst.max = src.max; dst.info = src.info }
@@ -81,26 +84,3 @@ let abstractReal = new MathematicalType({
     "fast_interval": concreteFastIntervalReal
   }
 })
-
-export const Types = {
-  real: abstractReal
-}
-
-/**
- * Convert string to concrete type
- * @return {ConcreteType}
- */
-export function toConcreteType (t) {
-  if (t instanceof ConcreteType) {
-    return t
-  }
-
-  if (typeof t === "string") {
-    let type = concreteTypeDict[t]
-
-    if (!type) throw new Error("Concrete type '" + t + "' not found")
-    return type
-  }
-
-  throw new TypeError("Argument to toConcreteType must be a concrete type or string")
-}

@@ -48,6 +48,10 @@ We have now given the entire expression and each subexpression a type, an operat
 
 In turn, each operator definition and cast must find a suitable **evaluator**, which is a function that actually does the legwork. For example, `^(real, real) -> real` will be the `Math.pow` function, while `^(int, int) -> int` will probably be some custom function that does fast integer exponentiation by repeated multiplication. Note that each of these evaluators is now taking in *concrete types*. For example, the operator `^(real, real) -> real` may have two evaluators, `^(real, real) -> real` and `^(fast_real_interval, fast_real_interval) -> fast_real_interval`. Some evaluators are trivial, like `int -> real`
 
+## Contexts
+
+There is reason to have different evaluation contexts. For example, it'd make sense for a function `f` and variables `a`, `b` to be defined in one context but not accessible from another. It doesn't make sense, however, to have built-in evaluators be unique to each context; that would be highly inefficient.
+
 ## Summary
 
 Grapheme is strongly typed. **Expressions**, or **abstract syntax trees**, have no intrinsic types until they are resolved by giving the types of the variables in it. In turn, **operator definitions** are resolved, so that the whole expression and each of its subexpressions has an operator definition, a **mathematical type**, and potentially an array of **implicit casts**.
@@ -58,7 +62,7 @@ The mapping between these concepts and actual Grapheme classes is as follows (`<
 
 | Concept | Class | Inhabits |
 | --- | --- | --- |
-| Context | EvaluatorContext | *all worlds* |
+| Context | EvaluatorContext | *mahematical and concrete world* |
 | AST | `ASTNode, ASTNode <- OperatorNode, VariableNode, ConstantNode` | *pre-mathematical world* before type resolution, *mathematical world* after |
 | Operator definition | `OperatorDefinition` | *mathematical world* |
 | Mathematical type | `MathematicalType` | *mathematical world* |

@@ -14,6 +14,7 @@ export { FP }
 export { utils }
 
 export * from './ast/default_context.js'
+export * from './ast/parse_string.js'
 
 /*export * from './algorithm/rectangle_packing.js'
 export * from './algorithm/misc_geometry.js'

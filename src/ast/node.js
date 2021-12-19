@@ -44,6 +44,12 @@ export class ASTNode {
      * @type {*|null}
      */
     this.ctx = params.ctx ?? null
+
+    /**
+     * Other info about the node (for example, where it was in a parsed string)
+     * @type {{}}
+     */
+    this.info = params.info ?? {}
   }
 
   toString () {
@@ -64,6 +70,7 @@ export class ASTNode {
       case 1: return "ConstantNode"
       case 2: return "VariableNode"
       case 3: return "OperatorNode"
+      case 4: return "ASTGroup"
     }
 
     return "UnknownNode"
@@ -89,12 +96,44 @@ export class ASTNode {
   }
 }
 
+// Node with children
+export class ASTGroup extends ASTNode {
+  /**
+   * Apply a function to this node and all of its children, recursively.
+   * @param func {Function} The callback function. We call it each time with (node, depth) as arguments
+   * @param onlyGroups {boolean} Only call the callback on groups
+   * @param childrenFirst {boolean} Whether to call the callback function for each child first, or for the parent first.
+   * @param depth {number}
+   * @returns {ASTNode}
+   */
+  applyAll (func, onlyGroups = false, childrenFirst = false, depth = 0) {
+    if (!childrenFirst) func(this, depth)
+
+    let children = this.children
+    for (let i = 0; i < children.length; ++i) {
+      let child = children[i]
+      if (child instanceof ASTNode) {
+        child.applyAll(func, onlyGroups, childrenFirst, depth + 1)
+      }
+    }
+
+    if (childrenFirst) func(this, depth)
+
+    return this
+  }
+
+  getNodeType () {
+    return 4
+  }
+
+  clone () {
+    return new ASTGroup(this)
+  }
+}
+
 export class ConstantNode extends ASTNode {
   constructor (params={}) {
     super(params)
-
-    if (params.value === undefined)
-      throw new Error("ConstantNode must be initialized with a value")
 
     // Generally a text rendition of the constant node; e.g., "0.3" or "50"
     this.value = params.value
@@ -127,7 +166,7 @@ export class VariableNode extends ASTNode {
   }
 }
 
-export class OperatorNode extends ASTNode {
+export class OperatorNode extends ASTGroup {
   constructor (params={}) {
     super(params)
 
@@ -137,6 +176,11 @@ export class OperatorNode extends ASTNode {
 
     // Arguments to the operator
     this.children = params.children ?? []
+
+    // Extra arguments that have an effect on the operator's mathematical meaning, but which are unwieldy to represent
+    // directly as an argment. Current use: comparison chain, where the arguments are the comparisons to be done and
+    // extraArgs.comparisons is, say, [ '<', '<=' ]
+    this.extraArgs = params.extraArgs ?? {}
   }
 
   getNodeType () {
