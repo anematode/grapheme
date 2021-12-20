@@ -359,15 +359,13 @@ function processConstantsAndVariables (tokens) {
     switch (token.type) {
       case 'constant':
         let node = new ConstantNode({ value: token.value })
-
-        // TODO: detect integer constants
-        node.type = 'real'
+        node.type = isStringInteger(token.value) ? 'int' : 'real'
 
         tokens[i] = node
 
         break
       case 'variable':
-        tokens[i] = new VariableNode(token.name)
+        tokens[i] = new VariableNode({ name: token.name })
         break
     }
   }
@@ -408,7 +406,7 @@ function processFunctions (rootNode) {
       let token = children[i]
 
       if (token.type === 'function') {
-        let newNode = new OperatorNode(token.name)
+        let newNode = new OperatorNode({ name: token.name })
 
         children[i] = newNode
 
@@ -426,7 +424,7 @@ function processFunctions (rootNode) {
 // into a single binary operator
 function combineBinaryOperator (node, i) {
   const children = node.children
-  let newNode = new OperatorNode(children[i].op)
+  let newNode = new OperatorNode({ name: children[i].op })
 
   newNode.children = [children[i - 1], children[i + 1]]
 
@@ -447,7 +445,7 @@ function processUnaryAndExponentiation (root) {
         // If the preceding token is an unprocessed non-operator token, or node, then it's a binary expression
         if (i !== 0 && children[i - 1].type !== 'operator') continue
 
-        let newNode = new OperatorNode('-')
+        let newNode = new OperatorNode({ name: '-' })
         newNode.children = [children[i + 1]]
 
         children.splice(i, 2, newNode)
@@ -522,7 +520,7 @@ function processComparisonChains (root) {
           // The nodes i, i+2, i+4, ..., j-4, j-2 are all comparison nodes. Thus, all nodes in the range i-1 ... j-1
           // should be included in the comparison chain
 
-          let comparisonChain = new OperatorNode('comparison_chain')
+          let comparisonChain = new OperatorNode({ name: 'comparison_chain' })
 
           // Looks something like [ ASTNode, '<', ASTNode, '<=', ASTNode ]
           let removedChildren = children.splice(
@@ -572,7 +570,9 @@ function removeCommas (root) {
  */
 function parseTokens (tokens) {
   processConstantsAndVariables(tokens)
-  let root = new ASTGroup(tokens)
+  let root = new ASTGroup()
+
+  root.children = tokens
 
   processParentheses(root)
   processFunctions(root)

@@ -23,7 +23,7 @@ function prettyPrintNode(node, name, keys, params) {
       if (key === "name") // surround with quotes
         value = `"${value}"`
 
-      out += `${key}=${value}`
+      out.push(`${key}=${value}`)
     }
   }
 
@@ -50,6 +50,14 @@ export class ASTNode {
      * @type {{}}
      */
     this.info = params.info ?? {}
+  }
+
+  applyAll (func, onlyGroups=false, childrenFirst=false, depth=0) {
+    if (!onlyGroups) func(this, depth)
+  }
+
+  isGroup () {
+    return false
   }
 
   toString () {
@@ -112,7 +120,7 @@ export class ASTGroup extends ASTNode {
     let children = this.children
     for (let i = 0; i < children.length; ++i) {
       let child = children[i]
-      if (child instanceof ASTNode) {
+      if (child instanceof ASTNode && (!onlyGroups || child.isGroup())) {
         child.applyAll(func, onlyGroups, childrenFirst, depth + 1)
       }
     }
@@ -120,6 +128,10 @@ export class ASTGroup extends ASTNode {
     if (childrenFirst) func(this, depth)
 
     return this
+  }
+
+  isGroup () {
+    return true
   }
 
   getNodeType () {
