@@ -13,11 +13,11 @@ export { FP }
  */
 export { utils }
 
-export * from './ast/default_context.js'
 export * from './ast/parse_string.js'
 export * from './ast/builtin_types.js'
 export * from './ast/casts.js'
 export * from './ast/builtin_casts.js'
+export * from './ast/default_context.js'
 
 /*export * from './algorithm/rectangle_packing.js'
 export * from './algorithm/misc_geometry.js'

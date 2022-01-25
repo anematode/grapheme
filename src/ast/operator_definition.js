@@ -6,11 +6,19 @@ export class OperatorDefinition {
   constructor (params={}) {
     this.name = params.name
 
-    // Arguments
+    /**
+     * Arguments
+     * @type {MathematicalType[]}
+     */
     this.args = (params.args ?? []).map(toMathematicalType)
+    if (!this.args.every(arg => !!arg)) throw new Error("Unknown argument type")
 
-    // Return type (void type if nothing)
+    /**
+     * Return type (void type if nothing)
+     * @type {MathematicalType}
+     */
     this.returns = toMathematicalType(params.returns ?? "void")
+    if (!this.returns) throw new Error("Unknown return type " + params.returns)
 
     // List of potential concrete evaluators
     this.evaluators = params.evaluators ?? []

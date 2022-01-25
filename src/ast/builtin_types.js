@@ -6,8 +6,9 @@
 import { ConcreteType, MathematicalType } from './type.js'
 import { NullableBoolean } from '../math/other/boolean_functions.js'
 import { NullableInteger } from '../math/other/integer_functions.js'
-import { FastBooleanInterval } from '../math/fast_interval/fast_boolean_interval.js'
-import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
+import { FastBooleanInterval } from '../math/interval/fast_boolean_interval.js'
+import { FastRealInterval } from '../math/interval/fast_real_interval.js'
+import { Complex } from '../math/complex/complex.js'
 
 // The boolean type is nullable. meaning it takes on a value of 0, 1, or NaN. -0, false, and true are also ACCEPTED as
 // values, but aren't used that way internally, since each is implicitly casted to the correct value in all numeric
@@ -43,8 +44,17 @@ let concreteReal = new ConcreteType({
   typecheckVerbose: b => (typeof b !== "number") ? ("Expected JS number, found type " + (typeof b)) : "",
 })
 
-let concreteFastIntervalBoolean = new ConcreteType({
-  name: "fast_interval_bool",
+let concreteComplex = new ConcreteType({
+  name: "complex",
+  isPrimitive: false,
+  init: () => new Complex(0, 0),
+
+  typecheck: b => b instanceof Complex,
+  typecheckVerbose: b => (b instanceof Complex) ? "Expected complex number" : ""
+})
+
+let concreteIntervalBoolean = new ConcreteType({
+  name: "interval_bool",
   isPrimitive: false,
   init: () => new FastBooleanInterval(false, false, 0b111),
 
@@ -53,8 +63,8 @@ let concreteFastIntervalBoolean = new ConcreteType({
   copyTo: (src, dst) => { dst.min = src.min; dst.max = src.max; dst.info = src.info }
 })
 
-let concreteFastIntervalReal = new ConcreteType({
-  name: "fast_interval_real",
+let concreteIntervalReal = new ConcreteType({
+  name: "interval_real",
   isPrimitive: false,
   init: () => new FastRealInterval(0, 0, 0b1111),
 
@@ -63,9 +73,9 @@ let concreteFastIntervalReal = new ConcreteType({
   copyTo: (src, dst) => { dst.min = src.min; dst.max = src.max; dst.info = src.info }
 })
 
-let concreteFastIntervalInt = new ConcreteType({
-  ...concreteFastIntervalReal,
-  name: "fast_interval_int"
+let concreteIntervalInt = new ConcreteType({
+  ...concreteIntervalReal,
+  name: "interval_int"
 })
 /**
  * MATHEMATICAL TYPES
@@ -75,7 +85,7 @@ let mathematicalReal = new MathematicalType({
   name: "real",
   concreteTypes: {
     "normal": concreteReal,
-    "fast_interval": concreteFastIntervalReal
+    "interval": concreteIntervalReal
   }
 })
 
@@ -83,10 +93,16 @@ let mathematicalInt = new MathematicalType({
   name: "int",
   concreteTypes: {
     "normal": concreteInt,
-    "fast_interval": concreteFastIntervalInt
+    "interval": concreteIntervalInt
   }
 })
 
+let mathematicalComplex = new MathematicalType({
+  name: "complex",
+  concreteTypes: {
+    "normal": concreteComplex
+  }
+})
 
 export function defineConcreteType (concreteType) {
   let { name } = concreteType
@@ -94,18 +110,28 @@ export function defineConcreteType (concreteType) {
   concreteTypes.set(name, concreteType)
 }
 
-export function defineAbstractType (type) {
+export function defineMathematicalType (type) {
   let { name } = type
 
   mathematicalTypes.set(name, type)
 }
 
+/**
+ * "Intelligently" convert an object to the corresponding concrete type object. Returns null if no such type is found
+ * @param o {any}
+ * @returns {ConcreteType|null}
+ */
 export function toConcreteType (o) {
   if (typeof o === "string") return concreteTypes.get(o) ?? null
 
   return (o instanceof ConcreteType) ? o : null
 }
 
+/**
+ * "Intelligently" convert an object to the corresponding mathematical type object
+ * @param o {any}
+ * @returns {MathematicalType|null}
+ */
 export function toMathematicalType (o) {
   if (typeof o === "string") return mathematicalTypes.get(o) ?? null
 
@@ -116,7 +142,7 @@ let concreteTypes = new Map()
 let mathematicalTypes = new Map()
 
   // Concrete types
-;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(defineConcreteType)
+;[concreteBoolean, concreteInt, concreteReal, concreteIntervalBoolean, concreteIntervalInt, concreteIntervalReal].forEach(defineConcreteType)
 
 // abstract types
-;[mathematicalReal, mathematicalInt].forEach(defineAbstractType)
+;[mathematicalReal, mathematicalInt].forEach(defineMathematicalType)

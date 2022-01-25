@@ -30,6 +30,7 @@
 // usually are used in different modes. For example, real -> fast_interval_real.
 
 import { toConcreteType } from './builtin_types.js'
+import { canConcreteCast, getConcreteCast } from './casts.js'
 
 let unaryPrimitives = {
   '-': x => -x
@@ -37,36 +38,31 @@ let unaryPrimitives = {
 
 let binaryPrimitives = {}
 ;['+', '-', '/', '*', '&&', '||', '==', '!=', '<=', '>=', '<', '>'].forEach(op => {
-  binaryPrimitives[op] = (new Function(`return x ${op} y`, 'x', 'y'))
+  binaryPrimitives[op] = (new Function('x', 'y', `return x ${op} y`))
 })
 
-let implicitConcreteCasts = {}
-
-function registerConcreteCast (srcConcreteType, dstConcreteType, concreteEvaluator) {
-
-}
-
-// Returns an ARRAY of concrete evaluators between the source and destination types
-function getConcreteCast (srcConcreteType, dstConcreteType) {
-
-}
-
-class ConcreteEvaluator {
+export class ConcreteEvaluator {
   constructor (params={}) {
     /**
      * Argument types (should all be concrete types)
      * @type {ConcreteType[]}
      */
     this.args = (params.args ?? []).map(toConcreteType)
+    if (!this.args.every(arg => !!arg)) throw new Error("Unknown argument type")
 
     /**
      * Return type
      * @type {ConcreteType}
      */
     this.returns = toConcreteType(params.returns ?? "void")
+    if (!this.returns) throw new Error("Unknown return type")
 
     this.argCount = this.args.length
 
+    /**
+     * Whether this operation is an identity operation (at the type level)
+     * @type {boolean}
+     */
     this.identity = params.identity
 
     this.type = params.type ?? "new"
@@ -107,35 +103,24 @@ class ConcreteEvaluator {
     }
   }
 
-  // Whether the evaluator can be called with the given concrete types, WITHOUT IMPLICIT CASTING
-  canBeCalledDirectlyWith (typeList) {
-    if (typeList.length !== this.argCount) return false
+  /**
+   * Given a list of concrete types, whether the evaluator can be called with those types. -1 if not, 0 if no casts are
+   * needed, >0 for the number of needed casts
+   * @param args
+   */
+  canCallWith (args) {
+    if (this.args.length !== args.length) return -1
 
-    for (let i = 0; i < this.args.length; ++i) {
-      let thisType = args[i]
-      if (!thisType.isSameConcreteType(typeList[i])) {
-        return false
+    let castCount = 0
+    for (let i = 0; i < args.length; ++i) {
+      let cast = getConcreteCast(args[i] /* src */, this.args[i])
+
+      if (!cast) return -1 // mismatched types
+      if (cast !== "identity") {
+        castCount++
       }
     }
 
-    return true
+    return castCount
   }
-
-  // Returns -1 if the evaluator cannot be called,
-  castDistance (typeList) {
-    if (typeList.length !== this.argCount) return -1
-
-    for (let i = 0; i < this.args.length; ++i) {
-      let thisType = args[i]
-      if (!thisType.isSameConcreteType(typeList[i])) {
-        return false
-      }
-    }
-
-    return true
-  }
-}
-
-class ConcreteCast {
-
 }
