@@ -29,7 +29,7 @@
 // cast and a concrete cast. What's special about casts, though, is that there are casts between concrete types that
 // usually are used in different modes. For example, real -> fast_interval_real.
 
-import { toConcreteType } from './types.js'
+import { toConcreteType } from './builtin_types.js'
 
 let unaryPrimitives = {
   '-': x => -x
@@ -66,7 +66,6 @@ class ConcreteEvaluator {
     this.returns = toConcreteType(params.returns ?? "void")
 
     this.argCount = this.args.length
-
 
     this.identity = params.identity
 

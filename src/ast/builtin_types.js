@@ -68,10 +68,7 @@ let concreteFastIntervalInt = new ConcreteType({
   name: "fast_interval_int"
 })
 
-let concreteTypeDict = {}
-;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(concreteType => {
-  concreteTypeDict[concreteType.name] = concreteType
-})
+;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(defineConcreteType)
 
 /**
  * ABSTRACT TYPES
@@ -84,3 +81,32 @@ let abstractReal = new MathematicalType({
     "fast_interval": concreteFastIntervalReal
   }
 })
+
+;[abstractReal].forEach(defineAbstractType)
+
+let concreteTypes = new Map()
+let mathematicalTypes = new Map()
+
+export function defineConcreteType (concreteType) {
+  let { name } = concreteType
+
+  concreteTypes.set(name, concreteType)
+}
+
+export function defineAbstractType (type) {
+  let { name } = type
+
+  mathematicalTypes.set(name, type)
+}
+
+export function toConcreteType (o) {
+  if (typeof o === "string") return concreteTypes.get(o) ?? null
+
+  return (o instanceof ConcreteType) ? o : null
+}
+
+export function toMathematicalType (o) {
+  if (typeof o === "string") return mathematicalTypes.get(o) ?? null
+
+  return (o instanceof MathematicalType) ? o : null
+}

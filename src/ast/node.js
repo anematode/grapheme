@@ -102,6 +102,10 @@ export class ASTNode {
   clone () {
     return new ASTNode(this)
   }
+
+  resolveTypes (args) {
+
+  }
 }
 
 // Node with children
@@ -141,6 +145,14 @@ export class ASTGroup extends ASTNode {
   clone () {
     return new ASTGroup(this)
   }
+
+  resolveTypes (args) {
+    let children = this.children
+
+    for (let i = 0; i < children.length; ++i) {
+      children[i].resolveTypes(args)
+    }
+  }
 }
 
 export class ConstantNode extends ASTNode {
@@ -157,6 +169,10 @@ export class ConstantNode extends ASTNode {
 
   clone () {
     return new ConstantNode(this)
+  }
+
+  resolveTypes (args) {
+
   }
 }
 
@@ -175,6 +191,16 @@ export class VariableNode extends ASTNode {
 
   clone() {
     return new VariableNode(this)
+  }
+
+  resolveTypes (args) {
+    let { vars } = args
+
+    if (vars) {
+      let info = vars[this.name]
+
+      this.type = info ?? "real"
+    }
   }
 }
 
@@ -201,5 +227,9 @@ export class OperatorNode extends ASTGroup {
 
   clone () {
     return new OperatorNode(this)
+  }
+
+  resolveTypes (args) {
+
   }
 }

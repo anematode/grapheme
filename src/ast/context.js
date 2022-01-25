@@ -13,26 +13,6 @@ export class EvaluationContext {
 
   }
 
-  /**
-   * Register a mathematical type. Builtin types are handled specially and are thus reserved in some sense
-   * @param type
-   */
-  registerMathematicalType (type) {
-    if (!(type instanceof MathematicalType)) {
-      throw new TypeError("Invalid type")
-    }
-  }
-
-  /**
-   * Register a concrete type. Builtin types are handled specially and are thus reserved in some sense
-   * @param type
-   */
-  registerConcreteType (type) {
-    if (!(type instanceof ConcreteType)) {
-      throw new TypeError("Invalid type")
-    }
-  }
-
   getConcreteType (type) {
 
   }
