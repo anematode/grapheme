@@ -1,5 +1,6 @@
 import { toMathematicalType } from './builtin_types.js'
 import { MathematicalType } from './type.js'
+import { castDistance } from './evaluator.js'
 import { getMathematicalCast } from './casts.js'
 
 export class OperatorDefinition {
@@ -36,32 +37,25 @@ export class OperatorDefinition {
    * @returns {number} -1 if it cannot be called, a nonnegative integer giving the number of necessary implicit casts to call it
    */
   canCallWith (args) {
-    if (!args.every(arg => arg instanceof MathematicalType))
-      throw new Error()
+    return castDistance(this.getCasts(args))
+  }
 
-    if (this.argCount() !== args.length)
-      return -1
+  getCasts (args) {
+    if (this.args.length !== args.length) return null
 
-    let castsNeeded = 0
+    let casts = []
     for (let i = 0; i < args.length; ++i) {
-      let srcType = args[i]
-      let dstType = this.args[i]
+      let cast = getMathematicalCast(args[i] /* src */, this.args[i])
 
-      let cast = getMathematicalCast(srcType, dstType)
-
-      if (!cast) return -1
-      if (cast !== "identity") {
-        castsNeeded++
-      }
+      if (!cast) return null
+      casts.push(cast)
     }
 
-    return castsNeeded
+    return casts
   }
 
   prettyPrint() {
+    // ^(int, int) -> int
     return `${this.name}(${this.args.map(arg => arg.prettyPrint()).join(', ')}) -> ${this.returns.prettyPrint()}`
   }
 }
-
-// ^(int, int) -> int
-

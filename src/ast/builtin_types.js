@@ -6,8 +6,8 @@
 import { ConcreteType, MathematicalType } from './type.js'
 import { NullableBoolean } from '../math/other/boolean_functions.js'
 import { NullableInteger } from '../math/other/integer_functions.js'
-import { FastBooleanInterval } from '../math/interval/fast_boolean_interval.js'
-import { FastRealInterval } from '../math/interval/fast_real_interval.js'
+import { FastBooleanInterval } from '../math/fast_interval/fast_boolean_interval.js'
+import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
 import { Complex } from '../math/complex/complex.js'
 
 // The boolean type is nullable. meaning it takes on a value of 0, 1, or NaN. -0, false, and true are also ACCEPTED as
@@ -50,7 +50,9 @@ let concreteComplex = new ConcreteType({
   init: () => new Complex(0, 0),
 
   typecheck: b => b instanceof Complex,
-  typecheckVerbose: b => (b instanceof Complex) ? "Expected complex number" : ""
+  typecheckVerbose: b => (b instanceof Complex) ? "Expected complex number" : "",
+  clone: c => new Complex(c.re, c.im),
+  copyTo: (src, dst) => { dst.re = src.re; dst.im = src.im; }
 })
 
 let concreteIntervalBoolean = new ConcreteType({
@@ -142,7 +144,7 @@ let concreteTypes = new Map()
 let mathematicalTypes = new Map()
 
   // Concrete types
-;[concreteBoolean, concreteInt, concreteReal, concreteIntervalBoolean, concreteIntervalInt, concreteIntervalReal].forEach(defineConcreteType)
+;[concreteBoolean, concreteInt, concreteReal, concreteIntervalBoolean, concreteIntervalInt, concreteIntervalReal, concreteComplex].forEach(defineConcreteType)
 
 // abstract types
-;[mathematicalReal, mathematicalInt].forEach(defineMathematicalType)
+;[mathematicalReal, mathematicalInt, mathematicalComplex].forEach(defineMathematicalType)

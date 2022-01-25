@@ -65,7 +65,14 @@ export class ConcreteEvaluator {
      */
     this.identity = params.identity
 
+    /**
+     * Either "new" or "write". "new" means the func returns a new instance of the object. "write" means the function
+     * writes the result to the last argument (arg1, arg2, dst). For example, a "write" +(complex, complex, complex)
+     * would put the result of the addition of the first two numbers into the second, overwriting whatever was there
+     * @type {string}
+     */
     this.type = params.type ?? "new"
+    if (this.type !== "new" && this.type !== "write") throw new Error("Evaluator type must be either new or write, not " + this.type)
 
     this.primitive = params.primitive ?? ""
 
@@ -109,18 +116,35 @@ export class ConcreteEvaluator {
    * @param args
    */
   canCallWith (args) {
-    if (this.args.length !== args.length) return -1
+    return castDistance(this.getCasts(args))
+  }
 
-    let castCount = 0
+  getCasts (args) {
+    if (this.args.length !== args.length) return null
+
+    let casts = []
     for (let i = 0; i < args.length; ++i) {
       let cast = getConcreteCast(args[i] /* src */, this.args[i])
 
-      if (!cast) return -1 // mismatched types
-      if (cast !== "identity") {
-        castCount++
-      }
+      if (!cast) return null
+      casts.push(cast)
     }
 
-    return castCount
+    return casts
   }
+}
+
+export function castDistance (casts) {
+  let count = 0
+
+  for (let cast of casts) {
+    if (cast !== "identity")
+      count++
+    else if (!cast) {
+      count = -1
+      break
+    }
+  }
+
+  return count
 }

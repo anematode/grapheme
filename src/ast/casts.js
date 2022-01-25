@@ -1,19 +1,16 @@
 
 import { MathematicalType, ConcreteType } from './type.js'
-import { OperatorDefinition } from './operator_definition.js'
 import { ConcreteEvaluator } from './evaluator.js'
+import { toMathematicalType } from './builtin_types.js'
 
 // A cast is just a special operator that converts one type to another
-export class MathematicalCast extends OperatorDefinition {
+export class MathematicalCast {
   constructor (params) {
     if (!params.src || !params.dst) throw new Error("No source or destination types provided")
 
-    params.args = [ params.src ]
-    params.returns = params.dst
-
-    super(params)
-
-    this.name = this.name ?? this.returns.toHashStr()
+    this.src = toMathematicalType(params.src)
+    this.dst = toMathematicalType(params.dst)
+    this.evaluators = {}
   }
 
   srcType () {
@@ -21,7 +18,7 @@ export class MathematicalCast extends OperatorDefinition {
   }
 
   dstType () {
-    return this.returns
+    return this.dst
   }
 }
 

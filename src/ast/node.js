@@ -3,6 +3,8 @@
  * VariableNode, and OperatorNode.
  */
 
+import { resolveOperatorDefinition } from './builtin_operators.js'
+
 /**
  * Helper function (doesn't need to be fast)
  * @param node {ASTNode}
@@ -108,7 +110,7 @@ export class ASTNode {
   }
 }
 
-// Node with children
+// Node with children. A plain ASTGroup is usually just a parenthesized thing
 export class ASTGroup extends ASTNode {
   /**
    * Apply a function to this node and all of its children, recursively.
@@ -147,11 +149,14 @@ export class ASTGroup extends ASTNode {
   }
 
   resolveTypes (args) {
+    // Only called on a raw group
     let children = this.children
 
     for (let i = 0; i < children.length; ++i) {
       children[i].resolveTypes(args)
     }
+
+    this.type = children[0].type
   }
 }
 
@@ -219,6 +224,18 @@ export class OperatorNode extends ASTGroup {
     // directly as an argment. Current use: comparison chain, where the arguments are the comparisons to be done and
     // extraArgs.comparisons is, say, [ '<', '<=' ]
     this.extraArgs = params.extraArgs ?? {}
+
+    /**
+     * Which operator is actually being used here
+     * @type {null|OperatorDefinition}
+     */
+    this.operatorDefinition = null
+
+    /**
+     * Array of casts needed
+     * @type {MathematicalCast[]}
+     */
+    this.casts = null
   }
 
   getNodeType () {
@@ -230,6 +247,23 @@ export class OperatorNode extends ASTGroup {
   }
 
   resolveTypes (args) {
+    let childArgTypes = this.children.map(c => c.type)
+    for (let t of childArgTypes) {
+      if (!t) {
+        this.type = null // silently fail
+        return
+      }
+    }
 
+    let [ definition, casts ] = resolveOperatorDefinition(name, childArgTypes)
+    if (!definition) {
+      this.type = null
+      this.operatorDefinition = null
+      this.casts = null
+    }
+
+    this.type = definition.returns
+    this.operatorDefinition = definition
+    this.casts = casts
   }
 }
