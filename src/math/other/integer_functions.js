@@ -39,7 +39,6 @@ function typecheckNullableInteger (i) {
 }
 
 const NullableInteger = Object.freeze({
-  Functions,
   isNullableInteger,
   typecheckNullableInteger
 })

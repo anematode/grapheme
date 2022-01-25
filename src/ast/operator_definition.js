@@ -1,15 +1,16 @@
-import { toConcreteType } from './builtin_types.js'
+import { toMathematicalType } from './builtin_types.js'
 import { MathematicalType } from './type.js'
+import { getMathematicalCast } from './casts.js'
 
 export class OperatorDefinition {
   constructor (params={}) {
     this.name = params.name
 
     // Arguments
-    this.args = (params.args ?? []).map(toConcreteType)
+    this.args = (params.args ?? []).map(toMathematicalType)
 
     // Return type (void type if nothing)
-    this.returns = (params.returns ?? "void").map(toConcreteType)
+    this.returns = toMathematicalType(params.returns ?? "void")
 
     // List of potential concrete evaluators
     this.evaluators = params.evaluators ?? []
@@ -31,9 +32,22 @@ export class OperatorDefinition {
       throw new Error()
 
     if (this.argCount() !== args.length)
-      return -1;
+      return -1
 
+    let castsNeeded = 0
+    for (let i = 0; i < args.length; ++i) {
+      let srcType = args[i]
+      let dstType = this.args[i]
 
+      let cast = getMathematicalCast(srcType, dstType)
+
+      if (!cast) return -1
+      if (cast !== "identity") {
+        castsNeeded++
+      }
+    }
+
+    return castsNeeded
   }
 
   prettyPrint() {

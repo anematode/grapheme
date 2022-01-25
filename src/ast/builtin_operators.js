@@ -1,6 +1,6 @@
 
 
-import { OperatorDefinition } from "./operator_definition"
+import { OperatorDefinition } from "./operator_definition.js"
 
 let addition = new OperatorDefinition({
 

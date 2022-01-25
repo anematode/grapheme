@@ -15,7 +15,7 @@ import { FastRealInterval } from '../math/fast_interval/fast_real_interval.js'
 let concreteBoolean = new ConcreteType({
   name: "bool",
   isPrimitive: true,
-  init: () => false,
+  init: () => 0,
 
   // The typechecks are for usability, not strictness
   typecheck: NullableBoolean.isUsableNullableBoolean,
@@ -67,14 +67,11 @@ let concreteFastIntervalInt = new ConcreteType({
   ...concreteFastIntervalReal,
   name: "fast_interval_int"
 })
-
-;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(defineConcreteType)
-
 /**
- * ABSTRACT TYPES
+ * MATHEMATICAL TYPES
  */
 
-let abstractReal = new MathematicalType({
+let mathematicalReal = new MathematicalType({
   name: "real",
   concreteTypes: {
     "normal": concreteReal,
@@ -82,10 +79,14 @@ let abstractReal = new MathematicalType({
   }
 })
 
-;[abstractReal].forEach(defineAbstractType)
+let mathematicalInt = new MathematicalType({
+  name: "int",
+  concreteTypes: {
+    "normal": concreteInt,
+    "fast_interval": concreteFastIntervalInt
+  }
+})
 
-let concreteTypes = new Map()
-let mathematicalTypes = new Map()
 
 export function defineConcreteType (concreteType) {
   let { name } = concreteType
@@ -110,3 +111,12 @@ export function toMathematicalType (o) {
 
   return (o instanceof MathematicalType) ? o : null
 }
+
+let concreteTypes = new Map()
+let mathematicalTypes = new Map()
+
+  // Concrete types
+;[concreteBoolean, concreteInt, concreteReal, concreteFastIntervalBoolean, concreteFastIntervalInt, concreteFastIntervalInt].forEach(defineConcreteType)
+
+// abstract types
+;[mathematicalReal, mathematicalInt].forEach(defineAbstractType)
