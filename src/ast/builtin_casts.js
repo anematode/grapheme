@@ -1,4 +1,5 @@
-import { ConcreteCast, MathematicalCast, registerConcreteCast, registerMathematicalCast } from './casts.js'
+import { ConcreteCast, registerConcreteCast } from './evaluator.js'
+import { MathematicalCast, registerMathematicalCast } from './operator_definition.js'
 import { Complex } from '../math/complex/complex.js'
 
 let intToReal = [

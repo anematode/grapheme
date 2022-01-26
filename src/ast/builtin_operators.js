@@ -1,12 +1,6 @@
 import { OperatorDefinition } from "./operator_definition.js"
 import { castDistance } from './evaluator.js'
 
-registerOperator(new OperatorDefinition({
-  name: '+',
-  args: ["int", "int"],
-  returns: "int"
-}))
-
 // For now we'll just have a mapping  name -> Array of possibilities
 const KNOWN_OPERATORS = new Map()
 
@@ -37,6 +31,7 @@ export function resolveOperatorDefinition (name, argTypes) {
 
   for (let def of defs) {
     let casts = def.getCasts(argTypes)
+
     if (casts) {
       let dist = castDistance(casts)
       if (dist < bestDist) {
@@ -52,3 +47,15 @@ export function resolveOperatorDefinition (name, argTypes) {
 
   return [ bestDef, bestCasts ]
 }
+
+registerOperator(new OperatorDefinition({
+  name: '+',
+  args: ["int", "int"],
+  returns: "int"
+}))
+
+registerOperator(new OperatorDefinition({
+  name: '+',
+  args: ["real", "real"],
+  returns: "real"
+}))

@@ -67,6 +67,10 @@ export class ConcreteType {
   toHashStr () {
     return this.name
   }
+
+  prettyPrint () {
+    return this.name
+  }
 }
 
 // Abstraction of a type. An expression or subexpression has a type. In the future we might want generics, so we use a
@@ -91,6 +95,10 @@ export class MathematicalType {
 
   // Used for dictionary lookups (may change l8r)
   toHashStr () {
+    return this.name
+  }
+
+  prettyPrint () {
     return this.name
   }
 }
