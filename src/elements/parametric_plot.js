@@ -83,7 +83,7 @@ export class ParametricPlot2D extends Element {
       let scope = {}
       scope[varName] = 'real'
 
-      node.resolveTypes(scope, { strict: true })
+      node._resolveTypes(scope, { strict: true })
 
       props.set('functionNode', node)
       if (node.type !== 'vec2')

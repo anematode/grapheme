@@ -11,7 +11,7 @@
 <script id="setup">
     var expr = "-atan(x)^2/50-y^2/50"
 
-    var node = Grapheme.parseString(expr).resolveTypes()
+    var node = Grapheme.parseString(expr)._resolveTypes()
     var gCompiled = Grapheme.compileNode(node)
 
     var mCompiled = math.compile(expr) // math.js

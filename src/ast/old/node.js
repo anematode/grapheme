@@ -114,7 +114,7 @@ export class ASTGroup extends ASTNode {
    * @param opts {{}}
    */
   resolveTypes (typeInfo={}, opts = {}) {
-    this.children.forEach(child => child.resolveTypes(typeInfo, opts))
+    this.children.forEach(child => child._resolveTypes(typeInfo, opts))
 
     this.type = this.children[0].type
   }
@@ -226,7 +226,7 @@ export class OperatorNode extends ASTGroup {
    */
   resolveTypes (typeInfo, opts = {}) {
     // We need to find the function definition that matches
-    this.children.forEach(child => child.resolveTypes(typeInfo))
+    this.children.forEach(child => child._resolveTypes(typeInfo))
 
     let signature = this.getChildrenSignature()
     let definition = resolveOperator(this.op, signature)

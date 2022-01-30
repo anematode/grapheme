@@ -131,7 +131,7 @@ export function toConcreteType (o) {
 
 /**
  * "Intelligently" convert an object to the corresponding mathematical type object
- * @param o {any}
+ * @param o {*}
  * @returns {MathematicalType|null}
  */
 export function toMathematicalType (o) {

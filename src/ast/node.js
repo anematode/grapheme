@@ -106,6 +106,12 @@ export class ASTNode {
   }
 
   resolveTypes (args) {
+    // Convert all arg values to mathematical types
+
+    this._resolveTypes(args)
+  }
+
+  _resolveTypes (args) {
 
   }
 }
@@ -148,12 +154,12 @@ export class ASTGroup extends ASTNode {
     return new ASTGroup(this)
   }
 
-  resolveTypes (args) {
+  _resolveTypes (args) {
     // Only called on a raw group
     let children = this.children
 
     for (let i = 0; i < children.length; ++i) {
-      children[i].resolveTypes(args)
+      children[i]._resolveTypes(args)
     }
 
     this.type = children[0].type
@@ -176,7 +182,7 @@ export class ConstantNode extends ASTNode {
     return new ConstantNode(this)
   }
 
-  resolveTypes (args) {
+  _resolveTypes (args) {
 
   }
 }
@@ -198,7 +204,7 @@ export class VariableNode extends ASTNode {
     return new VariableNode(this)
   }
 
-  resolveTypes (args) {
+  _resolveTypes (args) {
     let { vars } = args
 
     if (vars) {
@@ -246,7 +252,7 @@ export class OperatorNode extends ASTGroup {
     return new OperatorNode(this)
   }
 
-  resolveTypes (args) {
+  _resolveTypes (args) {
     let childArgTypes = this.children.map(c => c.type)
     for (let t of childArgTypes) {
       if (!t) {
@@ -255,11 +261,13 @@ export class OperatorNode extends ASTGroup {
       }
     }
 
-    let [ definition, casts ] = resolveOperatorDefinition(name, childArgTypes)
+    let [ definition, casts ] = resolveOperatorDefinition(this.name, childArgTypes)
+
     if (!definition) {
       this.type = null
       this.operatorDefinition = null
       this.casts = null
+      return
     }
 
     this.type = definition.returns

@@ -9,6 +9,7 @@ import {
   ASTGroup,
   ASTNode
 } from './node.js'
+import { toMathematicalType } from './builtin_types.js'
 
 const operator_regex = /^[*\-\/+^]|^[<>]=?|^[=!]=|^and\s+|^or\s+/
 const function_regex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(/
@@ -359,7 +360,7 @@ function processConstantsAndVariables (tokens) {
     switch (token.type) {
       case 'constant':
         let node = new ConstantNode({ value: token.value })
-        node.type = isStringInteger(token.value) ? 'int' : 'real'
+        node.type = toMathematicalType(isStringInteger(token.value) ? 'int' : 'real')
 
         tokens[i] = node
 

@@ -4441,7 +4441,7 @@
 
 
     resolveTypes(typeInfo, opts = {}) {
-      this.children.forEach(child => child.resolveTypes(typeInfo, opts));
+      this.children.forEach(child => child._resolveTypes(typeInfo, opts));
       this.type = this.children[0].type;
     }
 
@@ -4538,7 +4538,7 @@
 
     resolveTypes(typeInfo, opts = {}) {
       // We need to find the function definition that matches
-      this.children.forEach(child => child.resolveTypes(typeInfo));
+      this.children.forEach(child => child._resolveTypes(typeInfo));
       let signature = this.getChildrenSignature();
       let definition = resolveOperator(this.op, signature);
       if (!definition) throw new Error('Could not find a suitable definition for operator ' + this.op + '(' + signature.join(', ') + ').');
@@ -9207,7 +9207,7 @@
 
         let scope = {};
         scope[varName] = 'real';
-        node.resolveTypes(scope, {
+        node._resolveTypes(scope, {
           strict: true
         });
         props.set('functionNode', node);

@@ -8,7 +8,7 @@
 
 <script id="setup">
     var node = Grapheme.parseString("vec2(x^2, y^2)")
-    node.resolveTypes({ x: "real", y: "real" })
+    node._resolveTypes({ x: "real", y: "real" })
 
     var res = Grapheme.compileNode(node, { mode: "fast_interval" })
 
